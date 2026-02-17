@@ -4,20 +4,10 @@ import { NextResponse, type NextRequest } from "next/server";
 const protectedRoutes = [
   "/dashboard",
   "/assets",
-  "/maintenance",
   "/services",
-  "/documents",
-  "/timeline",
-  "/costs",
-  "/billing",
   "/reports",
-  "/api/maintenance-predictions",
-  "/api/maintenance-rules",
-  "/api/service-logs",
-  "/api/audit-logs",
+  "/billing",
 ];
-
-const authRoutes = ["/login", "/register"];
 
 function isProtectedRoute(pathname: string) {
   return protectedRoutes.some(
@@ -55,28 +45,16 @@ export async function middleware(request: NextRequest) {
   });
 
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
 
   const { pathname, search } = request.nextUrl;
   const isProtected = isProtectedRoute(pathname);
-  const isAuth = authRoutes.includes(pathname);
 
-  if (!user && isProtected) {
-    if (pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+  if (!session && isProtected) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
     redirectUrl.searchParams.set("next", `${pathname}${search}`);
-    return NextResponse.redirect(redirectUrl);
-  }
-
-  if (user && isAuth) {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/dashboard";
-    redirectUrl.search = "";
     return NextResponse.redirect(redirectUrl);
   }
 
@@ -87,17 +65,9 @@ export const config = {
   matcher: [
     "/dashboard/:path*",
     "/assets/:path*",
-    "/maintenance/:path*",
     "/services/:path*",
-    "/documents/:path*",
-    "/timeline/:path*",
-    "/costs/:path*",
     "/billing/:path*",
     "/reports/:path*",
-    "/api/maintenance-predictions",
-    "/api/maintenance-rules/:path*",
-    "/api/service-logs/:path*",
-    "/api/audit-logs/:path*",
     "/login",
     "/register",
   ],

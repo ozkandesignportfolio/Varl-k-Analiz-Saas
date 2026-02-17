@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import {
   ReportsDataTable,
@@ -12,7 +13,7 @@ import { ReportsExportButtons } from "@/features/reports/components/reports-expo
 import { ReportsFilterPanel } from "@/features/reports/components/reports-filter-panel";
 import { ReportsSummaryCards } from "@/features/reports/components/reports-summary-cards";
 import { listIdName } from "@/lib/repos/assets-repo";
-import { createClient } from "@/lib/supabase/client";
+import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type AssetRow = {
   id: string;
@@ -51,7 +52,7 @@ const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
 
 export function ReportsPageContainer() {
-  const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
   const today = useMemo(() => new Date(), []);
   const initialStart = useMemo(() => new Date(today.getFullYear(), today.getMonth(), 1), [today]);
 
@@ -67,16 +68,16 @@ export function ReportsPageContainer() {
 
   useEffect(() => {
     const load = async () => {
+      const supabase = getSupabaseBrowserClient();
       setIsLoading(true);
       setFeedback("");
 
       const {
         data: { user },
-        error: userError,
       } = await supabase.auth.getUser();
 
-      if (userError || !user) {
-        setFeedback(userError?.message ?? "Oturum bulunamadÄ±. LÃ¼tfen tekrar giriÅŸ yapÄ±n.");
+      if (!user) {
+        router.replace("/login");
         setIsLoading(false);
         return;
       }
@@ -108,7 +109,7 @@ export function ReportsPageContainer() {
     };
 
     void load();
-  }, [supabase]);
+  }, [router]);
 
   const hasValidRange = useMemo(() => startDate <= endDate, [startDate, endDate]);
 

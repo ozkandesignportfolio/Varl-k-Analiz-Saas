@@ -43,13 +43,7 @@ export default function RegisterPage() {
 
     setIsSubmitting(true);
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName },
-      },
-    });
+    const { error } = await supabase.auth.signUp({ email, password });
 
     if (error) {
       setMessage(error.message);
@@ -57,15 +51,8 @@ export default function RegisterPage() {
       return;
     }
 
-    if (data.session) {
-      router.push("/dashboard");
-      router.refresh();
-      return;
-    }
-
-    setMessage("Kayıt başarılı. E-posta doğrulaması açıksa gelen kutunuzu kontrol edin.");
-    setIsSubmitting(false);
-    form.reset();
+    router.push("/dashboard");
+    router.refresh();
   };
 
   return (

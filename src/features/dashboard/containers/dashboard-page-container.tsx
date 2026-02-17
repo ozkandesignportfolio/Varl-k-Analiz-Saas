@@ -68,6 +68,19 @@ export function DashboardPageContainer() {
   } | null>(null);
   const [predictionError, setPredictionError] = useState("");
 
+  const clearClientState = () => {
+    setEmail("");
+    setIsLoading(false);
+    setFeedback("");
+    setAssets([]);
+    setServiceLogs([]);
+    setRules([]);
+    setDocuments([]);
+    setPredictions([]);
+    setPredictionMeta(null);
+    setPredictionError("");
+  };
+
   useEffect(() => {
     const load = async () => {
       setIsLoading(true);
@@ -154,8 +167,8 @@ export function DashboardPageContainer() {
 
   const onSignOut = async () => {
     await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
+    router.replace("/login");
+    clearClientState();
   };
 
   const today = useMemo(() => {
