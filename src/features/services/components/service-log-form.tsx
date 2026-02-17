@@ -5,7 +5,7 @@ export type ServiceLogFormAssetOption = {
   name: string;
 };
 
-export type ServiceLogFormRuleOption = {
+type ServiceLogFormRuleOption = {
   id: string;
   title: string;
   next_due_date: string;

@@ -3,7 +3,7 @@ import type { FormEvent } from "react";
 export type BillingSubscriptionStatus = "active" | "paused" | "cancelled";
 export type BillingCycle = "monthly" | "yearly";
 
-export type BillingSubscriptionFormValue = {
+type BillingSubscriptionFormValue = {
   provider_name: string;
   subscription_name: string;
   plan_name: string | null;

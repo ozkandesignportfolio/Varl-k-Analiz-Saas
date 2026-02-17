@@ -2,7 +2,7 @@ import type { FormEvent } from "react";
 
 export type BillingInvoiceStatus = "pending" | "paid" | "overdue" | "cancelled";
 
-export type BillingInvoiceSubscriptionOption = {
+type BillingInvoiceSubscriptionOption = {
   id: string;
   provider_name: string;
   subscription_name: string;

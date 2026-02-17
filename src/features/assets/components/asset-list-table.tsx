@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AssetDeleteDialog } from "./asset-delete-dialog";
 
-export type AssetListTableRow = {
+type AssetListTableRow = {
   id: string;
   name: string;
   category: string;
