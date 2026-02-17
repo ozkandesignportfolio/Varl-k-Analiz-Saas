@@ -10,6 +10,22 @@ export type DashboardPredictionItem = {
   overdueDays: number | null;
 };
 
+export type DashboardUpcomingSubscriptionCharge = {
+  id: string;
+  providerName: string;
+  subscriptionName: string;
+  nextBillingDate: string;
+  amount: number;
+  currency: string;
+};
+
+export type DashboardMonthlyExpenseWarning = {
+  isHigh: boolean;
+  total: number;
+  threshold: number;
+  currency: string;
+};
+
 type DashboardPredictionMeta = {
   generatedAt: string;
   model: string;
@@ -21,6 +37,8 @@ type DashboardRiskCardsProps = {
   topPredictions: DashboardPredictionItem[];
   predictionMeta: DashboardPredictionMeta | null;
   predictionGeneratedAt: string;
+  upcomingSubscriptionCharges: DashboardUpcomingSubscriptionCharge[];
+  monthlyExpenseWarning: DashboardMonthlyExpenseWarning;
 };
 
 export function DashboardRiskCards({
@@ -28,6 +46,8 @@ export function DashboardRiskCards({
   topPredictions,
   predictionMeta,
   predictionGeneratedAt,
+  upcomingSubscriptionCharges,
+  monthlyExpenseWarning,
 }: DashboardRiskCardsProps) {
   return (
     <article className="premium-card p-5">
@@ -41,6 +61,33 @@ export function DashboardRiskCards({
       {predictionMeta?.warning ? (
         <p className="mt-2 rounded-lg border border-amber-300/30 bg-amber-300/10 px-2 py-1 text-xs text-amber-100">
           {predictionMeta.warning}
+        </p>
+      ) : null}
+      {upcomingSubscriptionCharges.length > 0 ? (
+        <div className="mt-3 rounded-lg border border-white/15 bg-white/[0.04] p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-300">
+            Yaklaşan abonelik tahsilatları
+          </p>
+          <div className="mt-2 space-y-1.5">
+            {upcomingSubscriptionCharges.map((charge) => (
+              <div key={charge.id} className="flex items-center justify-between gap-2 text-xs">
+                <p className="text-slate-200">
+                  {charge.providerName} - {charge.subscriptionName}
+                </p>
+                <p className="text-slate-300">
+                  {new Date(charge.nextBillingDate).toLocaleDateString("tr-TR")} -{" "}
+                  {charge.amount.toFixed(2)} {charge.currency}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {monthlyExpenseWarning.isHigh ? (
+        <p className="mt-2 rounded-lg border border-rose-300/30 bg-rose-300/10 px-2 py-1 text-xs text-rose-100">
+          Yüksek aylık gider uyarısı: {monthlyExpenseWarning.total.toFixed(2)}{" "}
+          {monthlyExpenseWarning.currency} (eşik {monthlyExpenseWarning.threshold.toFixed(2)}{" "}
+          {monthlyExpenseWarning.currency})
         </p>
       ) : null}
 

@@ -15,7 +15,9 @@ import {
 } from "@/features/dashboard/components/dashboard-recent-activity";
 import {
   DashboardRiskCards,
+  type DashboardMonthlyExpenseWarning,
   type DashboardPredictionItem,
+  type DashboardUpcomingSubscriptionCharge,
 } from "@/features/dashboard/components/dashboard-risk-cards";
 import { createClient } from "@/lib/supabase/client";
 
@@ -27,6 +29,23 @@ type RuleRow = DashboardChartRuleRow;
 
 type DocumentRow = {
   id: string;
+};
+
+type SubscriptionRow = {
+  id: string;
+  provider_name: string;
+  subscription_name: string;
+  amount: number;
+  currency: string;
+  next_billing_date: string | null;
+  status: "active" | "paused" | "cancelled";
+};
+
+type ExpenseRow = {
+  id: string;
+  amount: number;
+  currency: string;
+  expense_date: string;
 };
 
 type PredictionItem = DashboardPredictionItem;
@@ -59,6 +78,8 @@ export function DashboardPageContainer() {
   const [serviceLogs, setServiceLogs] = useState<ServiceLogRow[]>([]);
   const [rules, setRules] = useState<RuleRow[]>([]);
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
+  const [subscriptions, setSubscriptions] = useState<SubscriptionRow[]>([]);
+  const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
 
   const [predictions, setPredictions] = useState<PredictionItem[]>([]);
   const [predictionMeta, setPredictionMeta] = useState<{
@@ -76,6 +97,8 @@ export function DashboardPageContainer() {
     setServiceLogs([]);
     setRules([]);
     setDocuments([]);
+    setSubscriptions([]);
+    setExpenses([]);
     setPredictions([]);
     setPredictionMeta(null);
     setPredictionError("");
@@ -121,7 +144,8 @@ export function DashboardPageContainer() {
         .then((data) => ({ data, error: "" }))
         .catch((error: Error) => ({ data: null, error: error.message }));
 
-      const [assetsRes, logsRes, rulesRes, docsRes, predictionRes] = await Promise.all([
+      const [assetsRes, logsRes, rulesRes, docsRes, subscriptionsRes, expensesRes, predictionRes] =
+        await Promise.all([
         supabase.from("assets").select("id,name,category,warranty_end_date").eq("user_id", user.id),
         supabase
           .from("service_logs")
@@ -132,18 +156,30 @@ export function DashboardPageContainer() {
           .select("id,asset_id,next_due_date,is_active")
           .eq("user_id", user.id),
         supabase.from("documents").select("id").eq("user_id", user.id),
+        supabase
+          .from("billing_subscriptions")
+          .select("id,provider_name,subscription_name,amount,currency,next_billing_date,status")
+          .eq("user_id", user.id),
+        supabase
+          .from("expenses")
+          .select("id,amount,currency,expense_date")
+          .eq("user_id", user.id),
         predictionRequest,
-      ]);
+        ]);
 
       if (assetsRes.error) setFeedback(assetsRes.error.message);
       if (logsRes.error) setFeedback(logsRes.error.message);
       if (rulesRes.error) setFeedback(rulesRes.error.message);
       if (docsRes.error) setFeedback(docsRes.error.message);
+      if (subscriptionsRes.error) setFeedback(subscriptionsRes.error.message);
+      if (expensesRes.error) setFeedback(expensesRes.error.message);
 
       setAssets((assetsRes.data ?? []) as AssetRow[]);
       setServiceLogs((logsRes.data ?? []) as ServiceLogRow[]);
       setRules((rulesRes.data ?? []) as RuleRow[]);
       setDocuments((docsRes.data ?? []) as DocumentRow[]);
+      setSubscriptions((subscriptionsRes.data ?? []) as SubscriptionRow[]);
+      setExpenses((expensesRes.data ?? []) as ExpenseRow[]);
       setPredictions((predictionRes.data?.items ?? []) as PredictionItem[]);
       setPredictionMeta(
         predictionRes.data
@@ -239,6 +275,54 @@ export function DashboardPageContainer() {
     return parsed.toLocaleString("tr-TR");
   }, [predictionMeta]);
 
+  const upcomingSubscriptionCharges = useMemo<DashboardUpcomingSubscriptionCharge[]>(() => {
+    const inThirtyDays = new Date(today);
+    inThirtyDays.setDate(today.getDate() + 30);
+
+    return subscriptions
+      .filter((subscription) => {
+        if (subscription.status !== "active" || !subscription.next_billing_date) return false;
+        const billingDate = parseDateOnly(subscription.next_billing_date);
+        if (!billingDate) return false;
+        return billingDate >= today && billingDate <= inThirtyDays;
+      })
+      .sort((a, b) => {
+        const aDate = parseDateOnly(a.next_billing_date ?? "")?.getTime() ?? Number.MAX_SAFE_INTEGER;
+        const bDate = parseDateOnly(b.next_billing_date ?? "")?.getTime() ?? Number.MAX_SAFE_INTEGER;
+        return aDate - bDate;
+      })
+      .slice(0, 4)
+      .map((subscription) => ({
+        id: subscription.id,
+        providerName: subscription.provider_name,
+        subscriptionName: subscription.subscription_name,
+        nextBillingDate: subscription.next_billing_date ?? "",
+        amount: Number(subscription.amount ?? 0),
+        currency: subscription.currency || "TRY",
+      }));
+  }, [subscriptions, today]);
+
+  const monthlyExpenseWarning = useMemo<DashboardMonthlyExpenseWarning>(() => {
+    const now = new Date();
+    const month = now.getMonth();
+    const year = now.getFullYear();
+    const threshold = 5000;
+    const total = expenses
+      .filter((expense) => {
+        const expenseDate = parseDateOnly(expense.expense_date);
+        if (!expenseDate) return false;
+        return expenseDate.getMonth() === month && expenseDate.getFullYear() === year;
+      })
+      .reduce((sum, expense) => sum + Number(expense.amount ?? 0), 0);
+
+    return {
+      isHigh: total >= threshold,
+      total,
+      threshold,
+      currency: "TRY",
+    };
+  }, [expenses]);
+
   return (
     <AppShell
       badge="Kontrol Merkezi"
@@ -293,6 +377,8 @@ export function DashboardPageContainer() {
           topPredictions={topPredictions}
           predictionMeta={predictionMeta}
           predictionGeneratedAt={predictionGeneratedAt}
+          upcomingSubscriptionCharges={upcomingSubscriptionCharges}
+          monthlyExpenseWarning={monthlyExpenseWarning}
         />
       </section>
     </AppShell>
