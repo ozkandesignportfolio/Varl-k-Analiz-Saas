@@ -1,4 +1,5 @@
 ﻿import { NextResponse } from "next/server";
+import { existsById } from "@/lib/repos/assets-repo";
 import { createClient } from "@/lib/supabase/server";
 
 type CreateServiceLogPayload = {
@@ -54,18 +55,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data: asset, error: assetError } = await supabase
-    .from("assets")
-    .select("id")
-    .eq("id", assetId)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const { data: assetExists, error: assetError } = await existsById(supabase, {
+    assetId,
+    userId: user.id,
+  });
 
   if (assetError) {
     return NextResponse.json({ error: assetError.message }, { status: 400 });
   }
 
-  if (!asset) {
+  if (!assetExists) {
     return NextResponse.json({ error: "Seçilen varlığa erişim izniniz yok." }, { status: 403 });
   }
 

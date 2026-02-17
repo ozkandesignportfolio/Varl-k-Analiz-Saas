@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { listIdName } from "@/lib/repos/assets-repo";
 import { createClient } from "@/lib/supabase/client";
 
 type AssetRow = {
@@ -93,7 +94,7 @@ export default function ReportsPage() {
       setUserEmail(user.email ?? "bilinmiyor");
 
       const [assetsRes, servicesRes, docsRes] = await Promise.all([
-        supabase.from("assets").select("id,name").eq("user_id", user.id),
+        listIdName(supabase, { userId: user.id }),
         supabase
           .from("service_logs")
           .select("id,asset_id,service_date,service_type,cost")

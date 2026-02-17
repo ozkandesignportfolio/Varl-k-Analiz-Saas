@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { AuditHistoryPanel } from "@/components/audit-history-panel";
+import { listIdName } from "@/lib/repos/assets-repo";
 import { createClient } from "@/lib/supabase/client";
 
 type AssetOption = {
@@ -71,11 +72,7 @@ export default function ServicesPage() {
   const [selectedRuleId, setSelectedRuleId] = useState("");
 
   const fetchAssets = useCallback(async (currentUserId: string) => {
-    const { data, error } = await supabase
-      .from("assets")
-      .select("id,name")
-      .eq("user_id", currentUserId)
-      .order("created_at", { ascending: false });
+    const { data, error } = await listIdName(supabase, { userId: currentUserId });
 
     if (error) {
       setFeedback(error.message);
