@@ -190,6 +190,7 @@ export type Database = {
         Row: {
           id: string;
           user_id: string;
+          maintenance_rule_id: string | null;
           provider_name: string;
           subscription_name: string;
           plan_name: string | null;
@@ -206,6 +207,7 @@ export type Database = {
         Insert: {
           id?: string;
           user_id: string;
+          maintenance_rule_id?: string | null;
           provider_name: string;
           subscription_name: string;
           plan_name?: string | null;
@@ -220,6 +222,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          maintenance_rule_id?: string | null;
           provider_name?: string;
           subscription_name?: string;
           plan_name?: string | null;

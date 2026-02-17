@@ -5,6 +5,7 @@ import type {
 
 export type BillingSubscriptionTableRow = {
   id: string;
+  maintenance_rule_id: string | null;
   provider_name: string;
   subscription_name: string;
   plan_name: string | null;

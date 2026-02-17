@@ -2,8 +2,13 @@ import type { FormEvent } from "react";
 
 export type BillingSubscriptionStatus = "active" | "paused" | "cancelled";
 export type BillingCycle = "monthly" | "yearly";
+export type BillingSubscriptionFormRuleOption = {
+  id: string;
+  title: string;
+};
 
 type BillingSubscriptionFormValue = {
+  maintenance_rule_id: string | null;
   provider_name: string;
   subscription_name: string;
   plan_name: string | null;
@@ -19,6 +24,7 @@ type BillingSubscriptionFormBaseProps = {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   isSubmitting: boolean;
   inputClassName: string;
+  maintenanceRules: BillingSubscriptionFormRuleOption[];
 };
 
 type CreateBillingSubscriptionFormProps = BillingSubscriptionFormBaseProps & {
@@ -37,7 +43,7 @@ type BillingSubscriptionFormProps =
 
 export function BillingSubscriptionForm(props: BillingSubscriptionFormProps) {
   if (props.mode === "create") {
-    const { onSubmit, isSubmitting, inputClassName } = props;
+    const { onSubmit, isSubmitting, inputClassName, maintenanceRules } = props;
 
     return (
       <article className="premium-card p-5">
@@ -59,6 +65,19 @@ export function BillingSubscriptionForm(props: BillingSubscriptionFormProps) {
           <label className="block">
             <span className="mb-1.5 block text-sm text-slate-300">Plan (Opsiyonel)</span>
             <input name="planName" className={inputClassName} placeholder="Örnek: Premium" />
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-sm text-slate-300">Bakım Kuralı (Opsiyonel)</span>
+            <select name="maintenanceRuleId" className={inputClassName} defaultValue="">
+              <option value="" className="bg-slate-900">
+                Kural bağlama
+              </option>
+              {maintenanceRules.map((rule) => (
+                <option key={rule.id} value={rule.id} className="bg-slate-900">
+                  {rule.title}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="block">
             <span className="mb-1.5 block text-sm text-slate-300">Döngü</span>
@@ -120,7 +139,7 @@ export function BillingSubscriptionForm(props: BillingSubscriptionFormProps) {
     );
   }
 
-  const { onSubmit, isSubmitting, inputClassName, subscription, onCancel } = props;
+  const { onSubmit, isSubmitting, inputClassName, maintenanceRules, subscription, onCancel } = props;
 
   return (
     <section className="premium-card p-5">
@@ -157,6 +176,23 @@ export function BillingSubscriptionForm(props: BillingSubscriptionFormProps) {
         <label className="block">
           <span className="mb-1.5 block text-sm text-slate-300">Plan (Opsiyonel)</span>
           <input name="planName" className={inputClassName} defaultValue={subscription.plan_name ?? ""} />
+        </label>
+        <label className="block">
+          <span className="mb-1.5 block text-sm text-slate-300">Bakım Kuralı (Opsiyonel)</span>
+          <select
+            name="maintenanceRuleId"
+            className={inputClassName}
+            defaultValue={subscription.maintenance_rule_id ?? ""}
+          >
+            <option value="" className="bg-slate-900">
+              Kural bağlama
+            </option>
+            {maintenanceRules.map((rule) => (
+              <option key={rule.id} value={rule.id} className="bg-slate-900">
+                {rule.title}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="block">
           <span className="mb-1.5 block text-sm text-slate-300">Döngü</span>

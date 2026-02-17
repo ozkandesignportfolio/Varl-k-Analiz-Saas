@@ -7,7 +7,10 @@ import {
   BillingInvoiceTable,
   type BillingInvoiceTableRow,
 } from "@/features/billing/components/billing-invoice-table";
-import { BillingSubscriptionForm } from "@/features/billing/components/billing-subscription-form";
+import {
+  BillingSubscriptionForm,
+  type BillingSubscriptionFormRuleOption,
+} from "@/features/billing/components/billing-subscription-form";
 import {
   BillingSubscriptionTable,
   type BillingSubscriptionTableRow,
@@ -21,6 +24,7 @@ type InvoiceStatus = "pending" | "paid" | "overdue" | "cancelled";
 type SubscriptionRow = BillingSubscriptionTableRow;
 
 type InvoiceRow = BillingInvoiceTableRow;
+type MaintenanceRuleOption = BillingSubscriptionFormRuleOption;
 
 const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
@@ -59,6 +63,7 @@ export function BillingPageContainer() {
 
   const [userId, setUserId] = useState("");
   const [subscriptions, setSubscriptions] = useState<SubscriptionRow[]>([]);
+  const [maintenanceRules, setMaintenanceRules] = useState<MaintenanceRuleOption[]>([]);
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingSubscription, setIsSavingSubscription] = useState(false);
@@ -72,7 +77,7 @@ export function BillingPageContainer() {
       const subscriptionRes = await supabase
         .from("billing_subscriptions")
         .select(
-          "id,provider_name,subscription_name,plan_name,billing_cycle,amount,currency,next_billing_date,auto_renew,status,notes,created_at",
+          "id,maintenance_rule_id,provider_name,subscription_name,plan_name,billing_cycle,amount,currency,next_billing_date,auto_renew,status,notes,created_at",
         )
         .eq("user_id", currentUserId)
         .order("created_at", { ascending: false });
@@ -87,6 +92,19 @@ export function BillingPageContainer() {
       if (!selectedSubscriptionId && nextSubscriptions.length > 0) {
         setSelectedSubscriptionId(nextSubscriptions[0].id);
       }
+
+      const rulesRes = await supabase
+        .from("maintenance_rules")
+        .select("id,title")
+        .eq("user_id", currentUserId)
+        .eq("is_active", true)
+        .order("created_at", { ascending: false });
+
+      if (rulesRes.error) {
+        setFeedback(rulesRes.error.message);
+      }
+
+      setMaintenanceRules((rulesRes.data ?? []) as MaintenanceRuleOption[]);
 
       const invoiceRes = await supabase
         .from("billing_invoices")
@@ -196,6 +214,7 @@ export function BillingPageContainer() {
     const billingCycle = String(formData.get("billingCycle") ?? "monthly").trim() as BillingCycle;
     const amount = Number(formData.get("amount") ?? 0);
     const nextBillingDate = toOptionalText(formData.get("nextBillingDate"));
+    const maintenanceRuleId = toOptionalText(formData.get("maintenanceRuleId"));
     const status = String(formData.get("status") ?? "active").trim() as SubscriptionStatus;
     const autoRenew = String(formData.get("autoRenew") ?? "true") === "true";
     const notes = toOptionalText(formData.get("notes"));
@@ -216,6 +235,7 @@ export function BillingPageContainer() {
       .from("billing_subscriptions")
       .insert({
         user_id: userId,
+        maintenance_rule_id: maintenanceRuleId,
         provider_name: providerName,
         subscription_name: subscriptionName,
         plan_name: planName,
@@ -345,6 +365,7 @@ export function BillingPageContainer() {
           onSubmit={onCreateSubscription}
           isSubmitting={isSavingSubscription}
           inputClassName={inputClassName}
+          maintenanceRules={maintenanceRules}
         />
 
         <BillingSubscriptionTable
