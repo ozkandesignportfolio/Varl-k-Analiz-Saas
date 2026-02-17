@@ -1,4 +1,9 @@
-export type TriggerType = "warranty_30_days" | "maintenance_7_days" | "service_log_created";
+export type TriggerType =
+  | "warranty_30_days"
+  | "maintenance_7_days"
+  | "service_log_created"
+  | "subscription_due"
+  | "expense_threshold";
 export type ActionType = "email" | "push" | "push_notification" | "pdf_report";
 
 export type AutomationEvent = {
@@ -34,8 +39,39 @@ export function buildMessage(event: AutomationEvent): { title: string; body: str
     };
   }
 
+  if (event.trigger_type === "subscription_due") {
+    const providerName = String(event.payload?.provider_name ?? "Saglayici");
+    const subscriptionName = String(event.payload?.subscription_name ?? "Abonelik");
+    const nextBillingDate = String(event.payload?.next_billing_date ?? "");
+    const amount = String(event.payload?.amount ?? "");
+    const currency = String(event.payload?.currency ?? "TRY");
+    return {
+      title: "Abonelik odeme tarihi geldi",
+      body: `${providerName} / ${subscriptionName} odemesi (${amount} ${currency}) bugun: ${nextBillingDate}.`,
+    };
+  }
+
+  if (event.trigger_type === "expense_threshold") {
+    const title = String(event.payload?.title ?? "Gider");
+    const category = String(event.payload?.category ?? "Kategori");
+    const amount = String(event.payload?.amount ?? "");
+    const currency = String(event.payload?.currency ?? "TRY");
+    const threshold = String(event.payload?.threshold ?? "");
+    return {
+      title: "Yuksek tutarli gider kaydi",
+      body: `${title} (${category}) icin ${amount} ${currency} kaydi olusturuldu. Esik: ${threshold} ${currency}.`,
+    };
+  }
+
+  if (event.trigger_type === "service_log_created") {
+    return {
+      title: "Yeni servis kaydi olusturuldu",
+      body: `${assetName} icin ${serviceType} kaydi olusturuldu (${serviceDate}).`,
+    };
+  }
+
   return {
-    title: "Yeni servis kaydi olusturuldu",
-    body: `${assetName} icin ${serviceType} kaydi olusturuldu (${serviceDate}).`,
+    title: "Yeni otomasyon olayi",
+    body: `Trigger: ${event.trigger_type}`,
   };
 }
