@@ -15,9 +15,11 @@ Bu event'ler su action'lari calistirir:
 Supabase SQL Editor'da calistirin:
 
 `supabase/migrations/20260216130000_automation_events.sql`
+`supabase/migrations/20260218150000_notification_flow_cron_due_and_rule_crud.sql`
 
 Not:
-- Migration, tarih bazli event'leri her gun UTC `06:00` ve `06:05`'te calistiracak `pg_cron` job'larini da olusturur.
+- Migration, due event taramasini cron penceresine uyumlu sekilde calistirir.
+- `automation_events.dedupe_key` ve `on conflict do nothing` ile tekilleme korunur.
 
 ## 2) Edge Function deploy
 
@@ -41,6 +43,15 @@ supabase secrets set EXPO_ACCESS_TOKEN=YOUR_EXPO_TOKEN
 
 Secenek A (onerilen): Supabase Dashboard > Edge Functions > Schedules ile
 `automation-dispatcher` function'ini `* * * * *` cron ile her dakika calistirin.
+Dispatcher cagrisi `emit_due_automation_events` fonksiyonunu da tetikleyebilir:
+
+```json
+{
+  "batch_size": 25,
+  "emit_due_events": true,
+  "due_window": "1 day"
+}
+```
 
 Secenek B (`pg_cron + pg_net`):
 

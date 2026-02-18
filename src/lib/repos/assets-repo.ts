@@ -11,6 +11,10 @@ export type AssetExistsByIdParams = {
   assetId: string;
 };
 
+export type CountAssetsByUserParams = {
+  userId: string;
+};
+
 export function listIdName(
   client: DbClient,
   params: ListAssetIdNameParams,
@@ -43,4 +47,18 @@ export function existsById(
       .eq("user_id", userId)
       .maybeSingle(),
   ).then((r) => ({ data: !!r.data, error: r.error }));
+}
+
+export function countByUser(
+  client: DbClient,
+  params: CountAssetsByUserParams,
+): RepoResult<number> {
+  const { userId } = params;
+
+  return Promise.resolve(
+    client.from("assets").select("id", { count: "exact", head: true }).eq("user_id", userId),
+  ).then((r) => ({
+    data: r.count ?? 0,
+    error: r.error,
+  }));
 }

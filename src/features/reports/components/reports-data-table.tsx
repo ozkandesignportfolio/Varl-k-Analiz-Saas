@@ -63,7 +63,7 @@ export function ReportsDataTable({
               <tbody>
                 {assetSummary.map((row) => (
                   <tr key={row.assetName} className="border-b border-white/10 text-slate-100">
-                    <td className="px-3 py-3">{row.assetName}</td>
+                    <td className="px-3 py-3">{row.assetName || "-"}</td>
                     <td className="px-3 py-3">{row.serviceCount}</td>
                     <td className="px-3 py-3">{row.documentCount}</td>
                     <td className="px-3 py-3">{formatCurrency(row.totalCost)}</td>
@@ -104,7 +104,7 @@ export function ReportsDataTable({
                     <tr key={service.id} className="border-b border-white/10 text-slate-100">
                       <td className="px-3 py-3">{toTrDate(service.service_date)}</td>
                       <td className="px-3 py-3">{assetNameById.get(service.asset_id) ?? "-"}</td>
-                      <td className="px-3 py-3">{service.service_type}</td>
+                      <td className="px-3 py-3">{service.service_type || "-"}</td>
                       <td className="px-3 py-3">{formatCurrency(Number(service.cost ?? 0))}</td>
                     </tr>
                   ))}
@@ -141,7 +141,7 @@ export function ReportsDataTable({
                     <tr key={docRow.id} className="border-b border-white/10 text-slate-100">
                       <td className="px-3 py-3">{toTrDate(docRow.uploaded_at)}</td>
                       <td className="px-3 py-3">{assetNameById.get(docRow.asset_id) ?? "-"}</td>
-                      <td className="px-3 py-3">{docRow.file_name}</td>
+                      <td className="px-3 py-3">{docRow.file_name || "-"}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -5,6 +5,22 @@ export type ListBillingSubscriptionsByUserParams = {
   userId: string;
 };
 
+export type GetBillingSubscriptionByIdParams = {
+  userId: string;
+  subscriptionId: string;
+};
+
+export type GetBillingSubscriptionByIdRow = Pick<
+  Row<"billing_subscriptions">,
+  | "id"
+  | "user_id"
+  | "maintenance_rule_id"
+  | "billing_cycle"
+  | "next_billing_date"
+  | "auto_renew"
+  | "status"
+>;
+
 export type ListBillingSubscriptionsByUserRow = Pick<
   Row<"billing_subscriptions">,
   | "id"
@@ -34,6 +50,25 @@ export type UpdateBillingSubscriptionByIdParams = {
 };
 
 export type UpdateBillingSubscriptionByIdRow = Pick<Row<"billing_subscriptions">, "id">;
+
+export function getById(
+  client: DbClient,
+  params: GetBillingSubscriptionByIdParams,
+): RepoResult<GetBillingSubscriptionByIdRow> {
+  const { subscriptionId, userId } = params;
+
+  return Promise.resolve(
+    client
+      .from("billing_subscriptions")
+      .select("id,user_id,maintenance_rule_id,billing_cycle,next_billing_date,auto_renew,status")
+      .eq("id", subscriptionId)
+      .eq("user_id", userId)
+      .maybeSingle(),
+  ).then((r) => ({
+    data: (r.data as GetBillingSubscriptionByIdRow | null) ?? null,
+    error: r.error,
+  }));
+}
 
 export function listByUser(
   client: DbClient,

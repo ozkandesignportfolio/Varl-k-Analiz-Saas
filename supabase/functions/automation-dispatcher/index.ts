@@ -27,6 +27,22 @@ function json(data: unknown, status = 200): Response {
   });
 }
 
+function resolveDueWindow(input: unknown): string {
+  const value = String(input ?? "").trim();
+  return value || "1 day";
+}
+
+function resolveEmitDueEvents(input: unknown): boolean {
+  if (typeof input === "boolean") return input;
+  if (typeof input === "number") return input !== 0;
+  if (typeof input === "string") {
+    const normalized = input.trim().toLowerCase();
+    if (!normalized) return true;
+    return !["0", "false", "no", "off"].includes(normalized);
+  }
+  return true;
+}
+
 Deno.serve(async (request) => {
   if (request.method !== "POST") {
     return json({ error: "Only POST is allowed." }, 405);
@@ -44,6 +60,27 @@ Deno.serve(async (request) => {
   }
 
   const batchSize = resolveBatchSize(body.batch_size);
+  const dueWindow = resolveDueWindow(body.due_window);
+  const shouldEmitDueEvents = resolveEmitDueEvents(body.emit_due_events);
+
+  let dueEventSummary: Record<string, number> | null = null;
+  if (shouldEmitDueEvents) {
+    const { data: dueData, error: dueError } = await supabase.rpc("emit_due_automation_events", {
+      p_run_at: new Date().toISOString(),
+      p_window: dueWindow,
+    });
+
+    if (dueError) {
+      return json({ error: dueError.message }, 500);
+    }
+
+    if (dueData && typeof dueData === "object" && !Array.isArray(dueData)) {
+      const asMap = dueData as Record<string, unknown>;
+      dueEventSummary = Object.fromEntries(
+        Object.entries(asMap).map(([key, value]) => [key, Number(value ?? 0)]),
+      );
+    }
+  }
 
   let events: AutomationEvent[];
   try {
@@ -53,6 +90,7 @@ Deno.serve(async (request) => {
   }
 
   const summary = {
+    due_scan: dueEventSummary,
     claimed: events.length,
     completed: 0,
     failed: 0,

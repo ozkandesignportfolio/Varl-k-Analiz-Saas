@@ -27,6 +27,19 @@ export type ListServiceLogsForCostsRow = Pick<
   "id" | "asset_id" | "service_date" | "cost"
 >;
 
+export type GetServiceLogCostAggregateParams = {
+  userId: string;
+  sinceDate?: string;
+  beforeDate?: string;
+};
+
+export type ServiceLogCostAggregate = {
+  total_cost: number;
+  log_count: number;
+  avg_cost: number;
+  cost_score: number;
+};
+
 export type ListServiceLogsForDashboardParams = {
   userId: string;
   sinceDate?: string;
@@ -45,7 +58,25 @@ export type ListServiceLogsForReportsParams = {
 export type ListServiceLogsForReportsRow = Pick<
   Row<"service_logs">,
   "id" | "asset_id" | "service_date" | "service_type" | "cost"
->;
+> & {
+  asset_name: string | null;
+};
+
+type ReportAssetRelation = { name: string | null } | { name: string | null }[] | null;
+type ListServiceLogsForReportsRawRow = Pick<
+  Row<"service_logs">,
+  "id" | "asset_id" | "service_date" | "service_type" | "cost"
+> & {
+  asset: ReportAssetRelation;
+};
+
+const getReportAssetName = (relation: ReportAssetRelation): string | null => {
+  if (!relation) return null;
+  if (Array.isArray(relation)) {
+    return relation[0]?.name ?? null;
+  }
+  return relation.name ?? null;
+};
 
 export type ListServiceLogsForTimelineParams = {
   userId: string;
@@ -111,6 +142,21 @@ export type GetLatestServiceDateForRuleParams = {
 
 export type GetLatestServiceDateForRuleRow = Pick<Row<"service_logs">, "service_date">;
 
+const buildCostAggregate = (rows: Array<{ cost: number | null }>): ServiceLogCostAggregate => {
+  const logCount = rows.length;
+  const totalCost = rows.reduce((sum, row) => sum + Number(row.cost ?? 0), 0);
+  const avgCost = logCount > 0 ? totalCost / logCount : 0;
+  const maxCost = rows.reduce((max, row) => Math.max(max, Number(row.cost ?? 0)), 0);
+  const costScore = maxCost > 0 ? Math.round(Math.min(100, (avgCost / maxCost) * 100)) : 0;
+
+  return {
+    total_cost: totalCost,
+    log_count: logCount,
+    avg_cost: avgCost,
+    cost_score: costScore,
+  };
+};
+
 export function listForServicesPage(
   client: DbClient,
   params: ListServiceLogsForServicesPageParams,
@@ -143,6 +189,28 @@ export function listForCosts(
       .order("service_date", { ascending: false }),
   ).then((r) => ({
     data: (r.data as ListServiceLogsForCostsRow[] | null) ?? [],
+    error: r.error,
+  }));
+}
+
+export function getCostAggregate(
+  client: DbClient,
+  params: GetServiceLogCostAggregateParams,
+): RepoResult<ServiceLogCostAggregate> {
+  const { beforeDate, sinceDate, userId } = params;
+
+  let query = client.from("service_logs").select("cost").eq("user_id", userId);
+
+  if (sinceDate) {
+    query = query.gte("service_date", sinceDate);
+  }
+
+  if (beforeDate) {
+    query = query.lt("service_date", beforeDate);
+  }
+
+  return Promise.resolve(query).then((r) => ({
+    data: buildCostAggregate(((r.data as Array<{ cost: number | null }> | null) ?? [])),
     error: r.error,
   }));
 }
@@ -182,11 +250,19 @@ export function listForReports(
   return Promise.resolve(
     client
       .from("service_logs")
-      .select("id,asset_id,service_date,service_type,cost")
+      .select("id,asset_id,service_date,service_type,cost,asset:assets(name)")
       .eq("user_id", userId)
       .order("service_date", { ascending: false }),
   ).then((r) => ({
-    data: (r.data as ListServiceLogsForReportsRow[] | null) ?? [],
+    data:
+      ((r.data as ListServiceLogsForReportsRawRow[] | null) ?? []).map((row) => ({
+        id: row.id,
+        asset_id: row.asset_id,
+        service_date: row.service_date,
+        service_type: row.service_type,
+        cost: Number.isFinite(Number(row.cost)) ? Number(row.cost) : 0,
+        asset_name: getReportAssetName(row.asset),
+      })) ?? [],
     error: r.error,
   }));
 }

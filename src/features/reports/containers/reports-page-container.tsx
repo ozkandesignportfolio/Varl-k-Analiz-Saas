@@ -12,19 +12,18 @@ import {
 import { ReportsExportButtons } from "@/features/reports/components/reports-export-buttons";
 import { ReportsFilterPanel } from "@/features/reports/components/reports-filter-panel";
 import { ReportsSummaryCards } from "@/features/reports/components/reports-summary-cards";
-import { listIdName } from "@/lib/repos/assets-repo";
+import { countByUser as countAssetsByUser } from "@/lib/repos/assets-repo";
 import { listForReports as listDocumentsForReports } from "@/lib/repos/documents-repo";
 import { listForReports as listServiceLogsForReports } from "@/lib/repos/service-logs-repo";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
-type AssetRow = {
-  id: string;
-  name: string;
+type ServiceRow = ReportsServiceRow & {
+  asset_name: string | null;
 };
 
-type ServiceRow = ReportsServiceRow;
-
-type DocumentRow = ReportsDocumentRow;
+type DocumentRow = ReportsDocumentRow & {
+  asset_name: string | null;
+};
 
 type AssetSummaryRow = ReportsAssetSummaryRow;
 
@@ -45,10 +44,28 @@ const dateInputValue = (date: Date) => {
 const toStartOfDay = (value: string) => new Date(`${value}T00:00:00`);
 const toEndOfDay = (value: string) => new Date(`${value}T23:59:59.999`);
 
-const toTrDate = (value: string) => new Date(value).toLocaleDateString("tr-TR");
+const getTime = (value: string) => {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.getTime();
+};
 
-const truncate = (value: string, length: number) =>
-  value.length > length ? `${value.slice(0, length - 1)}â€¦` : value;
+const toTrDate = (value: string | null | undefined) => {
+  if (!value) return "-";
+  const time = getTime(value);
+  return time === null ? "-" : new Date(time).toLocaleDateString("tr-TR");
+};
+
+const asSafeText = (value: unknown, fallback = "-") => {
+  if (typeof value !== "string") return fallback;
+  const text = value.trim();
+  return text.length > 0 ? text : fallback;
+};
+
+const truncate = (value: string | null | undefined, length: number) => {
+  const text = asSafeText(value, "-");
+  if (length <= 0 || text.length <= length) return text;
+  return `${text.slice(0, Math.max(0, length - 3))}...`;
+};
 
 const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
@@ -59,7 +76,7 @@ export function ReportsPageContainer() {
   const today = useMemo(() => new Date(), []);
   const initialStart = useMemo(() => new Date(today.getFullYear(), today.getMonth(), 1), [today]);
 
-  const [assets, setAssets] = useState<AssetRow[]>([]);
+  const [totalAssetCount, setTotalAssetCount] = useState(0);
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [userEmail, setUserEmail] = useState("");
@@ -89,17 +106,17 @@ export function ReportsPageContainer() {
       setHasValidSession(true);
       setUserEmail(user.email ?? "bilinmiyor");
 
-      const [assetsRes, servicesRes, docsRes] = await Promise.all([
-        listIdName(supabase, { userId: user.id }),
+      const [assetCountRes, servicesRes, docsRes] = await Promise.all([
+        countAssetsByUser(supabase, { userId: user.id }),
         listServiceLogsForReports(supabase, { userId: user.id }),
         listDocumentsForReports(supabase, { userId: user.id }),
       ]);
 
-      if (assetsRes.error) setFeedback(assetsRes.error.message);
+      if (assetCountRes.error) setFeedback(assetCountRes.error.message);
       if (servicesRes.error) setFeedback(servicesRes.error.message);
       if (docsRes.error) setFeedback(docsRes.error.message);
 
-      setAssets((assetsRes.data ?? []) as AssetRow[]);
+      setTotalAssetCount(assetCountRes.data ?? 0);
       setServices((servicesRes.data ?? []) as ServiceRow[]);
       setDocuments((docsRes.data ?? []) as DocumentRow[]);
       setIsLoading(false);
@@ -108,18 +125,36 @@ export function ReportsPageContainer() {
     void load();
   }, [router, supabase]);
 
-  const hasValidRange = useMemo(() => startDate <= endDate, [startDate, endDate]);
-
   const rangeStart = useMemo(() => toStartOfDay(startDate), [startDate]);
   const rangeEnd = useMemo(() => toEndOfDay(endDate), [endDate]);
+  const hasValidRange = useMemo(() => {
+    const start = rangeStart.getTime();
+    const end = rangeEnd.getTime();
+    return !Number.isNaN(start) && !Number.isNaN(end) && start <= end;
+  }, [rangeEnd, rangeStart]);
 
-  const assetNameById = useMemo(() => new Map(assets.map((asset) => [asset.id, asset.name])), [assets]);
+  const assetNameById = useMemo(() => {
+    const map = new Map<string, string>();
+
+    const register = (assetId: string, assetName: string | null) => {
+      const safeAssetId = asSafeText(assetId, "");
+      const safeAssetName = asSafeText(assetName, "");
+      if (!safeAssetId || !safeAssetName || map.has(safeAssetId)) return;
+      map.set(safeAssetId, safeAssetName);
+    };
+
+    for (const service of services) register(service.asset_id, service.asset_name);
+    for (const document of documents) register(document.asset_id, document.asset_name);
+
+    return map;
+  }, [documents, services]);
 
   const servicesInRange = useMemo(
     () =>
       services.filter((service) => {
-        const date = new Date(service.service_date);
-        return date >= rangeStart && date <= rangeEnd;
+        const time = getTime(service.service_date);
+        if (time === null) return false;
+        return time >= rangeStart.getTime() && time <= rangeEnd.getTime();
       }),
     [services, rangeStart, rangeEnd],
   );
@@ -127,14 +162,19 @@ export function ReportsPageContainer() {
   const documentsInRange = useMemo(
     () =>
       documents.filter((doc) => {
-        const date = new Date(doc.uploaded_at);
-        return date >= rangeStart && date <= rangeEnd;
+        const time = getTime(doc.uploaded_at);
+        if (time === null) return false;
+        return time >= rangeStart.getTime() && time <= rangeEnd.getTime();
       }),
     [documents, rangeStart, rangeEnd],
   );
 
   const totalCost = useMemo(
-    () => servicesInRange.reduce((sum, service) => sum + Number(service.cost ?? 0), 0),
+    () =>
+      servicesInRange.reduce((sum, service) => {
+        const cost = Number(service.cost);
+        return sum + (Number.isFinite(cost) ? cost : 0);
+      }, 0),
     [servicesInRange],
   );
 
@@ -145,8 +185,14 @@ export function ReportsPageContainer() {
 
   const activeAssetCount = useMemo(() => {
     const ids = new Set<string>();
-    for (const service of servicesInRange) ids.add(service.asset_id);
-    for (const document of documentsInRange) ids.add(document.asset_id);
+    for (const service of servicesInRange) {
+      const assetId = asSafeText(service.asset_id, "");
+      if (assetId) ids.add(assetId);
+    }
+    for (const document of documentsInRange) {
+      const assetId = asSafeText(document.asset_id, "");
+      if (assetId) ids.add(assetId);
+    }
     return ids.size;
   }, [servicesInRange, documentsInRange]);
 
@@ -155,20 +201,23 @@ export function ReportsPageContainer() {
     const documentMap = new Map<string, number>();
 
     for (const service of servicesInRange) {
-      const previous = serviceMap.get(service.asset_id) ?? { serviceCount: 0, totalCost: 0 };
-      serviceMap.set(service.asset_id, {
+      const assetId = asSafeText(service.asset_id, "__missing_asset__");
+      const previous = serviceMap.get(assetId) ?? { serviceCount: 0, totalCost: 0 };
+      const cost = Number(service.cost);
+      serviceMap.set(assetId, {
         serviceCount: previous.serviceCount + 1,
-        totalCost: previous.totalCost + Number(service.cost ?? 0),
+        totalCost: previous.totalCost + (Number.isFinite(cost) ? cost : 0),
       });
     }
 
     for (const document of documentsInRange) {
-      documentMap.set(document.asset_id, (documentMap.get(document.asset_id) ?? 0) + 1);
+      const assetId = asSafeText(document.asset_id, "__missing_asset__");
+      documentMap.set(assetId, (documentMap.get(assetId) ?? 0) + 1);
     }
 
     const assetIds = new Set<string>([
-      ...servicesInRange.map((item) => item.asset_id),
-      ...documentsInRange.map((item) => item.asset_id),
+      ...servicesInRange.map((item) => asSafeText(item.asset_id, "__missing_asset__")),
+      ...documentsInRange.map((item) => asSafeText(item.asset_id, "__missing_asset__")),
     ]);
 
     return [...assetIds]
@@ -176,7 +225,7 @@ export function ReportsPageContainer() {
         const serviceInfo = serviceMap.get(assetId) ?? { serviceCount: 0, totalCost: 0 };
         const documentCount = documentMap.get(assetId) ?? 0;
         return {
-          assetName: assetNameById.get(assetId) ?? "Bilinmeyen VarlÄ±k",
+          assetName: assetNameById.get(assetId) ?? "Bilinmeyen Varlik",
           serviceCount: serviceInfo.serviceCount,
           documentCount,
           totalCost: serviceInfo.totalCost,
@@ -241,6 +290,17 @@ export function ReportsPageContainer() {
       };
 
       const drawTable = (title: string, headers: string[], rows: string[][], columnWidths: number[]) => {
+        const columnCount = Math.min(headers.length, columnWidths.length);
+        if (columnCount === 0) return;
+
+        const normalizedRows = rows
+          .map((row) => Array.from({ length: columnCount }, (_, i) => asSafeText(row?.[i], "-")))
+          .filter((row) => row.some((cell) => cell !== "-"));
+
+        if (normalizedRows.length === 0) {
+          normalizedRows.push(Array.from({ length: columnCount }, (_, i) => (i === 0 ? "Kayit bulunmuyor" : "-")));
+        }
+
         drawSectionTitle(title);
         ensureSpace(22);
 
@@ -250,7 +310,7 @@ export function ReportsPageContainer() {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(9);
 
-        for (let i = 0; i < headers.length; i += 1) {
+        for (let i = 0; i < columnCount; i += 1) {
           const width = columnWidths[i];
           doc.rect(x, y - 11, width, 18, "F");
           doc.text(truncate(headers[i], 22), x + 4, y + 1);
@@ -261,10 +321,10 @@ export function ReportsPageContainer() {
         doc.setFont("helvetica", "normal");
         doc.setTextColor(15, 23, 42);
 
-        for (const row of rows) {
+        for (const row of normalizedRows) {
           ensureSpace(20);
           let rowX = left;
-          for (let i = 0; i < row.length; i += 1) {
+          for (let i = 0; i < columnCount; i += 1) {
             const width = columnWidths[i];
             doc.rect(rowX, y - 11, width, 18);
             doc.text(truncate(row[i], 28), rowX + 4, y + 1);
@@ -296,7 +356,7 @@ export function ReportsPageContainer() {
       y += 16;
 
       drawSectionTitle("Ã–zet");
-      drawKeyValue("Toplam varlÄ±k", String(assets.length));
+      drawKeyValue("Toplam varlÄ±k", String(totalAssetCount));
       drawKeyValue("Aktif varlÄ±k (aralÄ±kta)", String(activeAssetCount));
       drawKeyValue("Servis adedi", String(servicesInRange.length));
       drawKeyValue("Belge adedi", String(documentsInRange.length));
@@ -322,9 +382,9 @@ export function ReportsPageContainer() {
         [
           ...servicesInRange.map((service) => [
             toTrDate(service.service_date),
-            assetNameById.get(service.asset_id) ?? "Bilinmeyen",
-            service.service_type,
-            currencyFormatter.format(Number(service.cost ?? 0)),
+            assetNameById.get(asSafeText(service.asset_id, "")) ?? asSafeText(service.asset_name, "Bilinmeyen"),
+            asSafeText(service.service_type, "-"),
+            currencyFormatter.format(Number.isFinite(Number(service.cost)) ? Number(service.cost) : 0),
           ]),
           ["TOPLAM", "-", "-", currencyFormatter.format(totalCost)],
         ],
@@ -336,8 +396,8 @@ export function ReportsPageContainer() {
         ["YÃ¼kleme", "VarlÄ±k", "Dosya"],
         documentsInRange.map((docRow) => [
           toTrDate(docRow.uploaded_at),
-          assetNameById.get(docRow.asset_id) ?? "Bilinmeyen",
-          docRow.file_name,
+          assetNameById.get(asSafeText(docRow.asset_id, "")) ?? asSafeText(docRow.asset_name, "Bilinmeyen"),
+          asSafeText(docRow.file_name, "-"),
         ]),
         [95, 160, 260],
       );
@@ -388,7 +448,7 @@ export function ReportsPageContainer() {
       />
 
       <ReportsSummaryCards
-        totalAssetCount={String(assets.length)}
+        totalAssetCount={String(totalAssetCount)}
         activeAssetCount={String(activeAssetCount)}
         serviceCount={String(servicesInRange.length)}
         documentCount={String(documentsInRange.length)}

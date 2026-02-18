@@ -27,6 +27,24 @@ export type ListRulesForDashboardRow = Pick<
   "id" | "asset_id" | "next_due_date" | "is_active"
 >;
 
+export type ListRulesByUserParams = {
+  userId: string;
+};
+
+export type ListRulesByUserRow = Pick<
+  Row<"maintenance_rules">,
+  | "id"
+  | "asset_id"
+  | "title"
+  | "interval_value"
+  | "interval_unit"
+  | "last_service_date"
+  | "next_due_date"
+  | "is_active"
+  | "created_at"
+  | "updated_at"
+>;
+
 export type CreateRuleParams = {
   values: Insert<"maintenance_rules">;
 };
@@ -41,6 +59,13 @@ export type UpdateRuleByIdParams = {
 
 export type UpdateRuleByIdRow = Pick<Row<"maintenance_rules">, "id">;
 
+export type DeleteRuleByIdParams = {
+  userId: string;
+  ruleId: string;
+};
+
+export type DeleteRuleByIdRow = Pick<Row<"maintenance_rules">, "id">;
+
 export function getById(
   client: DbClient,
   params: GetRuleByIdParams,
@@ -51,7 +76,7 @@ export function getById(
     client
       .from("maintenance_rules")
       .select(
-        "id,asset_id,user_id,title,interval_value,interval_unit,last_service_date,next_due_date,is_active",
+        "id,asset_id,user_id,title,interval_value,interval_unit,last_service_date,next_due_date,is_active,created_at,updated_at",
       )
       .eq("id", ruleId)
       .eq("user_id", userId)
@@ -123,6 +148,27 @@ export function listForDashboard(
   }));
 }
 
+export function listByUser(
+  client: DbClient,
+  params: ListRulesByUserParams,
+): RepoResult<ListRulesByUserRow[]> {
+  const { userId } = params;
+
+  return Promise.resolve(
+    client
+      .from("maintenance_rules")
+      .select(
+        "id,asset_id,title,interval_value,interval_unit,last_service_date,next_due_date,is_active,created_at,updated_at",
+      )
+      .eq("user_id", userId)
+      .order("next_due_date", { ascending: true })
+      .order("created_at", { ascending: false }),
+  ).then((r) => ({
+    data: (r.data as ListRulesByUserRow[] | null) ?? [],
+    error: r.error,
+  }));
+}
+
 export function updateById(
   client: DbClient,
   params: UpdateRuleByIdParams,
@@ -149,6 +195,36 @@ export function updateById(
       .single(),
   ).then((r) => ({
     data: (r.data as UpdateRuleByIdRow | null) ?? null,
+    error: r.error,
+  }));
+}
+
+export function deleteById(
+  client: DbClient,
+  params: DeleteRuleByIdParams,
+): RepoResult<DeleteRuleByIdRow> {
+  const { ruleId, userId } = params;
+  const table = client.from("maintenance_rules") as unknown as {
+    delete: () => {
+      eq: (column: "id", value: string) => {
+        eq: (userColumn: "user_id", userValue: string) => {
+          select: (columns: "id") => {
+            single: () => Promise<{ data: unknown; error: PostgrestError | null }>;
+          };
+        };
+      };
+    };
+  };
+
+  return Promise.resolve(
+    table
+      .delete()
+      .eq("id", ruleId)
+      .eq("user_id", userId)
+      .select("id")
+      .single(),
+  ).then((r) => ({
+    data: (r.data as DeleteRuleByIdRow | null) ?? null,
     error: r.error,
   }));
 }

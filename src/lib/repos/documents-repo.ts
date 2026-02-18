@@ -15,6 +15,22 @@ export type ListDocumentsForReportsParams = {
 };
 
 export type ListDocumentsForReportsRow = Pick<Row<"documents">, "id" | "asset_id" | "file_name" | "uploaded_at">;
+export type ListDocumentsForReportsWithAssetRow = ListDocumentsForReportsRow & {
+  asset_name: string | null;
+};
+
+type ReportAssetRelation = { name: string | null } | { name: string | null }[] | null;
+type ListDocumentsForReportsRawRow = Pick<Row<"documents">, "id" | "asset_id" | "file_name" | "uploaded_at"> & {
+  asset: ReportAssetRelation;
+};
+
+const getReportAssetName = (relation: ReportAssetRelation): string | null => {
+  if (!relation) return null;
+  if (Array.isArray(relation)) {
+    return relation[0]?.name ?? null;
+  }
+  return relation.name ?? null;
+};
 
 export type ListDocumentsForTimelineParams = {
   userId: string;
@@ -66,17 +82,24 @@ export function listForDocumentsPage(
 export function listForReports(
   client: DbClient,
   params: ListDocumentsForReportsParams,
-): RepoResult<ListDocumentsForReportsRow[]> {
+): RepoResult<ListDocumentsForReportsWithAssetRow[]> {
   const { userId } = params;
 
   return Promise.resolve(
     client
       .from("documents")
-      .select("id,asset_id,file_name,uploaded_at")
+      .select("id,asset_id,file_name,uploaded_at,asset:assets(name)")
       .eq("user_id", userId)
       .order("uploaded_at", { ascending: false }),
   ).then((r) => ({
-    data: (r.data as ListDocumentsForReportsRow[] | null) ?? [],
+    data:
+      ((r.data as ListDocumentsForReportsRawRow[] | null) ?? []).map((row) => ({
+        id: row.id,
+        asset_id: row.asset_id,
+        file_name: row.file_name,
+        uploaded_at: row.uploaded_at,
+        asset_name: getReportAssetName(row.asset),
+      })) ?? [],
     error: r.error,
   }));
 }

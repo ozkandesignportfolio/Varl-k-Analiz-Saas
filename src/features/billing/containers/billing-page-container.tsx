@@ -234,48 +234,52 @@ export function BillingPageContainer() {
     const notes = toOptionalText(formData.get("notes"));
 
     if (!providerName || !subscriptionName) {
-      setFeedback("Sağlayıcı ve abonelik adı zorunludur.");
+      setFeedback("SaÄŸlayÄ±cÄ± ve abonelik adÄ± zorunludur.");
       setIsSavingSubscription(false);
       return;
     }
 
     if (Number.isNaN(amount) || amount < 0) {
-      setFeedback("Abonelik tutarı geçersiz.");
+      setFeedback("Abonelik tutarÄ± geÃ§ersiz.");
       setIsSavingSubscription(false);
       return;
     }
 
     ensureAuthUser();
-    const { data, error } = await supabase
-      .from("billing_subscriptions")
-      .insert({
-        user_id: userId,
-        maintenance_rule_id: maintenanceRuleId,
-        provider_name: providerName,
-        subscription_name: subscriptionName,
-        plan_name: planName,
-        billing_cycle: billingCycle,
+    const createResponse = await fetch("/api/billing/subscriptions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        providerName,
+        subscriptionName,
+        planName,
+        billingCycle,
         amount,
-        currency: "TRY",
-        next_billing_date: nextBillingDate,
+        nextBillingDate,
+        maintenanceRuleId,
         status,
-        auto_renew: autoRenew,
+        autoRenew,
         notes,
-      })
-      .select("id")
-      .single();
+      }),
+    });
 
-    if (error) {
-      setFeedback(error.message);
+    const createPayload = (await createResponse.json().catch(() => null)) as
+      | { id?: string; warning?: string; error?: string }
+      | null;
+
+    if (!createResponse.ok || !createPayload?.id) {
+      setFeedback(createPayload?.error ?? "Abonelik kaydi olusturulamadi.");
       setIsSavingSubscription(false);
       return;
     }
 
     form.reset();
-    if (data?.id) {
-      setSelectedSubscriptionId(data.id);
-    }
-    setFeedback("Abonelik başarıyla eklendi.");
+    setSelectedSubscriptionId(createPayload.id);
+    setFeedback(
+      createPayload.warning
+        ? `Abonelik basariyla eklendi. ${createPayload.warning}`
+        : "Abonelik basariyla eklendi.",
+    );
     await fetchBillingData(userId);
     setIsSavingSubscription(false);
   };
@@ -320,36 +324,46 @@ export function BillingPageContainer() {
       return;
     }
 
-    const paidAt = status === "paid" ? paidAtRaw ?? toDateInput(new Date()) : null;
-    const totalAmount = amount + taxAmount;
+        const paidAt = status === "paid" ? paidAtRaw ?? toDateInput(new Date()) : null;
 
     ensureAuthUser();
-    const { error } = await supabase.from("billing_invoices").insert({
-      user_id: userId,
-      subscription_id: subscriptionId,
-      invoice_no: invoiceNo,
-      issued_at: issuedAt,
-      due_date: dueDate,
-      paid_at: paidAt,
-      amount,
-      tax_amount: taxAmount,
-      total_amount: totalAmount,
-      status,
+    const createResponse = await fetch("/api/billing/invoices", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        subscriptionId,
+        invoiceNo,
+        issuedAt,
+        dueDate,
+        paidAt,
+        amount,
+        taxAmount,
+        status,
+      }),
     });
 
-    if (error) {
-      if (isMissingTableError(error.message, "billing_invoices")) {
+    const createPayload = (await createResponse.json().catch(() => null)) as
+      | { id?: string; warning?: string; error?: string }
+      | null;
+
+    if (!createResponse.ok || !createPayload?.id) {
+      const errorMessage = createPayload?.error ?? "Fatura kaydi olusturulamadi.";
+      if (isMissingTableError(errorMessage, "billing_invoices")) {
         setInvoiceModuleReady(false);
         setFeedback(billingSetupHint);
       } else {
-        setFeedback(error.message);
+        setFeedback(errorMessage);
       }
       setIsSavingInvoice(false);
       return;
     }
 
     form.reset();
-    setFeedback("Fatura başarıyla eklendi.");
+    setFeedback(
+      createPayload.warning
+        ? `Fatura basariyla eklendi. ${createPayload.warning}`
+        : "Fatura basariyla eklendi.",
+    );
     await fetchBillingData(userId);
     setIsSavingInvoice(false);
   };
@@ -435,4 +449,6 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
+
+
 

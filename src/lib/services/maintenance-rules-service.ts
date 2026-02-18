@@ -1,9 +1,13 @@
-﻿import { calculateNextDueDate, type IntervalUnit } from "@/lib/maintenance/next-due";
+import { calculateNextDueDate, type IntervalUnit } from "@/lib/maintenance/next-due";
 import { existsById } from "@/lib/repos/assets-repo";
 import {
   create as createRule,
+  deleteById as deleteRuleById,
   getById as getRuleById,
+  listByUser as listRulesByUser,
   updateById as updateRuleById,
+  type GetRuleByIdRow,
+  type ListRulesByUserRow,
 } from "@/lib/repos/maintenance-rules-repo";
 import type { DbClient } from "@/lib/repos/_shared";
 
@@ -24,12 +28,87 @@ export type UpdateRulePayload = {
   isActive?: unknown;
 };
 
+type RuleItem = {
+  id: string;
+  assetId: string;
+  title: string;
+  intervalValue: number;
+  intervalUnit: IntervalUnit;
+  lastServiceDate: string | null;
+  nextDueDate: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type ServiceResponse =
   | { status: number; body: { error: string } }
   | { status: number; body: { ok: true; id: string } };
 
+type RuleReadResponse =
+  | { status: number; body: { error: string } }
+  | { status: number; body: RuleItem };
+
+type RuleListResponse =
+  | { status: number; body: { error: string } }
+  | { status: number; body: { items: RuleItem[] } };
+
 const intervalUnits: IntervalUnit[] = ["day", "week", "month", "year"];
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+
+const toRuleItem = (rule: GetRuleByIdRow | ListRulesByUserRow): RuleItem => ({
+  id: rule.id,
+  assetId: rule.asset_id,
+  title: rule.title,
+  intervalValue: rule.interval_value,
+  intervalUnit: rule.interval_unit,
+  lastServiceDate: rule.last_service_date,
+  nextDueDate: rule.next_due_date,
+  isActive: rule.is_active,
+  createdAt: rule.created_at,
+  updatedAt: rule.updated_at,
+});
+
+export async function listMaintenanceRules(
+  client: DbClient,
+  params: { userId: string },
+): Promise<RuleListResponse> {
+  const { data, error } = await listRulesByUser(client, { userId: params.userId });
+
+  if (error) {
+    return {
+      status: 400,
+      body: { error: error.message },
+    };
+  }
+
+  return {
+    status: 200,
+    body: { items: (data ?? []).map((rule) => toRuleItem(rule)) },
+  };
+}
+
+export async function getMaintenanceRule(
+  client: DbClient,
+  params: { userId: string; ruleId: string },
+): Promise<RuleReadResponse> {
+  const { data, error } = await getRuleById(client, {
+    ruleId: params.ruleId,
+    userId: params.userId,
+  });
+
+  if (error || !data) {
+    return {
+      status: 404,
+      body: { error: "Kural bulunamadi." },
+    };
+  }
+
+  return {
+    status: 200,
+    body: toRuleItem(data),
+  };
+}
 
 export async function createMaintenanceRule(
   client: DbClient,
@@ -49,23 +128,23 @@ export async function createMaintenanceRule(
   if (!assetId || !title || !lastServiceDate) {
     return {
       status: 400,
-      body: { error: "Varl\u0131k, ba\u015fl\u0131k ve baz tarih zorunludur." },
+      body: { error: "Varlik, baslik ve baz tarih zorunludur." },
     };
   }
 
   if (!Number.isInteger(intervalValue) || intervalValue <= 0) {
     return {
       status: 400,
-      body: { error: "Interval de\u011feri pozitif bir tam say\u0131 olmal\u0131." },
+      body: { error: "Interval degeri pozitif bir tam sayi olmali." },
     };
   }
 
   if (!intervalUnits.includes(intervalUnit)) {
-    return { status: 400, body: { error: "Ge\u00e7ersiz interval birimi." } };
+    return { status: 400, body: { error: "Gecersiz interval birimi." } };
   }
 
   if (!datePattern.test(lastServiceDate)) {
-    return { status: 400, body: { error: "Ge\u00e7ersiz tarih format\u0131." } };
+    return { status: 400, body: { error: "Gecersiz tarih formati." } };
   }
 
   let nextDueDate = "";
@@ -91,7 +170,7 @@ export async function createMaintenanceRule(
   if (!assetExists) {
     return {
       status: 403,
-      body: { error: "Se\u00e7ilen varl\u0131\u011fa eri\u015fim izniniz yok." },
+      body: { error: "Secilen varliga erisim izniniz yok." },
     };
   }
 
@@ -111,7 +190,7 @@ export async function createMaintenanceRule(
   if (error || !data) {
     return {
       status: 400,
-      body: { error: error?.message ?? "Kural olu\u015fturulamad\u0131." },
+      body: { error: error?.message ?? "Kural olusturulamadi." },
     };
   }
 
@@ -134,7 +213,7 @@ export async function updateMaintenanceRule(
   });
 
   if (currentRuleError || !currentRule) {
-    return { status: 404, body: { error: "Kural bulunamad\u0131." } };
+    return { status: 404, body: { error: "Kural bulunamadi." } };
   }
 
   const hasAssetId = payload.assetId !== undefined;
@@ -152,7 +231,7 @@ export async function updateMaintenanceRule(
     !hasLastServiceDate &&
     !hasIsActive
   ) {
-    return { status: 400, body: { error: "G\u00fcncellenecek alan bulunamad\u0131." } };
+    return { status: 400, body: { error: "Guncellenecek alan bulunamadi." } };
   }
 
   const updatePayload: {
@@ -168,7 +247,7 @@ export async function updateMaintenanceRule(
   if (hasAssetId) {
     const assetId = String(payload.assetId ?? "").trim();
     if (!assetId) {
-      return { status: 400, body: { error: "Varl\u0131k se\u00e7imi zorunludur." } };
+      return { status: 400, body: { error: "Varlik secimi zorunludur." } };
     }
 
     const { data: assetExists, error: assetError } = await existsById(client, {
@@ -183,7 +262,7 @@ export async function updateMaintenanceRule(
     if (!assetExists) {
       return {
         status: 403,
-        body: { error: "Se\u00e7ilen varl\u0131\u011fa eri\u015fim izniniz yok." },
+        body: { error: "Secilen varliga erisim izniniz yok." },
       };
     }
 
@@ -193,7 +272,7 @@ export async function updateMaintenanceRule(
   if (hasTitle) {
     const title = String(payload.title ?? "").trim();
     if (!title) {
-      return { status: 400, body: { error: "Kural ba\u015fl\u0131\u011f\u0131 zorunludur." } };
+      return { status: 400, body: { error: "Kural basligi zorunludur." } };
     }
     updatePayload.title = title;
   }
@@ -203,7 +282,7 @@ export async function updateMaintenanceRule(
     if (!Number.isInteger(intervalValue) || intervalValue <= 0) {
       return {
         status: 400,
-        body: { error: "Interval de\u011feri pozitif bir tam say\u0131 olmal\u0131." },
+        body: { error: "Interval degeri pozitif bir tam sayi olmali." },
       };
     }
     updatePayload.interval_value = intervalValue;
@@ -212,7 +291,7 @@ export async function updateMaintenanceRule(
   if (hasIntervalUnit) {
     const intervalUnit = String(payload.intervalUnit ?? "").trim() as IntervalUnit;
     if (!intervalUnits.includes(intervalUnit)) {
-      return { status: 400, body: { error: "Ge\u00e7ersiz interval birimi." } };
+      return { status: 400, body: { error: "Gecersiz interval birimi." } };
     }
     updatePayload.interval_unit = intervalUnit;
   }
@@ -220,7 +299,7 @@ export async function updateMaintenanceRule(
   if (hasLastServiceDate) {
     const lastServiceDate = String(payload.lastServiceDate ?? "").trim();
     if (!datePattern.test(lastServiceDate)) {
-      return { status: 400, body: { error: "Ge\u00e7ersiz tarih format\u0131." } };
+      return { status: 400, body: { error: "Gecersiz tarih formati." } };
     }
     updatePayload.last_service_date = lastServiceDate;
   }
@@ -237,7 +316,7 @@ export async function updateMaintenanceRule(
     if (!baseDate) {
       return {
         status: 400,
-        body: { error: "Baz tarih olmadan sonraki bak\u0131m tarihi hesaplanamaz." },
+        body: { error: "Baz tarih olmadan sonraki bakim tarihi hesaplanamaz." },
       };
     }
 
@@ -261,9 +340,31 @@ export async function updateMaintenanceRule(
   if (error || !data) {
     return {
       status: 400,
-      body: { error: error?.message ?? "Kural g\u00fcncellenemedi." },
+      body: { error: error?.message ?? "Kural guncellenemedi." },
     };
   }
 
   return { status: 200, body: { ok: true, id: data.id } };
+}
+
+export async function deleteMaintenanceRule(
+  client: DbClient,
+  params: { userId: string; ruleId: string },
+): Promise<ServiceResponse> {
+  const { data, error } = await deleteRuleById(client, {
+    ruleId: params.ruleId,
+    userId: params.userId,
+  });
+
+  if (error || !data) {
+    return {
+      status: 404,
+      body: { error: "Kural silinemedi veya bulunamadi." },
+    };
+  }
+
+  return {
+    status: 200,
+    body: { ok: true, id: data.id },
+  };
 }

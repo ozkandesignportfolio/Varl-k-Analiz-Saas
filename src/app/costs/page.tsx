@@ -10,13 +10,14 @@ import {
   buildMonthlyCostSeries,
   buildYearlyCostSeries,
   filterLogsByPeriod,
-  getCurrentYearCost,
-  getTrailingTwelveMonthCost,
   type PeriodFilter,
   type ServiceCostLog,
-  sumCost,
 } from "@/lib/charts";
-import { listForCosts } from "@/lib/repos/service-logs-repo";
+import {
+  getCostAggregate,
+  listForCosts,
+  type ServiceLogCostAggregate,
+} from "@/lib/repos/service-logs-repo";
 import { createClient } from "@/lib/supabase/client";
 
 type ServiceRow = ServiceCostLog & {
@@ -24,6 +25,10 @@ type ServiceRow = ServiceCostLog & {
 };
 
 type AssetRow = AssetCategory;
+type DateRange = {
+  sinceDate?: string;
+  beforeDate?: string;
+};
 
 const periodOptions: { value: PeriodFilter; label: string }[] = [
   { value: "3m", label: "Son 3 Ay" },
@@ -43,13 +48,63 @@ const currencyFormatter = new Intl.NumberFormat("tr-TR", {
 const selectClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
 
+const emptyCostAggregate: ServiceLogCostAggregate = {
+  total_cost: 0,
+  log_count: 0,
+  avg_cost: 0,
+  cost_score: 0,
+};
+
+const toDateInput = (date: Date) => {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const getPeriodRange = (period: PeriodFilter, now: Date): DateRange => {
+  const beforeDate = toDateInput(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)));
+  if (period === "all") {
+    return { beforeDate };
+  }
+
+  if (period === "this_year") {
+    return {
+      sinceDate: toDateInput(new Date(Date.UTC(now.getUTCFullYear(), 0, 1))),
+      beforeDate,
+    };
+  }
+
+  const monthOffset = period === "3m" ? -2 : period === "6m" ? -5 : -11;
+  return {
+    sinceDate: toDateInput(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + monthOffset, 1))),
+    beforeDate,
+  };
+};
+
+const getCurrentYearRange = (now: Date): DateRange => ({
+  sinceDate: toDateInput(new Date(Date.UTC(now.getUTCFullYear(), 0, 1))),
+  beforeDate: toDateInput(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))),
+});
+
+const getTrailingTwelveMonthRange = (now: Date): DateRange => ({
+  sinceDate: toDateInput(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1))),
+  beforeDate: toDateInput(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))),
+});
+
 export default function CostsPage() {
   const supabase = useMemo(() => createClient(), []);
   const now = useMemo(() => new Date(), []);
 
+  const [activeUserId, setActiveUserId] = useState("");
   const [logs, setLogs] = useState<ServiceRow[]>([]);
   const [assets, setAssets] = useState<AssetRow[]>([]);
   const [period, setPeriod] = useState<PeriodFilter>("12m");
+  const [periodAggregate, setPeriodAggregate] = useState<ServiceLogCostAggregate>(emptyCostAggregate);
+  const [currentYearAggregate, setCurrentYearAggregate] =
+    useState<ServiceLogCostAggregate>(emptyCostAggregate);
+  const [trailingTwelveAggregate, setTrailingTwelveAggregate] =
+    useState<ServiceLogCostAggregate>(emptyCostAggregate);
   const [isLoading, setIsLoading] = useState(true);
   const [feedback, setFeedback] = useState("");
 
@@ -69,32 +124,53 @@ export default function CostsPage() {
         return;
       }
 
-      const [logsRes, assetsRes] = await Promise.all([
+      setActiveUserId(user.id);
+
+      const [logsRes, assetsRes, currentYearRes, trailingTwelveRes] = await Promise.all([
         listForCosts(supabase, { userId: user.id }),
         supabase.from("assets").select("id,category").eq("user_id", user.id),
+        getCostAggregate(supabase, { userId: user.id, ...getCurrentYearRange(now) }),
+        getCostAggregate(supabase, { userId: user.id, ...getTrailingTwelveMonthRange(now) }),
       ]);
 
       if (logsRes.error) setFeedback(logsRes.error.message);
       if (assetsRes.error) setFeedback(assetsRes.error.message);
+      if (currentYearRes.error) setFeedback(currentYearRes.error.message);
+      if (trailingTwelveRes.error) setFeedback(trailingTwelveRes.error.message);
 
       setLogs((logsRes.data ?? []) as ServiceRow[]);
       setAssets((assetsRes.data ?? []) as AssetRow[]);
+      setCurrentYearAggregate((currentYearRes.data ?? emptyCostAggregate) as ServiceLogCostAggregate);
+      setTrailingTwelveAggregate(
+        (trailingTwelveRes.data ?? emptyCostAggregate) as ServiceLogCostAggregate,
+      );
       setIsLoading(false);
     };
 
     void load();
-  }, [supabase]);
+  }, [now, supabase]);
+
+  useEffect(() => {
+    if (!activeUserId) return;
+
+    const loadPeriodAggregate = async () => {
+      const { data, error } = await getCostAggregate(supabase, {
+        userId: activeUserId,
+        ...getPeriodRange(period, now),
+      });
+
+      if (error) {
+        setFeedback(error.message);
+        return;
+      }
+
+      setPeriodAggregate((data ?? emptyCostAggregate) as ServiceLogCostAggregate);
+    };
+
+    void loadPeriodAggregate();
+  }, [activeUserId, now, period, supabase]);
 
   const filteredLogs = useMemo(() => filterLogsByPeriod(logs, period, now), [logs, period, now]);
-
-  const periodTotal = useMemo(() => sumCost(filteredLogs), [filteredLogs]);
-
-  const currentYearTotal = useMemo(() => getCurrentYearCost(logs, now), [logs, now]);
-
-  const trailingTwelveMonthTotal = useMemo(
-    () => getTrailingTwelveMonthCost(logs, now),
-    [logs, now],
-  );
 
   const monthlySeries = useMemo(() => buildMonthlyCostSeries(logs, period, now), [logs, period, now]);
 
@@ -145,14 +221,23 @@ export default function CostsPage() {
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard label={`${periodLabel} Toplamı`} value={currencyFormatter.format(periodTotal)} />
-        <SummaryCard label="Bu Yıl Toplamı" value={currencyFormatter.format(currentYearTotal)} />
+            <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard
-          label="Son 12 Ay Toplamı"
-          value={currencyFormatter.format(trailingTwelveMonthTotal)}
+          label={`${periodLabel} Toplami`}
+          value={currencyFormatter.format(periodAggregate.total_cost)}
         />
-        <SummaryCard label="Servis Kaydı" value={String(filteredLogs.length)} />
+        <SummaryCard
+          label="Bu Yil Toplami"
+          value={currencyFormatter.format(currentYearAggregate.total_cost)}
+        />
+        <SummaryCard
+          label="Son 12 Ay Toplami"
+          value={currencyFormatter.format(trailingTwelveAggregate.total_cost)}
+        />
+        <SummaryCard
+          label={`${periodLabel} Maliyet Skoru (${periodAggregate.log_count} Kayit)`}
+          value={`${periodAggregate.cost_score}/100`}
+        />
       </section>
 
       <section className="grid gap-3 xl:grid-cols-2">
@@ -225,3 +310,4 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
+
