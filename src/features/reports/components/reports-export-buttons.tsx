@@ -1,4 +1,4 @@
-type ReportsExportButtonsProps = {
+﻿type ReportsExportButtonsProps = {
   onExportPdf: () => void;
   isExporting: boolean;
   hasValidRange: boolean;
@@ -22,3 +22,4 @@ export function ReportsExportButtons({
     </button>
   );
 }
+

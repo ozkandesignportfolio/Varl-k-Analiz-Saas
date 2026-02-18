@@ -1,4 +1,4 @@
-import "server-only";
+﻿import "server-only";
 
 import { createClient as createSupabaseClient, type PostgrestError } from "@supabase/supabase-js";
 import type { DbClient } from "@/lib/repos/_shared";
@@ -271,3 +271,4 @@ export function createBillingMissingTablePostgrestError(
     code: "42P01",
   };
 }
+

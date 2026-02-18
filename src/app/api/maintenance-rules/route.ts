@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { logApiError } from "@/lib/api/logging";
 import {
   createMaintenanceRule,
@@ -69,3 +69,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Bakim kurali istegi islenemedi." }, { status: 500 });
   }
 }
+

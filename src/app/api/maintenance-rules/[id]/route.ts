@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { logApiError } from "@/lib/api/logging";
 import {
   deleteMaintenanceRule,
@@ -129,3 +129,4 @@ export async function DELETE(
     return NextResponse.json({ error: "Bakim kurali silinemedi." }, { status: 500 });
   }
 }
+

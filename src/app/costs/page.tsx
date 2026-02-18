@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
@@ -309,3 +309,4 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
+

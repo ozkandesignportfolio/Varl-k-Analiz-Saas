@@ -21,9 +21,26 @@ import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client"
 
 type AssetOption = ExpenseFormAssetOption;
 type ExpenseRow = ExpenseTableRow;
+type ExpenseReadRow = {
+  id: string;
+  asset_id: string | null;
+  amount: number | null;
+  category: string | null;
+  note: string | null;
+  created_at: string;
+};
 
 const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
+
+const isMissingColumnError = (errorMessage: string, tableName: string) => {
+  const normalized = errorMessage.toLowerCase();
+  return (
+    normalized.includes(tableName.toLowerCase()) &&
+    normalized.includes("column") &&
+    (normalized.includes("does not exist") || normalized.includes("schema cache"))
+  );
+};
 
 export function ExpensesPageContainer() {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
@@ -55,11 +72,11 @@ export function ExpensesPageContainer() {
     async (currentUserId: string) => {
       const expensesQueryResult = await supabase
         .from("expenses")
-        .select("id,asset_id,title,category,amount,currency,expense_date,notes,created_at")
+        .select("id,asset_id,amount,category,note,created_at")
         .eq("user_id", currentUserId)
-        .order("expense_date", { ascending: false });
+        .order("created_at", { ascending: false });
 
-      const result = await safeExpensesReadQuery<ExpenseRow>(
+      const result = await safeExpensesReadQuery<ExpenseReadRow>(
         Promise.resolve(expensesQueryResult),
         "expenses-page.fetch",
       );
@@ -78,7 +95,23 @@ export function ExpensesPageContainer() {
         return;
       }
 
-      setExpenses(result.data);
+      const normalizedExpenses: ExpenseRow[] = (result.data ?? []).map((expense) => {
+        const category = (expense.category ?? "").trim();
+        const expenseDate = (expense.created_at ?? "").slice(0, 10) || new Date().toISOString().slice(0, 10);
+        return {
+          id: expense.id,
+          asset_id: expense.asset_id ?? null,
+          title: category || "Gider",
+          category: category || "Diger",
+          amount: Number(expense.amount ?? 0),
+          currency: "TRY",
+          expense_date: expenseDate,
+          notes: expense.note ?? null,
+          created_at: expense.created_at,
+        };
+      });
+
+      setExpenses(normalizedExpenses);
     },
     [supabase],
   );
@@ -145,7 +178,7 @@ export function ExpensesPageContainer() {
     setIsSaving(true);
 
     ensureAuthUser();
-    const expenseWriteResult = await supabase.from("expenses").insert({
+    let expenseWriteResult = await supabase.from("expenses").insert({
       user_id: userId,
       asset_id: selectedAssetId || null,
       title,
@@ -155,6 +188,19 @@ export function ExpensesPageContainer() {
       expense_date: expenseDate,
       notes: notes || null,
     });
+
+    if (
+      expenseWriteResult.error &&
+      isMissingColumnError(expenseWriteResult.error.message, "expenses")
+    ) {
+      expenseWriteResult = await supabase.from("expenses").insert({
+        user_id: userId,
+        asset_id: selectedAssetId || null,
+        amount,
+        category,
+        note: notes || title || null,
+      });
+    }
 
     const result = await safeExpensesWriteQuery(
       Promise.resolve(expenseWriteResult),
@@ -246,3 +292,4 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
+

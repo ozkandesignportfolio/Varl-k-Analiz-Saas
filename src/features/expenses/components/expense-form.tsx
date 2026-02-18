@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import type { FormEvent } from "react";
 
@@ -108,3 +108,4 @@ export function ExpenseForm({
     </section>
   );
 }
+

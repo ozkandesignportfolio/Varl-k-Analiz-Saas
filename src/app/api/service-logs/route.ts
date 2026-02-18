@@ -554,3 +554,4 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Servis kaydi guncelleme istegi islenemedi." }, { status: 500 });
   }
 }
+

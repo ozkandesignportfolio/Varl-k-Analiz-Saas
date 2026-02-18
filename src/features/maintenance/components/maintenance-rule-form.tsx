@@ -1,4 +1,4 @@
-import type { Dispatch, FormEvent, SetStateAction } from "react";
+﻿import type { Dispatch, FormEvent, SetStateAction } from "react";
 import type { IntervalUnit } from "@/lib/maintenance/next-due";
 
 type AssetOption = {
@@ -278,3 +278,4 @@ export function MaintenanceRuleForm(props: MaintenanceRuleFormProps) {
     </section>
   );
 }
+

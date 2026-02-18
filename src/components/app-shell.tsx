@@ -165,3 +165,4 @@ export function AppShell({ title, subtitle, children, actions, badge }: AppShell
     </main>
   );
 }
+

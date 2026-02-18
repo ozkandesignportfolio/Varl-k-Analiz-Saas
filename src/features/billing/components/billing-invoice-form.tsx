@@ -1,4 +1,4 @@
-import type { FormEvent } from "react";
+﻿import type { FormEvent } from "react";
 
 export type BillingInvoiceStatus = "pending" | "paid" | "overdue" | "cancelled";
 
@@ -114,3 +114,4 @@ export function BillingInvoiceForm({
     </article>
   );
 }
+

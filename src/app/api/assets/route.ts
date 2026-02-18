@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { logApiError, logAuditEvent } from "@/lib/api/logging";
 import { countByUser as countAssetsByUser } from "@/lib/repos/assets-repo";
 import { getUserPlanConfig } from "@/lib/plans/plan-config";
@@ -436,3 +436,4 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Varlik silme istegi islenemedi." }, { status: 500 });
   }
 }
+

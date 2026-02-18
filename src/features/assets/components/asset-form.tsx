@@ -1,4 +1,4 @@
-import type { FormEvent } from "react";
+﻿import type { FormEvent } from "react";
 
 type AssetFormAsset = {
   name: string;
@@ -193,3 +193,4 @@ export function AssetForm(props: AssetFormProps) {
     </section>
   );
 }
+

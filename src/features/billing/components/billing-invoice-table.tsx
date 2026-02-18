@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+﻿import type { ReactNode } from "react";
 import type { BillingInvoiceStatus } from "@/features/billing/components/billing-invoice-form";
 
 export type BillingInvoiceTableRow = {

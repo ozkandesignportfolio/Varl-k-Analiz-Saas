@@ -40,6 +40,11 @@ type ExpenseRow = {
   currency: string;
   expense_date: string;
 };
+type ExpenseReadRow = {
+  id: string;
+  amount: number | null;
+  created_at: string;
+};
 
 type PredictionItem = DashboardPredictionItem;
 
@@ -205,13 +210,13 @@ export function DashboardPageContainer() {
         (async () => {
           const expensesQueryResult = await supabase
             .from("expenses")
-            .select("id,amount,currency,expense_date")
+            .select("id,amount,created_at")
             .eq("user_id", user.id)
-            .gte("expense_date", currentMonthStartDate)
-            .lt("expense_date", nextMonthStartDate)
-            .order("expense_date", { ascending: false });
+            .gte("created_at", currentMonthStartDate)
+            .lt("created_at", nextMonthStartDate)
+            .order("created_at", { ascending: false });
 
-          return safeExpensesReadQuery<ExpenseRow>(
+          return safeExpensesReadQuery<ExpenseReadRow>(
             Promise.resolve(expensesQueryResult),
             "dashboard.finance.expenses",
           );
@@ -236,7 +241,17 @@ export function DashboardPageContainer() {
       setRules((rulesRes.data ?? []) as RuleRow[]);
       setDocumentCount(docsRes.data ?? 0);
       setSubscriptions((subscriptionsRes.data ?? []) as SubscriptionRow[]);
-      setExpenses(expensesRes.data);
+      const normalizedExpenses: ExpenseRow[] = (expensesRes.data ?? []).map((expense) => {
+        const expenseDate = (expense.created_at ?? "").slice(0, 10) || new Date().toISOString().slice(0, 10);
+        return {
+          id: expense.id,
+          amount: Number(expense.amount ?? 0),
+          currency: "TRY",
+          expense_date: expenseDate,
+        };
+      });
+
+      setExpenses(normalizedExpenses);
 
       if (canUseAdvancedAnalytics) {
         setPredictions((predictionRes.data?.items ?? []) as PredictionItem[]);
@@ -382,3 +397,4 @@ export function DashboardPageContainer() {
     </AppShell>
   );
 }
+

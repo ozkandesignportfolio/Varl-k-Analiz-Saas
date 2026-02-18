@@ -22,6 +22,7 @@ import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client"
 type SubscriptionStatus = "active" | "paused" | "cancelled";
 type BillingCycle = "monthly" | "yearly";
 type InvoiceStatus = "pending" | "paid" | "overdue" | "cancelled";
+type InvoiceReadRow = Partial<BillingInvoiceTableRow>;
 
 type SubscriptionRow = BillingSubscriptionTableRow;
 
@@ -39,6 +40,9 @@ const currencyFormatter = new Intl.NumberFormat("tr-TR", {
 
 const billingSetupHint =
   "Fatura tabloları veritabanında bulunamadı. 'supabase/migrations/20260217090000_repair_billing_invoices.sql' migrasyonunu çalıştırıp Supabase schema cache yenilemesi yapın.";
+const billingInvoiceSelectFull =
+  "id,subscription_id,invoice_no,issued_at,due_date,paid_at,amount,tax_amount,total_amount,status,created_at";
+const billingInvoiceSelectFallback = "id,subscription_id,issued_at,amount,status,created_at";
 
 const toOptionalText = (value: FormDataEntryValue | null) => {
   const text = String(value ?? "").trim();
@@ -58,6 +62,46 @@ const isMissingTableError = (errorMessage: string, tableName: string) => {
     normalized.includes(`public.${tableName}`.toLowerCase()) &&
     (normalized.includes("schema cache") || normalized.includes("does not exist"))
   );
+};
+
+const isMissingColumnError = (errorMessage: string, tableName: string) => {
+  const normalized = errorMessage.toLowerCase();
+  return (
+    normalized.includes(tableName.toLowerCase()) &&
+    normalized.includes("column") &&
+    (normalized.includes("does not exist") || normalized.includes("schema cache"))
+  );
+};
+
+const normalizeInvoiceStatus = (value: unknown): InvoiceStatus => {
+  if (value === "pending" || value === "paid" || value === "overdue" || value === "cancelled") {
+    return value;
+  }
+  return "pending";
+};
+
+const normalizeInvoiceRow = (row: InvoiceReadRow): InvoiceRow => {
+  const amount = Number(row.amount ?? 0);
+  const taxAmount = Number(row.tax_amount ?? 0);
+  const totalAmountRaw = Number(row.total_amount ?? Number.NaN);
+  const safeAmount = Number.isFinite(amount) ? amount : 0;
+  const safeTaxAmount = Number.isFinite(taxAmount) ? taxAmount : 0;
+  const createdAt = row.created_at ?? row.issued_at ?? new Date().toISOString();
+  const issuedAt = row.issued_at ?? createdAt;
+
+  return {
+    id: String(row.id ?? ""),
+    subscription_id: String(row.subscription_id ?? ""),
+    invoice_no: row.invoice_no ?? null,
+    issued_at: issuedAt,
+    due_date: row.due_date ?? null,
+    paid_at: row.paid_at ?? null,
+    amount: safeAmount,
+    tax_amount: safeTaxAmount,
+    total_amount: Number.isFinite(totalAmountRaw) ? totalAmountRaw : safeAmount + safeTaxAmount,
+    status: normalizeInvoiceStatus(row.status),
+    created_at: createdAt,
+  };
 };
 
 export function BillingPageContainer() {
@@ -110,13 +154,29 @@ export function BillingPageContainer() {
 
       setMaintenanceRules((rulesRes.data ?? []) as MaintenanceRuleOption[]);
 
-      const invoiceRes = await supabase
+      let invoiceRes = (await supabase
         .from("billing_invoices")
-        .select(
-          "id,subscription_id,invoice_no,issued_at,due_date,paid_at,amount,tax_amount,total_amount,status,created_at",
-        )
+        .select(billingInvoiceSelectFull)
         .eq("user_id", currentUserId)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })) as {
+        data: InvoiceReadRow[] | null;
+        error: { message: string } | null;
+      };
+
+      if (
+        invoiceRes.error &&
+        !isMissingTableError(invoiceRes.error.message, "billing_invoices") &&
+        isMissingColumnError(invoiceRes.error.message, "billing_invoices")
+      ) {
+        invoiceRes = (await supabase
+          .from("billing_invoices")
+          .select(billingInvoiceSelectFallback)
+          .eq("user_id", currentUserId)
+          .order("created_at", { ascending: false })) as {
+          data: InvoiceReadRow[] | null;
+          error: { message: string } | null;
+        };
+      }
 
       if (invoiceRes.error) {
         if (isMissingTableError(invoiceRes.error.message, "billing_invoices")) {
@@ -129,7 +189,7 @@ export function BillingPageContainer() {
       }
 
       setInvoiceModuleReady(true);
-      setInvoices((invoiceRes.data ?? []) as InvoiceRow[]);
+      setInvoices((invoiceRes.data ?? []).map((row) => normalizeInvoiceRow((row ?? {}) as InvoiceReadRow)));
     },
     [selectedSubscriptionId, supabase],
   );
@@ -507,3 +567,4 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
+

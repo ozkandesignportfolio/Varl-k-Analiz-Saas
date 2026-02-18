@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { logApiError } from "@/lib/api/logging";
 import {
   extractBillingMissingTables,
@@ -55,3 +55,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Fatura istegi islenemedi." }, { status: 500 });
   }
 }
+

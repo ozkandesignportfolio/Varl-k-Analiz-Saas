@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -239,3 +239,4 @@ export function NotificationSettings() {
     </section>
   );
 }
+

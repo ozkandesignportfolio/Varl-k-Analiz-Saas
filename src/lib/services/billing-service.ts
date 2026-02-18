@@ -1,4 +1,4 @@
-import { getById as getRuleById } from "@/lib/repos/maintenance-rules-repo";
+﻿import { getById as getRuleById } from "@/lib/repos/maintenance-rules-repo";
 import type { DbClient } from "@/lib/repos/_shared";
 import {
   extractBillingMissingTables,
@@ -573,3 +573,4 @@ export async function createBillingInvoice(
 
   return { status: 201, body: { ok: true, id: data.id } };
 }
+

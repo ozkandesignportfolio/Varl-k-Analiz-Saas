@@ -1,4 +1,4 @@
-import type { FormEvent } from "react";
+﻿import type { FormEvent } from "react";
 
 export type ServiceLogFormAssetOption = {
   id: string;
@@ -339,3 +339,4 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
     </section>
   );
 }
+

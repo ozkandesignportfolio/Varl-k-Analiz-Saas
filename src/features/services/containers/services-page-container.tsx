@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
@@ -253,7 +253,7 @@ export function ServicesPageContainer() {
       setFeedback(
         `${
           ruleId
-            ? "Servis kaydı eklendi ve bağlı kuralın tarihleri otomatik resetlendi."
+            ? "Servis kaydı eklendi ve bağlı kuralın tarihleri otomatik sıfırlandı."
             : "Servis kaydı eklendi."
         }${mediaFeedback}`,
       );
@@ -412,3 +412,4 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
+

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+﻿import type { ReactNode } from "react";
 import { ServiceDeleteDialog } from "./service-delete-dialog";
 
 export type ServiceLogTableRow = {

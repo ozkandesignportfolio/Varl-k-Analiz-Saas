@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 export type ExpenseTableRow = {
   id: string;
@@ -64,3 +64,4 @@ export function ExpenseTable({ isLoading, expenses, assetNameById }: ExpenseTabl
     </section>
   );
 }
+
