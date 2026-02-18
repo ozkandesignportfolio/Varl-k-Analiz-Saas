@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { logApiError } from "@/lib/api/logging";
 import {
   extractBillingMissingTables,
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
     const payload = await readBody(request);
     if (!payload) {
-      return NextResponse.json({ error: "Gecersiz istek govdesi." }, { status: 400 });
+      return NextResponse.json({ error: "Geçersiz istek gövdesi." }, { status: 400 });
     }
 
     const result = await createBillingSubscription(auth.supabase, {
@@ -49,7 +49,8 @@ export async function POST(request: Request) {
       error,
       message: "Billing subscription create request failed unexpectedly",
     });
-    return NextResponse.json({ error: "Abonelik istegi islenemedi." }, { status: 500 });
+    return NextResponse.json({ error: "Abonelik isteği işlenemedi." }, { status: 500 });
   }
 }
+
 

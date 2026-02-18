@@ -1,4 +1,4 @@
-# Supabase Automation (Trigger + Action)
+﻿# Supabase Automation (Trigger + Action)
 
 Bu setup ile su trigger'lar event uretir:
 - `warranty_30_days` (`assets.warranty_end_date = current_date + 30`)
@@ -75,7 +75,7 @@ select cron.schedule(
 );
 ```
 
-## 5) Push token kaydi (client snippet)
+## 5) Push token kaydı (client snippet)
 
 ```ts
 await supabase.from("push_subscriptions").upsert({
@@ -85,3 +85,4 @@ await supabase.from("push_subscriptions").upsert({
   is_active: true,
 });
 ```
+

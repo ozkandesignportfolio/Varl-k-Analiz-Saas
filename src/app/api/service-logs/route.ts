@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { calculateNextDueDate } from "@/lib/maintenance/next-due";
 import { logApiError, logAuditEvent } from "@/lib/api/logging";
 import type { DbClient } from "@/lib/repos/_shared";
@@ -145,7 +145,7 @@ const syncRuleSchedulesFromLatestLogs = async (params: {
   const foundRuleIdSet = new Set(rules.map((rule) => rule.id));
   for (const ruleId of targetRuleIds) {
     if (!foundRuleIdSet.has(ruleId)) {
-      syncErrors.push("Bakim kurali bulunamadi.");
+      syncErrors.push("Bakım kuralı bulunamadı.");
     }
   }
 
@@ -211,7 +211,7 @@ export async function POST(request: Request) {
   try {
     const payload = await readBody(request);
     if (!payload) {
-      return NextResponse.json({ error: "Gecersiz istek govdesi." }, { status: 400 });
+      return NextResponse.json({ error: "Geçersiz istek gövdesi." }, { status: 400 });
     }
 
     const assetId = normalizeUuid(payload.assetId);
@@ -225,37 +225,37 @@ export async function POST(request: Request) {
 
     if (!assetId || !serviceType || !serviceDate) {
       return NextResponse.json(
-        { error: "Varlik, servis turu ve servis tarihi zorunludur." },
+        { error: "Varlık, servis türü ve servis tarihi zorunludur." },
         { status: 400 },
       );
     }
 
     if (serviceType.length > MAX_SERVICE_TYPE_LENGTH) {
-      return NextResponse.json({ error: "Servis turu cok uzun." }, { status: 400 });
+      return NextResponse.json({ error: "Servis türü çok uzun." }, { status: 400 });
     }
 
     if (!parseDateOnly(serviceDate)) {
-      return NextResponse.json({ error: "Gecersiz tarih formati." }, { status: 400 });
+      return NextResponse.json({ error: "Geçersiz tarih formati." }, { status: 400 });
     }
 
     if (rawRuleId && !ruleId) {
-      return NextResponse.json({ error: "Bakim kurali kimligi gecersiz." }, { status: 400 });
+      return NextResponse.json({ error: "Bakım kuralı kimliği geçersiz." }, { status: 400 });
     }
 
     if (Number.isNaN(cost) || cost < 0) {
-      return NextResponse.json({ error: "Maliyet gecersiz." }, { status: 400 });
+      return NextResponse.json({ error: "Maliyet geçersiz." }, { status: 400 });
     }
 
     if (providerResult.invalidType || notesResult.invalidType) {
-      return NextResponse.json({ error: "Metin alanlari gecersiz." }, { status: 400 });
+      return NextResponse.json({ error: "Metin alanları geçersiz." }, { status: 400 });
     }
 
     if (providerResult.tooLong) {
-      return NextResponse.json({ error: "Saglayici adi cok uzun." }, { status: 400 });
+      return NextResponse.json({ error: "Sağlayıcı adı çok uzun." }, { status: 400 });
     }
 
     if (notesResult.tooLong) {
-      return NextResponse.json({ error: "Not alani cok uzun." }, { status: 400 });
+      return NextResponse.json({ error: "Not alanı çok uzun." }, { status: 400 });
     }
 
     const auth = await requireRouteUser(request);
@@ -276,7 +276,7 @@ export async function POST(request: Request) {
     }
 
     if (!assetExists) {
-      return NextResponse.json({ error: "Secilen varliga erisim izniniz yok." }, { status: 403 });
+      return NextResponse.json({ error: "Seçilen varliga erişim izniniz yok." }, { status: 403 });
     }
 
     if (ruleId) {
@@ -291,7 +291,7 @@ export async function POST(request: Request) {
 
       if (!rule || rule.asset_id !== assetId) {
         return NextResponse.json(
-          { error: "Secilen bakim kuralina erisim izniniz yok." },
+          { error: "Seçilen bakım kuralına erişim izniniz yok." },
           { status: 403 },
         );
       }
@@ -311,7 +311,7 @@ export async function POST(request: Request) {
     });
 
     if (error || !data) {
-      return NextResponse.json({ error: error?.message ?? "Servis kaydi olusturulamadi." }, { status: 400 });
+      return NextResponse.json({ error: error?.message ?? "Servis kaydı oluşturulamadı." }, { status: 400 });
     }
 
     let warning: string | undefined;
@@ -322,7 +322,7 @@ export async function POST(request: Request) {
         ruleId: data.rule_id,
       });
       if (syncError) {
-        warning = `Bakim kurali tarihleri senkronize edilemedi: ${syncError}`;
+        warning = `Bakım kuralı tarihleri senkronize edilemedi: ${syncError}`;
       }
     }
 
@@ -348,7 +348,7 @@ export async function POST(request: Request) {
       error,
       message: "Service log create request failed unexpectedly",
     });
-    return NextResponse.json({ error: "Servis kaydi istegi islenemedi." }, { status: 500 });
+    return NextResponse.json({ error: "Servis kaydı isteği işlenemedi." }, { status: 500 });
   }
 }
 
@@ -357,12 +357,12 @@ export async function PATCH(request: Request) {
   try {
     const payload = await readUpdateBody(request);
     if (!payload) {
-      return NextResponse.json({ error: "Gecersiz istek govdesi." }, { status: 400 });
+      return NextResponse.json({ error: "Geçersiz istek gövdesi." }, { status: 400 });
     }
 
     const serviceLogId = normalizeUuid(payload.id);
     if (!serviceLogId) {
-      return NextResponse.json({ error: "Servis kaydi kimligi zorunludur." }, { status: 400 });
+      return NextResponse.json({ error: "Servis kaydı kimliği zorunludur." }, { status: 400 });
     }
 
     const auth = await requireRouteUser(request);
@@ -379,7 +379,7 @@ export async function PATCH(request: Request) {
     });
 
     if (currentLogError || !currentLog) {
-      return NextResponse.json({ error: "Servis kaydi bulunamadi." }, { status: 404 });
+      return NextResponse.json({ error: "Servis kaydı bulunamadı." }, { status: 404 });
     }
 
     const hasAssetId = payload.assetId !== undefined;
@@ -391,7 +391,7 @@ export async function PATCH(request: Request) {
     const hasNotes = payload.notes !== undefined;
 
     if (!hasAssetId && !hasRuleId && !hasServiceType && !hasServiceDate && !hasCost && !hasProvider && !hasNotes) {
-      return NextResponse.json({ error: "Guncellenecek alan bulunamadi." }, { status: 400 });
+      return NextResponse.json({ error: "Güncellenecek alan bulunamadı." }, { status: 400 });
     }
 
     const patch: UpdateServiceLogByIdParams["patch"] = {};
@@ -399,7 +399,7 @@ export async function PATCH(request: Request) {
     if (hasAssetId) {
       const nextAssetId = normalizeUuid(payload.assetId);
       if (!nextAssetId) {
-        return NextResponse.json({ error: "Varlik secimi zorunludur." }, { status: 400 });
+        return NextResponse.json({ error: "Varlık seçimi zorunludur." }, { status: 400 });
       }
 
       const { data: assetExists, error: assetError } = await existsById(supabase, {
@@ -412,7 +412,7 @@ export async function PATCH(request: Request) {
       }
 
       if (!assetExists) {
-        return NextResponse.json({ error: "Secilen varliga erisim izniniz yok." }, { status: 403 });
+        return NextResponse.json({ error: "Seçilen varliga erişim izniniz yok." }, { status: 403 });
       }
 
       patch.asset_id = nextAssetId;
@@ -423,7 +423,7 @@ export async function PATCH(request: Request) {
       if (rawRuleId) {
         const nextRuleId = normalizeUuid(rawRuleId);
         if (!nextRuleId) {
-          return NextResponse.json({ error: "Bakim kurali kimligi gecersiz." }, { status: 400 });
+          return NextResponse.json({ error: "Bakım kuralı kimliği geçersiz." }, { status: 400 });
         }
         patch.rule_id = nextRuleId;
       } else {
@@ -434,10 +434,10 @@ export async function PATCH(request: Request) {
     if (hasServiceType) {
       const nextServiceType = String(payload.serviceType ?? "").trim();
       if (!nextServiceType) {
-        return NextResponse.json({ error: "Servis turu zorunludur." }, { status: 400 });
+        return NextResponse.json({ error: "Servis türü zorunludur." }, { status: 400 });
       }
       if (nextServiceType.length > MAX_SERVICE_TYPE_LENGTH) {
-        return NextResponse.json({ error: "Servis turu cok uzun." }, { status: 400 });
+        return NextResponse.json({ error: "Servis türü çok uzun." }, { status: 400 });
       }
       patch.service_type = nextServiceType;
     }
@@ -445,7 +445,7 @@ export async function PATCH(request: Request) {
     if (hasServiceDate) {
       const nextServiceDate = String(payload.serviceDate ?? "").trim();
       if (!parseDateOnly(nextServiceDate)) {
-        return NextResponse.json({ error: "Gecersiz tarih formati." }, { status: 400 });
+        return NextResponse.json({ error: "Geçersiz tarih formati." }, { status: 400 });
       }
       patch.service_date = nextServiceDate;
     }
@@ -453,7 +453,7 @@ export async function PATCH(request: Request) {
     if (hasCost) {
       const nextCost = Number(payload.cost ?? 0);
       if (Number.isNaN(nextCost) || nextCost < 0) {
-        return NextResponse.json({ error: "Maliyet gecersiz." }, { status: 400 });
+        return NextResponse.json({ error: "Maliyet geçersiz." }, { status: 400 });
       }
       patch.cost = nextCost;
     }
@@ -461,10 +461,10 @@ export async function PATCH(request: Request) {
     if (hasProvider) {
       const nextProvider = readOptionalText(payload.provider, MAX_PROVIDER_LENGTH);
       if (nextProvider.invalidType) {
-        return NextResponse.json({ error: "Saglayici alani gecersiz." }, { status: 400 });
+        return NextResponse.json({ error: "Sağlayıcı alanı geçersiz." }, { status: 400 });
       }
       if (nextProvider.tooLong) {
-        return NextResponse.json({ error: "Saglayici adi cok uzun." }, { status: 400 });
+        return NextResponse.json({ error: "Sağlayıcı adı çok uzun." }, { status: 400 });
       }
       patch.provider = nextProvider.value;
     }
@@ -472,10 +472,10 @@ export async function PATCH(request: Request) {
     if (hasNotes) {
       const nextNotes = readOptionalText(payload.notes, MAX_NOTES_LENGTH);
       if (nextNotes.invalidType) {
-        return NextResponse.json({ error: "Not alani gecersiz." }, { status: 400 });
+        return NextResponse.json({ error: "Not alanı geçersiz." }, { status: 400 });
       }
       if (nextNotes.tooLong) {
-        return NextResponse.json({ error: "Not alani cok uzun." }, { status: 400 });
+        return NextResponse.json({ error: "Not alanı çok uzun." }, { status: 400 });
       }
       patch.notes = nextNotes.value;
     }
@@ -484,7 +484,7 @@ export async function PATCH(request: Request) {
     const targetRuleId = patch.rule_id !== undefined ? patch.rule_id : currentLog.rule_id;
 
     if (!targetAssetId) {
-      return NextResponse.json({ error: "Servis kaydinin varlik iliskisi gecersiz." }, { status: 400 });
+      return NextResponse.json({ error: "Servis kaydının varlık ilişkisi geçersiz." }, { status: 400 });
     }
 
     if (targetRuleId) {
@@ -498,7 +498,7 @@ export async function PATCH(request: Request) {
       }
 
       if (!rule || rule.asset_id !== targetAssetId) {
-        return NextResponse.json({ error: "Secilen bakim kuralina erisim izniniz yok." }, { status: 403 });
+        return NextResponse.json({ error: "Seçilen bakım kuralına erişim izniniz yok." }, { status: 403 });
       }
     }
 
@@ -509,7 +509,7 @@ export async function PATCH(request: Request) {
     });
 
     if (updateError || !updatedLog) {
-      return NextResponse.json({ error: updateError?.message ?? "Servis kaydi guncellenemedi." }, { status: 400 });
+      return NextResponse.json({ error: updateError?.message ?? "Servis kaydı güncellenemedi." }, { status: 400 });
     }
 
     logAuditEvent({
@@ -537,7 +537,7 @@ export async function PATCH(request: Request) {
 
     if (syncErrors.length > 0) {
       return NextResponse.json(
-        { ok: true, id: updatedLog.id, warning: `Bakim senkronizasyon uyarisi: ${syncErrors.join(" | ")}` },
+        { ok: true, id: updatedLog.id, warning: `Bakım senkronizasyon uyarisi: ${syncErrors.join(" | ")}` },
         { status: 200 },
       );
     }
@@ -551,7 +551,8 @@ export async function PATCH(request: Request) {
       error,
       message: "Service log update request failed unexpectedly",
     });
-    return NextResponse.json({ error: "Servis kaydi guncelleme istegi islenemedi." }, { status: 500 });
+    return NextResponse.json({ error: "Servis kaydı güncelleme isteği işlenemedi." }, { status: 500 });
   }
 }
+
 

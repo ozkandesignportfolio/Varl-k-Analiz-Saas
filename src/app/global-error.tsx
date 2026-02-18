@@ -26,7 +26,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
         <main className="mx-auto max-w-2xl">
           <section className="rounded-2xl border border-white/15 bg-white/[0.04] p-6">
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Kritik Hata</p>
-            <h1 className="mt-2 text-2xl font-semibold text-white">Uygulama gecici olarak kullanilamiyor</h1>
+            <h1 className="mt-2 text-2xl font-semibold text-white">Uygulama geçici olarak kullanılamıyor</h1>
             <p className="mt-3 text-sm text-slate-300">
               Sistem guvenli moda alindi. Sayfayi yeniden deneyin veya panele donun.
             </p>

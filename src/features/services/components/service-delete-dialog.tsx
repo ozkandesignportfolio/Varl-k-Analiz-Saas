@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+﻿import type { ReactNode } from "react";
 
 type ServiceDeleteDialogProps = {
   className: string;
@@ -28,3 +28,4 @@ export function ServiceDeleteDialog({
     </button>
   );
 }
+

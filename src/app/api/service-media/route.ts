@@ -1,4 +1,4 @@
-﻿import { randomUUID } from "crypto";
+import { randomUUID } from "crypto";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { logApiError, logAuditEvent } from "@/lib/api/logging";
@@ -586,7 +586,7 @@ export async function POST(request: Request) {
     const userNotesField = readFormText(formData, "notes", { maxLength: MAX_NOTES_LENGTH });
 
     if (assetIdField.invalidType || serviceLogIdField.invalidType) {
-      return NextResponse.json({ error: "Varlik veya servis kaydi kimligi gecersiz." }, { status: 400 });
+      return NextResponse.json({ error: "Varlık veya servis kaydı kimliği geçersiz." }, { status: 400 });
     }
 
     if (
@@ -595,19 +595,19 @@ export async function POST(request: Request) {
       providerField.invalidType ||
       userNotesField.invalidType
     ) {
-      return NextResponse.json({ error: "Metin alanlari gecersiz." }, { status: 400 });
+      return NextResponse.json({ error: "Metin alanları geçersiz." }, { status: 400 });
     }
 
     if (serviceTypeField.tooLong) {
-      return NextResponse.json({ error: "Servis turu cok uzun." }, { status: 400 });
+      return NextResponse.json({ error: "Servis türü çok uzun." }, { status: 400 });
     }
 
     if (providerField.tooLong) {
-      return NextResponse.json({ error: "Saglayici bilgisi cok uzun." }, { status: 400 });
+      return NextResponse.json({ error: "Sağlayıcı bilgisi çok uzun." }, { status: 400 });
     }
 
     if (userNotesField.tooLong) {
-      return NextResponse.json({ error: "Not alani cok uzun." }, { status: 400 });
+      return NextResponse.json({ error: "Not alanı çok uzun." }, { status: 400 });
     }
 
     const assetId = normalizeUuid(assetIdField.value);
@@ -618,7 +618,7 @@ export async function POST(request: Request) {
     const userNotes = userNotesField.value || null;
 
     if (!assetId || !serviceLogId) {
-      return NextResponse.json({ error: "Varlik veya servis kaydi kimligi gecersiz." }, { status: 400 });
+      return NextResponse.json({ error: "Varlık veya servis kaydı kimliği geçersiz." }, { status: 400 });
     }
 
     if (!serviceType || !serviceDate) {
@@ -626,7 +626,7 @@ export async function POST(request: Request) {
     }
 
     if (!parseDateOnly(serviceDate)) {
-      return NextResponse.json({ error: "Servis tarihi gecersiz." }, { status: 400 });
+      return NextResponse.json({ error: "Servis tarihi geçersiz." }, { status: 400 });
     }
 
     const { data: assetExists, error: assetCheckError } = await existsById(supabase, {
@@ -639,7 +639,7 @@ export async function POST(request: Request) {
     }
 
     if (!assetExists) {
-      return NextResponse.json({ error: "Secilen varliga erisim izniniz yok." }, { status: 403 });
+      return NextResponse.json({ error: "Seçilen varliga erişim izniniz yok." }, { status: 403 });
     }
 
     const { data: serviceLog, error: serviceLogError } = await supabase
@@ -705,7 +705,7 @@ export async function POST(request: Request) {
       if (projectedStorageBytes > maxDocumentStorageBytes) {
         return NextResponse.json(
           {
-            error: `${userPlan.label} planinda belge depolama limiti ${formatStorageBytes(maxDocumentStorageBytes)}. Mevcut kullanim: ${formatStorageBytes(currentStorageBytes ?? 0)}.`,
+            error: `${userPlan.label} planında belge depolama limiti ${formatStorageBytes(maxDocumentStorageBytes)}. Mevcut kullanim: ${formatStorageBytes(currentStorageBytes ?? 0)}.`,
           },
           { status: 403 },
         );
@@ -792,7 +792,7 @@ export async function POST(request: Request) {
 
     const photoMetadata = photoFile ? await parsePhotoMetadata(photoFile, openAiApiKey) : null;
     if (photoFile && !photoMetadata) {
-      warnings.push("Fotograf metadata analizi tamamlanamadı.");
+      warnings.push("Fotoğraf metadata analizi tamamlanamadı.");
     }
 
     const videoMetadata = videoFile ? await parseVideoMetadata(videoFile, openAiApiKey) : null;
@@ -876,8 +876,9 @@ export async function POST(request: Request) {
       error,
       message: "Service media request failed unexpectedly",
     });
-    return NextResponse.json({ error: "Medya istegi islenemedi." }, { status: 500 });
+    return NextResponse.json({ error: "Medya isteği işlenemedi." }, { status: 500 });
   }
 }
+
 
 

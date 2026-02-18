@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { logApiError } from "@/lib/api/logging";
 import {
   createMaintenanceRule,
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
       error,
       message: "Maintenance rules list request failed unexpectedly",
     });
-    return NextResponse.json({ error: "Bakim kurallari listelenemedi." }, { status: 500 });
+    return NextResponse.json({ error: "Bakım kurallari listelenemedi." }, { status: 500 });
   }
 }
 
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
 
     const payload = await readBody(request);
     if (!payload) {
-      return NextResponse.json({ error: "Gecersiz istek govdesi." }, { status: 400 });
+      return NextResponse.json({ error: "Geçersiz istek gövdesi." }, { status: 400 });
     }
 
     const result = await createMaintenanceRule(supabase, {
@@ -66,7 +66,8 @@ export async function POST(request: Request) {
       error,
       message: "Maintenance rule create request failed unexpectedly",
     });
-    return NextResponse.json({ error: "Bakim kurali istegi islenemedi." }, { status: 500 });
+    return NextResponse.json({ error: "Bakım kuralı isteği işlenemedi." }, { status: 500 });
   }
 }
+
 

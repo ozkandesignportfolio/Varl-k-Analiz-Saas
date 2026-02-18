@@ -1,4 +1,4 @@
-﻿import { calculateNextDueDate, type IntervalUnit } from "@/lib/maintenance/next-due";
+import { calculateNextDueDate, type IntervalUnit } from "@/lib/maintenance/next-due";
 import { logAuditEvent } from "@/lib/api/logging";
 import { existsById } from "@/lib/repos/assets-repo";
 import {
@@ -101,7 +101,7 @@ export async function getMaintenanceRule(
   if (error || !data) {
     return {
       status: 404,
-      body: { error: "Kural bulunamadi." },
+      body: { error: "Kural bulunamadı." },
     };
   }
 
@@ -129,7 +129,7 @@ export async function createMaintenanceRule(
   if (!assetId || !title || !lastServiceDate) {
     return {
       status: 400,
-      body: { error: "Varlik, baslik ve baz tarih zorunludur." },
+      body: { error: "Varlık, baslik ve baz tarih zorunludur." },
     };
   }
 
@@ -141,11 +141,11 @@ export async function createMaintenanceRule(
   }
 
   if (!intervalUnits.includes(intervalUnit)) {
-    return { status: 400, body: { error: "Gecersiz interval birimi." } };
+    return { status: 400, body: { error: "Geçersiz interval birimi." } };
   }
 
   if (!datePattern.test(lastServiceDate)) {
-    return { status: 400, body: { error: "Gecersiz tarih formati." } };
+    return { status: 400, body: { error: "Geçersiz tarih formati." } };
   }
 
   let nextDueDate = "";
@@ -171,7 +171,7 @@ export async function createMaintenanceRule(
   if (!assetExists) {
     return {
       status: 403,
-      body: { error: "Secilen varliga erisim izniniz yok." },
+      body: { error: "Seçilen varliga erişim izniniz yok." },
     };
   }
 
@@ -191,7 +191,7 @@ export async function createMaintenanceRule(
   if (error || !data) {
     return {
       status: 400,
-      body: { error: error?.message ?? "Kural olusturulamadi." },
+      body: { error: error?.message ?? "Kural oluşturulamadı." },
     };
   }
 
@@ -222,7 +222,7 @@ export async function updateMaintenanceRule(
   });
 
   if (currentRuleError || !currentRule) {
-    return { status: 404, body: { error: "Kural bulunamadi." } };
+    return { status: 404, body: { error: "Kural bulunamadı." } };
   }
 
   const hasAssetId = payload.assetId !== undefined;
@@ -240,7 +240,7 @@ export async function updateMaintenanceRule(
     !hasLastServiceDate &&
     !hasIsActive
   ) {
-    return { status: 400, body: { error: "Guncellenecek alan bulunamadi." } };
+    return { status: 400, body: { error: "Güncellenecek alan bulunamadı." } };
   }
 
   const updatePayload: {
@@ -256,7 +256,7 @@ export async function updateMaintenanceRule(
   if (hasAssetId) {
     const assetId = String(payload.assetId ?? "").trim();
     if (!assetId) {
-      return { status: 400, body: { error: "Varlik secimi zorunludur." } };
+      return { status: 400, body: { error: "Varlık seçimi zorunludur." } };
     }
 
     const { data: assetExists, error: assetError } = await existsById(client, {
@@ -271,7 +271,7 @@ export async function updateMaintenanceRule(
     if (!assetExists) {
       return {
         status: 403,
-        body: { error: "Secilen varliga erisim izniniz yok." },
+        body: { error: "Seçilen varliga erişim izniniz yok." },
       };
     }
 
@@ -300,7 +300,7 @@ export async function updateMaintenanceRule(
   if (hasIntervalUnit) {
     const intervalUnit = String(payload.intervalUnit ?? "").trim() as IntervalUnit;
     if (!intervalUnits.includes(intervalUnit)) {
-      return { status: 400, body: { error: "Gecersiz interval birimi." } };
+      return { status: 400, body: { error: "Geçersiz interval birimi." } };
     }
     updatePayload.interval_unit = intervalUnit;
   }
@@ -308,7 +308,7 @@ export async function updateMaintenanceRule(
   if (hasLastServiceDate) {
     const lastServiceDate = String(payload.lastServiceDate ?? "").trim();
     if (!datePattern.test(lastServiceDate)) {
-      return { status: 400, body: { error: "Gecersiz tarih formati." } };
+      return { status: 400, body: { error: "Geçersiz tarih formati." } };
     }
     updatePayload.last_service_date = lastServiceDate;
   }
@@ -325,7 +325,7 @@ export async function updateMaintenanceRule(
     if (!baseDate) {
       return {
         status: 400,
-        body: { error: "Baz tarih olmadan sonraki bakim tarihi hesaplanamaz." },
+        body: { error: "Baz tarih olmadan sonraki bakım tarihi hesaplanamaz." },
       };
     }
 
@@ -349,7 +349,7 @@ export async function updateMaintenanceRule(
   if (error || !data) {
     return {
       status: 400,
-      body: { error: error?.message ?? "Kural guncellenemedi." },
+      body: { error: error?.message ?? "Kural güncellenemedi." },
     };
   }
 
@@ -377,7 +377,7 @@ export async function deleteMaintenanceRule(
   if (error || !data) {
     return {
       status: 404,
-      body: { error: "Kural silinemedi veya bulunamadi." },
+      body: { error: "Kural silinemedi veya bulunamadı." },
     };
   }
 
@@ -394,4 +394,5 @@ export async function deleteMaintenanceRule(
     body: { ok: true, id: data.id },
   };
 }
+
 

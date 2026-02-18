@@ -1,4 +1,4 @@
-export type DashboardPredictionItem = {
+﻿export type DashboardPredictionItem = {
   assetId: string;
   assetName: string;
   category: string;
@@ -137,3 +137,4 @@ function RiskBadge({ score }: { score: number }) {
     </span>
   );
 }
+

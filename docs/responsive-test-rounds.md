@@ -1,4 +1,4 @@
-# Responsive Test Turları
+﻿# Responsive Test Turları
 
 Tarih: 16 Şubat 2026
 
@@ -23,3 +23,4 @@ Tur sonucu:
 - Kod tabanlı responsive denetim tamamlandı.
 - Kritik ekranlar için layout ve taşma sınıfları doğrulandı.
 - `npm run lint` ve `npm run build` başarıyla geçti.
+

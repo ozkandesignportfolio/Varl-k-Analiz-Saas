@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
 
 type PlanCode = "starter" | "pro" | "elite";
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   const payload = (await request.json().catch(() => null)) as RequestPayload | null;
 
   if (!payload) {
-    return NextResponse.json({ error: "Gecersiz istek govdesi." }, { status: 400 });
+    return NextResponse.json({ error: "Geçersiz istek gövdesi." }, { status: 400 });
   }
 
   const fullName = String(payload.fullName ?? "").trim();
@@ -40,21 +40,21 @@ export async function POST(request: Request) {
 
   if (!fullName || !email) {
     return NextResponse.json(
-      { error: "Ad soyad ve e-posta alanlari zorunludur." },
+      { error: "Ad soyad ve e-posta alanları zorunludur." },
       { status: 400 },
     );
   }
 
   if (!isValidEmail(email)) {
-    return NextResponse.json({ error: "Gecersiz e-posta formati." }, { status: 400 });
+    return NextResponse.json({ error: "Geçersiz e-posta formati." }, { status: 400 });
   }
 
   if (!planCodes.includes(planCode)) {
-    return NextResponse.json({ error: "Gecersiz plan secimi." }, { status: 400 });
+    return NextResponse.json({ error: "Geçersiz plan seçimi." }, { status: 400 });
   }
 
   if (!billingCycles.includes(billingCycle)) {
-    return NextResponse.json({ error: "Gecersiz odeme donemi." }, { status: 400 });
+    return NextResponse.json({ error: "Geçersiz ödeme dönemi." }, { status: 400 });
   }
 
   const { error } = await supabase.from("subscription_requests").insert({
@@ -73,4 +73,5 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ ok: true }, { status: 201 });
 }
+
 

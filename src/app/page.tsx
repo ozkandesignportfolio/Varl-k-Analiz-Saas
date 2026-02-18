@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
@@ -28,13 +28,13 @@ const plans: Plan[] = [
     code: "starter",
     name: "Ucretsiz Deneme",
     headline: "0 TL",
-    description: "Temel takip ve giris seviyesi limitler",
+    description: "Temel takip ve giriş seviyesi limitler",
     features: [
-      starterPlan.limits.maxAssets === null ? "Sinirsiz varlik" : `En fazla ${starterPlan.limits.maxAssets} varlik`,
+      starterPlan.limits.maxAssets === null ? "Sınırsız varlık" : `En fazla ${starterPlan.limits.maxAssets} varlık`,
       starterPlan.limits.maxDocumentStorageBytes === null
         ? "Yuksek belge depolama limiti"
         : `${formatStorageBytes(starterPlan.limits.maxDocumentStorageBytes)} belge depolama limiti`,
-      starterPlan.features.canUseAdvancedAnalytics ? "Gelismis analitik" : "Gelismis analitik kapali",
+      starterPlan.features.canUseAdvancedAnalytics ? "Gelişmiş analitik" : "Gelişmiş analitik kapali",
       starterPlan.features.canExportPdfReports ? "PDF rapor disa aktarma" : "PDF rapor disa aktarma kapali",
     ],
   },
@@ -42,14 +42,14 @@ const plans: Plan[] = [
     code: "pro",
     name: "Pro",
     headline: "149 TL / ay",
-    description: "Sinirsiz varlik, gelismis analitik ve PDF raporlar",
+    description: "Sınırsız varlık, gelişmiş analitik ve PDF raporlar",
     highlight: true,
     features: [
-      proPlan.limits.maxAssets === null ? "Sinirsiz varlik" : `En fazla ${proPlan.limits.maxAssets} varlik`,
+      proPlan.limits.maxAssets === null ? "Sınırsız varlık" : `En fazla ${proPlan.limits.maxAssets} varlık`,
       proPlan.limits.maxDocumentStorageBytes === null
         ? "Yuksek belge depolama limiti"
         : `${formatStorageBytes(proPlan.limits.maxDocumentStorageBytes)} belge depolama limiti`,
-      proPlan.features.canUseAdvancedAnalytics ? "Gelismis analitik panolari" : "Gelismis analitik kapali",
+      proPlan.features.canUseAdvancedAnalytics ? "Gelişmiş analitik panolari" : "Gelişmiş analitik kapali",
       proPlan.features.canExportPdfReports ? "PDF rapor disa aktarma" : "PDF rapor disa aktarma kapali",
     ],
   },
@@ -125,7 +125,7 @@ const faqItems: FaqItem[] = [
   {
     question: "Pro plan içinde raporlama var mı?",
     answer:
-      "Evet. Gelismis analitik, PDF disa aktarim ve daha yuksek belge depolama Pro plan ile kullanilabilir.",
+      "Evet. Gelişmiş analitik, PDF disa aktarim ve daha yuksek belge depolama Pro plan ile kullanilabilir.",
   },
   {
     question: "Kurulum ne kadar sürer?",
@@ -553,4 +553,5 @@ function PolicyLink({
     </Link>
   );
 }
+
 

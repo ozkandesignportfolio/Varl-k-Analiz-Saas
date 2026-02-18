@@ -1,4 +1,4 @@
-# RLS Negatif Test Notu (2026-02-16)
+﻿# RLS Negatif Test Notu (2026-02-16)
 
 Dosya:
 - `supabase/tests/rls_negative_tests.sql`
@@ -16,3 +16,4 @@ Kapsam:
 Notlar:
 - Script transaction + `ROLLBACK` ile çalışır, kalıcı veri bırakmaz.
 - En az iki auth kullanıcısı yoksa script bilinçli olarak hata verir.
+

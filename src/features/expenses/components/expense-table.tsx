@@ -24,9 +24,9 @@ export function ExpenseTable({ isLoading, expenses, assetNameById }: ExpenseTabl
       <h2 className="text-xl font-semibold text-white">Giderler</h2>
 
       {isLoading ? (
-        <p className="mt-4 text-sm text-slate-300">Yukleniyor...</p>
+        <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
       ) : expenses.length === 0 ? (
-        <p className="mt-4 text-sm text-slate-300">Henuz gider kaydi yok.</p>
+        <p className="mt-4 text-sm text-slate-300">Henüz gider kaydı yok.</p>
       ) : (
         <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
           <table className="min-w-full text-left text-sm">
@@ -35,7 +35,7 @@ export function ExpenseTable({ isLoading, expenses, assetNameById }: ExpenseTabl
                 <th className="px-3 py-2">Tarih</th>
                 <th className="px-3 py-2">Baslik</th>
                 <th className="px-3 py-2">Kategori</th>
-                <th className="px-3 py-2">Varlik</th>
+                <th className="px-3 py-2">Varlık</th>
                 <th className="px-3 py-2">Tutar</th>
                 <th className="px-3 py-2">Not</th>
               </tr>
@@ -64,4 +64,5 @@ export function ExpenseTable({ isLoading, expenses, assetNameById }: ExpenseTabl
     </section>
   );
 }
+
 

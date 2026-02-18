@@ -171,7 +171,7 @@ export function ExpensesPageContainer() {
     }
 
     if (Number.isNaN(amount) || amount < 0) {
-      setFeedback("Tutar gecersiz.");
+      setFeedback("Tutar geçersiz.");
       return;
     }
 
@@ -210,7 +210,7 @@ export function ExpensesPageContainer() {
     if (result.warning) {
       setTableWarning(result.warning);
       setExpenses([]);
-      setFeedback("Gider tablosu bulunamadi. Kayit eklenemedi.");
+      setFeedback("Gider tablosu bulunamadı. Kayıt eklenemedi.");
       setIsSaving(false);
       return;
     }
@@ -225,7 +225,7 @@ export function ExpensesPageContainer() {
 
     form.reset();
     setSelectedAssetId("");
-    setFeedback("Gider kaydi eklendi.");
+    setFeedback("Gider kaydı eklendi.");
     await fetchExpenses(userId);
     setIsSaving(false);
   };
@@ -250,11 +250,11 @@ export function ExpensesPageContainer() {
     <AppShell
       badge="Gider Takibi"
       title="Giderler"
-      subtitle="Giderlerinizi kaydedin ve varlik bazli takip edin."
+      subtitle="Giderlerinizi kaydedin ve varlık bazli takip edin."
     >
       <section className="grid gap-3 sm:grid-cols-3">
-        <SummaryCard label="Toplam Kayit" value={String(expenses.length)} />
-        <SummaryCard label="Varlik Baglantili" value={String(linkedAssetCount)} />
+        <SummaryCard label="Toplam Kayıt" value={String(expenses.length)} />
+        <SummaryCard label="Varlık Baglantili" value={String(linkedAssetCount)} />
         <SummaryCard label="Kategori" value={String(categoryCount)} />
       </section>
 
@@ -275,7 +275,7 @@ export function ExpensesPageContainer() {
 
       {tableWarning ? (
         <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
-          Gider tablosu su an erisilebilir degil. Bos liste gosteriliyor. ({tableWarning.code})
+          Gider tablosu su an erisilebilir değil. Bos liste gosteriliyor. ({tableWarning.code})
         </p>
       ) : null}
 
@@ -292,4 +292,5 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
+
 

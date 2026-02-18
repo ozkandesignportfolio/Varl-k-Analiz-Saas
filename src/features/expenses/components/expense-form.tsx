@@ -30,14 +30,14 @@ export function ExpenseForm({
 
       <form onSubmit={onSubmit} className="mt-4 grid gap-3 sm:grid-cols-2">
         <label className="block sm:col-span-2">
-          <span className="mb-1.5 block text-sm text-slate-300">Varlik (Opsiyonel)</span>
+          <span className="mb-1.5 block text-sm text-slate-300">Varlık (Opsiyonel)</span>
           <select
             value={selectedAssetId}
             onChange={(event) => onSelectedAssetIdChange(event.target.value)}
             className={inputClassName}
           >
             <option value="" className="bg-slate-900">
-              Varlik secmeden devam et
+              Varlık secmeden devam et
             </option>
             {assets.map((asset) => (
               <option key={asset.id} value={asset.id} className="bg-slate-900">
@@ -108,4 +108,5 @@ export function ExpenseForm({
     </section>
   );
 }
+
 

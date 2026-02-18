@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -313,15 +313,15 @@ export function DashboardPageContainer() {
   return (
     <AppShell
       badge="Kontrol Merkezi"
-      title="Gosterge Paneli"
-      subtitle={isLoading ? "Veriler yukleniyor..." : `Hos geldiniz, ${email || "kullanici"}. Bu ekran gercek verilerinizle guncellenir.`}
+      title="Gösterge Paneli"
+      subtitle={isLoading ? "Veriler yükleniyor..." : `Hoş geldiniz, ${email || "kullanıcı"}. Bu ekran gerçek verilerinizle güncellenir.`}
       actions={
         <button
           type="button"
           onClick={onSignOut}
           className="rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
         >
-          Cikis Yap
+          Çıkış Yap
         </button>
       }
     >
@@ -333,13 +333,13 @@ export function DashboardPageContainer() {
 
       {expenseTableWarning ? (
         <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
-          Gider tablosu su an erisilebilir degil. Gider widget verileri bos gosteriliyor. ({expenseTableWarning.code})
+          Gider tablosu su an erisilebilir değil. Gider widget verileri bos gosteriliyor. ({expenseTableWarning.code})
         </p>
       ) : null}
 
       {!planConfig.features.canUseAdvancedAnalytics ? (
         <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
-          Gelismis analitik grafikler ve AI bakim riskleri {planConfig.label} planinda kapali. Pro plan ile aktif olur.
+          Gelişmiş analitik grafikler ve AI bakım riskleri {planConfig.label} planında kapali. Pro plan ile aktif olur.
         </p>
       ) : null}
 
@@ -362,9 +362,9 @@ export function DashboardPageContainer() {
         <DashboardChartsSection assets={assets} serviceLogs={serviceLogs} rules={rules} isLoading={isLoading} />
       ) : (
         <article className="premium-card p-5">
-          <h2 className="text-lg font-semibold text-white">Gelismis Grafikler Kilitli</h2>
+          <h2 className="text-lg font-semibold text-white">Gelişmiş Grafikler Kilitli</h2>
           <p className="mt-2 text-sm text-slate-300">
-            12 aylik maliyet trendi, varlik performans karsilastirma ve bakim oncelik panosu Pro plan ozelligidir.
+            12 aylık maliyet trendi, varlık performans karşılaştırma ve bakım öncelik panosu Pro plan ozelligidir.
           </p>
         </article>
       )}
@@ -389,7 +389,7 @@ export function DashboardPageContainer() {
           <article className="premium-card p-5">
             <h2 className="text-lg font-semibold text-white">AI Risk Kartlari Kilitli</h2>
             <p className="mt-2 text-sm text-slate-300">
-              AI bakim risk puanlari ve onerilen aksiyonlar Pro plan ile kullanilabilir.
+              AI bakım risk puanlari ve onerilen aksiyonlar Pro plan ile kullanilabilir.
             </p>
           </article>
         )}
@@ -397,4 +397,5 @@ export function DashboardPageContainer() {
     </AppShell>
   );
 }
+
 

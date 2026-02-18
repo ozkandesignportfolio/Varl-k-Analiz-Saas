@@ -1,4 +1,4 @@
-# Release Notes - 2026-02-16
+﻿# Release Notes - 2026-02-16
 
 Sürüm kapsamı:
 - Aşama 08: Belge kasası önizleme/indirme
@@ -33,3 +33,4 @@ Sürüm kapsamı:
 2. `docs/qa/regression-checklist-2026-02-16.md`
 3. `docs/qa/rls-negative-tests-2026-02-16.md`
 4. `docs/qa/performance-baseline-2026-02-16.md`
+

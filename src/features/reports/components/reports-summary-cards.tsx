@@ -1,4 +1,4 @@
-type ReportsSummaryCardsProps = {
+﻿type ReportsSummaryCardsProps = {
   totalAssetCount: string;
   activeAssetCount: string;
   serviceCount: string;
@@ -35,3 +35,4 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
+

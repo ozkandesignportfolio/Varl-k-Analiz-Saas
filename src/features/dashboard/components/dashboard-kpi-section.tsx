@@ -1,4 +1,4 @@
-type DashboardKpiSectionProps = {
+﻿type DashboardKpiSectionProps = {
   assetCount: string;
   upcomingDueCount: string;
   overdueCount: string;
@@ -35,3 +35,4 @@ function StatCard({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
+

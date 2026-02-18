@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
@@ -31,8 +31,8 @@ const periodOptions: { value: PeriodFilter; label: string }[] = [
   { value: "3m", label: "Son 3 Ay" },
   { value: "6m", label: "Son 6 Ay" },
   { value: "12m", label: "Son 12 Ay" },
-  { value: "this_year", label: "Bu Yil" },
-  { value: "all", label: "Tum Donem" },
+  { value: "this_year", label: "Bu Yıl" },
+  { value: "all", label: "Tum Dönem" },
 ];
 
 const currencyFormatter = new Intl.NumberFormat("tr-TR", {
@@ -117,7 +117,7 @@ export default function CostsPage() {
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
-        setFeedback(userError?.message ?? "Oturum bulunamadi. Lutfen tekrar giris yapin.");
+        setFeedback(userError?.message ?? "Oturum bulunamadı. Lütfen tekrar giriş yapın.");
         setIsLoading(false);
         return;
       }
@@ -183,11 +183,11 @@ export default function CostsPage() {
   const monthlySeries = useMemo(() => buildMonthlyCostSeries(logs, period, now), [logs, period, now]);
   const yearlySeries = useMemo(() => buildYearlyCostSeries(logs), [logs]);
   const categorySeries = useMemo(() => buildCategoryCostSeries(filteredLogs, assets), [filteredLogs, assets]);
-  const periodLabel = periodOptions.find((option) => option.value === period)?.label ?? "Secili donem";
+  const periodLabel = periodOptions.find((option) => option.value === period)?.label ?? "Seçili dönem";
   const maxCategoryCost = useMemo(() => Math.max(1, ...categorySeries.map((item) => item.total)), [categorySeries]);
 
   return (
-    <AppShell badge="Maliyet Analizi" title="Maliyetler" subtitle="Servis kayitlarindan donem, aylik trend ve yillik toplam analizi yapilir.">
+    <AppShell badge="Maliyet Analizi" title="Maliyetler" subtitle="Servis kayıtlarindan dönem, aylık trend ve yıllık toplam analizi yapilir.">
       {feedback ? (
         <p className="rounded-xl border border-rose-300/30 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">
           {feedback}
@@ -196,10 +196,10 @@ export default function CostsPage() {
 
       {!planConfig.features.canUseAdvancedAnalytics ? (
         <section className="premium-card p-5">
-          <h2 className="text-lg font-semibold text-white">Gelismis Analitik Kilidi</h2>
+          <h2 className="text-lg font-semibold text-white">Gelişmiş Analitik Kilidi</h2>
           <p className="mt-2 text-sm text-slate-300">
-            Maliyet trendi, yillik karsilastirma ve kategori dagilimi gibi gelismis analitik panolari{" "}
-            {planConfig.label} planinda kapali. Pro plan ile aktif olur.
+            Maliyet trendi, yıllık karşılaştırma ve kategori dağılımi gibi gelişmiş analitik panolari{" "}
+            {planConfig.label} planında kapali. Pro plan ile aktif olur.
           </p>
         </section>
       ) : (
@@ -207,11 +207,11 @@ export default function CostsPage() {
           <section className="premium-card p-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-white">Donem Filtresi</h2>
-                <p className="mt-1 text-sm text-slate-300">Ozet metrikler ve trend grafigi secili doneme gore guncellenir.</p>
+                <h2 className="text-lg font-semibold text-white">Dönem Filtresi</h2>
+                <p className="mt-1 text-sm text-slate-300">Özet metrikler ve trend grafiği seçili döneme göre güncellenir.</p>
               </div>
               <label className="block w-full sm:w-64">
-                <span className="mb-1.5 block text-xs uppercase tracking-[0.16em] text-slate-400">Donem</span>
+                <span className="mb-1.5 block text-xs uppercase tracking-[0.16em] text-slate-400">Dönem</span>
                 <select
                   value={period}
                   onChange={(event) => setPeriod(event.target.value as PeriodFilter)}
@@ -228,11 +228,11 @@ export default function CostsPage() {
           </section>
 
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <SummaryCard label={`${periodLabel} Toplami`} value={currencyFormatter.format(periodAggregate.total_cost)} />
-            <SummaryCard label="Bu Yil Toplami" value={currencyFormatter.format(currentYearAggregate.total_cost)} />
-            <SummaryCard label="Son 12 Ay Toplami" value={currencyFormatter.format(trailingTwelveAggregate.total_cost)} />
+            <SummaryCard label={`${periodLabel} Toplamı`} value={currencyFormatter.format(periodAggregate.total_cost)} />
+            <SummaryCard label="Bu Yıl Toplamı" value={currencyFormatter.format(currentYearAggregate.total_cost)} />
+            <SummaryCard label="Son 12 Ay Toplamı" value={currencyFormatter.format(trailingTwelveAggregate.total_cost)} />
             <SummaryCard
-              label={`${periodLabel} Maliyet Skoru (${periodAggregate.log_count} Kayit)`}
+              label={`${periodLabel} Maliyet Skoru (${periodAggregate.log_count} Kayıt)`}
               value={`${periodAggregate.cost_score}/100`}
             />
           </section>
@@ -240,11 +240,11 @@ export default function CostsPage() {
           <section className="grid gap-3 xl:grid-cols-2">
             <article className="premium-card p-5">
               <h2 className="text-lg font-semibold text-white">{periodLabel} Maliyet Trendi</h2>
-              <p className="mt-1 text-sm text-slate-300">Aylik servis maliyeti dagilimi.</p>
+              <p className="mt-1 text-sm text-slate-300">Aylık servis maliyeti dağılımi.</p>
               {isLoading ? (
-                <p className="mt-4 text-sm text-slate-300">Yukleniyor...</p>
+                <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
               ) : logs.length === 0 ? (
-                <p className="mt-4 text-sm text-slate-300">Grafik icin servis verisi bulunmuyor.</p>
+                <p className="mt-4 text-sm text-slate-300">Grafik için servis verisi bulunmuyor.</p>
               ) : (
                 <div className="mt-4 h-72">
                   <CostTrendLineChart points={monthlySeries} />
@@ -253,12 +253,12 @@ export default function CostsPage() {
             </article>
 
             <article className="premium-card p-5">
-              <h2 className="text-lg font-semibold text-white">Yillik Toplam Karsilastirmasi</h2>
-              <p className="mt-1 text-sm text-slate-300">Yillara gore toplam servis maliyeti.</p>
+              <h2 className="text-lg font-semibold text-white">Yıllık Toplam Karşılaştırmasi</h2>
+              <p className="mt-1 text-sm text-slate-300">Yıllara göre toplam servis maliyeti.</p>
               {isLoading ? (
-                <p className="mt-4 text-sm text-slate-300">Yukleniyor...</p>
+                <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
               ) : yearlySeries.length === 0 ? (
-                <p className="mt-4 text-sm text-slate-300">Yillik maliyet verisi bulunmuyor.</p>
+                <p className="mt-4 text-sm text-slate-300">Yıllık maliyet verisi bulunmuyor.</p>
               ) : (
                 <div className="mt-4 h-72">
                   <YearlyCostBarChart points={yearlySeries} />
@@ -268,11 +268,11 @@ export default function CostsPage() {
           </section>
 
           <section className="premium-card p-5">
-            <h2 className="text-lg font-semibold text-white">Secili Donem Kategori Dagilimi</h2>
+            <h2 className="text-lg font-semibold text-white">Seçili Dönem Kategori Dağılımi</h2>
             {isLoading ? (
-              <p className="mt-4 text-sm text-slate-300">Yukleniyor...</p>
+              <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
             ) : categorySeries.length === 0 ? (
-              <p className="mt-4 text-sm text-slate-300">Secili donemde maliyet kaydi bulunmuyor.</p>
+              <p className="mt-4 text-sm text-slate-300">Seçili dönemde maliyet kaydı bulunmuyor.</p>
             ) : (
               <div className="mt-4 space-y-3">
                 {categorySeries.map((item) => {
@@ -309,4 +309,5 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
+
 

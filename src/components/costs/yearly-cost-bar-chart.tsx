@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import type { ChartData, ChartOptions } from "chart.js";
 import { Bar } from "react-chartjs-2";
@@ -68,3 +68,4 @@ export function YearlyCostBarChart({ points }: YearlyCostBarChartProps) {
 
   return <Bar data={data} options={options} />;
 }
+

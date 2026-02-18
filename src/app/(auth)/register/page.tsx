@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
@@ -47,22 +47,22 @@ export default function RegisterPage() {
 
       if (error) {
         if (isEmailRateLimitError(error)) {
-          setMessage("E-posta limiti asildi. Lutfen kisa bir sure sonra tekrar deneyin.");
+          setMessage("E-posta limiti aşıldı. Lütfen kısa bir süre sonra tekrar deneyin.");
           return;
         }
 
         if (isEmailNotConfirmedError(error)) {
-          setMessage("Hesap olusturuldu ancak e-posta onayi gerekiyor. E-posta kutunuzu kontrol edin.");
+          setMessage("Hesap oluşturuldu ancak e-posta onayı gerekiyor. E-posta kutunuzu kontrol edin.");
           return;
         }
 
-        setMessage(error.message || "Kayit sirasinda bir hata olustu. Lutfen tekrar deneyin.");
+        setMessage(error.message || "Kayıt sirasinda bir hata oluştu. Lütfen tekrar deneyin.");
         return;
       }
 
-      setMessage("Kayit alindi. E-posta onayi gerekiyorsa kutunuzu kontrol edin, aksi halde giris yapabilirsiniz.");
+      setMessage("Kayıt alindi. E-posta onayı gerekiyorsa kutunuzu kontrol edin, aksi halde giriş yapabilirsiniz.");
     } catch {
-      setMessage("Kayit sirasinda beklenmeyen bir hata olustu. Lutfen tekrar deneyin.");
+      setMessage("Kayıt sirasinda beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.");
     } finally {
       setIsSubmitting(false);
     }
@@ -151,4 +151,5 @@ export default function RegisterPage() {
     </main>
   );
 }
+
 

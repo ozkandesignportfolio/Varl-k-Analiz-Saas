@@ -1,4 +1,4 @@
-﻿# AssetCare PRD (MVP v1.0)
+# AssetCare PRD (MVP v1.0)
 
 ## 1. Belge Amaci
 Bu dokuman, AssetCare MVP urununun kapsamini, gereksinimlerini, veri modelini ve gelistirme adimlarini eksiksiz ve sirali bicimde tanimlar.
@@ -12,7 +12,7 @@ Urun vaadi:
 - Servis gecmisini kanitla.
 
 ## 3. Problem Tanimi
-Kullanici mevcutta bakım ve garanti takibini daginik sekilde yapiyor:
+Kullanıcı mevcutta bakım ve garanti takibini daginik sekilde yapiyor:
 - Reminder uygulamasi: baglamsiz.
 - Excel/not: otomasyonsuz.
 - Marka uygulamasi: parcali.
@@ -27,26 +27,26 @@ Sonuc:
 ## 4. Hedef Kitle
 MVP birincil segment:
 - Bireysel ev sahipleri
-- Birden fazla cihaz/varlık sahibi kullanicilar
+- Birden fazla cihaz/varlık sahibi kullanıcılar
 
 Ikincil segment (MVP sonrasi):
 - Kucuk isletme sahipleri
 - Kiraya veren ev sahipleri
 
-## 5. Hedefler ve Basari Kriterleri
+## 5. Hedefler ve Başarı Kriterleri
 ### 5.1 Urun hedefleri
-- Kullaniciya ilk 10 dakikada deger gostermek.
+- Kullanıcıya ilk 10 dakikada deger gostermek.
 - Varlık basina bakım periyodu tanimlatmak.
 - Gecikmiş bakım ve garanti riskini gorunur kilmak.
 
 ### 5.2 KPI tanimlari
-- `signup_to_asset_rate` = varlık ekleyen yeni kullanici / kayıt olan yeni kullanici
+- `signup_to_asset_rate` = varlık ekleyen yeni kullanıcı / kayıt olan yeni kullanıcı
   Hedef: %60+
-- `asset_to_rule_rate` = en az 1 bakım kurali tanimlayan varlık / toplam varlık
+- `asset_to_rule_rate` = en az 1 bakım kuralı tanimlayan varlık / toplam varlık
   Hedef: %70+
-- `d7_retention` = 7. günde geri donen kullanici / kayıt olan kullanici
+- `d7_retention` = 7. günde geri donen kullanıcı / kayıt olan kullanıcı
   Hedef: %25+
-- `service_log_rate` = servis logu oluşturan aktif kullanici / aktif kullanici
+- `service_log_rate` = servis logu oluşturan aktif kullanıcı / aktif kullanıcı
   Hedef: %40+
 - `free_to_pro_rate` (MVP sonrasi)
   Hedef: %3-5
@@ -55,7 +55,7 @@ Ikincil segment (MVP sonrasi):
 ### 6.1 MVP kapsaminda
 - Auth: register, login, şifre sifirlama, session guard
 - Varlık CRUD
-- Bakım kurali ve next_due hesaplama
+- Bakım kuralı ve next_due hesaplama
 - Servis log kaydı
 - Belge kasasi (private storage)
 - Dashboard risk paneli
@@ -69,21 +69,21 @@ Ikincil segment (MVP sonrasi):
 - IoT cihaz entegrasyonu
 - AI OCR
 - Takim/ortak hesap paylasimi
-- Gelismis push provider yönetimi (FCM/APNS/OneSignal gelismis segmentasyon)
+- Gelişmiş push provider yönetimi (FCM/APNS/OneSignal gelişmiş segmentasyon)
 - Arac km tabanli dinamik motor
 
-## 7. Kullanici Akislari (E2E)
+## 7. Kullanıcı Akislari (E2E)
 ### 7.1 Ilk kurulum akışı
-1. Kullanici kayıt olur.
-2. Email doğrulama (opsiyonel, ayara bagli).
+1. Kullanıcı kayıt olur.
+2. Email doğrulama (opsiyonel, ayara bağlı).
 3. Ilk varligi ekler.
 4. Bakım periyodu girer.
 5. Sistem next_due hesaplar.
 6. Dashboard risk kartlari olusur.
 
 ### 7.2 Servis sonrasi akışı
-1. Kullanici servis logu ekler.
-2. Log bir kurala bagliysa ilgili kuralin `last_service_date` ve `next_due_date` alanlari güncellenir.
+1. Kullanıcı servis logu ekler.
+2. Log bir kurala bagliysa ilgili kuralın `last_service_date` ve `next_due_date` alanları güncellenir.
 3. Fatura/servis belgesi private storage'a yuklenir.
 4. Timeline ve maliyet paneli aninda güncellenir.
 
@@ -97,16 +97,16 @@ Gereksinimler:
 
 Kabul kriterleri:
 - Oturum yoksa korumali sayfalar login'e yonlendirir.
-- Kullanici sadece kendi verisini gorur (RLS).
+- Kullanıcı sadece kendi verisini gorur (RLS).
 
 ### 8.2 Varlık CRUD
 Gereksinimler:
 - Listele, ekle, düzenle, sil
-- Alanlar: ad, kategori, marka/model, satin alma, garanti bitis, seri no, not, fotograf
+- Alanlar: ad, kategori, marka/model, satın alma, garanti bitiş, seri no, not, fotograf
 
 Kabul kriterleri:
 - Yeni varlık ekleme formu mobilde 30 saniye altinda tamamlanabilir.
-- Silinen varliga bagli kurallar/loglar iliski kurallarina göre temizlenir.
+- Silinen varliga bağlı kurallar/loglar ilişki kurallarına göre temizlenir.
 
 ### 8.3 Bakım Motoru
 Gereksinimler:
@@ -116,14 +116,14 @@ Gereksinimler:
 - Servis sonrasi otomatik reset
 
 Kabul kriterleri:
-- Her aktif kural icin gecerli bir `next_due_date` bulunur.
+- Her aktif kural için gecerli bir `next_due_date` bulunur.
 - Servis logu eklendiginde ilgili kural tarihi doğru ileri tasinir.
 
 ### 8.4 Servis Günlugu
 Gereksinimler:
-- Servis turu, tarih, maliyet, sağlayıcı, not
-- Varlıkla iliski
-- Kuralla iliski (opsiyonel)
+- Servis türü, tarih, maliyet, sağlayıcı, not
+- Varlıkla ilişki
+- Kuralla ilişki (opsiyonel)
 
 Kabul kriterleri:
 - Maliyet 0 veya pozitif olmali.
@@ -136,17 +136,17 @@ Gereksinimler:
 - Servis logüna baglama (opsiyonel)
 
 Kabul kriterleri:
-- Kullanici yalnizca kendi klasorundeki dosyalari okuyabilir/yazabilir/silebilir.
+- Kullanıcı yalnizca kendi klasorundeki dosyalari okuyabilir/yazabilir/silebilir.
 - Belge metadatasi `documents` tablosunda tutulur.
 
 ### 8.6 Dashboard Risk Paneli
 Gereksinimler:
 - Yaklasan bakım (or: 7 gün icinde)
 - Gecikmiş bakım
-- Yaklasan garanti bitisi (or: 30 gün)
+- Yaklasan garanti bitişi (or: 30 gün)
 
 Kabul kriterleri:
-- Sorgular kullanici bazli ve performansli calisir.
+- Sorgular kullanıcı bazli ve performansli calisir.
 - Kartlar en az adet ve kritik liste bilgisi gosterir.
 
 ### 8.7 Timeline
@@ -162,7 +162,7 @@ Kabul kriterleri:
 Gereksinimler:
 - Toplam maliyet
 - Son 12 ay maliyet
-- Kategori/varlık bazli dagilim
+- Kategori/varlık bazli dağılım
 
 Kabul kriterleri:
 - Grafikler servis log verisiyle uyumlu olmali.
@@ -170,17 +170,17 @@ Kabul kriterleri:
 
 ### 8.9 PDF Rapor
 Gereksinimler:
-- Secili tarih araliginda varlık + servis + maliyet özeti
+- Seçili tarih araliginda varlık + servis + maliyet özeti
 - Indirilebilir PDF
 
 Kabul kriterleri:
-- Rapor basliginda tarih araligi ve kullanici bilgisi bulunur.
+- Rapor basliginda tarih araligi ve kullanıcı bilgisi bulunur.
 - Tablo toplamlari panel degerleriyle tutarli olmali.
 
 ### 8.10 Otomasyon Motoru (Trigger -> Action)
 Gereksinimler:
 - Trigger'lar:
-  - Garanti bitisine 30 gün kala
+  - Garanti bitişine 30 gün kala
   - Bakım due tarihine 7 gün kala
   - Yeni servis logu girildiginde
 - Action'lar:
@@ -189,14 +189,14 @@ Gereksinimler:
   - PDF rapor üretimi ve belge kasasina kayıt
 - Event queue yapisi:
   - DB trigger/scheduler event'i `automation_events` tablosuna yazar
-  - Event bazli action listesi `automation_events.actions` alaninda tutulur
+  - Event bazli action listesi `automation_events.actions` alanında tutulur
   - `automation-dispatcher` Edge Function `claim_automation_events` RPC ile event claim edip action'lari isler
   - Action sonuc/hatasi `automation_events.action_results` ve `last_error` alanlarina yazilir
 
 Kabul kriterleri:
 - `service_logs` insert sonrasi en gec 5 saniyede `service_log_created` event'i `pending` olarak kuyruga dusmeli.
-- Günluk tarama calistiginda ilgili kayıtlar icin tekil (`dedupe_key`) event olusmali.
-- En az bir action basarisizsa event `failed`, tum actionlar basariliysa `completed` olmalidir.
+- Günluk tarama calistiginda ilgili kayıtlar için tekil (`dedupe_key`) event olusmali.
+- En az bir action başarısizsa event `failed`, tum actionlar başarıliysa `completed` olmalidir.
 - PDF action'i calistiginda `documents` tablosunda kayıt ve private storage dosyasi olusmalidir.
 
 ### 8.11 Fatura Abonelikleri ve Abonelik Takibi
@@ -212,8 +212,8 @@ Kabul kriterleri:
 - Gecikmiş ve bekleyen fatura sayıları durum alanıyla tutarlı olur.
 
 ## 9. Is Kurallari
-- Her varlık bir kullaniciya aittir.
-- Her bakım kurali tek bir varliga baglidir.
+- Her varlık bir kullanıcıya aittir.
+- Her bakım kuralı tek bir varliga baglidir.
 - Servis logu varliga baglidir; kurala baglanmasi opsiyoneldir.
 - Belge varliga baglidir; servis logüna baglanmasi opsiyoneldir.
 - Tum ana tablolarda RLS zorunludur.
@@ -287,7 +287,7 @@ Kabul kriterleri:
 - Hassas anahtarlar sadece env/secrets ile tutulur
 
 ## 12. Fonksiyonel Olmayan Gereksinimler
-- Mobil once tasarim (375px+)
+- Mobil önce tasarim (375px+)
 - Ilk ekran yukleme hedefi: p75 < 2.5sn
 - Form giriş suresi: temel varlık kaydı < 30sn
 - Minimum erisilebilirlik: semantik etiketler, kontrast, odaklanabilir alanlar
@@ -313,7 +313,7 @@ Kabul kriterleri:
 - `document_uploaded`
 - `report_exported_pdf`
 
-Her event minimum alanlari:
+Her event minimum alanları:
 - `user_id`
 - `timestamp`
 - `source_page`
@@ -359,8 +359,8 @@ Not:
 - `(x)` Canli doğrulama tamamlandi (RLS izolasyonu, storage policy, check constraint testleri, seed yukleme).
 
 Done kriteri:
-- `(x)` Yetkisiz kullanici veri okuyamaz.
-- `(x)` Yetkili kullanici sadece kendi verisini okur.
+- `(x)` Yetkisiz kullanıcı veri okuyamaz.
+- `(x)` Yetkili kullanıcı sadece kendi verisini okur.
 
 ### 15.4 `(x)` Asama 03 - Kimlik Doğrulama (Auth) Modulu
 Adimlar:
@@ -407,7 +407,7 @@ Done kriteri:
 ### 15.8 `(x)` Asama 07 - Servis Kayıt ve Gecmis Modulu
 Adimlar:
 1. `(x)` Servis formu
-2. `(x)` Maliyet alani + para birimi
+2. `(x)` Maliyet alanı + para birimi
 3. `(x)` Listeleme + filtre
 4. `(x)` Kural ilişkisi
 
@@ -419,10 +419,10 @@ Adimlar:
 1. `(x)` Private bucket entegrasyonu
 2. `(x)` Upload UI
 3. `(x)` Belge metadata kaydı
-4. `(x)` Onizleme/indirme
+4. `(x)` Önizleme/indirme
 
 Done kriteri:
-- `(x)` Kullanici sadece kendi dosyalarina erisir.
+- `(x)` Kullanıcı sadece kendi dosyalarina erisir.
 
 ### 15.10 `(x)` Asama 09 - Timeline ve Olay Akışı
 Adimlar:
@@ -437,7 +437,7 @@ Done kriteri:
 Adimlar:
 1. `(x)` Toplam ve yıllik maliyet hesaplari
 2. `(x)` Grafikler (Chart.js)
-3. `(x)` Donem filtresi
+3. `(x)` Dönem filtresi
 
 Done kriteri:
 - `(x)` Toplamlar servis log tablosuyla tutarli.
@@ -449,7 +449,7 @@ Adimlar:
 3. `(x)` jsPDF export
 
 Done kriteri:
-- `(x)` Uretilen PDF icin QA kontrol listesi gecer.
+- `(x)` Uretilen PDF için QA kontrol listesi gecer.
 
 ### 15.13 `(x)` Asama 12 - Mobil Optimizasyon ve PWA Hazirligi
 Adimlar:
@@ -470,25 +470,25 @@ Adimlar:
 5. `(x)` Release notes
 
 Done kriteri:
-- `(x)` Canliya çıkış oncesi checklist %100 tamam.
+- `(x)` Canliya çıkış öncesi checklist %100 tamam.
 
 ### 15.15 `(x)` Asama 14 - Premium UI Revamp (Landing + Panel)
 Adimlar:
 1. `(x)` Landing page premium gradyan tasarim
 2. `(x)` Ücretsiz (3 varlık) + Premium (149 TL sınırsız) plan kurgusu
-3. `(x)` Dashboard/menu icin ortak shell ve kart dili
+3. `(x)` Dashboard/menu için ortak shell ve kart dili
 4. `(x)` Diger operasyon sayfalarini ayni tasarima tasima
 5. `(x)` Mobil uyumlu menu gecisleri
 
 Done kriteri:
 - `(x)` Landing ve panel sayfalari tek tasarim sistemiyle tutarli calisir.
 
-### 15.16 `(x)` Asama 15 - QR/Barkod ile Varlık Erisimi
+### 15.16 `(x)` Asama 15 - QR/Barkod ile Varlık Erişimi
 Adimlar:
 1. `(x)` Varlık listesinde QR tarama butonu
 2. `(x)` Mobil cihaz kamerasi ile QR/barkod tarama modalı
 3. `(x)` Taranan kod ile varlık detay sayfasina yonlendirme
-4. `(x)` Supabase `assets` tablosuna benzersiz `qr_code` alani ekleme
+4. `(x)` Supabase `assets` tablosuna benzersiz `qr_code` alanı ekleme
 5. `(x)` QR koda göre varlık sorgulama ve detay acilisi
 
 Done kriteri:
@@ -509,7 +509,7 @@ Done kriteri:
 Adımlar:
 1. `( )` Kritik akışlar için Playwright E2E otomasyon testleri
 2. `( )` `supabase/tests/rls_negative_tests.sql` senaryosunu CI pipeline'a bağlama
-3. `( )` Gerçek cihazlarda PWA kurulum + offline/online geri dönüş test turu
+3. `( )` Gerçek cihazlarda PWA kurulum + offline/online geri dönüş test türü
 4. `( )` Uygulama hata izleme (Sentry veya eşdeğer) + alarm kuralları
 5. `( )` Veritabanı yedek/geri-dönüş tatbikatı ve raporlama
 
@@ -520,7 +520,7 @@ Done kriteri:
 - Unit: tarih hesaplama, maliyet toplamlari
 - Integration: auth + CRUD + RLS
 - E2E: kayıt -> varlık -> kural -> servis -> belge -> rapor
-- UAT: 5 kullanici ile gercek senaryo doğrulama
+- UAT: 5 kullanıcı ile gercek senaryo doğrulama
 
 ## 17. Riskler ve Azaltma Plani
 - Reminder app ile karisma
@@ -530,13 +530,14 @@ Done kriteri:
 - Dusuk aktivasyon
   Azaltma: onboarding'i 3 adimda sinirla, ornek veri secenegi ekle.
 
-## 18. Acik Sorular
-- Ilk surumde coklu para birimi gerekli mi? (onerilen: hayir)
+## 18. Açık Sorular
+- Ilk surumde çoklu para birimi gerekli mi? (onerilen: hayir)
 
 ## 19. Çıkış Kriterleri (MVP Launch Gate)
 - Auth + CRUD + Bakım motoru + Servis + Belge + Dashboard + PDF calisir.
 - RLS ve storage policy testleri gecer.
 - Kritik hatalar (P0/P1) kapatilir.
 - KPI ölçüm eventleri canliya alinmis olur.
+
 
 

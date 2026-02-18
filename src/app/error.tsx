@@ -25,11 +25,11 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
     <AppShell
       badge="Hata"
       title="Bir seyler ters gitti"
-      subtitle="Islem gecici olarak tamamlanamadi. Guvenli bir sekilde devam etmek icin asagidaki adimlari kullanin."
+      subtitle="İşlem geçici olarak tamamlanamadı. Güvenli bir şekilde devam etmek için aşağıdaki adımları kullanın."
     >
       <section className="premium-card ui-pad">
         <p className="text-sm text-slate-200">
-          Beklenmeyen bir hata olustu. Sayfayi yeniden denemek genellikle problemi cozer.
+          Beklenmeyen bir hata oluştu. Sayfayi yeniden denemek genellikle problemi cozer.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <button
@@ -50,3 +50,4 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
     </AppShell>
   );
 }
+

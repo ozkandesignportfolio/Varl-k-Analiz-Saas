@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
 
 const allowedEntityTypes = ["assets", "maintenance_rules", "service_logs", "documents"] as const;
@@ -86,3 +86,4 @@ export async function GET(request: Request) {
 
   return NextResponse.json({ logs: data ?? [] }, { status: 200 });
 }
+

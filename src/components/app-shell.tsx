@@ -55,8 +55,8 @@ export function AppShell({ title, subtitle, children, actions, badge }: AppShell
       : `Belge depolama limiti: ${formatStorageBytes(planConfig.limits.maxDocumentStorageBytes)}`;
 
   const featureStatusText = planConfig.features.canUseAdvancedAnalytics
-    ? "Gelismis analitik ve PDF rapor aktif"
-    : "Temel erisim aktif. Pro ile gelismis analitik ve PDF rapor acilir";
+    ? "Gelişmiş analitik ve PDF rapor aktif"
+    : "Temel erişim aktif. Pro ile gelişmiş analitik ve PDF rapor acilir";
 
   return (
     <main className="relative min-h-screen overflow-x-hidden px-4 py-4 sm:px-6 lg:px-8">
@@ -165,4 +165,5 @@ export function AppShell({ title, subtitle, children, actions, badge }: AppShell
     </main>
   );
 }
+
 

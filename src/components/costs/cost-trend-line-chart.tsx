@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import type { ChartData, ChartOptions } from "chart.js";
 import { Line } from "react-chartjs-2";
@@ -76,3 +76,4 @@ export function CostTrendLineChart({ points }: CostTrendLineChartProps) {
 
   return <Line data={data} options={options} />;
 }
+

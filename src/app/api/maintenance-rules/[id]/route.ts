@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { logApiError } from "@/lib/api/logging";
 import {
   deleteMaintenanceRule,
@@ -24,7 +24,7 @@ export async function GET(
   try {
     const ruleId = await getRuleId(context);
     if (!ruleId) {
-      return NextResponse.json({ error: "Kural kimligi zorunludur." }, { status: 400 });
+      return NextResponse.json({ error: "Kural kimliği zorunludur." }, { status: 400 });
     }
 
     const auth = await requireRouteUser(request);
@@ -48,7 +48,7 @@ export async function GET(
       error,
       message: "Maintenance rule detail request failed unexpectedly",
     });
-    return NextResponse.json({ error: "Bakim kurali okunamadi." }, { status: 500 });
+    return NextResponse.json({ error: "Bakım kuralı okunamadı." }, { status: 500 });
   }
 }
 
@@ -60,7 +60,7 @@ export async function PATCH(
   try {
     const ruleId = await getRuleId(context);
     if (!ruleId) {
-      return NextResponse.json({ error: "Kural kimligi zorunludur." }, { status: 400 });
+      return NextResponse.json({ error: "Kural kimliği zorunludur." }, { status: 400 });
     }
 
     const auth = await requireRouteUser(request);
@@ -72,7 +72,7 @@ export async function PATCH(
 
     const payload = await readBody(request);
     if (!payload) {
-      return NextResponse.json({ error: "Gecersiz istek govdesi." }, { status: 400 });
+      return NextResponse.json({ error: "Geçersiz istek gövdesi." }, { status: 400 });
     }
 
     const result = await updateMaintenanceRule(supabase, {
@@ -90,7 +90,7 @@ export async function PATCH(
       error,
       message: "Maintenance rule update request failed unexpectedly",
     });
-    return NextResponse.json({ error: "Bakim kurali guncellenemedi." }, { status: 500 });
+    return NextResponse.json({ error: "Bakım kuralı güncellenemedi." }, { status: 500 });
   }
 }
 
@@ -102,7 +102,7 @@ export async function DELETE(
   try {
     const ruleId = await getRuleId(context);
     if (!ruleId) {
-      return NextResponse.json({ error: "Kural kimligi zorunludur." }, { status: 400 });
+      return NextResponse.json({ error: "Kural kimliği zorunludur." }, { status: 400 });
     }
 
     const auth = await requireRouteUser(request);
@@ -126,7 +126,7 @@ export async function DELETE(
       error,
       message: "Maintenance rule delete request failed unexpectedly",
     });
-    return NextResponse.json({ error: "Bakim kurali silinemedi." }, { status: 500 });
+    return NextResponse.json({ error: "Bakım kuralı silinemedi." }, { status: 500 });
   }
 }
 

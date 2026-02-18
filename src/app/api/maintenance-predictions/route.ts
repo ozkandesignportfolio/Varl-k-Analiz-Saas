@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getUserPlanConfig } from "@/lib/plans/plan-config";
 import { listForDashboard as listRulesForDashboard } from "@/lib/repos/maintenance-rules-repo";
 import { listForPrediction as listServiceLogsForPrediction } from "@/lib/repos/service-logs-repo";
@@ -419,7 +419,7 @@ const buildPredictions = async (
   if (!userPlan.features.canUseAdvancedAnalytics) {
     return NextResponse.json(
       {
-        error: `${userPlan.label} planinda gelismis analitik tahminleri kapali. Pro plan ile aktif olur.`,
+        error: `${userPlan.label} planında gelişmiş analitik tahminleri kapali. Pro plan ile aktif olur.`,
       },
       { status: 403 },
     );
@@ -505,6 +505,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   return handle(request);
 }
+
 
 
 

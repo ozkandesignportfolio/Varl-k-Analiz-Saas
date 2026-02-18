@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
@@ -46,7 +46,7 @@ export default function DocumentsPage() {
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
-        setFeedback(userError?.message ?? "Oturum bulunamadi. Lutfen tekrar giris yapin.");
+        setFeedback(userError?.message ?? "Oturum bulunamadı. Lütfen tekrar giriş yapın.");
         setIsLoading(false);
         return;
       }
@@ -81,7 +81,7 @@ export default function DocumentsPage() {
 
   const onPreview = async (doc: DocumentRow) => {
     if (!canPreview(doc)) {
-      setFeedback("Bu dosya turu icin onizleme desteklenmiyor.");
+      setFeedback("Bu dosya türü için önizleme desteklenmiyor.");
       return;
     }
 
@@ -89,7 +89,7 @@ export default function DocumentsPage() {
     const { data, error } = await supabase.storage.from("documents-private").createSignedUrl(doc.storage_path, 60 * 5);
 
     if (error || !data?.signedUrl) {
-      setFeedback(error?.message ?? "Onizleme baglantisi olusturulamadi.");
+      setFeedback(error?.message ?? "Önizleme bağlantısı oluşturulamadı.");
       setPreviewingId(null);
       return;
     }
@@ -137,7 +137,7 @@ export default function DocumentsPage() {
       : `${formatStorageBytes(totalSize)} / ${formatStorageBytes(planConfig.limits.maxDocumentStorageBytes)}`;
 
   return (
-    <AppShell badge="Belge Kasasi" title="Belgeler" subtitle="Belge ozeti ve liste yalnizca veritabanindaki gercek kayitlari gosterir.">
+    <AppShell badge="Belge Kasası" title="Belgeler" subtitle="Belge özeti ve liste yalnızca veritabanındaki gerçek kayıtları gösterir.">
       {feedback ? (
         <p className="rounded-xl border border-rose-300/30 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">
           {feedback}
@@ -150,16 +150,16 @@ export default function DocumentsPage() {
 
       <section className="grid gap-3 md:grid-cols-3">
         <SummaryCard label="Toplam Belge" value={String(documents.length)} />
-        <SummaryCard label="Belge Turu" value={String(documentTypeCounts.length)} />
+        <SummaryCard label="Belge Türü" value={String(documentTypeCounts.length)} />
         <SummaryCard label="Toplam Boyut" value={`${sizeFormatter.format(totalSize)} bayt`} />
       </section>
 
       <section className="premium-card p-5">
-        <h2 className="text-xl font-semibold text-white">Belge Turu Dagilimi</h2>
+        <h2 className="text-xl font-semibold text-white">Belge Türü Dağılımi</h2>
         {isLoading ? (
-          <p className="mt-4 text-sm text-slate-300">Yukleniyor...</p>
+          <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
         ) : documentTypeCounts.length === 0 ? (
-          <p className="mt-4 text-sm text-slate-300">Henuz belge kaydi yok.</p>
+          <p className="mt-4 text-sm text-slate-300">Henüz belge kaydı yok.</p>
         ) : (
           <div className="mt-4 space-y-3">
             {documentTypeCounts.map((item) => {
@@ -187,17 +187,17 @@ export default function DocumentsPage() {
       <section className="premium-card p-5">
         <h2 className="text-xl font-semibold text-white">Belge Listesi</h2>
         {isLoading ? (
-          <p className="mt-4 text-sm text-slate-300">Yukleniyor...</p>
+          <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
         ) : documents.length === 0 ? (
-          <p className="mt-4 text-sm text-slate-300">Henuz belge bulunmuyor.</p>
+          <p className="mt-4 text-sm text-slate-300">Henüz belge bulunmuyor.</p>
         ) : (
           <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
             <table className="min-w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-white/10 bg-white/5 text-slate-300">
-                  <th className="px-3 py-2">Dosya Adi</th>
+                  <th className="px-3 py-2">Dosya Adı</th>
                   <th className="px-3 py-2">Tur</th>
-                  <th className="px-3 py-2">Varlik</th>
+                  <th className="px-3 py-2">Varlık</th>
                   <th className="px-3 py-2">Boyut</th>
                   <th className="px-3 py-2">Yukleme Tarihi</th>
                   <th className="px-3 py-2">Aksiyon</th>
@@ -250,4 +250,5 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
+
 

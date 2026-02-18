@@ -1,4 +1,4 @@
-import type { Metadata, Viewport } from "next";
+﻿import type { Metadata, Viewport } from "next";
 import { Manrope, Space_Mono } from "next/font/google";
 import { PwaRegister } from "@/components/pwa/register-sw";
 import "./globals.css";
@@ -53,3 +53,4 @@ export default function RootLayout({
     </html>
   );
 }
+

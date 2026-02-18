@@ -32,11 +32,11 @@ export function AssetListTable({
 }: AssetListTableProps) {
   return (
     <section className="premium-card p-5">
-      <h2 className="text-xl font-semibold text-white">Varlik Listesi</h2>
+      <h2 className="text-xl font-semibold text-white">Varlık Listesi</h2>
       {isLoading ? (
-        <p className="mt-4 text-sm text-slate-300">Yukleniyor...</p>
+        <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
       ) : assets.length === 0 ? (
-        emptyState ?? <p className="mt-4 text-sm text-slate-300">Henuz varlik eklenmedi.</p>
+        emptyState ?? <p className="mt-4 text-sm text-slate-300">Henüz varlık eklenmedi.</p>
       ) : (
         <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
           <table className="min-w-full text-left text-sm">
@@ -46,8 +46,8 @@ export function AssetListTable({
                 <th className="px-3 py-2">Kategori</th>
                 <th className="px-3 py-2">Marka / Model</th>
                 <th className="px-3 py-2">QR Kod</th>
-                <th className="px-3 py-2">Fotograf</th>
-                <th className="px-3 py-2">Islem</th>
+                <th className="px-3 py-2">Fotoğraf</th>
+                <th className="px-3 py-2">İşlem</th>
               </tr>
             </thead>
             <tbody>
@@ -92,3 +92,4 @@ export function AssetListTable({
     </section>
   );
 }
+

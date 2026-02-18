@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 
 type DashboardRecentActivityProps = {
   serviceLogCount: string;
@@ -49,3 +49,4 @@ function LinkItem({ href, label }: { href: string; label: string }) {
     </Link>
   );
 }
+

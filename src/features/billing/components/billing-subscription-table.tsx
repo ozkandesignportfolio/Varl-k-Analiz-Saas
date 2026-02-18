@@ -31,7 +31,7 @@ type BillingSubscriptionTableProps = {
 const statusLabelMap: Record<BillingSubscriptionStatus, string> = {
   active: "Aktif",
   paused: "Duraklatildi",
-  cancelled: "Iptal",
+  cancelled: "İptal",
 };
 
 export function BillingSubscriptionTable({
@@ -46,13 +46,13 @@ export function BillingSubscriptionTable({
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-xl font-semibold text-white">Abonelik Listesi</h2>
         <span className="rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-xs text-slate-300">
-          Acik Fatura: {unpaidInvoiceCount}
+          Açık Fatura: {unpaidInvoiceCount}
         </span>
       </div>
       {isLoading ? (
-        <p className="mt-4 text-sm text-slate-300">Yukleniyor...</p>
+        <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
       ) : subscriptions.length === 0 ? (
-        emptyState ?? <p className="mt-4 text-sm text-slate-300">Henuz abonelik kaydi yok.</p>
+        emptyState ?? <p className="mt-4 text-sm text-slate-300">Henüz abonelik kaydı yok.</p>
       ) : (
         <div className="mt-4 space-y-2">
           {subscriptions.map((subscription) => (
@@ -64,7 +64,7 @@ export function BillingSubscriptionTable({
                   </p>
                   <p className="mt-1 text-xs text-slate-400">
                     {subscription.plan_name ? `${subscription.plan_name} - ` : ""}
-                    {subscription.billing_cycle === "yearly" ? "Yillik" : "Aylik"} -{" "}
+                    {subscription.billing_cycle === "yearly" ? "Yıllık" : "Aylık"} -{" "}
                     {formatCurrency(Number(subscription.amount ?? 0))}
                   </p>
                 </div>
@@ -98,3 +98,4 @@ function StatusBadge({ status }: { status: BillingSubscriptionStatus }) {
     </span>
   );
 }
+

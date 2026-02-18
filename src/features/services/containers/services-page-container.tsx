@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
@@ -377,15 +377,15 @@ export function ServicesPageContainer() {
           !isLoading ? (
             assets.length === 0 ? (
               <GuidedEmptyState
-                title="Servis kaydi icin once varlik gerekli"
-                description="Yeni kullanicilar demo veri ile gelir. Eger liste bossa once varlik olusturup sonra servis kaydi ekleyebilirsin."
-                primaryAction={{ label: "Varliklara git", href: "/assets" }}
+                title="Servis kaydı için önce varlık gerekli"
+                description="Yeni kullanıcılar demo veri ile gelir. Eğer liste boşsa önce varlık oluşturup sonra servis kaydı ekleyebilirsin."
+                primaryAction={{ label: "Varlıklara git", href: "/assets" }}
                 secondaryAction={{ label: "Dashboard ac", href: "/dashboard" }}
               />
             ) : (
               <GuidedEmptyState
-                title="Ilk servis kaydini ekle"
-                description="Servis formunu doldurarak maliyet ve tarih takibini hemen baslat."
+                title="İlk servis kaydını ekle"
+                description="Servis formunu doldurarak maliyet ve tarih takibini hemen başlat."
                 primaryAction={{ label: "Servis formuna git", onClick: focusCreateServiceForm }}
               />
             )
@@ -412,4 +412,5 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
+
 

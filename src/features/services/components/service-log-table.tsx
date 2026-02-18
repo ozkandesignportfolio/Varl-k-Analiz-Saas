@@ -1,4 +1,4 @@
-﻿import type { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { ServiceDeleteDialog } from "./service-delete-dialog";
 
 export type ServiceLogTableRow = {
@@ -38,21 +38,21 @@ export function ServiceLogTable({
     <section className="premium-card p-5">
       <h2 className="text-xl font-semibold text-white">Servis Gecmisi</h2>
       {isLoading ? (
-        <p className="mt-4 text-sm text-slate-300">Yukleniyor...</p>
+        <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
       ) : logs.length === 0 ? (
-        emptyState ?? <p className="mt-4 text-sm text-slate-300">Henuz servis kaydi yok.</p>
+        emptyState ?? <p className="mt-4 text-sm text-slate-300">Henüz servis kaydı yok.</p>
       ) : (
         <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
           <table className="min-w-full text-left text-sm">
             <thead>
               <tr className="border-b border-white/10 bg-white/5 text-slate-300">
                 <th className="px-3 py-2">Tarih</th>
-                <th className="px-3 py-2">Varlik</th>
+                <th className="px-3 py-2">Varlık</th>
                 <th className="px-3 py-2">Kural</th>
                 <th className="px-3 py-2">Tur</th>
                 <th className="px-3 py-2">Maliyet</th>
-                <th className="px-3 py-2">Saglayici</th>
-                {hasActions ? <th className="px-3 py-2">Islem</th> : null}
+                <th className="px-3 py-2">Sağlayıcı</th>
+                {hasActions ? <th className="px-3 py-2">İşlem</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -61,7 +61,7 @@ export function ServiceLogTable({
                   <td className="px-3 py-3">{log.service_date}</td>
                   <td className="px-3 py-3">{assetNameById.get(log.asset_id) ?? "-"}</td>
                   <td className="px-3 py-3">
-                    {log.rule_id ? (ruleNameById.get(log.rule_id) ?? "Bagli kural") : "-"}
+                    {log.rule_id ? (ruleNameById.get(log.rule_id) ?? "Bağlı kural") : "-"}
                   </td>
                   <td className="px-3 py-3">{log.service_type}</td>
                   <td className="px-3 py-3">{Number(log.cost).toFixed(2)} TL</td>
@@ -98,3 +98,4 @@ export function ServiceLogTable({
     </section>
   );
 }
+

@@ -1,4 +1,4 @@
-import type { IntervalUnit } from "@/lib/maintenance/next-due";
+﻿import type { IntervalUnit } from "@/lib/maintenance/next-due";
 import { MaintenanceToggleDialog } from "./maintenance-toggle-dialog";
 
 export type MaintenanceRuleRow = {
@@ -52,7 +52,7 @@ export function MaintenanceRulesTable({
                 <th className="px-3 py-2">Son Servis</th>
                 <th className="px-3 py-2">Sonraki Bakım</th>
                 <th className="px-3 py-2">Durum</th>
-                <th className="px-3 py-2">Islem</th>
+                <th className="px-3 py-2">İşlem</th>
               </tr>
             </thead>
             <tbody>
@@ -99,3 +99,4 @@ export function MaintenanceRulesTable({
     </section>
   );
 }
+

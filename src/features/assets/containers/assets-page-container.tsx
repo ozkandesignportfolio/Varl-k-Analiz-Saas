@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
@@ -532,9 +532,9 @@ export function AssetsPageContainer() {
         emptyState={
           !isLoading ? (
             <GuidedEmptyState
-              title="Ilk varligini ekleyerek basla"
-              description="Yeni hesaplarda demo kayitlar otomatik gelir. Kendi envanterinle devam etmek icin yeni bir varlik olustur."
-              primaryAction={{ label: "Varlik formuna git", onClick: focusCreateAssetForm }}
+              title="İlk varlığını ekleyerek başla"
+              description="Yeni hesaplarda demo kayıtlar otomatik gelir. Kendi envanterinle devam etmek için yeni bir varlık oluştur."
+              primaryAction={{ label: "Varlık formuna git", onClick: focusCreateAssetForm }}
               secondaryAction={{ label: "Ornek verileri gor", href: "/dashboard" }}
             />
           ) : undefined
@@ -561,4 +561,5 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
+
 

@@ -138,7 +138,7 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
           </label>
 
           <label className="block">
-            <span className="mb-1.5 block text-sm text-slate-300">Fotograf (Opsiyonel)</span>
+            <span className="mb-1.5 block text-sm text-slate-300">Fotoğraf (Opsiyonel)</span>
             <input
               name="photo"
               type="file"
@@ -294,7 +294,7 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
         </label>
 
         <label className="block">
-          <span className="mb-1.5 block text-sm text-slate-300">Fotograf (Opsiyonel)</span>
+          <span className="mb-1.5 block text-sm text-slate-300">Fotoğraf (Opsiyonel)</span>
           <input
             name="photo"
             type="file"

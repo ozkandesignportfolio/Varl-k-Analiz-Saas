@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 
 export default function CookiePolicyPage() {
   return (
@@ -51,4 +51,5 @@ export default function CookiePolicyPage() {
     </main>
   );
 }
+
 

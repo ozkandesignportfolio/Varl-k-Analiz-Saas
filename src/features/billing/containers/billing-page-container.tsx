@@ -295,13 +295,13 @@ export function BillingPageContainer() {
     const notes = toOptionalText(formData.get("notes"));
 
     if (!providerName || !subscriptionName) {
-      setFeedback("SaÄŸlayÄ±cÄ± ve abonelik adÄ± zorunludur.");
+      setFeedback("Sağlayıcı ve abonelik adı zorunludur.");
       setIsSavingSubscription(false);
       return;
     }
 
     if (Number.isNaN(amount) || amount < 0) {
-      setFeedback("Abonelik tutarÄ± geÃ§ersiz.");
+      setFeedback("Abonelik tutarı geçersiz.");
       setIsSavingSubscription(false);
       return;
     }
@@ -329,7 +329,7 @@ export function BillingPageContainer() {
       | null;
 
     if (!createResponse.ok || !createPayload?.id) {
-      setFeedback(createPayload?.error ?? "Abonelik kaydi olusturulamadi.");
+      setFeedback(createPayload?.error ?? "Abonelik kaydı oluşturulamadı.");
       setIsSavingSubscription(false);
       return;
     }
@@ -338,8 +338,8 @@ export function BillingPageContainer() {
     setSelectedSubscriptionId(createPayload.id);
     setFeedback(
       createPayload.warning
-        ? `Abonelik basariyla eklendi. ${createPayload.warning}`
-        : "Abonelik basariyla eklendi.",
+        ? `Abonelik başarıyla eklendi. ${createPayload.warning}`
+        : "Abonelik başarıyla eklendi.",
     );
     await fetchBillingData(userId);
     setIsSavingSubscription(false);
@@ -408,7 +408,7 @@ export function BillingPageContainer() {
       | null;
 
     if (!createResponse.ok || !createPayload?.id) {
-      const errorMessage = createPayload?.error ?? "Fatura kaydi olusturulamadi.";
+      const errorMessage = createPayload?.error ?? "Fatura kaydı oluşturulamadı.";
       if (isMissingTableError(errorMessage, "billing_invoices")) {
         setInvoiceModuleReady(false);
         setFeedback(billingSetupHint);
@@ -422,8 +422,8 @@ export function BillingPageContainer() {
     form.reset();
     setFeedback(
       createPayload.warning
-        ? `Fatura basariyla eklendi. ${createPayload.warning}`
-        : "Fatura basariyla eklendi.",
+        ? `Fatura başarıyla eklendi. ${createPayload.warning}`
+        : "Fatura başarıyla eklendi.",
     );
     await fetchBillingData(userId);
     setIsSavingInvoice(false);
@@ -496,15 +496,15 @@ export function BillingPageContainer() {
           emptyState={
             !isLoading ? (
               <GuidedEmptyState
-                title="Ilk aboneligi ekle"
-                description="Onboarding adimi olarak once bir abonelik kaydi olustur. Sonra bu abonelige fatura baglayabilirsin."
+                title="İlk aboneliği ekle"
+                description="Onboarding adimi olarak önce bir abonelik kaydı oluştur. Sonra bu abonelige fatura baglayabilirsin."
                 primaryAction={{
                   label: "Abonelik formuna git",
                   onClick: focusCreateSubscriptionForm,
                 }}
                 secondaryAction={
                   maintenanceRules.length > 0
-                    ? { label: "Bakim kurallarina git", href: "/maintenance" }
+                    ? { label: "Bakım kurallarına git", href: "/maintenance" }
                     : undefined
                 }
               />
@@ -537,17 +537,17 @@ export function BillingPageContainer() {
             !isLoading && invoiceModuleReady ? (
               subscriptions.length === 0 ? (
                 <GuidedEmptyState
-                  title="Fatura icin once abonelik eklenmeli"
-                  description="Sistemde abonelik olmadigi icin fatura olusturulamaz. Once bir abonelik kaydi olustur."
+                  title="Fatura için önce abonelik eklenmeli"
+                  description="Sistemde abonelik olmadığı için fatura oluşturulamaz. Önce bir abonelik kaydı oluştur."
                   primaryAction={{
-                    label: "Abonelik olustur",
+                    label: "Abonelik oluştur",
                     onClick: focusCreateSubscriptionForm,
                   }}
                 />
               ) : (
                 <GuidedEmptyState
-                  title="Ilk faturani kaydet"
-                  description="Abonelikler olustu. Simdi ilk fatura kaydini ekleyerek odeme takibini baslat."
+                  title="İlk faturanı kaydet"
+                  description="Abonelikler oluştu. Şimdi ilk fatura kaydını ekleyerek ödeme takibini başlat."
                   primaryAction={{ label: "Fatura formuna git", onClick: focusCreateInvoiceForm }}
                 />
               )
@@ -567,4 +567,5 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
+
 

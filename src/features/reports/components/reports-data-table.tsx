@@ -1,4 +1,4 @@
-export type ReportsServiceRow = {
+﻿export type ReportsServiceRow = {
   id: string;
   asset_id: string;
   service_date: string;
@@ -153,3 +153,4 @@ export function ReportsDataTable({
     </>
   );
 }
+

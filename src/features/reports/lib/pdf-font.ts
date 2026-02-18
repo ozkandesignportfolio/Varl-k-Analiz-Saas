@@ -1,4 +1,4 @@
-import type { jsPDF } from "jspdf";
+﻿import type { jsPDF } from "jspdf";
 
 const PDF_FONT_FILE = "NotoSans-Variable.ttf";
 const PDF_FONT_FAMILY = "NotoSansUnicode";
@@ -49,3 +49,4 @@ export const ensurePdfUnicodeFont = async (doc: jsPDF) => {
 
   doc.setFont(PDF_FONT_FAMILY, "normal");
 };
+

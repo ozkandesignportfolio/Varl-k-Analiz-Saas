@@ -1,4 +1,4 @@
-type ReportsFilterPanelProps = {
+﻿type ReportsFilterPanelProps = {
   startDate: string;
   endDate: string;
   onStartDateChange: (value: string) => void;
@@ -69,3 +69,4 @@ function SchemaItem({
     </article>
   );
 }
+

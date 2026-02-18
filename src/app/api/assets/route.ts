@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { logApiError, logAuditEvent } from "@/lib/api/logging";
 import { countByUser as countAssetsByUser } from "@/lib/repos/assets-repo";
 import { getUserPlanConfig } from "@/lib/plans/plan-config";
@@ -120,7 +120,7 @@ export async function POST(request: Request) {
 
     const payload = await readBody<CreateAssetPayload>(request);
     if (!payload) {
-      return NextResponse.json({ error: "Gecersiz istek govdesi." }, { status: 400 });
+      return NextResponse.json({ error: "Geçersiz istek gövdesi." }, { status: 400 });
     }
 
     const nameResult = readRequiredText(payload.name, MAX_NAME_LENGTH);
@@ -138,7 +138,7 @@ export async function POST(request: Request) {
       purchaseDateResult.invalidType ||
       warrantyEndDateResult.invalidType
     ) {
-      return NextResponse.json({ error: "Istek alani tipleri gecersiz." }, { status: 400 });
+      return NextResponse.json({ error: "İstek alanı tipleri geçersiz." }, { status: 400 });
     }
 
     if (
@@ -149,7 +149,7 @@ export async function POST(request: Request) {
       purchaseDateResult.tooLong ||
       warrantyEndDateResult.tooLong
     ) {
-      return NextResponse.json({ error: "Metin alanlarindan biri cok uzun." }, { status: 400 });
+      return NextResponse.json({ error: "Metin alanlarindan biri çok uzun." }, { status: 400 });
     }
 
     const purchaseDate = purchaseDateResult.value;
@@ -158,11 +158,11 @@ export async function POST(request: Request) {
     const purchaseDateParsed = purchaseDate ? parseDateOnly(purchaseDate) : null;
     const warrantyEndDateParsed = warrantyEndDate ? parseDateOnly(warrantyEndDate) : null;
     if ((purchaseDate && !purchaseDateParsed) || (warrantyEndDate && !warrantyEndDateParsed)) {
-      return NextResponse.json({ error: "Tarih alani gecersiz." }, { status: 400 });
+      return NextResponse.json({ error: "Tarih alanı geçersiz." }, { status: 400 });
     }
 
     if (purchaseDateParsed && warrantyEndDateParsed && warrantyEndDateParsed < purchaseDateParsed) {
-      return NextResponse.json({ error: "Garanti bitis tarihi satin alma tarihinden once olamaz." }, { status: 400 });
+      return NextResponse.json({ error: "Garanti bitiş tarihi satın alma tarihinden önce olamaz." }, { status: 400 });
     }
 
     const userPlan = getUserPlanConfig(auth.user);
@@ -179,7 +179,7 @@ export async function POST(request: Request) {
       if ((currentAssetCount ?? 0) >= maxAssets) {
         return NextResponse.json(
           {
-            error: `${userPlan.label} planinda en fazla ${maxAssets} varlik olusturabilirsiniz.`,
+            error: `${userPlan.label} planında en fazla ${maxAssets} varlık oluşturabilirsiniz.`,
           },
           { status: 403 },
         );
@@ -201,7 +201,7 @@ export async function POST(request: Request) {
       .single();
 
     if (error || !data?.id) {
-      return NextResponse.json({ error: error?.message ?? "Varlik olusturulamadi." }, { status: 400 });
+      return NextResponse.json({ error: error?.message ?? "Varlık oluşturulamadı." }, { status: 400 });
     }
 
     logAuditEvent({
@@ -221,7 +221,7 @@ export async function POST(request: Request) {
       error,
       message: "Asset create request failed unexpectedly",
     });
-    return NextResponse.json({ error: "Varlik istegi islenemedi." }, { status: 500 });
+    return NextResponse.json({ error: "Varlık isteği işlenemedi." }, { status: 500 });
   }
 }
 
@@ -236,12 +236,12 @@ export async function PATCH(request: Request) {
 
     const payload = await readBody<UpdateAssetPayload>(request);
     if (!payload) {
-      return NextResponse.json({ error: "Gecersiz istek govdesi." }, { status: 400 });
+      return NextResponse.json({ error: "Geçersiz istek gövdesi." }, { status: 400 });
     }
 
     const assetId = normalizeUuid(payload.id);
     if (!assetId) {
-      return NextResponse.json({ error: "Varlik kimligi gecersiz." }, { status: 400 });
+      return NextResponse.json({ error: "Varlık kimliği geçersiz." }, { status: 400 });
     }
 
     const hasName = payload.name !== undefined;
@@ -253,7 +253,7 @@ export async function PATCH(request: Request) {
     const hasPhotoPath = payload.photoPath !== undefined;
 
     if (!hasName && !hasCategory && !hasBrand && !hasModel && !hasPurchaseDate && !hasWarrantyEndDate && !hasPhotoPath) {
-      return NextResponse.json({ error: "Guncellenecek alan bulunamadi." }, { status: 400 });
+      return NextResponse.json({ error: "Güncellenecek alan bulunamadı." }, { status: 400 });
     }
 
     const patch: Record<string, string | null> = {};
@@ -261,7 +261,7 @@ export async function PATCH(request: Request) {
     if (hasName) {
       const nameResult = readRequiredText(payload.name, MAX_NAME_LENGTH);
       if (nameResult.invalidType || nameResult.missing || nameResult.tooLong) {
-        return NextResponse.json({ error: "Varlik adi gecersiz." }, { status: 400 });
+        return NextResponse.json({ error: "Varlık adı geçersiz." }, { status: 400 });
       }
       patch.name = nameResult.value;
     }
@@ -269,7 +269,7 @@ export async function PATCH(request: Request) {
     if (hasCategory) {
       const categoryResult = readRequiredText(payload.category, MAX_CATEGORY_LENGTH);
       if (categoryResult.invalidType || categoryResult.missing || categoryResult.tooLong) {
-        return NextResponse.json({ error: "Kategori gecersiz." }, { status: 400 });
+        return NextResponse.json({ error: "Kategori geçersiz." }, { status: 400 });
       }
       patch.category = categoryResult.value;
     }
@@ -277,7 +277,7 @@ export async function PATCH(request: Request) {
     if (hasBrand) {
       const brandResult = readOptionalText(payload.brand, MAX_BRAND_LENGTH);
       if (brandResult.invalidType || brandResult.tooLong) {
-        return NextResponse.json({ error: "Marka alani gecersiz." }, { status: 400 });
+        return NextResponse.json({ error: "Marka alanı geçersiz." }, { status: 400 });
       }
       patch.brand = brandResult.value;
     }
@@ -285,7 +285,7 @@ export async function PATCH(request: Request) {
     if (hasModel) {
       const modelResult = readOptionalText(payload.model, MAX_MODEL_LENGTH);
       if (modelResult.invalidType || modelResult.tooLong) {
-        return NextResponse.json({ error: "Model alani gecersiz." }, { status: 400 });
+        return NextResponse.json({ error: "Model alanı geçersiz." }, { status: 400 });
       }
       patch.model = modelResult.value;
     }
@@ -293,11 +293,11 @@ export async function PATCH(request: Request) {
     if (hasPurchaseDate) {
       const purchaseDateResult = readOptionalText(payload.purchaseDate, 10);
       if (purchaseDateResult.invalidType || purchaseDateResult.tooLong) {
-        return NextResponse.json({ error: "Satin alma tarihi gecersiz." }, { status: 400 });
+        return NextResponse.json({ error: "Satın alma tarihi geçersiz." }, { status: 400 });
       }
       const purchaseDateParsed = purchaseDateResult.value ? parseDateOnly(purchaseDateResult.value) : null;
       if (purchaseDateResult.value && !purchaseDateParsed) {
-        return NextResponse.json({ error: "Satin alma tarihi gecersiz." }, { status: 400 });
+        return NextResponse.json({ error: "Satın alma tarihi geçersiz." }, { status: 400 });
       }
       patch.purchase_date = purchaseDateParsed;
     }
@@ -305,11 +305,11 @@ export async function PATCH(request: Request) {
     if (hasWarrantyEndDate) {
       const warrantyEndDateResult = readOptionalText(payload.warrantyEndDate, 10);
       if (warrantyEndDateResult.invalidType || warrantyEndDateResult.tooLong) {
-        return NextResponse.json({ error: "Garanti bitis tarihi gecersiz." }, { status: 400 });
+        return NextResponse.json({ error: "Garanti bitiş tarihi geçersiz." }, { status: 400 });
       }
       const warrantyEndDateParsed = warrantyEndDateResult.value ? parseDateOnly(warrantyEndDateResult.value) : null;
       if (warrantyEndDateResult.value && !warrantyEndDateParsed) {
-        return NextResponse.json({ error: "Garanti bitis tarihi gecersiz." }, { status: 400 });
+        return NextResponse.json({ error: "Garanti bitiş tarihi geçersiz." }, { status: 400 });
       }
       patch.warranty_end_date = warrantyEndDateParsed;
     }
@@ -317,7 +317,7 @@ export async function PATCH(request: Request) {
     if (hasPhotoPath) {
       const photoPathResult = readOptionalText(payload.photoPath, MAX_PHOTO_PATH_LENGTH);
       if (photoPathResult.invalidType || photoPathResult.tooLong) {
-        return NextResponse.json({ error: "Fotograf yolu gecersiz." }, { status: 400 });
+        return NextResponse.json({ error: "Fotoğraf yolu geçersiz." }, { status: 400 });
       }
       patch.photo_path = photoPathResult.value;
     }
@@ -334,13 +334,13 @@ export async function PATCH(request: Request) {
     }
 
     if (!existingAsset?.id) {
-      return NextResponse.json({ error: "Varlik bulunamadi." }, { status: 404 });
+      return NextResponse.json({ error: "Varlık bulunamadı." }, { status: 404 });
     }
 
     const nextPurchaseDate = (patch.purchase_date ?? existingAsset.purchase_date) || null;
     const nextWarrantyEndDate = (patch.warranty_end_date ?? existingAsset.warranty_end_date) || null;
     if (nextPurchaseDate && nextWarrantyEndDate && nextWarrantyEndDate < nextPurchaseDate) {
-      return NextResponse.json({ error: "Garanti bitis tarihi satin alma tarihinden once olamaz." }, { status: 400 });
+      return NextResponse.json({ error: "Garanti bitiş tarihi satın alma tarihinden önce olamaz." }, { status: 400 });
     }
 
     const { error, data } = await auth.supabase
@@ -356,7 +356,7 @@ export async function PATCH(request: Request) {
     }
 
     if (!data?.id) {
-      return NextResponse.json({ error: "Varlik bulunamadi." }, { status: 404 });
+      return NextResponse.json({ error: "Varlık bulunamadı." }, { status: 404 });
     }
 
     logAuditEvent({
@@ -377,7 +377,7 @@ export async function PATCH(request: Request) {
       error,
       message: "Asset update request failed unexpectedly",
     });
-    return NextResponse.json({ error: "Varlik guncelleme istegi islenemedi." }, { status: 500 });
+    return NextResponse.json({ error: "Varlık güncelleme isteği işlenemedi." }, { status: 500 });
   }
 }
 
@@ -392,12 +392,12 @@ export async function DELETE(request: Request) {
 
     const payload = await readBody<DeleteAssetPayload>(request);
     if (!payload) {
-      return NextResponse.json({ error: "Gecersiz istek govdesi." }, { status: 400 });
+      return NextResponse.json({ error: "Geçersiz istek gövdesi." }, { status: 400 });
     }
 
     const assetId = normalizeUuid(payload.id);
     if (!assetId) {
-      return NextResponse.json({ error: "Varlik kimligi gecersiz." }, { status: 400 });
+      return NextResponse.json({ error: "Varlık kimliği geçersiz." }, { status: 400 });
     }
 
     const { error, data } = await auth.supabase
@@ -413,7 +413,7 @@ export async function DELETE(request: Request) {
     }
 
     if (!data?.id) {
-      return NextResponse.json({ error: "Varlik bulunamadi." }, { status: 404 });
+      return NextResponse.json({ error: "Varlık bulunamadı." }, { status: 404 });
     }
 
     logAuditEvent({
@@ -433,7 +433,8 @@ export async function DELETE(request: Request) {
       error,
       message: "Asset delete request failed unexpectedly",
     });
-    return NextResponse.json({ error: "Varlik silme istegi islenemedi." }, { status: 500 });
+    return NextResponse.json({ error: "Varlık silme isteği işlenemedi." }, { status: 500 });
   }
 }
+
 

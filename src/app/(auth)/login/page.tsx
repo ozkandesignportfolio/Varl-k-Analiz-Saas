@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -55,7 +55,7 @@ export default function LoginPage() {
 
       if (error) {
         if (isEmailRateLimitError(error)) {
-          setMessage("E-posta limiti asildi. Lutfen kisa bir sure sonra tekrar deneyin.");
+          setMessage("E-posta limiti aşıldı. Lütfen kısa bir süre sonra tekrar deneyin.");
           return;
         }
 
@@ -72,18 +72,18 @@ export default function LoginPage() {
             }
           }
 
-          setMessage("E-posta adresiniz henuz onaylanmamis. Lutfen e-postanizi onaylayip tekrar deneyin.");
+          setMessage("E-posta adresiniz henüz onaylanmamis. Lütfen e-postanizi onaylayip tekrar deneyin.");
           return;
         }
 
-        setMessage(error.message || "Giris yapilamadi. Lutfen tekrar deneyin.");
+        setMessage(error.message || "Giriş yapilamadi. Lütfen tekrar deneyin.");
         return;
       }
 
       router.push(nextPath);
       router.refresh();
     } catch {
-      setMessage("Giris sirasinda beklenmeyen bir hata olustu. Lutfen tekrar deneyin.");
+      setMessage("Giriş sirasinda beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.");
     } finally {
       setIsSubmitting(false);
     }
@@ -156,4 +156,5 @@ export default function LoginPage() {
     </main>
   );
 }
+
 

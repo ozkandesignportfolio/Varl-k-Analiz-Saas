@@ -1,7 +1,7 @@
-# Supabase Baglantisi
+# Supabase Bağlantısı
 
 ## 1) Environment dosyasi
-`.env.local` olusturup asagidaki alanlari doldurun:
+`.env.local` oluşturup aşağıdaki alanları doldurun:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
@@ -22,14 +22,15 @@ Ardindan audit log tablosu ve trigger migrationini calistirin:
 `supabase/migrations/20260216124500_audit_logs.sql`
 
 ## 4) Private bucket
-- Bucket adi: `documents-private`
+- Bucket adı: `documents-private`
 - Dosya path: `<user_id>/<asset_id>/<filename>`
 
 ## 5) Landing abonelik API
 - Endpoint: `POST /api/subscription-request`
 - Bu endpoint `SUPABASE_SERVICE_ROLE_KEY` kullanarak
-  `subscription_requests` tablosuna talep kaydi acar.
+  `subscription_requests` tablosuna talep kaydı acar.
 
 ## 6) Otomasyon (trigger + action)
 - SQL migration: `supabase/migrations/20260216130000_automation_events.sql`
 - Kurulum ve schedule notlari: `docs/setup/supabase-automation.md`
+

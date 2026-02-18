@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { AssetPerformanceComparisonChart } from "@/components/kpi/asset-performance-comparison-chart";
 import {
@@ -176,3 +176,4 @@ function PriorityChip({
     </div>
   );
 }
+
