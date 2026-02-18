@@ -13,6 +13,7 @@ import { DashboardKpiSection } from "@/features/dashboard/components/dashboard-k
 import { DashboardRecentActivity } from "@/features/dashboard/components/dashboard-recent-activity";
 import { DashboardRiskCards, type DashboardPredictionItem } from "@/features/dashboard/components/dashboard-risk-cards";
 import { useDashboardMetrics } from "@/features/dashboard/hooks/use-dashboard-metrics";
+import { safeExpensesReadQuery, type ExpensesTableWarning } from "@/features/expenses/lib/expenses-query-guard";
 import { getPlanConfig, getUserPlanConfig, type PlanConfig } from "@/lib/plans/plan-config";
 import { countByUser as countDocumentsByUser } from "@/lib/repos/documents-repo";
 import { listForDashboard as listRulesForDashboard } from "@/lib/repos/maintenance-rules-repo";
@@ -94,6 +95,7 @@ export function DashboardPageContainer() {
   const [documentCount, setDocumentCount] = useState(0);
   const [subscriptions, setSubscriptions] = useState<SubscriptionRow[]>([]);
   const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
+  const [expenseTableWarning, setExpenseTableWarning] = useState<ExpensesTableWarning | null>(null);
 
   const [predictions, setPredictions] = useState<PredictionItem[]>([]);
   const [predictionMeta, setPredictionMeta] = useState<{
@@ -115,6 +117,7 @@ export function DashboardPageContainer() {
     setDocumentCount(0);
     setSubscriptions([]);
     setExpenses([]);
+    setExpenseTableWarning(null);
     setPredictions([]);
     setPredictionMeta(null);
     setPredictionError("");
@@ -126,6 +129,7 @@ export function DashboardPageContainer() {
       setIsLoading(true);
       setFeedback("");
       setPredictionError("");
+      setExpenseTableWarning(null);
 
       const {
         data: { user },
@@ -198,13 +202,20 @@ export function DashboardPageContainer() {
           .lte("next_billing_date", thirtyDaysLaterDate)
           .order("next_billing_date", { ascending: true })
           .limit(12),
-        supabase
-          .from("expenses")
-          .select("id,amount,currency,expense_date")
-          .eq("user_id", user.id)
-          .gte("expense_date", currentMonthStartDate)
-          .lt("expense_date", nextMonthStartDate)
-          .order("expense_date", { ascending: false }),
+        (async () => {
+          const expensesQueryResult = await supabase
+            .from("expenses")
+            .select("id,amount,currency,expense_date")
+            .eq("user_id", user.id)
+            .gte("expense_date", currentMonthStartDate)
+            .lt("expense_date", nextMonthStartDate)
+            .order("expense_date", { ascending: false });
+
+          return safeExpensesReadQuery<ExpenseRow>(
+            Promise.resolve(expensesQueryResult),
+            "dashboard.finance.expenses",
+          );
+        })(),
       ]);
 
       const [[assetsRes, logsRes, logCountRes, rulesRes, docsRes], [subscriptionsRes, expensesRes], predictionRes] =
@@ -217,6 +228,7 @@ export function DashboardPageContainer() {
       if (docsRes.error) setFeedback(docsRes.error.message);
       if (subscriptionsRes.error) setFeedback(subscriptionsRes.error.message);
       if (expensesRes.error) setFeedback(expensesRes.error.message);
+      if (expensesRes.warning) setExpenseTableWarning(expensesRes.warning);
 
       setAssets((assetsRes.data ?? []) as AssetRow[]);
       setServiceLogs((logsRes.data ?? []) as ServiceLogRow[]);
@@ -224,7 +236,7 @@ export function DashboardPageContainer() {
       setRules((rulesRes.data ?? []) as RuleRow[]);
       setDocumentCount(docsRes.data ?? 0);
       setSubscriptions((subscriptionsRes.data ?? []) as SubscriptionRow[]);
-      setExpenses((expensesRes.data ?? []) as ExpenseRow[]);
+      setExpenses(expensesRes.data);
 
       if (canUseAdvancedAnalytics) {
         setPredictions((predictionRes.data?.items ?? []) as PredictionItem[]);
@@ -301,6 +313,12 @@ export function DashboardPageContainer() {
       {feedback ? (
         <p className="rounded-xl border border-rose-300/30 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">
           {feedback}
+        </p>
+      ) : null}
+
+      {expenseTableWarning ? (
+        <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
+          Gider tablosu su an erisilebilir degil. Gider widget verileri bos gosteriliyor. ({expenseTableWarning.code})
         </p>
       ) : null}
 

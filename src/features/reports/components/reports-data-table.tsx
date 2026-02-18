@@ -44,17 +44,17 @@ export function ReportsDataTable({
   return (
     <>
       <section className="premium-card p-5">
-        <h2 className="text-xl font-semibold text-white">VarlÄ±k BazlÄ± Ã–zet Tablosu</h2>
+        <h2 className="text-xl font-semibold text-white">Varlık Bazlı Özet Tablosu</h2>
         {isLoading ? (
-          <p className="mt-4 text-sm text-slate-300">YÃ¼kleniyor...</p>
+          <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
         ) : assetSummary.length === 0 ? (
-          <p className="mt-4 text-sm text-slate-300">SeÃ§ili aralÄ±kta kayÄ±t bulunmuyor.</p>
+          <p className="mt-4 text-sm text-slate-300">Seçili aralıkta kayıt bulunmuyor.</p>
         ) : (
           <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
             <table className="min-w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-white/10 bg-white/5 text-slate-300">
-                  <th className="px-3 py-2">VarlÄ±k</th>
+                  <th className="px-3 py-2">Varlık</th>
                   <th className="px-3 py-2">Servis</th>
                   <th className="px-3 py-2">Belge</th>
                   <th className="px-3 py-2">Toplam Maliyet</th>
@@ -85,17 +85,17 @@ export function ReportsDataTable({
         <article className="premium-card p-5">
           <h2 className="text-xl font-semibold text-white">Servis Detay Tablosu</h2>
           {isLoading ? (
-            <p className="mt-4 text-sm text-slate-300">YÃ¼kleniyor...</p>
+            <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
           ) : servicesInRange.length === 0 ? (
-            <p className="mt-4 text-sm text-slate-300">SeÃ§ili aralÄ±kta servis kaydÄ± bulunmuyor.</p>
+            <p className="mt-4 text-sm text-slate-300">Seçili aralıkta servis kaydı bulunmuyor.</p>
           ) : (
             <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
               <table className="min-w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-white/10 bg-white/5 text-slate-300">
                     <th className="px-3 py-2">Tarih</th>
-                    <th className="px-3 py-2">VarlÄ±k</th>
-                    <th className="px-3 py-2">TÃ¼r</th>
+                    <th className="px-3 py-2">Varlık</th>
+                    <th className="px-3 py-2">Tür</th>
                     <th className="px-3 py-2">Maliyet</th>
                   </tr>
                 </thead>
@@ -123,16 +123,16 @@ export function ReportsDataTable({
         <article className="premium-card p-5">
           <h2 className="text-xl font-semibold text-white">Belge Detay Tablosu</h2>
           {isLoading ? (
-            <p className="mt-4 text-sm text-slate-300">YÃ¼kleniyor...</p>
+            <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
           ) : documentsInRange.length === 0 ? (
-            <p className="mt-4 text-sm text-slate-300">SeÃ§ili aralÄ±kta belge kaydÄ± bulunmuyor.</p>
+            <p className="mt-4 text-sm text-slate-300">Seçili aralıkta belge kaydı bulunmuyor.</p>
           ) : (
             <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
               <table className="min-w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-white/10 bg-white/5 text-slate-300">
-                    <th className="px-3 py-2">YÃ¼kleme</th>
-                    <th className="px-3 py-2">VarlÄ±k</th>
+                    <th className="px-3 py-2">Yükleme</th>
+                    <th className="px-3 py-2">Varlık</th>
                     <th className="px-3 py-2">Dosya</th>
                   </tr>
                 </thead>

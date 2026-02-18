@@ -17,8 +17,8 @@ export function ReportsSummaryCards({
 }: ReportsSummaryCardsProps) {
   return (
     <section className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-      <SummaryCard label="Toplam VarlÄ±k" value={totalAssetCount} />
-      <SummaryCard label="Aktif VarlÄ±k" value={activeAssetCount} />
+      <SummaryCard label="Toplam Varlık" value={totalAssetCount} />
+      <SummaryCard label="Aktif Varlık" value={activeAssetCount} />
       <SummaryCard label="Servis Adedi" value={serviceCount} />
       <SummaryCard label="Belge Adedi" value={documentCount} />
       <SummaryCard label="Toplam Maliyet" value={totalCost} />

@@ -18,7 +18,7 @@ export function ReportsExportButtons({
       disabled={isExporting || !hasValidRange || !canExportPdfReports}
       className="rounded-full bg-gradient-to-r from-sky-400 to-fuchsia-500 px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
     >
-      {isExporting ? "PDF hazÄ±rlanÄ±yor..." : "PDF indir"}
+      {isExporting ? "PDF hazırlanıyor..." : "PDF indir"}
     </button>
   );
 }

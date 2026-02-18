@@ -1,4 +1,11 @@
 import type { PostgrestError } from "@supabase/supabase-js";
+import {
+  createBillingMissingTablePostgrestError,
+  extractBillingMissingTables,
+  isBillingMissingTableError,
+  markBillingTablesMissing,
+  type BillingTableName,
+} from "@/lib/billing/schema-guard";
 import type { DbClient, Insert, RepoResult, Row, Update } from "./_shared";
 
 export type ListBillingInvoicesByUserParams = {
@@ -54,13 +61,51 @@ export type UpdateBillingInvoiceByIdParams = {
 
 export type UpdateBillingInvoiceByIdRow = Pick<Row<"billing_invoices">, "id">;
 
+const invoicesTable: BillingTableName = "billing_invoices";
+
+type SupabaseQueryResult = PromiseLike<{ data: unknown; error: PostgrestError | null }>;
+
+const wrapBillingInvoicesQuery = async <T>(
+  query: SupabaseQueryResult,
+  emptyData: T | null,
+): RepoResult<T> => {
+  try {
+    const response = await query;
+
+    if (response.error && isBillingMissingTableError(response.error, [invoicesTable])) {
+      const missingTables = extractBillingMissingTables(response.error, [invoicesTable]);
+      markBillingTablesMissing(missingTables);
+      return {
+        data: emptyData,
+        error: createBillingMissingTablePostgrestError(missingTables),
+      };
+    }
+
+    return {
+      data: (response.data as T | null) ?? emptyData,
+      error: response.error,
+    };
+  } catch (error) {
+    if (isBillingMissingTableError(error, [invoicesTable])) {
+      const missingTables = extractBillingMissingTables(error, [invoicesTable]);
+      markBillingTablesMissing(missingTables);
+      return {
+        data: emptyData,
+        error: createBillingMissingTablePostgrestError(missingTables),
+      };
+    }
+
+    throw error;
+  }
+};
+
 export function listByUser(
   client: DbClient,
   params: ListBillingInvoicesByUserParams,
 ): RepoResult<ListBillingInvoicesByUserRow[]> {
   const { userId } = params;
 
-  return Promise.resolve(
+  return wrapBillingInvoicesQuery(
     client
       .from("billing_invoices")
       .select(
@@ -68,10 +113,8 @@ export function listByUser(
       )
       .eq("user_id", userId)
       .order("created_at", { ascending: false }),
-  ).then((r) => ({
-    data: (r.data as ListBillingInvoicesByUserRow[] | null) ?? [],
-    error: r.error,
-  }));
+    [],
+  );
 }
 
 export function listByUserAndSubscription(
@@ -80,7 +123,7 @@ export function listByUserAndSubscription(
 ): RepoResult<ListBillingInvoicesBySubscriptionRow[]> {
   const { subscriptionId, userId } = params;
 
-  return Promise.resolve(
+  return wrapBillingInvoicesQuery(
     client
       .from("billing_invoices")
       .select(
@@ -89,10 +132,8 @@ export function listByUserAndSubscription(
       .eq("user_id", userId)
       .eq("subscription_id", subscriptionId)
       .order("created_at", { ascending: false }),
-  ).then((r) => ({
-    data: (r.data as ListBillingInvoicesBySubscriptionRow[] | null) ?? [],
-    error: r.error,
-  }));
+    [],
+  );
 }
 
 export function create(
@@ -108,12 +149,7 @@ export function create(
     };
   };
 
-  return Promise.resolve(
-    table.insert(values).select("id").single(),
-  ).then((r) => ({
-    data: (r.data as CreateBillingInvoiceRow | null) ?? null,
-    error: r.error,
-  }));
+  return wrapBillingInvoicesQuery(table.insert(values).select("id").single(), null);
 }
 
 export function updateById(
@@ -133,15 +169,13 @@ export function updateById(
     };
   };
 
-  return Promise.resolve(
+  return wrapBillingInvoicesQuery(
     table
       .update(patch)
       .eq("id", invoiceId)
       .eq("user_id", userId)
       .select("id")
       .single(),
-  ).then((r) => ({
-    data: (r.data as UpdateBillingInvoiceByIdRow | null) ?? null,
-    error: r.error,
-  }));
+    null,
+  );
 }

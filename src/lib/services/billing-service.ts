@@ -1,6 +1,14 @@
 import { getById as getRuleById } from "@/lib/repos/maintenance-rules-repo";
 import type { DbClient } from "@/lib/repos/_shared";
 import {
+  extractBillingMissingTables,
+  getBillingSchemaState,
+  isBillingMissingTableError,
+  markBillingTablesMissing,
+  toBillingFeatureDisabledErrorBody,
+  type BillingTableName,
+} from "@/lib/billing/schema-guard";
+import {
   create as createBillingInvoiceRecord,
 } from "@/lib/repos/billing-invoices-repo";
 import {
@@ -34,7 +42,15 @@ export type CreateBillingInvoicePayload = {
 };
 
 type BillingServiceResponse =
-  | { status: number; body: { error: string } }
+  | {
+      status: number;
+      body: {
+        error: string;
+        code?: string;
+        feature?: "billing";
+        missingTables?: BillingTableName[];
+      };
+    }
   | { status: number; body: { ok: true; id: string; warning?: string } };
 
 type BillingCycle = "monthly" | "yearly";
@@ -51,6 +67,45 @@ const MAX_SUBSCRIPTION_NAME_LENGTH = 120;
 const MAX_PLAN_NAME_LENGTH = 120;
 const MAX_NOTES_LENGTH = 4000;
 const MAX_INVOICE_NO_LENGTH = 120;
+
+const toBillingDisabledResponse = (missingTables: readonly BillingTableName[]): BillingServiceResponse => ({
+  status: 503,
+  body: toBillingFeatureDisabledErrorBody(missingTables),
+});
+
+const mapRepoError = (
+  error: { message?: string } | null,
+  fallbackMessage: string,
+  fallbackTables: readonly BillingTableName[],
+): BillingServiceResponse | null => {
+  if (!error) {
+    return null;
+  }
+
+  if (isBillingMissingTableError(error, fallbackTables)) {
+    const missingTables = extractBillingMissingTables(error, fallbackTables);
+    markBillingTablesMissing(missingTables);
+    return toBillingDisabledResponse(missingTables);
+  }
+
+  return { status: 400, body: { error: error.message ?? fallbackMessage } };
+};
+
+const ensureBillingTables = async (
+  client: DbClient,
+  requiredTables: readonly BillingTableName[],
+): Promise<BillingServiceResponse | null> => {
+  const schemaState = await getBillingSchemaState(client);
+  const missingRequiredTables = requiredTables.filter((tableName) =>
+    schemaState.missingTables.includes(tableName),
+  );
+
+  if (missingRequiredTables.length > 0) {
+    return toBillingDisabledResponse(missingRequiredTables);
+  }
+
+  return null;
+};
 
 const parseDateOnly = (value: string): Date | null => {
   if (!datePattern.test(value)) return null;
@@ -219,6 +274,11 @@ export async function createBillingSubscription(
     payload: CreateBillingSubscriptionPayload;
   },
 ): Promise<BillingServiceResponse> {
+  const schemaCheck = await ensureBillingTables(client, ["billing_subscriptions"]);
+  if (schemaCheck) {
+    return schemaCheck;
+  }
+
   const { payload, userId } = params;
   const providerNameResult = readRequiredText(payload.providerName, MAX_PROVIDER_NAME_LENGTH);
   const subscriptionNameResult = readRequiredText(payload.subscriptionName, MAX_SUBSCRIPTION_NAME_LENGTH);
@@ -293,7 +353,10 @@ export async function createBillingSubscription(
     });
 
     if (ruleError) {
-      return { status: 400, body: { error: ruleError.message } };
+      const mappedError = mapRepoError(ruleError, "Bakim kurali kontrolu basarisiz.", [
+        "billing_subscriptions",
+      ]);
+      return mappedError ?? { status: 400, body: { error: ruleError.message } };
     }
 
     if (!rule) {
@@ -329,7 +392,8 @@ export async function createBillingSubscription(
   });
 
   if (error || !data) {
-    return { status: 400, body: { error: error?.message ?? "Abonelik olusturulamadi." } };
+    const mappedError = mapRepoError(error, "Abonelik olusturulamadi.", ["billing_subscriptions"]);
+    return mappedError ?? { status: 400, body: { error: "Abonelik olusturulamadi." } };
   }
 
   return { status: 201, body: { ok: true, id: data.id } };
@@ -342,6 +406,11 @@ export async function createBillingInvoice(
     payload: CreateBillingInvoicePayload;
   },
 ): Promise<BillingServiceResponse> {
+  const schemaCheck = await ensureBillingTables(client, ["billing_subscriptions", "billing_invoices"]);
+  if (schemaCheck) {
+    return schemaCheck;
+  }
+
   const { payload, userId } = params;
   const subscriptionIdResult = readRequiredText(payload.subscriptionId, 64);
   const invoiceNoResult = readOptionalText(payload.invoiceNo, MAX_INVOICE_NO_LENGTH);
@@ -429,7 +498,10 @@ export async function createBillingInvoice(
   });
 
   if (subscriptionError) {
-    return { status: 400, body: { error: subscriptionError.message } };
+    const mappedError = mapRepoError(subscriptionError, "Abonelik bilgisi okunamadi.", [
+      "billing_subscriptions",
+    ]);
+    return mappedError ?? { status: 400, body: { error: subscriptionError.message } };
   }
 
   if (!subscription) {
@@ -455,7 +527,8 @@ export async function createBillingInvoice(
   });
 
   if (error || !data) {
-    return { status: 400, body: { error: error?.message ?? "Fatura olusturulamadi." } };
+    const mappedError = mapRepoError(error, "Fatura olusturulamadi.", ["billing_invoices"]);
+    return mappedError ?? { status: 400, body: { error: "Fatura olusturulamadi." } };
   }
 
   const hasValidBillingCycle = billingCycles.includes(subscription.billing_cycle as BillingCycle);
@@ -478,6 +551,14 @@ export async function createBillingInvoice(
       });
 
       if (subscriptionUpdateError) {
+        if (isBillingMissingTableError(subscriptionUpdateError, ["billing_subscriptions"])) {
+          const missingTables = extractBillingMissingTables(subscriptionUpdateError, [
+            "billing_subscriptions",
+          ]);
+          markBillingTablesMissing(missingTables);
+          return toBillingDisabledResponse(missingTables);
+        }
+
         return {
           status: 201,
           body: {

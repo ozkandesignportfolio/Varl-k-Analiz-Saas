@@ -12,6 +12,8 @@ import {
 import { ReportsExportButtons } from "@/features/reports/components/reports-export-buttons";
 import { ReportsFilterPanel } from "@/features/reports/components/reports-filter-panel";
 import { ReportsSummaryCards } from "@/features/reports/components/reports-summary-cards";
+import { ensurePdfUnicodeFont } from "@/features/reports/lib/pdf-font";
+import { REPORTS_TURKISH_SMOKE_TEXT, assertNoMojibakeText } from "@/features/reports/lib/text-integrity";
 import { getPlanConfig, getUserPlanConfig, type PlanConfig } from "@/lib/plans/plan-config";
 import { countByUser as countAssetsByUser } from "@/lib/repos/assets-repo";
 import { listForReports as listDocumentsForReports } from "@/lib/repos/documents-repo";
@@ -72,6 +74,10 @@ const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
 
 const DEFAULT_PLAN_CONFIG: PlanConfig = getPlanConfig("starter");
+
+const reportsSubtitle = `${REPORTS_TURKISH_SMOKE_TEXT} özet, tablo ve toplamlar ile indirilebilir PDF raporu üretin.`;
+assertNoMojibakeText(REPORTS_TURKISH_SMOKE_TEXT, "Raporlar duman testi");
+assertNoMojibakeText(reportsSubtitle, "Raporlar alt başlığı");
 
 export function ReportsPageContainer() {
   const router = useRouter();
@@ -230,7 +236,7 @@ export function ReportsPageContainer() {
         const serviceInfo = serviceMap.get(assetId) ?? { serviceCount: 0, totalCost: 0 };
         const documentCount = documentMap.get(assetId) ?? 0;
         return {
-          assetName: assetNameById.get(assetId) ?? "Bilinmeyen Varlik",
+          assetName: assetNameById.get(assetId) ?? "Bilinmeyen Varlık",
           serviceCount: serviceInfo.serviceCount,
           documentCount,
           totalCost: serviceInfo.totalCost,
@@ -245,12 +251,12 @@ export function ReportsPageContainer() {
 
   const onExportPdf = async () => {
     if (!planConfig.features.canExportPdfReports) {
-      setFeedback(`${planConfig.label} planinda PDF rapor disa aktarma ozelligi kapali.`);
+      setFeedback(`${planConfig.label} planında PDF rapor dışa aktarma özelliği kapalı.`);
       return;
     }
 
     if (!hasValidRange) {
-      setFeedback("BaÅŸlangÄ±Ã§ tarihi bitiÅŸ tarihinden bÃ¼yÃ¼k olamaz.");
+      setFeedback("Başlangıç tarihi bitiş tarihinden büyük olamaz.");
       return;
     }
 
@@ -263,6 +269,9 @@ export function ReportsPageContainer() {
         unit: "pt",
         format: "a4",
       });
+
+      await ensurePdfUnicodeFont(doc);
+      assertNoMojibakeText(REPORTS_TURKISH_SMOKE_TEXT, "PDF duman testi");
 
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
@@ -283,7 +292,7 @@ export function ReportsPageContainer() {
 
       const drawSectionTitle = (title: string) => {
         ensureSpace(24);
-        doc.setFont("helvetica", "bold");
+        doc.setFont("NotoSansUnicode", "bold");
         doc.setFontSize(12);
         doc.text(title, left, y);
         y += 16;
@@ -291,10 +300,10 @@ export function ReportsPageContainer() {
 
       const drawKeyValue = (label: string, value: string) => {
         ensureSpace(14);
-        doc.setFont("helvetica", "bold");
+        doc.setFont("NotoSansUnicode", "bold");
         doc.setFontSize(10);
         doc.text(`${label}:`, left, y);
-        doc.setFont("helvetica", "normal");
+        doc.setFont("NotoSansUnicode", "normal");
         doc.text(value, left + 130, y);
         y += 14;
       };
@@ -308,7 +317,7 @@ export function ReportsPageContainer() {
           .filter((row) => row.some((cell) => cell !== "-"));
 
         if (normalizedRows.length === 0) {
-          normalizedRows.push(Array.from({ length: columnCount }, (_, i) => (i === 0 ? "Kayit bulunmuyor" : "-")));
+          normalizedRows.push(Array.from({ length: columnCount }, (_, i) => (i === 0 ? "Kayıt bulunmuyor" : "-")));
         }
 
         drawSectionTitle(title);
@@ -317,7 +326,7 @@ export function ReportsPageContainer() {
         let x = left;
         doc.setFillColor(20, 35, 58);
         doc.setTextColor(241, 245, 249);
-        doc.setFont("helvetica", "bold");
+        doc.setFont("NotoSansUnicode", "bold");
         doc.setFontSize(9);
 
         for (let i = 0; i < columnCount; i += 1) {
@@ -328,7 +337,7 @@ export function ReportsPageContainer() {
         }
         y += 20;
 
-        doc.setFont("helvetica", "normal");
+        doc.setFont("NotoSansUnicode", "normal");
         doc.setTextColor(15, 23, 42);
 
         for (const row of normalizedRows) {
@@ -346,28 +355,31 @@ export function ReportsPageContainer() {
         y += 6;
       };
 
+      const pdfRangeLine = `${REPORTS_TURKISH_SMOKE_TEXT}: ${toTrDate(startDate)} - ${toTrDate(endDate)}`;
+      assertNoMojibakeText(pdfRangeLine, "PDF tarih satırı");
+
       doc.setTextColor(15, 23, 42);
-      doc.setFont("helvetica", "bold");
+      doc.setFont("NotoSansUnicode", "bold");
       doc.setFontSize(18);
       doc.text("AssetCare PDF Raporu", left, y);
       y += 20;
 
-      doc.setFont("helvetica", "normal");
+      doc.setFont("NotoSansUnicode", "normal");
       doc.setFontSize(10);
-      doc.text(`Rapor aralÄ±ÄŸÄ±: ${toTrDate(startDate)} - ${toTrDate(endDate)}`, left, y);
+      doc.text(pdfRangeLine, left, y);
       y += 14;
-      doc.text(`KullanÄ±cÄ±: ${userEmail}`, left, y);
+      doc.text(`Kullanıcı: ${userEmail}`, left, y);
       y += 14;
-      doc.text(`Ãœretim tarihi: ${generatedAt}`, left, y);
+      doc.text(`Üretim tarihi: ${generatedAt}`, left, y);
       y += 18;
 
       doc.setDrawColor(148, 163, 184);
       doc.line(left, y, left + contentWidth, y);
       y += 16;
 
-      drawSectionTitle("Ã–zet");
-      drawKeyValue("Toplam varlÄ±k", String(totalAssetCount));
-      drawKeyValue("Aktif varlÄ±k (aralÄ±kta)", String(activeAssetCount));
+      drawSectionTitle("Özet");
+      drawKeyValue("Toplam varlık", String(totalAssetCount));
+      drawKeyValue("Aktif varlık (aralıkta)", String(activeAssetCount));
       drawKeyValue("Servis adedi", String(servicesInRange.length));
       drawKeyValue("Belge adedi", String(documentsInRange.length));
       drawKeyValue("Toplam maliyet", currencyFormatter.format(totalCost));
@@ -375,8 +387,8 @@ export function ReportsPageContainer() {
       y += 6;
 
       drawTable(
-        "VarlÄ±k bazlÄ± Ã¶zet",
-        ["VarlÄ±k", "Servis", "Belge", "Maliyet"],
+        "Varlık bazlı özet",
+        ["Varlık", "Servis", "Belge", "Maliyet"],
         assetSummary.map((row) => [
           row.assetName,
           String(row.serviceCount),
@@ -387,8 +399,8 @@ export function ReportsPageContainer() {
       );
 
       drawTable(
-        "Servis detaylarÄ±",
-        ["Tarih", "VarlÄ±k", "TÃ¼r", "Maliyet"],
+        "Servis detayları",
+        ["Tarih", "Varlık", "Tür", "Maliyet"],
         [
           ...servicesInRange.map((service) => [
             toTrDate(service.service_date),
@@ -402,8 +414,8 @@ export function ReportsPageContainer() {
       );
 
       drawTable(
-        "Belge detaylarÄ±",
-        ["YÃ¼kleme", "VarlÄ±k", "Dosya"],
+        "Belge detayları",
+        ["Yükleme", "Varlık", "Dosya"],
         documentsInRange.map((docRow) => [
           toTrDate(docRow.uploaded_at),
           assetNameById.get(asSafeText(docRow.asset_id, "")) ?? asSafeText(docRow.asset_name, "Bilinmeyen"),
@@ -413,9 +425,9 @@ export function ReportsPageContainer() {
       );
 
       doc.save(`assetcare-rapor-${startDate}-${endDate}.pdf`);
-      setFeedback("PDF raporu baÅŸarÄ±yla indirildi.");
+      setFeedback("PDF raporu başarıyla indirildi.");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "PDF oluÅŸturulurken hata oluÅŸtu.";
+      const message = error instanceof Error ? error.message : "PDF oluşturulurken hata oluştu.";
       setFeedback(message);
     } finally {
       setIsExporting(false);
@@ -426,7 +438,7 @@ export function ReportsPageContainer() {
     <AppShell
       badge="Raporlar"
       title="PDF Raporlama"
-      subtitle="SeÃ§ili tarih aralÄ±ÄŸÄ±nda Ã¶zet, tablo ve toplamlar ile indirilebilir PDF raporu Ã¼retin."
+      subtitle={reportsSubtitle}
       actions={
         <ReportsExportButtons
           onExportPdf={() => {
@@ -440,19 +452,17 @@ export function ReportsPageContainer() {
     >
       {!planConfig.features.canExportPdfReports ? (
         <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
-          PDF rapor disa aktarma ozelligi {planConfig.label} planinda kapali. Pro plan ile aktif olur.
+          PDF rapor dışa aktarma özelliği {planConfig.label} planında kapalı. Pro plan ile aktif olur.
         </p>
       ) : null}
 
       {feedback ? (
-        <p className="rounded-xl border border-sky-300/25 bg-sky-300/10 px-4 py-3 text-sm text-sky-100">
-          {feedback}
-        </p>
+        <p className="rounded-xl border border-sky-300/25 bg-sky-300/10 px-4 py-3 text-sm text-sky-100">{feedback}</p>
       ) : null}
 
       {!hasValidRange ? (
         <p className="rounded-xl border border-rose-300/30 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">
-          BaÅŸlangÄ±Ã§ tarihi bitiÅŸ tarihinden bÃ¼yÃ¼k olamaz.
+          Başlangıç tarihi bitiş tarihinden büyük olamaz.
         </p>
       ) : null}
 

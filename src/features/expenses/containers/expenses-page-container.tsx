@@ -11,6 +11,11 @@ import {
   ExpenseTable,
   type ExpenseTableRow,
 } from "@/features/expenses/components/expense-table";
+import {
+  safeExpensesReadQuery,
+  safeExpensesWriteQuery,
+  type ExpensesTableWarning,
+} from "@/features/expenses/lib/expenses-query-guard";
 import { listIdName } from "@/lib/repos/assets-repo";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -31,6 +36,7 @@ export function ExpensesPageContainer() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [tableWarning, setTableWarning] = useState<ExpensesTableWarning | null>(null);
   const [hasValidSession, setHasValidSession] = useState(true);
 
   const fetchAssets = useCallback(
@@ -47,18 +53,32 @@ export function ExpensesPageContainer() {
 
   const fetchExpenses = useCallback(
     async (currentUserId: string) => {
-      const { data, error } = await supabase
+      const expensesQueryResult = await supabase
         .from("expenses")
         .select("id,asset_id,title,category,amount,currency,expense_date,notes,created_at")
         .eq("user_id", currentUserId)
         .order("expense_date", { ascending: false });
 
-      if (error) {
-        setFeedback(error.message);
+      const result = await safeExpensesReadQuery<ExpenseRow>(
+        Promise.resolve(expensesQueryResult),
+        "expenses-page.fetch",
+      );
+
+      if (result.warning) {
+        setTableWarning(result.warning);
+        setFeedback("");
+        setExpenses([]);
         return;
       }
 
-      setExpenses((data ?? []) as ExpenseRow[]);
+      setTableWarning(null);
+
+      if (result.error) {
+        setFeedback(result.error.message);
+        return;
+      }
+
+      setExpenses(result.data);
     },
     [supabase],
   );
@@ -125,7 +145,7 @@ export function ExpensesPageContainer() {
     setIsSaving(true);
 
     ensureAuthUser();
-    const { error } = await supabase.from("expenses").insert({
+    const expenseWriteResult = await supabase.from("expenses").insert({
       user_id: userId,
       asset_id: selectedAssetId || null,
       title,
@@ -136,8 +156,23 @@ export function ExpensesPageContainer() {
       notes: notes || null,
     });
 
-    if (error) {
-      setFeedback(error.message);
+    const result = await safeExpensesWriteQuery(
+      Promise.resolve(expenseWriteResult),
+      "expenses-page.create",
+    );
+
+    if (result.warning) {
+      setTableWarning(result.warning);
+      setExpenses([]);
+      setFeedback("Gider tablosu bulunamadi. Kayit eklenemedi.");
+      setIsSaving(false);
+      return;
+    }
+
+    setTableWarning(null);
+
+    if (result.error) {
+      setFeedback(result.error.message);
       setIsSaving(false);
       return;
     }
@@ -189,6 +224,12 @@ export function ExpensesPageContainer() {
       {feedback ? (
         <p className="rounded-xl border border-sky-300/25 bg-sky-300/10 px-4 py-3 text-sm text-sky-100">
           {feedback}
+        </p>
+      ) : null}
+
+      {tableWarning ? (
+        <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
+          Gider tablosu su an erisilebilir degil. Bos liste gosteriliyor. ({tableWarning.code})
         </p>
       ) : null}
 

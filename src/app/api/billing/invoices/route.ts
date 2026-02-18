@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { logApiError } from "@/lib/api/logging";
 import {
+  extractBillingMissingTables,
+  isBillingMissingTableError,
+  markBillingTablesMissing,
+  toBillingFeatureDisabledErrorBody,
+} from "@/lib/billing/schema-guard";
+import {
   createBillingInvoice,
   type CreateBillingInvoicePayload,
 } from "@/lib/services/billing-service";
@@ -30,6 +36,15 @@ export async function POST(request: Request) {
 
     return NextResponse.json(result.body, { status: result.status });
   } catch (error) {
+    if (isBillingMissingTableError(error, ["billing_subscriptions", "billing_invoices"])) {
+      const missingTables = extractBillingMissingTables(error, [
+        "billing_subscriptions",
+        "billing_invoices",
+      ]);
+      markBillingTablesMissing(missingTables);
+      return NextResponse.json(toBillingFeatureDisabledErrorBody(missingTables), { status: 503 });
+    }
+
     logApiError({
       route: "/api/billing/invoices",
       method: "POST",

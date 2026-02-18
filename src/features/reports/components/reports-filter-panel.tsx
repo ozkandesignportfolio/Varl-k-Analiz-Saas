@@ -16,20 +16,20 @@ export function ReportsFilterPanel({
   return (
     <>
       <section className="premium-card p-5">
-        <h2 className="text-lg font-semibold text-white">Rapor Ä°Ã§erik ÅemasÄ±</h2>
+        <h2 className="text-lg font-semibold text-white">Rapor İçerik Şeması</h2>
         <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          <SchemaItem index="01" title="Rapor BaÅŸlÄ±ÄŸÄ±" description="Tarih aralÄ±ÄŸÄ± ve kullanÄ±cÄ± bilgisi." />
-          <SchemaItem index="02" title="Ã–zet Metrikler" description="VarlÄ±k, servis, belge ve maliyet toplamlarÄ±." />
-          <SchemaItem index="03" title="Detay Tablolar" description="Servis ve belge kayÄ±tlarÄ±." />
-          <SchemaItem index="04" title="VarlÄ±k Ã–zeti" description="VarlÄ±k bazlÄ± adet ve maliyet daÄŸÄ±lÄ±mÄ±." />
+          <SchemaItem index="01" title="Rapor Başlığı" description="Tarih aralığı ve kullanıcı bilgisi." />
+          <SchemaItem index="02" title="Özet Metrikler" description="Varlık, servis, belge ve maliyet toplamları." />
+          <SchemaItem index="03" title="Detay Tablolar" description="Servis ve belge kayıtları." />
+          <SchemaItem index="04" title="Varlık Özeti" description="Varlık bazlı adet ve maliyet dağılımı." />
         </div>
       </section>
 
       <section className="premium-card p-5">
-        <h2 className="text-lg font-semibold text-white">Tarih AralÄ±ÄŸÄ±</h2>
+        <h2 className="text-lg font-semibold text-white">Tarih Aralığı</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <label className="block">
-            <span className="mb-1.5 block text-sm text-slate-300">BaÅŸlangÄ±Ã§</span>
+            <span className="mb-1.5 block text-sm text-slate-300">Başlangıç</span>
             <input
               type="date"
               value={startDate}
@@ -38,7 +38,7 @@ export function ReportsFilterPanel({
             />
           </label>
           <label className="block">
-            <span className="mb-1.5 block text-sm text-slate-300">BitiÅŸ</span>
+            <span className="mb-1.5 block text-sm text-slate-300">Bitiş</span>
             <input
               type="date"
               value={endDate}
