@@ -62,6 +62,25 @@ const toDateInput = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
+const getDateRangeStarts = () => {
+  const now = new Date();
+  const dashboardRangeStart = new Date(now);
+  dashboardRangeStart.setMonth(dashboardRangeStart.getMonth() - 12);
+
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const thirtyDaysLater = new Date(now);
+  thirtyDaysLater.setDate(now.getDate() + 30);
+
+  return {
+    dashboardStartDate: toDateInput(dashboardRangeStart),
+    currentMonthStartDate: toDateInput(currentMonthStart),
+    nextMonthStartDate: toDateInput(nextMonthStart),
+    todayDate: toDateInput(new Date(now.getFullYear(), now.getMonth(), now.getDate())),
+    thirtyDaysLaterDate: toDateInput(thirtyDaysLater),
+  };
+};
+
 export function DashboardPageContainer() {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const router = useRouter();
@@ -73,6 +92,7 @@ export function DashboardPageContainer() {
 
   const [assets, setAssets] = useState<AssetRow[]>([]);
   const [serviceLogs, setServiceLogs] = useState<ServiceLogRow[]>([]);
+  const [serviceLogCount, setServiceLogCount] = useState(0);
   const [rules, setRules] = useState<RuleRow[]>([]);
   const [documentCount, setDocumentCount] = useState(0);
   const [subscriptions, setSubscriptions] = useState<SubscriptionRow[]>([]);
@@ -93,6 +113,7 @@ export function DashboardPageContainer() {
     setFeedback("");
     setAssets([]);
     setServiceLogs([]);
+    setServiceLogCount(0);
     setRules([]);
     setDocumentCount(0);
     setSubscriptions([]);
@@ -121,9 +142,13 @@ export function DashboardPageContainer() {
 
       setHasValidSession(true);
       setEmail(user.email ?? "");
-      const dashboardRangeStart = new Date();
-      dashboardRangeStart.setMonth(dashboardRangeStart.getMonth() - 12);
-      const dashboardStartDate = toDateInput(dashboardRangeStart);
+      const {
+        currentMonthStartDate,
+        dashboardStartDate,
+        nextMonthStartDate,
+        thirtyDaysLaterDate,
+        todayDate,
+      } = getDateRangeStarts();
 
       const predictionRequest = fetch("/api/maintenance-predictions", {
         method: "GET",
@@ -148,32 +173,46 @@ export function DashboardPageContainer() {
         .then((data) => ({ data, error: "" }))
         .catch((error: Error) => ({ data: null, error: error.message }));
 
-      const [assetsRes, logsRes, rulesRes, docsRes, subscriptionsRes, expensesRes, predictionRes] =
-        await Promise.all([
+      const coreDataPromise = Promise.all([
         supabase.from("assets").select("id,name,category,warranty_end_date").eq("user_id", user.id),
         listServiceLogsForDashboard(supabase, {
           userId: user.id,
           sinceDate: dashboardStartDate,
           limit: 1500,
         }),
+        supabase.from("service_logs").select("id", { count: "exact", head: true }).eq("user_id", user.id),
         listRulesForDashboard(supabase, {
           userId: user.id,
           onlyActive: true,
         }),
         countDocumentsByUser(supabase, { userId: user.id }),
+      ]);
+
+      const financeDataPromise = Promise.all([
         supabase
           .from("billing_subscriptions")
           .select("id,provider_name,subscription_name,amount,currency,next_billing_date,status")
-          .eq("user_id", user.id),
+          .eq("user_id", user.id)
+          .eq("status", "active")
+          .gte("next_billing_date", todayDate)
+          .lte("next_billing_date", thirtyDaysLaterDate)
+          .order("next_billing_date", { ascending: true })
+          .limit(12),
         supabase
           .from("expenses")
           .select("id,amount,currency,expense_date")
-          .eq("user_id", user.id),
-        predictionRequest,
-        ]);
+          .eq("user_id", user.id)
+          .gte("expense_date", currentMonthStartDate)
+          .lt("expense_date", nextMonthStartDate)
+          .order("expense_date", { ascending: false }),
+      ]);
+
+      const [[assetsRes, logsRes, logCountRes, rulesRes, docsRes], [subscriptionsRes, expensesRes], predictionRes] =
+        await Promise.all([coreDataPromise, financeDataPromise, predictionRequest]);
 
       if (assetsRes.error) setFeedback(assetsRes.error.message);
       if (logsRes.error) setFeedback(logsRes.error.message);
+      if (logCountRes.error) setFeedback(logCountRes.error.message);
       if (rulesRes.error) setFeedback(rulesRes.error.message);
       if (docsRes.error) setFeedback(docsRes.error.message);
       if (subscriptionsRes.error) setFeedback(subscriptionsRes.error.message);
@@ -181,6 +220,7 @@ export function DashboardPageContainer() {
 
       setAssets((assetsRes.data ?? []) as AssetRow[]);
       setServiceLogs((logsRes.data ?? []) as ServiceLogRow[]);
+      setServiceLogCount(logCountRes.count ?? 0);
       setRules((rulesRes.data ?? []) as RuleRow[]);
       setDocumentCount(docsRes.data ?? 0);
       setSubscriptions((subscriptionsRes.data ?? []) as SubscriptionRow[]);
@@ -281,7 +321,7 @@ export function DashboardPageContainer() {
 
       <section className="grid gap-3 lg:grid-cols-[0.9fr_1.1fr]">
         <DashboardRecentActivity
-          serviceLogCount={String(serviceLogs.length)}
+          serviceLogCount={String(serviceLogCount)}
           documentCount={String(documentCount)}
           categoryCount={String(new Set(assets.map((asset) => asset.category)).size)}
         />

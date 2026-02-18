@@ -42,9 +42,15 @@ type SubscriptionStatus = "active" | "paused" | "cancelled";
 type InvoiceStatus = "pending" | "paid" | "overdue" | "cancelled";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const billingCycles: BillingCycle[] = ["monthly", "yearly"];
 const subscriptionStatuses: SubscriptionStatus[] = ["active", "paused", "cancelled"];
 const invoiceStatuses: InvoiceStatus[] = ["pending", "paid", "overdue", "cancelled"];
+const MAX_PROVIDER_NAME_LENGTH = 120;
+const MAX_SUBSCRIPTION_NAME_LENGTH = 120;
+const MAX_PLAN_NAME_LENGTH = 120;
+const MAX_NOTES_LENGTH = 4000;
+const MAX_INVOICE_NO_LENGTH = 120;
 
 const parseDateOnly = (value: string): Date | null => {
   if (!datePattern.test(value)) return null;
@@ -73,9 +79,85 @@ const formatDateOnly = (value: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const toOptionalText = (value: unknown) => {
-  const text = String(value ?? "").trim();
-  return text || null;
+const readOptionalText = (value: unknown, maxLength: number) => {
+  if (value === null || value === undefined) {
+    return { value: null as string | null };
+  }
+
+  if (typeof value !== "string") {
+    return { value: null as string | null, invalidType: true };
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return { value: null as string | null };
+  }
+
+  if (trimmed.length > maxLength) {
+    return { value: null as string | null, tooLong: true };
+  }
+
+  return { value: trimmed };
+};
+
+const readRequiredText = (value: unknown, maxLength: number) => {
+  if (typeof value !== "string") {
+    return { value: "", invalidType: true };
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return { value: "", missing: true };
+  }
+
+  if (trimmed.length > maxLength) {
+    return { value: "", tooLong: true };
+  }
+
+  return { value: trimmed };
+};
+
+const readDateText = (value: unknown) => {
+  if (value === null || value === undefined) {
+    return { value: null as string | null };
+  }
+
+  if (typeof value !== "string") {
+    return { value: null as string | null, invalidType: true };
+  }
+
+  const trimmed = value.trim();
+  return { value: trimmed || null };
+};
+
+const readBoolean = (value: unknown, defaultValue: boolean) => {
+  if (value === null || value === undefined) {
+    return { value: defaultValue };
+  }
+
+  if (typeof value === "boolean") {
+    return { value };
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true") {
+      return { value: true };
+    }
+    if (normalized === "false") {
+      return { value: false };
+    }
+  }
+
+  return { value: defaultValue, invalidType: true };
+};
+
+const normalizeUuid = (value: string) => {
+  const normalized = value.trim().toLowerCase();
+  if (!uuidPattern.test(normalized)) {
+    return null;
+  }
+  return normalized;
 };
 
 const toDateOnly = (value: Date) =>
@@ -138,16 +220,50 @@ export async function createBillingSubscription(
   },
 ): Promise<BillingServiceResponse> {
   const { payload, userId } = params;
-  const providerName = String(payload.providerName ?? "").trim();
-  const subscriptionName = String(payload.subscriptionName ?? "").trim();
-  const planName = toOptionalText(payload.planName);
-  const billingCycle = String(payload.billingCycle ?? "monthly").trim() as BillingCycle;
+  const providerNameResult = readRequiredText(payload.providerName, MAX_PROVIDER_NAME_LENGTH);
+  const subscriptionNameResult = readRequiredText(payload.subscriptionName, MAX_SUBSCRIPTION_NAME_LENGTH);
+  const planNameResult = readOptionalText(payload.planName, MAX_PLAN_NAME_LENGTH);
+  const notesResult = readOptionalText(payload.notes, MAX_NOTES_LENGTH);
+  const nextBillingDateResult = readDateText(payload.nextBillingDate);
+  const maintenanceRuleIdResult = readDateText(payload.maintenanceRuleId);
+  const billingCycleRaw =
+    typeof payload.billingCycle === "string" ? payload.billingCycle.trim() : "monthly";
+  const statusRaw = typeof payload.status === "string" ? payload.status.trim() : "active";
   const amount = Number(payload.amount ?? 0);
-  const nextBillingDateRaw = toOptionalText(payload.nextBillingDate);
-  const maintenanceRuleId = toOptionalText(payload.maintenanceRuleId);
-  const status = String(payload.status ?? "active").trim() as SubscriptionStatus;
-  const autoRenew = String(payload.autoRenew ?? "true") === "true";
-  const notes = toOptionalText(payload.notes);
+  const autoRenewResult = readBoolean(payload.autoRenew, true);
+
+  if (
+    providerNameResult.invalidType ||
+    subscriptionNameResult.invalidType ||
+    planNameResult.invalidType ||
+    notesResult.invalidType ||
+    nextBillingDateResult.invalidType ||
+    maintenanceRuleIdResult.invalidType ||
+    autoRenewResult.invalidType ||
+    (payload.billingCycle !== undefined && typeof payload.billingCycle !== "string") ||
+    (payload.status !== undefined && typeof payload.status !== "string")
+  ) {
+    return { status: 400, body: { error: "Istek alani tipleri gecersiz." } };
+  }
+
+  if (
+    providerNameResult.tooLong ||
+    subscriptionNameResult.tooLong ||
+    planNameResult.tooLong ||
+    notesResult.tooLong
+  ) {
+    return { status: 400, body: { error: "Metin alanlarindan biri cok uzun." } };
+  }
+
+  const providerName = providerNameResult.value;
+  const subscriptionName = subscriptionNameResult.value;
+  const planName = planNameResult.value;
+  const nextBillingDateRaw = nextBillingDateResult.value;
+  const maintenanceRuleIdRaw = maintenanceRuleIdResult.value;
+  const billingCycle = billingCycleRaw as BillingCycle;
+  const status = statusRaw as SubscriptionStatus;
+  const autoRenew = autoRenewResult.value;
+  const notes = notesResult.value;
 
   if (!providerName || !subscriptionName) {
     return { status: 400, body: { error: "Saglayici ve abonelik adi zorunludur." } };
@@ -163,6 +279,11 @@ export async function createBillingSubscription(
 
   if (!Number.isFinite(amount) || Number.isNaN(amount) || amount < 0) {
     return { status: 400, body: { error: "Abonelik tutari gecersiz." } };
+  }
+
+  const maintenanceRuleId = maintenanceRuleIdRaw ? normalizeUuid(maintenanceRuleIdRaw) : null;
+  if (maintenanceRuleIdRaw && !maintenanceRuleId) {
+    return { status: 400, body: { error: "Bakim kurali kimligi gecersiz." } };
   }
 
   if (maintenanceRuleId) {
@@ -222,17 +343,44 @@ export async function createBillingInvoice(
   },
 ): Promise<BillingServiceResponse> {
   const { payload, userId } = params;
-  const subscriptionId = String(payload.subscriptionId ?? "").trim();
-  const invoiceNo = toOptionalText(payload.invoiceNo);
-  const issuedAt = String(payload.issuedAt ?? formatDateOnly(getTodayDateOnly())).trim();
-  const dueDate = toOptionalText(payload.dueDate);
-  const paidAtRaw = toOptionalText(payload.paidAt);
+  const subscriptionIdResult = readRequiredText(payload.subscriptionId, 64);
+  const invoiceNoResult = readOptionalText(payload.invoiceNo, MAX_INVOICE_NO_LENGTH);
+  const issuedAtResult = readDateText(payload.issuedAt);
+  const dueDateResult = readDateText(payload.dueDate);
+  const paidAtRawResult = readDateText(payload.paidAt);
+  const statusRaw = typeof payload.status === "string" ? payload.status.trim() : "pending";
   const amount = Number(payload.amount ?? 0);
   const taxAmount = Number(payload.taxAmount ?? 0);
-  const status = String(payload.status ?? "pending").trim() as InvoiceStatus;
+  const status = statusRaw as InvoiceStatus;
+
+  if (
+    subscriptionIdResult.invalidType ||
+    invoiceNoResult.invalidType ||
+    issuedAtResult.invalidType ||
+    dueDateResult.invalidType ||
+    paidAtRawResult.invalidType ||
+    (payload.status !== undefined && typeof payload.status !== "string")
+  ) {
+    return { status: 400, body: { error: "Istek alani tipleri gecersiz." } };
+  }
+
+  if (subscriptionIdResult.tooLong || invoiceNoResult.tooLong) {
+    return { status: 400, body: { error: "Metin alanlarindan biri cok uzun." } };
+  }
+
+  const subscriptionIdRaw = subscriptionIdResult.value;
+  const subscriptionId = normalizeUuid(subscriptionIdRaw);
+  const invoiceNo = invoiceNoResult.value;
+  const issuedAt = issuedAtResult.value ?? formatDateOnly(getTodayDateOnly());
+  const dueDate = dueDateResult.value;
+  const paidAtRaw = paidAtRawResult.value;
+
+  if (!subscriptionIdRaw) {
+    return { status: 400, body: { error: "Fatura icin abonelik secimi zorunludur." } };
+  }
 
   if (!subscriptionId) {
-    return { status: 400, body: { error: "Fatura icin abonelik secimi zorunludur." } };
+    return { status: 400, body: { error: "Abonelik kimligi gecersiz." } };
   }
 
   if (!invoiceStatuses.includes(status)) {
@@ -249,6 +397,22 @@ export async function createBillingInvoice(
 
   if (paidAtRaw && !parseDateOnly(paidAtRaw)) {
     return { status: 400, body: { error: "Odeme tarihi gecersiz." } };
+  }
+
+  const issuedDate = parseDateOnly(issuedAt);
+  const dueDateParsed = dueDate ? parseDateOnly(dueDate) : null;
+  const paidDateParsed = paidAtRaw ? parseDateOnly(paidAtRaw) : null;
+
+  if (!issuedDate) {
+    return { status: 400, body: { error: "Fatura tarihi gecersiz." } };
+  }
+
+  if (dueDateParsed && dueDateParsed.getTime() < issuedDate.getTime()) {
+    return { status: 400, body: { error: "Vade tarihi fatura tarihinden once olamaz." } };
+  }
+
+  if (paidDateParsed && paidDateParsed.getTime() < issuedDate.getTime()) {
+    return { status: 400, body: { error: "Odeme tarihi fatura tarihinden once olamaz." } };
   }
 
   if (!Number.isFinite(amount) || Number.isNaN(amount) || amount < 0) {
@@ -294,9 +458,13 @@ export async function createBillingInvoice(
     return { status: 400, body: { error: error?.message ?? "Fatura olusturulamadi." } };
   }
 
-  if (status === "paid" && subscription.auto_renew && subscription.status === "active") {
+  const hasValidBillingCycle = billingCycles.includes(subscription.billing_cycle as BillingCycle);
+  const isAutoRenew = subscription.auto_renew === true;
+  const isActiveSubscription = subscription.status === "active";
+
+  if (status === "paid" && hasValidBillingCycle && isAutoRenew && isActiveSubscription) {
     const nextBillingDate = recalculateNextBillingDate({
-      billingCycle: subscription.billing_cycle,
+      billingCycle: subscription.billing_cycle as BillingCycle,
       currentNextBillingDate: subscription.next_billing_date,
       issuedAt,
       paidAt,

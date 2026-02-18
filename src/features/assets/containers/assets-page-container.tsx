@@ -176,64 +176,67 @@ export function AssetsPageContainer() {
 
     setIsSaving(true);
 
-    let createRes: { data: { id: string } | null; error: { message: string } | null };
-
     try {
       ensureAuthUser();
-      createRes = await supabase
-        .from("assets")
-        .insert({
-          user_id: userId,
+      const createResponse = await fetch("/api/assets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           name,
           category,
           brand,
           model,
-          purchase_date: purchaseDate,
-          warranty_end_date: warrantyEndDate,
-        })
-        .select("id")
-        .single();
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "VarlÄ±k kaydÄ± oluÅŸturulamadÄ±.");
-      setIsSaving(false);
-      return;
-    }
+          purchaseDate,
+          warrantyEndDate,
+        }),
+      });
 
-    if (createRes.error || !createRes.data) {
-      setFeedback(createRes.error?.message ?? "Varlık kaydı oluşturulamadı.");
-      setIsSaving(false);
-      return;
-    }
+      const createPayload = (await createResponse.json().catch(() => null)) as
+        | { id?: string; error?: string }
+        | null;
 
-    const assetId = createRes.data.id;
-
-    if (photoFile instanceof File && photoFile.size > 0) {
-      try {
-        const storagePath = await uploadPhoto(assetId, photoFile);
-        ensureAuthUser();
-        const updatePhotoRes = await supabase
-          .from("assets")
-          .update({ photo_path: storagePath })
-          .eq("id", assetId);
-
-        if (updatePhotoRes.error) {
-          setFeedback(
-            `Varlık eklendi, ancak fotoğraf yolu kaydedilemedi: ${updatePhotoRes.error.message}`,
-          );
-        } else {
-          setFeedback("Varlık ve fotoğraf başarıyla eklendi.");
-        }
-      } catch (error) {
-        setFeedback(`Varlık eklendi, ancak fotoğraf yüklenemedi: ${(error as Error).message}`);
+      if (!createResponse.ok || !createPayload?.id) {
+        setFeedback(createPayload?.error ?? "Varlık kaydı oluşturulamadı.");
+        return;
       }
-    } else {
-      setFeedback("Varlık başarıyla eklendi.");
-    }
 
-    form.reset();
-    await fetchAssets(userId);
-    setAuditRefreshKey((prev) => prev + 1);
-    setIsSaving(false);
+      const assetId = createPayload.id;
+
+      if (photoFile instanceof File && photoFile.size > 0) {
+        try {
+          const storagePath = await uploadPhoto(assetId, photoFile);
+          const updatePhotoResponse = await fetch("/api/assets", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: assetId, photoPath: storagePath }),
+          });
+
+          const updatePhotoPayload = (await updatePhotoResponse.json().catch(() => null)) as
+            | { error?: string }
+            | null;
+
+          if (!updatePhotoResponse.ok) {
+            setFeedback(
+              `Varlık eklendi, ancak fotoğraf yolu kaydedilemedi: ${updatePhotoPayload?.error ?? "Bilinmeyen hata."}`,
+            );
+          } else {
+            setFeedback("Varlık ve fotoğraf başarıyla eklendi.");
+          }
+        } catch (error) {
+          setFeedback(`Varlık eklendi, ancak fotoğraf yüklenemedi: ${(error as Error).message}`);
+        }
+      } else {
+        setFeedback("Varlık başarıyla eklendi.");
+      }
+
+      form.reset();
+      await fetchAssets(userId);
+      setAuditRefreshKey((prev) => prev + 1);
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Varlık kaydı oluşturulamadı.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const onStartEdit = (asset: AssetRow) => {
@@ -286,31 +289,34 @@ export function AssetsPageContainer() {
       }
     }
 
-    let updateRes: { error: { message: string } | null };
-
     try {
       ensureAuthUser();
-      updateRes = await supabase
-        .from("assets")
-        .update({
+      const updateResponse = await fetch("/api/assets", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editingAsset.id,
           name,
           category,
           brand,
           model,
-          purchase_date: purchaseDate,
-          warranty_end_date: warrantyEndDate,
-          photo_path: nextPhotoPath,
-        })
-        .eq("id", editingAsset.id)
-        .eq("user_id", userId);
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "VarlÄ±k gÃ¼ncellenemedi.");
-      setIsUpdating(false);
-      return;
-    }
+          purchaseDate,
+          warrantyEndDate,
+          photoPath: nextPhotoPath,
+        }),
+      });
 
-    if (updateRes.error) {
-      setFeedback(updateRes.error.message);
+      const updatePayload = (await updateResponse.json().catch(() => null)) as
+        | { error?: string }
+        | null;
+
+      if (!updateResponse.ok) {
+        setFeedback(updatePayload?.error ?? "Varlık güncellenemedi.");
+        setIsUpdating(false);
+        return;
+      }
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Varlık güncellenemedi.");
       setIsUpdating(false);
       return;
     }
@@ -332,13 +338,17 @@ export function AssetsPageContainer() {
       return;
     }
 
-    const { error } = await supabase
-      .from("assets")
-      .delete()
-      .eq("id", asset.id)
-      .eq("user_id", userId);
-    if (error) {
-      setFeedback(error.message);
+    const deleteResponse = await fetch("/api/assets", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: asset.id }),
+    });
+    const deletePayload = (await deleteResponse.json().catch(() => null)) as
+      | { error?: string }
+      | null;
+
+    if (!deleteResponse.ok) {
+      setFeedback(deletePayload?.error ?? "Varlık silinemedi.");
       return;
     }
 
@@ -530,4 +540,3 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
-

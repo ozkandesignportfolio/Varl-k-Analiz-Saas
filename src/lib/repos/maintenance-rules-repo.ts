@@ -66,6 +66,16 @@ export type DeleteRuleByIdParams = {
 
 export type DeleteRuleByIdRow = Pick<Row<"maintenance_rules">, "id">;
 
+export type ListRulesForScheduleSyncParams = {
+  userId: string;
+  ruleIds: string[];
+};
+
+export type ListRulesForScheduleSyncRow = Pick<
+  Row<"maintenance_rules">,
+  "id" | "asset_id" | "interval_value" | "interval_unit"
+>;
+
 export function getById(
   client: DbClient,
   params: GetRuleByIdParams,
@@ -80,7 +90,7 @@ export function getById(
       )
       .eq("id", ruleId)
       .eq("user_id", userId)
-      .single(),
+      .maybeSingle(),
   ).then((r) => ({
     data: (r.data as GetRuleByIdRow | null) ?? null,
     error: r.error,
@@ -225,6 +235,29 @@ export function deleteById(
       .single(),
   ).then((r) => ({
     data: (r.data as DeleteRuleByIdRow | null) ?? null,
+    error: r.error,
+  }));
+}
+
+export function listForScheduleSync(
+  client: DbClient,
+  params: ListRulesForScheduleSyncParams,
+): RepoResult<ListRulesForScheduleSyncRow[]> {
+  const { ruleIds, userId } = params;
+  const normalizedRuleIds = [...new Set(ruleIds.filter((ruleId) => ruleId.trim().length > 0))];
+
+  if (normalizedRuleIds.length === 0) {
+    return Promise.resolve({ data: [], error: null });
+  }
+
+  return Promise.resolve(
+    client
+      .from("maintenance_rules")
+      .select("id,asset_id,interval_value,interval_unit")
+      .eq("user_id", userId)
+      .in("id", normalizedRuleIds),
+  ).then((r) => ({
+    data: (r.data as ListRulesForScheduleSyncRow[] | null) ?? [],
     error: r.error,
   }));
 }

@@ -47,6 +47,10 @@ export type CountDocumentsByUserParams = {
   userId: string;
 };
 
+export type SumDocumentStorageByUserParams = {
+  userId: string;
+};
+
 export type CreateDocumentParams = {
   values: Insert<"documents">;
 };
@@ -150,6 +154,24 @@ export function countByUser(
     client.from("documents").select("id", { count: "exact", head: true }).eq("user_id", userId),
   ).then((r) => ({
     data: r.count ?? 0,
+    error: r.error,
+  }));
+}
+
+export function sumFileSizeByUser(
+  client: DbClient,
+  params: SumDocumentStorageByUserParams,
+): RepoResult<number> {
+  const { userId } = params;
+
+  return Promise.resolve(
+    client.from("documents").select("file_size").eq("user_id", userId),
+  ).then((r) => ({
+    data:
+      ((r.data as Array<{ file_size: number | null }> | null) ?? []).reduce((sum, row) => {
+        const fileSize = Number(row.file_size ?? 0);
+        return sum + (Number.isFinite(fileSize) && fileSize > 0 ? fileSize : 0);
+      }, 0) ?? 0,
     error: r.error,
   }));
 }

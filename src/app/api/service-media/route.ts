@@ -1,6 +1,9 @@
 ﻿import { randomUUID } from "crypto";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import { existsById } from "@/lib/repos/assets-repo";
+import { sumFileSizeByUser } from "@/lib/repos/documents-repo";
+import { formatStorageBytes, getUserPlanConfig } from "@/lib/plans/plan-config";
 import { requireRouteUser, type RouteAuthSuccess } from "@/lib/supabase/route-auth";
 
 export const runtime = "nodejs";
@@ -10,6 +13,10 @@ const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
 const OPENAI_TEXT_MODEL = process.env.OPENAI_MODEL?.trim() || "gpt-4.1-mini";
 const OPENAI_TRANSCRIBE_MODEL = process.env.OPENAI_TRANSCRIBE_MODEL?.trim() || "gpt-4o-mini-transcribe";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const MAX_SERVICE_TYPE_LENGTH = 120;
+const MAX_PROVIDER_LENGTH = 120;
+const MAX_NOTES_LENGTH = 4000;
 
 type MediaKind = "photo" | "video" | "audio";
 
@@ -75,6 +82,56 @@ function normalizeUuid(value: string) {
     return null;
   }
   return normalized;
+}
+
+function parseDateOnly(value: string) {
+  const trimmed = value.trim();
+  if (!DATE_PATTERN.test(trimmed)) {
+    return null;
+  }
+
+  const [yearRaw, monthRaw, dayRaw] = trimmed.split("-");
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    Number.isNaN(parsed.getTime()) ||
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return trimmed;
+}
+
+function readFormText(
+  formData: FormData,
+  key: string,
+  options: { required?: boolean; maxLength?: number } = {},
+) {
+  const entry = formData.get(key);
+  if (entry === null) {
+    return options.required ? { value: "", missing: true } : { value: "" };
+  }
+
+  if (typeof entry !== "string") {
+    return { value: "", invalidType: true };
+  }
+
+  const trimmed = entry.trim();
+  if (options.required && !trimmed) {
+    return { value: "", missing: true };
+  }
+
+  if (options.maxLength && trimmed.length > options.maxLength) {
+    return { value: "", tooLong: true };
+  }
+
+  return { value: trimmed };
 }
 
 function normalizeDisplayFileName(fileName: string) {
@@ -508,210 +565,286 @@ export async function POST(request: Request) {
   }
   const { supabase, user } = auth;
 
-  const formData = await request.formData().catch(() => null);
-  if (!formData) {
-    return NextResponse.json({ error: "Geçersiz form verisi." }, { status: 400 });
-  }
-
-  const rawAssetId = String(formData.get("assetId") ?? "");
-  const rawServiceLogId = String(formData.get("serviceLogId") ?? "");
-  const serviceType = String(formData.get("serviceType") ?? "").trim();
-  const serviceDate = String(formData.get("serviceDate") ?? "").trim();
-  const provider = String(formData.get("provider") ?? "").trim() || null;
-  const userNotes = String(formData.get("notes") ?? "").trim() || null;
-
-  const assetId = normalizeUuid(rawAssetId);
-  const serviceLogId = normalizeUuid(rawServiceLogId);
-
-  if (!assetId || !serviceLogId) {
-    return NextResponse.json({ error: "Varlik veya servis kaydi kimligi gecersiz." }, { status: 400 });
-  }
-
-  if (!serviceType || !serviceDate) {
-    return NextResponse.json({ error: "Zorunlu alanlar eksik." }, { status: 400 });
-  }
-
-  const { data: serviceLog, error: serviceLogError } = await supabase
-    .from("service_logs")
-    .select("id,asset_id,user_id,notes")
-    .eq("id", serviceLogId)
-    .eq("user_id", user.id)
-    .single();
-
-  if (serviceLogError || !serviceLog) {
-    return NextResponse.json({ error: "Servis kaydı bulunamadı." }, { status: 404 });
-  }
-
-  if (serviceLog.user_id !== user.id || serviceLog.asset_id.toLowerCase() !== assetId) {
-    return NextResponse.json({ error: "Bu servis kaydına erişim izniniz yok." }, { status: 403 });
-  }
-
-  const photoFile = getFileEntry(formData, "photo");
-  const videoFile = getFileEntry(formData, "video");
-  const audioFile = getFileEntry(formData, "audio");
-
-  const mediaEntries: Array<{ kind: MediaKind; file: File; mimeType: string; extension: string }> = [];
-  if (photoFile) {
-    const validation = validateMediaFile(photoFile, "photo");
-    if ("error" in validation) {
-      return NextResponse.json({ error: validation.error }, { status: 400 });
+  try {
+    const formData = await request.formData().catch(() => null);
+    if (!formData) {
+      return NextResponse.json({ error: "Geçersiz form verisi." }, { status: 400 });
     }
-    mediaEntries.push({ kind: "photo", file: photoFile, ...validation });
-  }
-  if (videoFile) {
-    const validation = validateMediaFile(videoFile, "video");
-    if ("error" in validation) {
-      return NextResponse.json({ error: validation.error }, { status: 400 });
-    }
-    mediaEntries.push({ kind: "video", file: videoFile, ...validation });
-  }
-  if (audioFile) {
-    const validation = validateMediaFile(audioFile, "audio");
-    if ("error" in validation) {
-      return NextResponse.json({ error: validation.error }, { status: 400 });
-    }
-    mediaEntries.push({ kind: "audio", file: audioFile, ...validation });
-  }
 
-  if (mediaEntries.length === 0) {
-    return NextResponse.json({ ok: true, uploadedCount: 0, warnings: ["Yüklenecek medya bulunamadı."] });
-  }
+    const assetIdField = readFormText(formData, "assetId", { required: true });
+    const serviceLogIdField = readFormText(formData, "serviceLogId", { required: true });
+    const serviceTypeField = readFormText(formData, "serviceType", {
+      required: true,
+      maxLength: MAX_SERVICE_TYPE_LENGTH,
+    });
+    const serviceDateField = readFormText(formData, "serviceDate", { required: true });
+    const providerField = readFormText(formData, "provider", { maxLength: MAX_PROVIDER_LENGTH });
+    const userNotesField = readFormText(formData, "notes", { maxLength: MAX_NOTES_LENGTH });
 
-  const uploads: MediaUploadResult[] = [];
-  const insertedDocumentPaths: string[] = [];
-  for (const entry of mediaEntries) {
-    const storagePath = buildStoragePath({
+    if (assetIdField.invalidType || serviceLogIdField.invalidType) {
+      return NextResponse.json({ error: "Varlik veya servis kaydi kimligi gecersiz." }, { status: 400 });
+    }
+
+    if (
+      serviceTypeField.invalidType ||
+      serviceDateField.invalidType ||
+      providerField.invalidType ||
+      userNotesField.invalidType
+    ) {
+      return NextResponse.json({ error: "Metin alanlari gecersiz." }, { status: 400 });
+    }
+
+    if (serviceTypeField.tooLong) {
+      return NextResponse.json({ error: "Servis turu cok uzun." }, { status: 400 });
+    }
+
+    if (providerField.tooLong) {
+      return NextResponse.json({ error: "Saglayici bilgisi cok uzun." }, { status: 400 });
+    }
+
+    if (userNotesField.tooLong) {
+      return NextResponse.json({ error: "Not alani cok uzun." }, { status: 400 });
+    }
+
+    const assetId = normalizeUuid(assetIdField.value);
+    const serviceLogId = normalizeUuid(serviceLogIdField.value);
+    const serviceType = serviceTypeField.value;
+    const serviceDate = serviceDateField.value;
+    const provider = providerField.value || null;
+    const userNotes = userNotesField.value || null;
+
+    if (!assetId || !serviceLogId) {
+      return NextResponse.json({ error: "Varlik veya servis kaydi kimligi gecersiz." }, { status: 400 });
+    }
+
+    if (!serviceType || !serviceDate) {
+      return NextResponse.json({ error: "Zorunlu alanlar eksik." }, { status: 400 });
+    }
+
+    if (!parseDateOnly(serviceDate)) {
+      return NextResponse.json({ error: "Servis tarihi gecersiz." }, { status: 400 });
+    }
+
+    const { data: assetExists, error: assetCheckError } = await existsById(supabase, {
       userId: user.id,
       assetId,
-      serviceLogId,
-      fileName: entry.file.name,
-      extension: entry.extension,
-      kind: entry.kind,
     });
 
-    const { error: uploadError } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .upload(storagePath, entry.file, { contentType: entry.mimeType, upsert: false });
-
-    if (uploadError) {
-      await rollbackUploadBatch({
-        supabase,
-        userId: user.id,
-        insertedDocumentPaths,
-        orphanedStoragePaths: [],
-      });
-      return NextResponse.json({ error: `${entry.kind} dosyası yüklenemedi.` }, { status: 500 });
+    if (assetCheckError) {
+      return NextResponse.json({ error: assetCheckError.message }, { status: 400 });
     }
 
-    const { error: docError } = await supabase.from("documents").insert({
-      asset_id: assetId,
-      user_id: user.id,
-      service_log_id: serviceLogId,
-      document_type: documentTypeByKind[entry.kind],
-      file_name: normalizeDisplayFileName(entry.file.name),
-      storage_path: storagePath,
-      file_size: entry.file.size,
-    });
-
-    if (docError) {
-      await rollbackUploadBatch({
-        supabase,
-        userId: user.id,
-        insertedDocumentPaths,
-        orphanedStoragePaths: [storagePath],
-      });
-      return NextResponse.json({ error: `${entry.kind} doküman kaydı oluşturulamadı.` }, { status: 500 });
+    if (!assetExists) {
+      return NextResponse.json({ error: "Secilen varliga erisim izniniz yok." }, { status: 403 });
     }
 
-    insertedDocumentPaths.push(storagePath);
-    uploads.push({
-      kind: entry.kind,
-      fileName: entry.file.name,
-      mimeType: entry.mimeType,
-      size: entry.file.size,
-      storagePath,
-      metadata: buildMetadata(entry.file, entry.mimeType),
-      aiMetadata: null,
-    });
-  }
-
-  const openAiApiKey = process.env.OPENAI_API_KEY?.trim();
-  const warnings: string[] = [];
-
-  const transcription = audioFile ? await transcribeAudio(audioFile, openAiApiKey) : null;
-  if (audioFile && !transcription) {
-    warnings.push("Ses dosyası transkribe edilemedi.");
-  }
-
-  const photoMetadata = photoFile ? await parsePhotoMetadata(photoFile, openAiApiKey) : null;
-  if (photoFile && !photoMetadata) {
-    warnings.push("Fotograf metadata analizi tamamlanamadı.");
-  }
-
-  const videoMetadata = videoFile ? await parseVideoMetadata(videoFile, openAiApiKey) : null;
-  if (videoFile && !videoMetadata) {
-    warnings.push("Video metadata analizi tamamlanamadı.");
-  }
-
-  for (const upload of uploads) {
-    if (upload.kind === "photo") {
-      upload.aiMetadata = photoMetadata;
-    }
-    if (upload.kind === "video") {
-      upload.aiMetadata = videoMetadata;
-    }
-  }
-
-  if (!openAiApiKey) {
-    warnings.push("OPENAI_API_KEY tanımlı olmadığı için AI fallback metni kullanıldı.");
-  }
-
-  const suggestedDescription = await suggestDescription({
-    apiKey: openAiApiKey,
-    serviceType,
-    serviceDate,
-    provider,
-    userNotes,
-    transcription,
-    photoMetadata,
-    videoMetadata,
-  });
-
-  const existingNotes = userNotes ?? serviceLog.notes ?? null;
-  const updatedNotes = composeUpdatedNotes({
-    existingNotes,
-    suggestedDescription,
-    transcription,
-    uploads,
-  });
-
-  if (updatedNotes && updatedNotes !== (serviceLog.notes ?? "").trim()) {
-    const { error: updateError } = await supabase
+    const { data: serviceLog, error: serviceLogError } = await supabase
       .from("service_logs")
-      .update({ notes: updatedNotes })
+      .select("id,asset_id,user_id,notes")
       .eq("id", serviceLogId)
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-    if (updateError) {
-      warnings.push("AI notları servis kaydına yazılamadı.");
+    if (serviceLogError || !serviceLog) {
+      return NextResponse.json({ error: "Servis kaydı bulunamadı." }, { status: 404 });
     }
+
+    const relationAssetId = typeof serviceLog.asset_id === "string" ? serviceLog.asset_id.toLowerCase() : "";
+    if (serviceLog.user_id !== user.id || !relationAssetId || relationAssetId !== assetId) {
+      return NextResponse.json({ error: "Bu servis kaydına erişim izniniz yok." }, { status: 403 });
+    }
+
+    const photoFile = getFileEntry(formData, "photo");
+    const videoFile = getFileEntry(formData, "video");
+    const audioFile = getFileEntry(formData, "audio");
+
+    const mediaEntries: Array<{ kind: MediaKind; file: File; mimeType: string; extension: string }> = [];
+    if (photoFile) {
+      const validation = validateMediaFile(photoFile, "photo");
+      if ("error" in validation) {
+        return NextResponse.json({ error: validation.error }, { status: 400 });
+      }
+      mediaEntries.push({ kind: "photo", file: photoFile, ...validation });
+    }
+    if (videoFile) {
+      const validation = validateMediaFile(videoFile, "video");
+      if ("error" in validation) {
+        return NextResponse.json({ error: validation.error }, { status: 400 });
+      }
+      mediaEntries.push({ kind: "video", file: videoFile, ...validation });
+    }
+    if (audioFile) {
+      const validation = validateMediaFile(audioFile, "audio");
+      if ("error" in validation) {
+        return NextResponse.json({ error: validation.error }, { status: 400 });
+      }
+      mediaEntries.push({ kind: "audio", file: audioFile, ...validation });
+    }
+
+    if (mediaEntries.length === 0) {
+      return NextResponse.json({ ok: true, uploadedCount: 0, warnings: ["Yüklenecek medya bulunamadı."] });
+    }
+
+    const userPlan = getUserPlanConfig(user);
+    const maxDocumentStorageBytes = userPlan.limits.maxDocumentStorageBytes;
+    if (maxDocumentStorageBytes !== null) {
+      const incomingStorageBytes = mediaEntries.reduce((sum, entry) => sum + entry.file.size, 0);
+      const { data: currentStorageBytes, error: storageUsageError } = await sumFileSizeByUser(supabase, {
+        userId: user.id,
+      });
+
+      if (storageUsageError) {
+        return NextResponse.json({ error: storageUsageError.message }, { status: 400 });
+      }
+
+      const projectedStorageBytes = (currentStorageBytes ?? 0) + incomingStorageBytes;
+      if (projectedStorageBytes > maxDocumentStorageBytes) {
+        return NextResponse.json(
+          {
+            error: `${userPlan.label} planinda belge depolama limiti ${formatStorageBytes(maxDocumentStorageBytes)}. Mevcut kullanim: ${formatStorageBytes(currentStorageBytes ?? 0)}.`,
+          },
+          { status: 403 },
+        );
+      }
+    }
+
+    const uploads: MediaUploadResult[] = [];
+    const insertedDocumentPaths: string[] = [];
+    for (const entry of mediaEntries) {
+      const storagePath = buildStoragePath({
+        userId: user.id,
+        assetId,
+        serviceLogId,
+        fileName: entry.file.name,
+        extension: entry.extension,
+        kind: entry.kind,
+      });
+
+      const { error: uploadError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .upload(storagePath, entry.file, { contentType: entry.mimeType, upsert: false });
+
+      if (uploadError) {
+        await rollbackUploadBatch({
+          supabase,
+          userId: user.id,
+          insertedDocumentPaths,
+          orphanedStoragePaths: [],
+        });
+        return NextResponse.json({ error: `${entry.kind} dosyası yüklenemedi.` }, { status: 500 });
+      }
+
+      const { error: docError } = await supabase.from("documents").insert({
+        asset_id: assetId,
+        user_id: user.id,
+        service_log_id: serviceLogId,
+        document_type: documentTypeByKind[entry.kind],
+        file_name: normalizeDisplayFileName(entry.file.name),
+        storage_path: storagePath,
+        file_size: entry.file.size,
+      });
+
+      if (docError) {
+        await rollbackUploadBatch({
+          supabase,
+          userId: user.id,
+          insertedDocumentPaths,
+          orphanedStoragePaths: [storagePath],
+        });
+        return NextResponse.json({ error: `${entry.kind} doküman kaydı oluşturulamadı.` }, { status: 500 });
+      }
+
+      insertedDocumentPaths.push(storagePath);
+      uploads.push({
+        kind: entry.kind,
+        fileName: entry.file.name,
+        mimeType: entry.mimeType,
+        size: entry.file.size,
+        storagePath,
+        metadata: buildMetadata(entry.file, entry.mimeType),
+        aiMetadata: null,
+      });
+    }
+
+    const openAiApiKey = process.env.OPENAI_API_KEY?.trim();
+    const warnings: string[] = [];
+
+    const transcription = audioFile ? await transcribeAudio(audioFile, openAiApiKey) : null;
+    if (audioFile && !transcription) {
+      warnings.push("Ses dosyası transkribe edilemedi.");
+    }
+
+    const photoMetadata = photoFile ? await parsePhotoMetadata(photoFile, openAiApiKey) : null;
+    if (photoFile && !photoMetadata) {
+      warnings.push("Fotograf metadata analizi tamamlanamadı.");
+    }
+
+    const videoMetadata = videoFile ? await parseVideoMetadata(videoFile, openAiApiKey) : null;
+    if (videoFile && !videoMetadata) {
+      warnings.push("Video metadata analizi tamamlanamadı.");
+    }
+
+    for (const upload of uploads) {
+      if (upload.kind === "photo") {
+        upload.aiMetadata = photoMetadata;
+      }
+      if (upload.kind === "video") {
+        upload.aiMetadata = videoMetadata;
+      }
+    }
+
+    if (!openAiApiKey) {
+      warnings.push("OPENAI_API_KEY tanımlı olmadığı için AI fallback metni kullanıldı.");
+    }
+
+    const suggestedDescription = await suggestDescription({
+      apiKey: openAiApiKey,
+      serviceType,
+      serviceDate,
+      provider,
+      userNotes,
+      transcription,
+      photoMetadata,
+      videoMetadata,
+    });
+
+    const existingNotes = userNotes ?? (typeof serviceLog.notes === "string" ? serviceLog.notes : null);
+    const updatedNotes = composeUpdatedNotes({
+      existingNotes,
+      suggestedDescription,
+      transcription,
+      uploads,
+    });
+
+    if (updatedNotes && updatedNotes !== (typeof serviceLog.notes === "string" ? serviceLog.notes.trim() : "")) {
+      const { error: updateError } = await supabase
+        .from("service_logs")
+        .update({ notes: updatedNotes })
+        .eq("id", serviceLogId)
+        .eq("user_id", user.id);
+
+      if (updateError) {
+        warnings.push("AI notları servis kaydına yazılamadı.");
+      }
+    }
+
+    return NextResponse.json({
+      ok: true,
+      uploadedCount: uploads.length,
+      transcription,
+      suggestedDescription,
+      media: uploads.map((item) => ({
+        kind: item.kind,
+        fileName: item.fileName,
+        mimeType: item.mimeType,
+        size: item.size,
+        storagePath: item.storagePath,
+        metadata: item.aiMetadata ?? item.metadata,
+      })),
+      warnings,
+    });
+  } catch {
+    return NextResponse.json({ error: "Medya istegi islenemedi." }, { status: 500 });
   }
-
-  return NextResponse.json({
-    ok: true,
-    uploadedCount: uploads.length,
-    transcription,
-    suggestedDescription,
-    media: uploads.map((item) => ({
-      kind: item.kind,
-      fileName: item.fileName,
-      mimeType: item.mimeType,
-      size: item.size,
-      storagePath: item.storagePath,
-      metadata: item.aiMetadata ?? item.metadata,
-    })),
-    warnings,
-  });
 }
-
 

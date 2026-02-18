@@ -12,6 +12,7 @@ import {
 import { ReportsExportButtons } from "@/features/reports/components/reports-export-buttons";
 import { ReportsFilterPanel } from "@/features/reports/components/reports-filter-panel";
 import { ReportsSummaryCards } from "@/features/reports/components/reports-summary-cards";
+import { getPlanConfig, getUserPlanConfig, type PlanConfig } from "@/lib/plans/plan-config";
 import { countByUser as countAssetsByUser } from "@/lib/repos/assets-repo";
 import { listForReports as listDocumentsForReports } from "@/lib/repos/documents-repo";
 import { listForReports as listServiceLogsForReports } from "@/lib/repos/service-logs-repo";
@@ -70,6 +71,8 @@ const truncate = (value: string | null | undefined, length: number) => {
 const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
 
+const DEFAULT_PLAN_CONFIG: PlanConfig = getPlanConfig("starter");
+
 export function ReportsPageContainer() {
   const router = useRouter();
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
@@ -86,6 +89,7 @@ export function ReportsPageContainer() {
   const [isExporting, setIsExporting] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [hasValidSession, setHasValidSession] = useState(true);
+  const [planConfig, setPlanConfig] = useState<PlanConfig>(DEFAULT_PLAN_CONFIG);
 
   useEffect(() => {
     const load = async () => {
@@ -105,6 +109,7 @@ export function ReportsPageContainer() {
 
       setHasValidSession(true);
       setUserEmail(user.email ?? "bilinmiyor");
+      setPlanConfig(getUserPlanConfig(user));
 
       const [assetCountRes, servicesRes, docsRes] = await Promise.all([
         countAssetsByUser(supabase, { userId: user.id }),
@@ -239,6 +244,11 @@ export function ReportsPageContainer() {
   }
 
   const onExportPdf = async () => {
+    if (!planConfig.features.canExportReports) {
+      setFeedback(`${planConfig.label} planinda PDF rapor disa aktarma ozelligi kapali.`);
+      return;
+    }
+
     if (!hasValidRange) {
       setFeedback("BaÅŸlangÄ±Ã§ tarihi bitiÅŸ tarihinden bÃ¼yÃ¼k olamaz.");
       return;
@@ -424,6 +434,7 @@ export function ReportsPageContainer() {
           }}
           isExporting={isExporting}
           hasValidRange={hasValidRange}
+          canExportReports={planConfig.features.canExportReports}
         />
       }
     >

@@ -4,12 +4,13 @@ import type { DbClient } from "@/lib/repos/_shared";
 import { existsById } from "@/lib/repos/assets-repo";
 import {
   getById as getRuleById,
+  listForScheduleSync as listRulesForScheduleSync,
   updateById as updateRuleById,
 } from "@/lib/repos/maintenance-rules-repo";
 import {
   create as createServiceLog,
   getById as getServiceLogById,
-  getLatestServiceDateForRule,
+  listLatestServiceDatesByRules,
   updateById as updateServiceLogById,
   type UpdateServiceLogByIdParams,
 } from "@/lib/repos/service-logs-repo";
@@ -37,6 +38,10 @@ type UpdateServiceLogPayload = {
 };
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const MAX_SERVICE_TYPE_LENGTH = 120;
+const MAX_PROVIDER_LENGTH = 120;
+const MAX_NOTES_LENGTH = 4000;
 
 const readBody = async (request: Request) =>
   (await request.json().catch(() => null)) as CreateServiceLogPayload | null;
@@ -44,57 +49,160 @@ const readBody = async (request: Request) =>
 const readUpdateBody = async (request: Request) =>
   (await request.json().catch(() => null)) as UpdateServiceLogPayload | null;
 
+const parseDateOnly = (value: string): string | null => {
+  const trimmed = value.trim();
+  if (!datePattern.test(trimmed)) {
+    return null;
+  }
+
+  const [yearRaw, monthRaw, dayRaw] = trimmed.split("-");
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    Number.isNaN(parsed.getTime()) ||
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return trimmed;
+};
+
+const normalizeUuid = (value: unknown) => {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (!uuidPattern.test(normalized)) {
+    return null;
+  }
+  return normalized;
+};
+
+const readOptionalText = (
+  value: unknown,
+  maxLength: number,
+): { value: string | null; invalidType?: boolean; tooLong?: boolean } => {
+  if (value === null || value === undefined) {
+    return { value: null };
+  }
+
+  if (typeof value !== "string") {
+    return { value: null, invalidType: true };
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return { value: null };
+  }
+
+  if (trimmed.length > maxLength) {
+    return { value: null, tooLong: true };
+  }
+
+  return { value: trimmed };
+};
+
+const syncRuleSchedulesFromLatestLogs = async (params: {
+  userId: string;
+  ruleIds: string[];
+  client: DbClient;
+}) => {
+  const { client, userId } = params;
+  const targetRuleIds = [...new Set(params.ruleIds.filter((ruleId) => ruleId.trim().length > 0))];
+  if (targetRuleIds.length === 0) {
+    return [] as string[];
+  }
+
+  const [rulesRes, latestLogsRes] = await Promise.all([
+    listRulesForScheduleSync(client, {
+      userId,
+      ruleIds: targetRuleIds,
+    }),
+    listLatestServiceDatesByRules(client, {
+      userId,
+      ruleIds: targetRuleIds,
+    }),
+  ]);
+
+  if (rulesRes.error) {
+    return [rulesRes.error.message];
+  }
+
+  if (latestLogsRes.error) {
+    return [latestLogsRes.error.message];
+  }
+
+  const rules = rulesRes.data ?? [];
+  const latestLogsByRuleId = new Map(
+    (latestLogsRes.data ?? []).map((item) => [item.rule_id, item.service_date]),
+  );
+  const syncErrors: string[] = [];
+
+  const foundRuleIdSet = new Set(rules.map((rule) => rule.id));
+  for (const ruleId of targetRuleIds) {
+    if (!foundRuleIdSet.has(ruleId)) {
+      syncErrors.push("Bakim kurali bulunamadi.");
+    }
+  }
+
+  const updateTasks: Array<Promise<{ ruleId: string; error: string | null }>> = [];
+  for (const rule of rules) {
+    const latestServiceDate = latestLogsByRuleId.get(rule.id);
+    if (!latestServiceDate) {
+      continue;
+    }
+
+    let nextDueDate = "";
+    try {
+      nextDueDate = calculateNextDueDate({
+        baseDate: latestServiceDate,
+        intervalValue: rule.interval_value,
+        intervalUnit: rule.interval_unit,
+      });
+    } catch (error) {
+      syncErrors.push((error as Error).message);
+      continue;
+    }
+
+    updateTasks.push(
+      updateRuleById(client, {
+        userId,
+        ruleId: rule.id,
+        patch: {
+          last_service_date: latestServiceDate,
+          next_due_date: nextDueDate,
+        },
+      }).then((result) => ({
+        ruleId: rule.id,
+        error: result.error?.message ?? null,
+      })),
+    );
+  }
+
+  const updateResults = await Promise.all(updateTasks);
+  for (const result of updateResults) {
+    if (result.error) {
+      syncErrors.push(`Kural ${result.ruleId}: ${result.error}`);
+    }
+  }
+
+  return syncErrors;
+};
+
 const syncRuleScheduleFromLatestLog = async (params: {
   userId: string;
   ruleId: string;
   client: DbClient;
 }) => {
-  const { client, ruleId, userId } = params;
-  const { data: rule, error: ruleError } = await getRuleById(client, {
-    ruleId,
-    userId,
+  const errors = await syncRuleSchedulesFromLatestLogs({
+    client: params.client,
+    userId: params.userId,
+    ruleIds: [params.ruleId],
   });
-
-  if (ruleError || !rule) {
-    return ruleError?.message ?? "Bakim kurali bulunamadi.";
-  }
-
-  const { data: latestLog, error: latestError } = await getLatestServiceDateForRule(client, {
-    userId,
-    ruleId,
-    assetId: rule.asset_id,
-  });
-
-  if (latestError) {
-    return latestError.message;
-  }
-
-  const latestServiceDate = latestLog?.service_date;
-  if (!latestServiceDate) {
-    return null;
-  }
-
-  let nextDueDate = "";
-  try {
-    nextDueDate = calculateNextDueDate({
-      baseDate: latestServiceDate,
-      intervalValue: rule.interval_value,
-      intervalUnit: rule.interval_unit,
-    });
-  } catch (error) {
-    return (error as Error).message;
-  }
-
-  const { error: updateRuleError } = await updateRuleById(client, {
-    userId,
-    ruleId,
-    patch: {
-      last_service_date: latestServiceDate,
-      next_due_date: nextDueDate,
-    },
-  });
-
-  return updateRuleError?.message ?? null;
+  return errors.length > 0 ? errors.join(" | ") : null;
 };
 
 export async function POST(request: Request) {
@@ -103,13 +211,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Gecersiz istek govdesi." }, { status: 400 });
   }
 
-  const assetId = String(payload.assetId ?? "").trim();
-  const ruleId = String(payload.ruleId ?? "").trim();
+  const assetId = normalizeUuid(payload.assetId);
+  const rawRuleId = String(payload.ruleId ?? "").trim();
+  const ruleId = rawRuleId ? normalizeUuid(rawRuleId) : null;
   const serviceType = String(payload.serviceType ?? "").trim();
   const serviceDate = String(payload.serviceDate ?? "").trim();
   const cost = Number(payload.cost ?? 0);
-  const provider = String(payload.provider ?? "").trim();
-  const notes = String(payload.notes ?? "").trim();
+  const providerResult = readOptionalText(payload.provider, MAX_PROVIDER_LENGTH);
+  const notesResult = readOptionalText(payload.notes, MAX_NOTES_LENGTH);
 
   if (!assetId || !serviceType || !serviceDate) {
     return NextResponse.json(
@@ -118,12 +227,32 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!datePattern.test(serviceDate)) {
+  if (serviceType.length > MAX_SERVICE_TYPE_LENGTH) {
+    return NextResponse.json({ error: "Servis turu cok uzun." }, { status: 400 });
+  }
+
+  if (!parseDateOnly(serviceDate)) {
     return NextResponse.json({ error: "Gecersiz tarih formati." }, { status: 400 });
+  }
+
+  if (rawRuleId && !ruleId) {
+    return NextResponse.json({ error: "Bakim kurali kimligi gecersiz." }, { status: 400 });
   }
 
   if (Number.isNaN(cost) || cost < 0) {
     return NextResponse.json({ error: "Maliyet gecersiz." }, { status: 400 });
+  }
+
+  if (providerResult.invalidType || notesResult.invalidType) {
+    return NextResponse.json({ error: "Metin alanlari gecersiz." }, { status: 400 });
+  }
+
+  if (providerResult.tooLong) {
+    return NextResponse.json({ error: "Saglayici adi cok uzun." }, { status: 400 });
+  }
+
+  if (notesResult.tooLong) {
+    return NextResponse.json({ error: "Not alani cok uzun." }, { status: 400 });
   }
 
   const auth = await requireRouteUser(request);
@@ -165,12 +294,12 @@ export async function POST(request: Request) {
     values: {
       user_id: user.id,
       asset_id: assetId,
-      rule_id: ruleId || null,
+      rule_id: ruleId,
       service_type: serviceType,
       service_date: serviceDate,
       cost,
-      provider: provider || null,
-      notes: notes || null,
+      provider: providerResult.value,
+      notes: notesResult.value,
     },
   });
 
@@ -203,7 +332,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Gecersiz istek govdesi." }, { status: 400 });
   }
 
-  const serviceLogId = String(payload.id ?? "").trim();
+  const serviceLogId = normalizeUuid(payload.id);
   if (!serviceLogId) {
     return NextResponse.json({ error: "Servis kaydi kimligi zorunludur." }, { status: 400 });
   }
@@ -239,7 +368,7 @@ export async function PATCH(request: Request) {
   const patch: UpdateServiceLogByIdParams["patch"] = {};
 
   if (hasAssetId) {
-    const nextAssetId = String(payload.assetId ?? "").trim();
+    const nextAssetId = normalizeUuid(payload.assetId);
     if (!nextAssetId) {
       return NextResponse.json({ error: "Varlik secimi zorunludur." }, { status: 400 });
     }
@@ -262,7 +391,15 @@ export async function PATCH(request: Request) {
 
   if (hasRuleId) {
     const rawRuleId = String(payload.ruleId ?? "").trim();
-    patch.rule_id = rawRuleId || null;
+    if (rawRuleId) {
+      const nextRuleId = normalizeUuid(rawRuleId);
+      if (!nextRuleId) {
+        return NextResponse.json({ error: "Bakim kurali kimligi gecersiz." }, { status: 400 });
+      }
+      patch.rule_id = nextRuleId;
+    } else {
+      patch.rule_id = null;
+    }
   }
 
   if (hasServiceType) {
@@ -270,12 +407,15 @@ export async function PATCH(request: Request) {
     if (!nextServiceType) {
       return NextResponse.json({ error: "Servis turu zorunludur." }, { status: 400 });
     }
+    if (nextServiceType.length > MAX_SERVICE_TYPE_LENGTH) {
+      return NextResponse.json({ error: "Servis turu cok uzun." }, { status: 400 });
+    }
     patch.service_type = nextServiceType;
   }
 
   if (hasServiceDate) {
     const nextServiceDate = String(payload.serviceDate ?? "").trim();
-    if (!datePattern.test(nextServiceDate)) {
+    if (!parseDateOnly(nextServiceDate)) {
       return NextResponse.json({ error: "Gecersiz tarih formati." }, { status: 400 });
     }
     patch.service_date = nextServiceDate;
@@ -290,17 +430,33 @@ export async function PATCH(request: Request) {
   }
 
   if (hasProvider) {
-    const nextProvider = String(payload.provider ?? "").trim();
-    patch.provider = nextProvider || null;
+    const nextProvider = readOptionalText(payload.provider, MAX_PROVIDER_LENGTH);
+    if (nextProvider.invalidType) {
+      return NextResponse.json({ error: "Saglayici alani gecersiz." }, { status: 400 });
+    }
+    if (nextProvider.tooLong) {
+      return NextResponse.json({ error: "Saglayici adi cok uzun." }, { status: 400 });
+    }
+    patch.provider = nextProvider.value;
   }
 
   if (hasNotes) {
-    const nextNotes = String(payload.notes ?? "").trim();
-    patch.notes = nextNotes || null;
+    const nextNotes = readOptionalText(payload.notes, MAX_NOTES_LENGTH);
+    if (nextNotes.invalidType) {
+      return NextResponse.json({ error: "Not alani gecersiz." }, { status: 400 });
+    }
+    if (nextNotes.tooLong) {
+      return NextResponse.json({ error: "Not alani cok uzun." }, { status: 400 });
+    }
+    patch.notes = nextNotes.value;
   }
 
   const targetAssetId = patch.asset_id ?? currentLog.asset_id;
   const targetRuleId = patch.rule_id !== undefined ? patch.rule_id : currentLog.rule_id;
+
+  if (!targetAssetId) {
+    return NextResponse.json({ error: "Servis kaydinin varlik iliskisi gecersiz." }, { status: 400 });
+  }
 
   if (targetRuleId) {
     const { data: rule, error: ruleError } = await getRuleById(supabase, {
@@ -335,17 +491,11 @@ export async function PATCH(request: Request) {
     rulesToSync.add(updatedLog.rule_id);
   }
 
-  const syncErrors: string[] = [];
-  for (const affectedRuleId of rulesToSync) {
-    const syncError = await syncRuleScheduleFromLatestLog({
-      client: supabase,
-      userId: user.id,
-      ruleId: affectedRuleId,
-    });
-    if (syncError) {
-      syncErrors.push(syncError);
-    }
-  }
+  const syncErrors = await syncRuleSchedulesFromLatestLogs({
+    client: supabase,
+    userId: user.id,
+    ruleIds: [...rulesToSync],
+  });
 
   if (syncErrors.length > 0) {
     return NextResponse.json(

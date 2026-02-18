@@ -142,6 +142,18 @@ export type GetLatestServiceDateForRuleParams = {
 
 export type GetLatestServiceDateForRuleRow = Pick<Row<"service_logs">, "service_date">;
 
+export type ListLatestServiceDatesByRulesParams = {
+  userId: string;
+  ruleIds: string[];
+};
+
+export type ListLatestServiceDatesByRulesRow = Pick<
+  Row<"service_logs">,
+  "rule_id" | "asset_id" | "service_date"
+> & {
+  rule_id: string;
+};
+
 const buildCostAggregate = (rows: Array<{ cost: number | null }>): ServiceLogCostAggregate => {
   const logCount = rows.length;
   const totalCost = rows.reduce((sum, row) => sum + Number(row.cost ?? 0), 0);
@@ -442,4 +454,36 @@ export function getLatestServiceDateForRule(
     data: (r.data as GetLatestServiceDateForRuleRow | null) ?? null,
     error: r.error,
   }));
+}
+
+export function listLatestServiceDatesByRules(
+  client: DbClient,
+  params: ListLatestServiceDatesByRulesParams,
+): RepoResult<ListLatestServiceDatesByRulesRow[]> {
+  const { ruleIds, userId } = params;
+  const normalizedRuleIds = [...new Set(ruleIds.filter((ruleId) => ruleId.trim().length > 0))];
+
+  if (normalizedRuleIds.length === 0) {
+    return Promise.resolve({ data: [], error: null });
+  }
+
+  return Promise.resolve(
+    client
+      .from("service_logs")
+      .select("rule_id,asset_id,service_date")
+      .eq("user_id", userId)
+      .in("rule_id", normalizedRuleIds)
+      .order("service_date", { ascending: false }),
+  ).then((r) => {
+    const latestByRule = new Map<string, ListLatestServiceDatesByRulesRow>();
+    for (const row of (r.data as ListLatestServiceDatesByRulesRow[] | null) ?? []) {
+      if (!row.rule_id || latestByRule.has(row.rule_id)) continue;
+      latestByRule.set(row.rule_id, row);
+    }
+
+    return {
+      data: [...latestByRule.values()],
+      error: r.error,
+    };
+  });
 }

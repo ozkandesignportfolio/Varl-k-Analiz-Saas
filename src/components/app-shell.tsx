@@ -34,15 +34,13 @@ export function AppShell({ title, subtitle, children, actions, badge }: AppShell
 
   return (
     <main className="relative min-h-screen overflow-x-hidden px-4 py-4 sm:px-6 lg:px-8">
-      <div className="pointer-events-none absolute inset-0 opacity-40">
-        <div className="ambient-orb ambient-orb-a" />
-        <div className="ambient-orb ambient-orb-b" />
-      </div>
-
       <div className="relative mx-auto grid w-full max-w-7xl gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
-        <aside className="premium-panel motion-fade-up sticky top-4 hidden h-fit p-4 lg:block">
-          <Link href="/" className="flex items-center gap-3 rounded-2xl border border-white/10 p-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-400 via-indigo-500 to-fuchsia-500 text-xs font-bold text-white">
+        <aside className="premium-panel sticky top-4 hidden h-fit ui-pad lg:block">
+          <Link
+            href="/"
+            className="flex items-center gap-3 rounded-[calc(var(--ui-radius)-2px)] border border-white/10 px-3 py-2.5"
+          >
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-400 text-xs font-bold text-slate-950">
               AC
             </span>
             <div>
@@ -58,10 +56,10 @@ export function AppShell({ title, subtitle, children, actions, badge }: AppShell
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`menu-link group flex items-center justify-between rounded-xl px-3 py-2.5 text-sm transition ${
+                  className={`menu-link flex items-center justify-between rounded-[calc(var(--ui-radius)-2px)] border px-3 py-2.5 text-sm ${
                     active
-                      ? "bg-gradient-to-r from-indigo-500/45 to-fuchsia-500/35 text-white shadow-[0_8px_20px_rgba(99,102,241,0.25)]"
-                      : "text-slate-300 hover:bg-white/5 hover:text-white"
+                      ? "border-white/20 bg-white/10 text-white"
+                      : "border-transparent text-slate-300 hover:border-white/10 hover:bg-white/5 hover:text-white"
                   }`}
                 >
                   <span>{item.label}</span>
@@ -69,7 +67,7 @@ export function AppShell({ title, subtitle, children, actions, badge }: AppShell
                     className={`rounded-md border px-2 py-0.5 text-[10px] tracking-wider ${
                       active
                         ? "border-white/30 text-white"
-                        : "border-white/15 text-slate-400 group-hover:text-slate-200"
+                        : "border-white/15 text-slate-400"
                     }`}
                   >
                     {item.short}
@@ -79,7 +77,7 @@ export function AppShell({ title, subtitle, children, actions, badge }: AppShell
             })}
           </nav>
 
-          <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <div className="mt-6 rounded-[calc(var(--ui-radius)-2px)] border border-white/10 bg-white/[0.03] px-3 py-3">
             <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Abonelik</p>
             <p className="mt-2 text-sm text-slate-200">Premium aktif: 149 TL / ay</p>
             <p className="mt-1 text-xs text-slate-400">Sınırsız varlık ve takip</p>
@@ -87,14 +85,14 @@ export function AppShell({ title, subtitle, children, actions, badge }: AppShell
         </aside>
 
         <section className="min-w-0 space-y-5">
-          <header className="premium-panel motion-fade-up motion-delay-1 p-4 sm:p-5">
+          <header className="premium-panel ui-pad">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <Link
                   href="/"
                   className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-slate-300 lg:hidden"
                 >
-                  <span className="flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br from-sky-400 via-indigo-500 to-fuchsia-500 text-[9px] font-bold text-white">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-md bg-sky-400 text-[9px] font-bold text-slate-950">
                     AC
                   </span>
                   AssetCare
@@ -123,7 +121,7 @@ export function AppShell({ title, subtitle, children, actions, badge }: AppShell
                     href={item.href}
                     className={`menu-chip shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
                       active
-                        ? "border-sky-300/40 bg-sky-300/15 text-sky-100 shadow-[0_10px_20px_rgba(56,189,248,0.22)]"
+                        ? "border-sky-300/35 bg-sky-300/12 text-sky-100"
                         : "border-white/15 bg-white/5 text-slate-300"
                     }`}
                   >
