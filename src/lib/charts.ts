@@ -52,7 +52,8 @@ export const getCurrentYearCost = (logs: ServiceCostLog[], now = new Date()) => 
   return logs
     .filter((log) => {
       const date = parseDate(log.service_date);
-      return Boolean(date) && date!.getFullYear() === currentYear;
+      if (!date) return false;
+      return date.getFullYear() === currentYear;
     })
     .reduce((sum, log) => sum + Number(log.cost ?? 0), 0);
 };
@@ -90,7 +91,7 @@ export const filterLogsByPeriod = (logs: ServiceCostLog[], period: PeriodFilter,
 };
 
 export const buildMonthlyCostSeries = (logs: ServiceCostLog[], period: PeriodFilter, now = new Date()) => {
-  if (logs.length === 0) return [] as CostPoint[];
+  if (logs.length === 0) return [];
 
   const start = periodStart(period, logs, now);
   const end = new Date(now.getFullYear(), now.getMonth(), 1);

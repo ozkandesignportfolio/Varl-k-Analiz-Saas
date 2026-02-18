@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type {
   BillingCycle,
   BillingSubscriptionStatus,
@@ -24,12 +25,13 @@ type BillingSubscriptionTableProps = {
   subscriptions: BillingSubscriptionTableRow[];
   unpaidInvoiceCount: number;
   formatCurrency: (value: number) => string;
+  emptyState?: ReactNode;
 };
 
 const statusLabelMap: Record<BillingSubscriptionStatus, string> = {
   active: "Aktif",
-  paused: "Duraklatıldı",
-  cancelled: "İptal",
+  paused: "Duraklatildi",
+  cancelled: "Iptal",
 };
 
 export function BillingSubscriptionTable({
@@ -37,19 +39,20 @@ export function BillingSubscriptionTable({
   subscriptions,
   unpaidInvoiceCount,
   formatCurrency,
+  emptyState,
 }: BillingSubscriptionTableProps) {
   return (
     <article className="premium-card p-5">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-xl font-semibold text-white">Abonelik Listesi</h2>
         <span className="rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-xs text-slate-300">
-          Açık Fatura: {unpaidInvoiceCount}
+          Acik Fatura: {unpaidInvoiceCount}
         </span>
       </div>
       {isLoading ? (
-        <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
+        <p className="mt-4 text-sm text-slate-300">Yukleniyor...</p>
       ) : subscriptions.length === 0 ? (
-        <p className="mt-4 text-sm text-slate-300">Henüz abonelik kaydı yok.</p>
+        emptyState ?? <p className="mt-4 text-sm text-slate-300">Henuz abonelik kaydi yok.</p>
       ) : (
         <div className="mt-4 space-y-2">
           {subscriptions.map((subscription) => (
@@ -60,8 +63,8 @@ export function BillingSubscriptionTable({
                     {subscription.provider_name} - {subscription.subscription_name}
                   </p>
                   <p className="mt-1 text-xs text-slate-400">
-                    {subscription.plan_name ? `${subscription.plan_name} · ` : ""}
-                    {subscription.billing_cycle === "yearly" ? "Yıllık" : "Aylık"} ·{" "}
+                    {subscription.plan_name ? `${subscription.plan_name} - ` : ""}
+                    {subscription.billing_cycle === "yearly" ? "Yillik" : "Aylik"} -{" "}
                     {formatCurrency(Number(subscription.amount ?? 0))}
                   </p>
                 </div>

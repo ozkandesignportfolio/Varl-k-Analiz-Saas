@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logApiError, logAuditEvent } from "@/lib/api/logging";
 import { countByUser as countAssetsByUser } from "@/lib/repos/assets-repo";
 import { getUserPlanConfig } from "@/lib/plans/plan-config";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
@@ -109,11 +110,13 @@ const readRequiredText = (value: unknown, maxLength: number) => {
 };
 
 export async function POST(request: Request) {
+  let userId: string | null = null;
   try {
     const auth = await requireRouteUser(request);
     if ("response" in auth) {
       return auth.response;
     }
+    userId = auth.user.id;
 
     const payload = await readBody<CreateAssetPayload>(request);
     if (!payload) {
@@ -201,18 +204,35 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error?.message ?? "Varlik olusturulamadi." }, { status: 400 });
     }
 
+    logAuditEvent({
+      route: "/api/assets",
+      userId: auth.user.id,
+      entityType: "assets",
+      entityId: data.id,
+      action: "create",
+    });
+
     return NextResponse.json({ ok: true, id: data.id }, { status: 201 });
-  } catch {
+  } catch (error) {
+    logApiError({
+      route: "/api/assets",
+      method: "POST",
+      userId,
+      error,
+      message: "Asset create request failed unexpectedly",
+    });
     return NextResponse.json({ error: "Varlik istegi islenemedi." }, { status: 500 });
   }
 }
 
 export async function PATCH(request: Request) {
+  let userId: string | null = null;
   try {
     const auth = await requireRouteUser(request);
     if ("response" in auth) {
       return auth.response;
     }
+    userId = auth.user.id;
 
     const payload = await readBody<UpdateAssetPayload>(request);
     if (!payload) {
@@ -339,18 +359,36 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Varlik bulunamadi." }, { status: 404 });
     }
 
+    logAuditEvent({
+      route: "/api/assets",
+      userId: auth.user.id,
+      entityType: "assets",
+      entityId: data.id,
+      action: "update",
+      meta: { fields: Object.keys(patch) },
+    });
+
     return NextResponse.json({ ok: true, id: data.id }, { status: 200 });
-  } catch {
+  } catch (error) {
+    logApiError({
+      route: "/api/assets",
+      method: "PATCH",
+      userId,
+      error,
+      message: "Asset update request failed unexpectedly",
+    });
     return NextResponse.json({ error: "Varlik guncelleme istegi islenemedi." }, { status: 500 });
   }
 }
 
 export async function DELETE(request: Request) {
+  let userId: string | null = null;
   try {
     const auth = await requireRouteUser(request);
     if ("response" in auth) {
       return auth.response;
     }
+    userId = auth.user.id;
 
     const payload = await readBody<DeleteAssetPayload>(request);
     if (!payload) {
@@ -378,8 +416,23 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Varlik bulunamadi." }, { status: 404 });
     }
 
+    logAuditEvent({
+      route: "/api/assets",
+      userId: auth.user.id,
+      entityType: "assets",
+      entityId: data.id,
+      action: "delete",
+    });
+
     return NextResponse.json({ ok: true, id: data.id }, { status: 200 });
-  } catch {
+  } catch (error) {
+    logApiError({
+      route: "/api/assets",
+      method: "DELETE",
+      userId,
+      error,
+      message: "Asset delete request failed unexpectedly",
+    });
     return NextResponse.json({ error: "Varlik silme istegi islenemedi." }, { status: 500 });
   }
 }

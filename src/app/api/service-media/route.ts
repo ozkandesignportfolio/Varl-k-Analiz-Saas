@@ -1,6 +1,7 @@
 ﻿import { randomUUID } from "crypto";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import { logApiError, logAuditEvent } from "@/lib/api/logging";
 import { existsById } from "@/lib/repos/assets-repo";
 import { sumFileSizeByUser } from "@/lib/repos/documents-repo";
 import { formatStorageBytes, getUserPlanConfig } from "@/lib/plans/plan-config";
@@ -559,13 +560,16 @@ async function rollbackUploadBatch(params: {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireRouteUser(request);
-  if ("response" in auth) {
-    return auth.response;
-  }
-  const { supabase, user } = auth;
+  let userId: string | null = null;
 
   try {
+    const auth = await requireRouteUser(request);
+    if ("response" in auth) {
+      return auth.response;
+    }
+    const { supabase, user } = auth;
+    userId = user.id;
+
     const formData = await request.formData().catch(() => null);
     if (!formData) {
       return NextResponse.json({ error: "Geçersiz form verisi." }, { status: 400 });
@@ -734,17 +738,21 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: `${entry.kind} dosyası yüklenemedi.` }, { status: 500 });
       }
 
-      const { error: docError } = await supabase.from("documents").insert({
-        asset_id: assetId,
-        user_id: user.id,
-        service_log_id: serviceLogId,
-        document_type: documentTypeByKind[entry.kind],
-        file_name: normalizeDisplayFileName(entry.file.name),
-        storage_path: storagePath,
-        file_size: entry.file.size,
-      });
+      const { data: insertedDocument, error: docError } = await supabase
+        .from("documents")
+        .insert({
+          asset_id: assetId,
+          user_id: user.id,
+          service_log_id: serviceLogId,
+          document_type: documentTypeByKind[entry.kind],
+          file_name: normalizeDisplayFileName(entry.file.name),
+          storage_path: storagePath,
+          file_size: entry.file.size,
+        })
+        .select("id")
+        .single();
 
-      if (docError) {
+      if (docError || !insertedDocument?.id) {
         await rollbackUploadBatch({
           supabase,
           userId: user.id,
@@ -755,6 +763,14 @@ export async function POST(request: Request) {
       }
 
       insertedDocumentPaths.push(storagePath);
+      logAuditEvent({
+        route: "/api/service-media",
+        userId: user.id,
+        entityType: "documents",
+        entityId: insertedDocument.id,
+        action: "create",
+        meta: { documentType: documentTypeByKind[entry.kind], serviceLogId },
+      });
       uploads.push({
         kind: entry.kind,
         fileName: entry.file.name,
@@ -825,6 +841,15 @@ export async function POST(request: Request) {
 
       if (updateError) {
         warnings.push("AI notları servis kaydına yazılamadı.");
+      } else {
+        logAuditEvent({
+          route: "/api/service-media",
+          userId: user.id,
+          entityType: "service_logs",
+          entityId: serviceLogId,
+          action: "update",
+          meta: { fields: ["notes"], source: "ai_media_enrichment" },
+        });
       }
     }
 
@@ -843,7 +868,14 @@ export async function POST(request: Request) {
       })),
       warnings,
     });
-  } catch {
+  } catch (error) {
+    logApiError({
+      route: "/api/service-media",
+      method: "POST",
+      userId,
+      error,
+      message: "Service media request failed unexpectedly",
+    });
     return NextResponse.json({ error: "Medya istegi islenemedi." }, { status: 500 });
   }
 }

@@ -1,5 +1,6 @@
 ﻿import { NextResponse } from "next/server";
 import { calculateNextDueDate } from "@/lib/maintenance/next-due";
+import { logApiError, logAuditEvent } from "@/lib/api/logging";
 import type { DbClient } from "@/lib/repos/_shared";
 import { existsById } from "@/lib/repos/assets-repo";
 import {
@@ -206,176 +207,68 @@ const syncRuleScheduleFromLatestLog = async (params: {
 };
 
 export async function POST(request: Request) {
-  const payload = await readBody(request);
-  if (!payload) {
-    return NextResponse.json({ error: "Gecersiz istek govdesi." }, { status: 400 });
-  }
-
-  const assetId = normalizeUuid(payload.assetId);
-  const rawRuleId = String(payload.ruleId ?? "").trim();
-  const ruleId = rawRuleId ? normalizeUuid(rawRuleId) : null;
-  const serviceType = String(payload.serviceType ?? "").trim();
-  const serviceDate = String(payload.serviceDate ?? "").trim();
-  const cost = Number(payload.cost ?? 0);
-  const providerResult = readOptionalText(payload.provider, MAX_PROVIDER_LENGTH);
-  const notesResult = readOptionalText(payload.notes, MAX_NOTES_LENGTH);
-
-  if (!assetId || !serviceType || !serviceDate) {
-    return NextResponse.json(
-      { error: "Varlik, servis turu ve servis tarihi zorunludur." },
-      { status: 400 },
-    );
-  }
-
-  if (serviceType.length > MAX_SERVICE_TYPE_LENGTH) {
-    return NextResponse.json({ error: "Servis turu cok uzun." }, { status: 400 });
-  }
-
-  if (!parseDateOnly(serviceDate)) {
-    return NextResponse.json({ error: "Gecersiz tarih formati." }, { status: 400 });
-  }
-
-  if (rawRuleId && !ruleId) {
-    return NextResponse.json({ error: "Bakim kurali kimligi gecersiz." }, { status: 400 });
-  }
-
-  if (Number.isNaN(cost) || cost < 0) {
-    return NextResponse.json({ error: "Maliyet gecersiz." }, { status: 400 });
-  }
-
-  if (providerResult.invalidType || notesResult.invalidType) {
-    return NextResponse.json({ error: "Metin alanlari gecersiz." }, { status: 400 });
-  }
-
-  if (providerResult.tooLong) {
-    return NextResponse.json({ error: "Saglayici adi cok uzun." }, { status: 400 });
-  }
-
-  if (notesResult.tooLong) {
-    return NextResponse.json({ error: "Not alani cok uzun." }, { status: 400 });
-  }
-
-  const auth = await requireRouteUser(request);
-  if ("response" in auth) {
-    return auth.response;
-  }
-
-  const { supabase, user } = auth;
-
-  const { data: assetExists, error: assetError } = await existsById(supabase, {
-    assetId,
-    userId: user.id,
-  });
-
-  if (assetError) {
-    return NextResponse.json({ error: assetError.message }, { status: 400 });
-  }
-
-  if (!assetExists) {
-    return NextResponse.json({ error: "Secilen varliga erisim izniniz yok." }, { status: 403 });
-  }
-
-  if (ruleId) {
-    const { data: rule, error: ruleError } = await getRuleById(supabase, {
-      ruleId,
-      userId: user.id,
-    });
-
-    if (ruleError) {
-      return NextResponse.json({ error: ruleError.message }, { status: 400 });
+  let userId: string | null = null;
+  try {
+    const payload = await readBody(request);
+    if (!payload) {
+      return NextResponse.json({ error: "Gecersiz istek govdesi." }, { status: 400 });
     }
 
-    if (!rule || rule.asset_id !== assetId) {
-      return NextResponse.json({ error: "Secilen bakim kuralina erisim izniniz yok." }, { status: 403 });
+    const assetId = normalizeUuid(payload.assetId);
+    const rawRuleId = String(payload.ruleId ?? "").trim();
+    const ruleId = rawRuleId ? normalizeUuid(rawRuleId) : null;
+    const serviceType = String(payload.serviceType ?? "").trim();
+    const serviceDate = String(payload.serviceDate ?? "").trim();
+    const cost = Number(payload.cost ?? 0);
+    const providerResult = readOptionalText(payload.provider, MAX_PROVIDER_LENGTH);
+    const notesResult = readOptionalText(payload.notes, MAX_NOTES_LENGTH);
+
+    if (!assetId || !serviceType || !serviceDate) {
+      return NextResponse.json(
+        { error: "Varlik, servis turu ve servis tarihi zorunludur." },
+        { status: 400 },
+      );
     }
-  }
 
-  const { data, error } = await createServiceLog(supabase, {
-    values: {
-      user_id: user.id,
-      asset_id: assetId,
-      rule_id: ruleId,
-      service_type: serviceType,
-      service_date: serviceDate,
-      cost,
-      provider: providerResult.value,
-      notes: notesResult.value,
-    },
-  });
-
-  if (error || !data) {
-    return NextResponse.json({ error: error?.message ?? "Servis kaydi olusturulamadi." }, { status: 400 });
-  }
-
-  let warning: string | undefined;
-  if (data.rule_id) {
-    const syncError = await syncRuleScheduleFromLatestLog({
-      client: supabase,
-      userId: user.id,
-      ruleId: data.rule_id,
-    });
-    if (syncError) {
-      warning = `Bakim kurali tarihleri senkronize edilemedi: ${syncError}`;
+    if (serviceType.length > MAX_SERVICE_TYPE_LENGTH) {
+      return NextResponse.json({ error: "Servis turu cok uzun." }, { status: 400 });
     }
-  }
 
-  if (warning) {
-    return NextResponse.json({ ok: true, id: data.id, warning }, { status: 201 });
-  }
-
-  return NextResponse.json({ ok: true, id: data.id }, { status: 201 });
-}
-
-export async function PATCH(request: Request) {
-  const payload = await readUpdateBody(request);
-  if (!payload) {
-    return NextResponse.json({ error: "Gecersiz istek govdesi." }, { status: 400 });
-  }
-
-  const serviceLogId = normalizeUuid(payload.id);
-  if (!serviceLogId) {
-    return NextResponse.json({ error: "Servis kaydi kimligi zorunludur." }, { status: 400 });
-  }
-
-  const auth = await requireRouteUser(request);
-  if ("response" in auth) {
-    return auth.response;
-  }
-
-  const { supabase, user } = auth;
-
-  const { data: currentLog, error: currentLogError } = await getServiceLogById(supabase, {
-    userId: user.id,
-    serviceLogId,
-  });
-
-  if (currentLogError || !currentLog) {
-    return NextResponse.json({ error: "Servis kaydi bulunamadi." }, { status: 404 });
-  }
-
-  const hasAssetId = payload.assetId !== undefined;
-  const hasRuleId = payload.ruleId !== undefined;
-  const hasServiceType = payload.serviceType !== undefined;
-  const hasServiceDate = payload.serviceDate !== undefined;
-  const hasCost = payload.cost !== undefined;
-  const hasProvider = payload.provider !== undefined;
-  const hasNotes = payload.notes !== undefined;
-
-  if (!hasAssetId && !hasRuleId && !hasServiceType && !hasServiceDate && !hasCost && !hasProvider && !hasNotes) {
-    return NextResponse.json({ error: "Guncellenecek alan bulunamadi." }, { status: 400 });
-  }
-
-  const patch: UpdateServiceLogByIdParams["patch"] = {};
-
-  if (hasAssetId) {
-    const nextAssetId = normalizeUuid(payload.assetId);
-    if (!nextAssetId) {
-      return NextResponse.json({ error: "Varlik secimi zorunludur." }, { status: 400 });
+    if (!parseDateOnly(serviceDate)) {
+      return NextResponse.json({ error: "Gecersiz tarih formati." }, { status: 400 });
     }
+
+    if (rawRuleId && !ruleId) {
+      return NextResponse.json({ error: "Bakim kurali kimligi gecersiz." }, { status: 400 });
+    }
+
+    if (Number.isNaN(cost) || cost < 0) {
+      return NextResponse.json({ error: "Maliyet gecersiz." }, { status: 400 });
+    }
+
+    if (providerResult.invalidType || notesResult.invalidType) {
+      return NextResponse.json({ error: "Metin alanlari gecersiz." }, { status: 400 });
+    }
+
+    if (providerResult.tooLong) {
+      return NextResponse.json({ error: "Saglayici adi cok uzun." }, { status: 400 });
+    }
+
+    if (notesResult.tooLong) {
+      return NextResponse.json({ error: "Not alani cok uzun." }, { status: 400 });
+    }
+
+    const auth = await requireRouteUser(request);
+    if ("response" in auth) {
+      return auth.response;
+    }
+
+    const { supabase, user } = auth;
+    userId = user.id;
 
     const { data: assetExists, error: assetError } = await existsById(supabase, {
+      assetId,
       userId: user.id,
-      assetId: nextAssetId,
     });
 
     if (assetError) {
@@ -386,123 +279,278 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Secilen varliga erisim izniniz yok." }, { status: 403 });
     }
 
-    patch.asset_id = nextAssetId;
-  }
+    if (ruleId) {
+      const { data: rule, error: ruleError } = await getRuleById(supabase, {
+        ruleId,
+        userId: user.id,
+      });
 
-  if (hasRuleId) {
-    const rawRuleId = String(payload.ruleId ?? "").trim();
-    if (rawRuleId) {
-      const nextRuleId = normalizeUuid(rawRuleId);
-      if (!nextRuleId) {
-        return NextResponse.json({ error: "Bakim kurali kimligi gecersiz." }, { status: 400 });
+      if (ruleError) {
+        return NextResponse.json({ error: ruleError.message }, { status: 400 });
       }
-      patch.rule_id = nextRuleId;
-    } else {
-      patch.rule_id = null;
-    }
-  }
 
-  if (hasServiceType) {
-    const nextServiceType = String(payload.serviceType ?? "").trim();
-    if (!nextServiceType) {
-      return NextResponse.json({ error: "Servis turu zorunludur." }, { status: 400 });
+      if (!rule || rule.asset_id !== assetId) {
+        return NextResponse.json(
+          { error: "Secilen bakim kuralina erisim izniniz yok." },
+          { status: 403 },
+        );
+      }
     }
-    if (nextServiceType.length > MAX_SERVICE_TYPE_LENGTH) {
-      return NextResponse.json({ error: "Servis turu cok uzun." }, { status: 400 });
-    }
-    patch.service_type = nextServiceType;
-  }
 
-  if (hasServiceDate) {
-    const nextServiceDate = String(payload.serviceDate ?? "").trim();
-    if (!parseDateOnly(nextServiceDate)) {
-      return NextResponse.json({ error: "Gecersiz tarih formati." }, { status: 400 });
-    }
-    patch.service_date = nextServiceDate;
-  }
-
-  if (hasCost) {
-    const nextCost = Number(payload.cost ?? 0);
-    if (Number.isNaN(nextCost) || nextCost < 0) {
-      return NextResponse.json({ error: "Maliyet gecersiz." }, { status: 400 });
-    }
-    patch.cost = nextCost;
-  }
-
-  if (hasProvider) {
-    const nextProvider = readOptionalText(payload.provider, MAX_PROVIDER_LENGTH);
-    if (nextProvider.invalidType) {
-      return NextResponse.json({ error: "Saglayici alani gecersiz." }, { status: 400 });
-    }
-    if (nextProvider.tooLong) {
-      return NextResponse.json({ error: "Saglayici adi cok uzun." }, { status: 400 });
-    }
-    patch.provider = nextProvider.value;
-  }
-
-  if (hasNotes) {
-    const nextNotes = readOptionalText(payload.notes, MAX_NOTES_LENGTH);
-    if (nextNotes.invalidType) {
-      return NextResponse.json({ error: "Not alani gecersiz." }, { status: 400 });
-    }
-    if (nextNotes.tooLong) {
-      return NextResponse.json({ error: "Not alani cok uzun." }, { status: 400 });
-    }
-    patch.notes = nextNotes.value;
-  }
-
-  const targetAssetId = patch.asset_id ?? currentLog.asset_id;
-  const targetRuleId = patch.rule_id !== undefined ? patch.rule_id : currentLog.rule_id;
-
-  if (!targetAssetId) {
-    return NextResponse.json({ error: "Servis kaydinin varlik iliskisi gecersiz." }, { status: 400 });
-  }
-
-  if (targetRuleId) {
-    const { data: rule, error: ruleError } = await getRuleById(supabase, {
-      ruleId: targetRuleId,
-      userId: user.id,
+    const { data, error } = await createServiceLog(supabase, {
+      values: {
+        user_id: user.id,
+        asset_id: assetId,
+        rule_id: ruleId,
+        service_type: serviceType,
+        service_date: serviceDate,
+        cost,
+        provider: providerResult.value,
+        notes: notesResult.value,
+      },
     });
 
-    if (ruleError) {
-      return NextResponse.json({ error: ruleError.message }, { status: 400 });
+    if (error || !data) {
+      return NextResponse.json({ error: error?.message ?? "Servis kaydi olusturulamadi." }, { status: 400 });
     }
 
-    if (!rule || rule.asset_id !== targetAssetId) {
-      return NextResponse.json({ error: "Secilen bakim kuralina erisim izniniz yok." }, { status: 403 });
+    let warning: string | undefined;
+    if (data.rule_id) {
+      const syncError = await syncRuleScheduleFromLatestLog({
+        client: supabase,
+        userId: user.id,
+        ruleId: data.rule_id,
+      });
+      if (syncError) {
+        warning = `Bakim kurali tarihleri senkronize edilemedi: ${syncError}`;
+      }
     }
+
+    logAuditEvent({
+      route: "/api/service-logs",
+      userId: user.id,
+      entityType: "service_logs",
+      entityId: data.id,
+      action: "create",
+      meta: { ruleId: data.rule_id ?? null },
+    });
+
+    if (warning) {
+      return NextResponse.json({ ok: true, id: data.id, warning }, { status: 201 });
+    }
+
+    return NextResponse.json({ ok: true, id: data.id }, { status: 201 });
+  } catch (error) {
+    logApiError({
+      route: "/api/service-logs",
+      method: "POST",
+      userId,
+      error,
+      message: "Service log create request failed unexpectedly",
+    });
+    return NextResponse.json({ error: "Servis kaydi istegi islenemedi." }, { status: 500 });
   }
+}
 
-  const { data: updatedLog, error: updateError } = await updateServiceLogById(supabase, {
-    userId: user.id,
-    serviceLogId,
-    patch,
-  });
+export async function PATCH(request: Request) {
+  let userId: string | null = null;
+  try {
+    const payload = await readUpdateBody(request);
+    if (!payload) {
+      return NextResponse.json({ error: "Gecersiz istek govdesi." }, { status: 400 });
+    }
 
-  if (updateError || !updatedLog) {
-    return NextResponse.json({ error: updateError?.message ?? "Servis kaydi guncellenemedi." }, { status: 400 });
+    const serviceLogId = normalizeUuid(payload.id);
+    if (!serviceLogId) {
+      return NextResponse.json({ error: "Servis kaydi kimligi zorunludur." }, { status: 400 });
+    }
+
+    const auth = await requireRouteUser(request);
+    if ("response" in auth) {
+      return auth.response;
+    }
+
+    const { supabase, user } = auth;
+    userId = user.id;
+
+    const { data: currentLog, error: currentLogError } = await getServiceLogById(supabase, {
+      userId: user.id,
+      serviceLogId,
+    });
+
+    if (currentLogError || !currentLog) {
+      return NextResponse.json({ error: "Servis kaydi bulunamadi." }, { status: 404 });
+    }
+
+    const hasAssetId = payload.assetId !== undefined;
+    const hasRuleId = payload.ruleId !== undefined;
+    const hasServiceType = payload.serviceType !== undefined;
+    const hasServiceDate = payload.serviceDate !== undefined;
+    const hasCost = payload.cost !== undefined;
+    const hasProvider = payload.provider !== undefined;
+    const hasNotes = payload.notes !== undefined;
+
+    if (!hasAssetId && !hasRuleId && !hasServiceType && !hasServiceDate && !hasCost && !hasProvider && !hasNotes) {
+      return NextResponse.json({ error: "Guncellenecek alan bulunamadi." }, { status: 400 });
+    }
+
+    const patch: UpdateServiceLogByIdParams["patch"] = {};
+
+    if (hasAssetId) {
+      const nextAssetId = normalizeUuid(payload.assetId);
+      if (!nextAssetId) {
+        return NextResponse.json({ error: "Varlik secimi zorunludur." }, { status: 400 });
+      }
+
+      const { data: assetExists, error: assetError } = await existsById(supabase, {
+        userId: user.id,
+        assetId: nextAssetId,
+      });
+
+      if (assetError) {
+        return NextResponse.json({ error: assetError.message }, { status: 400 });
+      }
+
+      if (!assetExists) {
+        return NextResponse.json({ error: "Secilen varliga erisim izniniz yok." }, { status: 403 });
+      }
+
+      patch.asset_id = nextAssetId;
+    }
+
+    if (hasRuleId) {
+      const rawRuleId = String(payload.ruleId ?? "").trim();
+      if (rawRuleId) {
+        const nextRuleId = normalizeUuid(rawRuleId);
+        if (!nextRuleId) {
+          return NextResponse.json({ error: "Bakim kurali kimligi gecersiz." }, { status: 400 });
+        }
+        patch.rule_id = nextRuleId;
+      } else {
+        patch.rule_id = null;
+      }
+    }
+
+    if (hasServiceType) {
+      const nextServiceType = String(payload.serviceType ?? "").trim();
+      if (!nextServiceType) {
+        return NextResponse.json({ error: "Servis turu zorunludur." }, { status: 400 });
+      }
+      if (nextServiceType.length > MAX_SERVICE_TYPE_LENGTH) {
+        return NextResponse.json({ error: "Servis turu cok uzun." }, { status: 400 });
+      }
+      patch.service_type = nextServiceType;
+    }
+
+    if (hasServiceDate) {
+      const nextServiceDate = String(payload.serviceDate ?? "").trim();
+      if (!parseDateOnly(nextServiceDate)) {
+        return NextResponse.json({ error: "Gecersiz tarih formati." }, { status: 400 });
+      }
+      patch.service_date = nextServiceDate;
+    }
+
+    if (hasCost) {
+      const nextCost = Number(payload.cost ?? 0);
+      if (Number.isNaN(nextCost) || nextCost < 0) {
+        return NextResponse.json({ error: "Maliyet gecersiz." }, { status: 400 });
+      }
+      patch.cost = nextCost;
+    }
+
+    if (hasProvider) {
+      const nextProvider = readOptionalText(payload.provider, MAX_PROVIDER_LENGTH);
+      if (nextProvider.invalidType) {
+        return NextResponse.json({ error: "Saglayici alani gecersiz." }, { status: 400 });
+      }
+      if (nextProvider.tooLong) {
+        return NextResponse.json({ error: "Saglayici adi cok uzun." }, { status: 400 });
+      }
+      patch.provider = nextProvider.value;
+    }
+
+    if (hasNotes) {
+      const nextNotes = readOptionalText(payload.notes, MAX_NOTES_LENGTH);
+      if (nextNotes.invalidType) {
+        return NextResponse.json({ error: "Not alani gecersiz." }, { status: 400 });
+      }
+      if (nextNotes.tooLong) {
+        return NextResponse.json({ error: "Not alani cok uzun." }, { status: 400 });
+      }
+      patch.notes = nextNotes.value;
+    }
+
+    const targetAssetId = patch.asset_id ?? currentLog.asset_id;
+    const targetRuleId = patch.rule_id !== undefined ? patch.rule_id : currentLog.rule_id;
+
+    if (!targetAssetId) {
+      return NextResponse.json({ error: "Servis kaydinin varlik iliskisi gecersiz." }, { status: 400 });
+    }
+
+    if (targetRuleId) {
+      const { data: rule, error: ruleError } = await getRuleById(supabase, {
+        ruleId: targetRuleId,
+        userId: user.id,
+      });
+
+      if (ruleError) {
+        return NextResponse.json({ error: ruleError.message }, { status: 400 });
+      }
+
+      if (!rule || rule.asset_id !== targetAssetId) {
+        return NextResponse.json({ error: "Secilen bakim kuralina erisim izniniz yok." }, { status: 403 });
+      }
+    }
+
+    const { data: updatedLog, error: updateError } = await updateServiceLogById(supabase, {
+      userId: user.id,
+      serviceLogId,
+      patch,
+    });
+
+    if (updateError || !updatedLog) {
+      return NextResponse.json({ error: updateError?.message ?? "Servis kaydi guncellenemedi." }, { status: 400 });
+    }
+
+    logAuditEvent({
+      route: "/api/service-logs",
+      userId: user.id,
+      entityType: "service_logs",
+      entityId: updatedLog.id,
+      action: "update",
+      meta: { fields: Object.keys(patch) },
+    });
+
+    const rulesToSync = new Set<string>();
+    if (currentLog.rule_id) {
+      rulesToSync.add(currentLog.rule_id);
+    }
+    if (updatedLog.rule_id) {
+      rulesToSync.add(updatedLog.rule_id);
+    }
+
+    const syncErrors = await syncRuleSchedulesFromLatestLogs({
+      client: supabase,
+      userId: user.id,
+      ruleIds: [...rulesToSync],
+    });
+
+    if (syncErrors.length > 0) {
+      return NextResponse.json(
+        { ok: true, id: updatedLog.id, warning: `Bakim senkronizasyon uyarisi: ${syncErrors.join(" | ")}` },
+        { status: 200 },
+      );
+    }
+
+    return NextResponse.json({ ok: true, id: updatedLog.id }, { status: 200 });
+  } catch (error) {
+    logApiError({
+      route: "/api/service-logs",
+      method: "PATCH",
+      userId,
+      error,
+      message: "Service log update request failed unexpectedly",
+    });
+    return NextResponse.json({ error: "Servis kaydi guncelleme istegi islenemedi." }, { status: 500 });
   }
-
-  const rulesToSync = new Set<string>();
-  if (currentLog.rule_id) {
-    rulesToSync.add(currentLog.rule_id);
-  }
-  if (updatedLog.rule_id) {
-    rulesToSync.add(updatedLog.rule_id);
-  }
-
-  const syncErrors = await syncRuleSchedulesFromLatestLogs({
-    client: supabase,
-    userId: user.id,
-    ruleIds: [...rulesToSync],
-  });
-
-  if (syncErrors.length > 0) {
-    return NextResponse.json(
-      { ok: true, id: updatedLog.id, warning: `Bakim senkronizasyon uyarisi: ${syncErrors.join(" | ")}` },
-      { status: 200 },
-    );
-  }
-
-  return NextResponse.json({ ok: true, id: updatedLog.id }, { status: 200 });
 }

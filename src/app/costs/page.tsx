@@ -13,11 +13,8 @@ import {
   type PeriodFilter,
   type ServiceCostLog,
 } from "@/lib/charts";
-import {
-  getCostAggregate,
-  listForCosts,
-  type ServiceLogCostAggregate,
-} from "@/lib/repos/service-logs-repo";
+import { getPlanConfig, getUserPlanConfig, type PlanConfig } from "@/lib/plans/plan-config";
+import { getCostAggregate, listForCosts, type ServiceLogCostAggregate } from "@/lib/repos/service-logs-repo";
 import { createClient } from "@/lib/supabase/client";
 
 type ServiceRow = ServiceCostLog & {
@@ -34,8 +31,8 @@ const periodOptions: { value: PeriodFilter; label: string }[] = [
   { value: "3m", label: "Son 3 Ay" },
   { value: "6m", label: "Son 6 Ay" },
   { value: "12m", label: "Son 12 Ay" },
-  { value: "this_year", label: "Bu Yıl" },
-  { value: "all", label: "Tüm Dönem" },
+  { value: "this_year", label: "Bu Yil" },
+  { value: "all", label: "Tum Donem" },
 ];
 
 const currencyFormatter = new Intl.NumberFormat("tr-TR", {
@@ -54,6 +51,8 @@ const emptyCostAggregate: ServiceLogCostAggregate = {
   avg_cost: 0,
   cost_score: 0,
 };
+
+const DEFAULT_PLAN_CONFIG: PlanConfig = getPlanConfig("starter");
 
 const toDateInput = (date: Date) => {
   const year = date.getUTCFullYear();
@@ -101,12 +100,11 @@ export default function CostsPage() {
   const [assets, setAssets] = useState<AssetRow[]>([]);
   const [period, setPeriod] = useState<PeriodFilter>("12m");
   const [periodAggregate, setPeriodAggregate] = useState<ServiceLogCostAggregate>(emptyCostAggregate);
-  const [currentYearAggregate, setCurrentYearAggregate] =
-    useState<ServiceLogCostAggregate>(emptyCostAggregate);
-  const [trailingTwelveAggregate, setTrailingTwelveAggregate] =
-    useState<ServiceLogCostAggregate>(emptyCostAggregate);
+  const [currentYearAggregate, setCurrentYearAggregate] = useState<ServiceLogCostAggregate>(emptyCostAggregate);
+  const [trailingTwelveAggregate, setTrailingTwelveAggregate] = useState<ServiceLogCostAggregate>(emptyCostAggregate);
   const [isLoading, setIsLoading] = useState(true);
   const [feedback, setFeedback] = useState("");
+  const [planConfig, setPlanConfig] = useState<PlanConfig>(DEFAULT_PLAN_CONFIG);
 
   useEffect(() => {
     const load = async () => {
@@ -119,7 +117,20 @@ export default function CostsPage() {
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
-        setFeedback(userError?.message ?? "Oturum bulunamadı. Lütfen tekrar giriş yapın.");
+        setFeedback(userError?.message ?? "Oturum bulunamadi. Lutfen tekrar giris yapin.");
+        setIsLoading(false);
+        return;
+      }
+
+      const userPlan = getUserPlanConfig(user);
+      setPlanConfig(userPlan);
+
+      if (!userPlan.features.canUseAdvancedAnalytics) {
+        setLogs([]);
+        setAssets([]);
+        setPeriodAggregate(emptyCostAggregate);
+        setCurrentYearAggregate(emptyCostAggregate);
+        setTrailingTwelveAggregate(emptyCostAggregate);
         setIsLoading(false);
         return;
       }
@@ -141,9 +152,7 @@ export default function CostsPage() {
       setLogs((logsRes.data ?? []) as ServiceRow[]);
       setAssets((assetsRes.data ?? []) as AssetRow[]);
       setCurrentYearAggregate((currentYearRes.data ?? emptyCostAggregate) as ServiceLogCostAggregate);
-      setTrailingTwelveAggregate(
-        (trailingTwelveRes.data ?? emptyCostAggregate) as ServiceLogCostAggregate,
-      );
+      setTrailingTwelveAggregate((trailingTwelveRes.data ?? emptyCostAggregate) as ServiceLogCostAggregate);
       setIsLoading(false);
     };
 
@@ -151,7 +160,7 @@ export default function CostsPage() {
   }, [now, supabase]);
 
   useEffect(() => {
-    if (!activeUserId) return;
+    if (!activeUserId || !planConfig.features.canUseAdvancedAnalytics) return;
 
     const loadPeriodAggregate = async () => {
       const { data, error } = await getCostAggregate(supabase, {
@@ -168,136 +177,126 @@ export default function CostsPage() {
     };
 
     void loadPeriodAggregate();
-  }, [activeUserId, now, period, supabase]);
+  }, [activeUserId, now, period, planConfig.features.canUseAdvancedAnalytics, supabase]);
 
   const filteredLogs = useMemo(() => filterLogsByPeriod(logs, period, now), [logs, period, now]);
-
   const monthlySeries = useMemo(() => buildMonthlyCostSeries(logs, period, now), [logs, period, now]);
-
   const yearlySeries = useMemo(() => buildYearlyCostSeries(logs), [logs]);
-
   const categorySeries = useMemo(() => buildCategoryCostSeries(filteredLogs, assets), [filteredLogs, assets]);
-
-  const periodLabel =
-    periodOptions.find((option) => option.value === period)?.label ?? "Seçili dönem";
-
-  const maxCategoryCost = useMemo(
-    () => Math.max(1, ...categorySeries.map((item) => item.total)),
-    [categorySeries],
-  );
+  const periodLabel = periodOptions.find((option) => option.value === period)?.label ?? "Secili donem";
+  const maxCategoryCost = useMemo(() => Math.max(1, ...categorySeries.map((item) => item.total)), [categorySeries]);
 
   return (
-    <AppShell
-      badge="Maliyet Analizi"
-      title="Maliyetler"
-      subtitle="Servis kayıtlarından dönem, aylık trend ve yıllık toplam analizi yapılır."
-    >
+    <AppShell badge="Maliyet Analizi" title="Maliyetler" subtitle="Servis kayitlarindan donem, aylik trend ve yillik toplam analizi yapilir.">
       {feedback ? (
         <p className="rounded-xl border border-rose-300/30 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">
           {feedback}
         </p>
       ) : null}
 
-      <section className="premium-card p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-white">Dönem Filtresi</h2>
-            <p className="mt-1 text-sm text-slate-300">Özet metrikler ve trend grafiği seçili döneme göre güncellenir.</p>
-          </div>
-          <label className="block w-full sm:w-64">
-            <span className="mb-1.5 block text-xs uppercase tracking-[0.16em] text-slate-400">Dönem</span>
-            <select
-              value={period}
-              onChange={(event) => setPeriod(event.target.value as PeriodFilter)}
-              className={selectClassName}
-            >
-              {periodOptions.map((option) => (
-                <option key={option.value} value={option.value} className="bg-slate-900">
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </section>
-
-            <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard
-          label={`${periodLabel} Toplami`}
-          value={currencyFormatter.format(periodAggregate.total_cost)}
-        />
-        <SummaryCard
-          label="Bu Yil Toplami"
-          value={currencyFormatter.format(currentYearAggregate.total_cost)}
-        />
-        <SummaryCard
-          label="Son 12 Ay Toplami"
-          value={currencyFormatter.format(trailingTwelveAggregate.total_cost)}
-        />
-        <SummaryCard
-          label={`${periodLabel} Maliyet Skoru (${periodAggregate.log_count} Kayit)`}
-          value={`${periodAggregate.cost_score}/100`}
-        />
-      </section>
-
-      <section className="grid gap-3 xl:grid-cols-2">
-        <article className="premium-card p-5">
-          <h2 className="text-lg font-semibold text-white">{periodLabel} Maliyet Trendi</h2>
-          <p className="mt-1 text-sm text-slate-300">Aylık servis maliyeti dağılımı.</p>
-          {isLoading ? (
-            <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
-          ) : logs.length === 0 ? (
-            <p className="mt-4 text-sm text-slate-300">Grafik için servis verisi bulunmuyor.</p>
-          ) : (
-            <div className="mt-4 h-72">
-              <CostTrendLineChart points={monthlySeries} />
+      {!planConfig.features.canUseAdvancedAnalytics ? (
+        <section className="premium-card p-5">
+          <h2 className="text-lg font-semibold text-white">Gelismis Analitik Kilidi</h2>
+          <p className="mt-2 text-sm text-slate-300">
+            Maliyet trendi, yillik karsilastirma ve kategori dagilimi gibi gelismis analitik panolari{" "}
+            {planConfig.label} planinda kapali. Pro plan ile aktif olur.
+          </p>
+        </section>
+      ) : (
+        <>
+          <section className="premium-card p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-white">Donem Filtresi</h2>
+                <p className="mt-1 text-sm text-slate-300">Ozet metrikler ve trend grafigi secili doneme gore guncellenir.</p>
+              </div>
+              <label className="block w-full sm:w-64">
+                <span className="mb-1.5 block text-xs uppercase tracking-[0.16em] text-slate-400">Donem</span>
+                <select
+                  value={period}
+                  onChange={(event) => setPeriod(event.target.value as PeriodFilter)}
+                  className={selectClassName}
+                >
+                  {periodOptions.map((option) => (
+                    <option key={option.value} value={option.value} className="bg-slate-900">
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
-          )}
-        </article>
+          </section>
 
-        <article className="premium-card p-5">
-          <h2 className="text-lg font-semibold text-white">Yıllık Toplam Karşılaştırması</h2>
-          <p className="mt-1 text-sm text-slate-300">Yıllara göre toplam servis maliyeti.</p>
-          {isLoading ? (
-            <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
-          ) : yearlySeries.length === 0 ? (
-            <p className="mt-4 text-sm text-slate-300">Yıllık maliyet verisi bulunmuyor.</p>
-          ) : (
-            <div className="mt-4 h-72">
-              <YearlyCostBarChart points={yearlySeries} />
-            </div>
-          )}
-        </article>
-      </section>
+          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <SummaryCard label={`${periodLabel} Toplami`} value={currencyFormatter.format(periodAggregate.total_cost)} />
+            <SummaryCard label="Bu Yil Toplami" value={currencyFormatter.format(currentYearAggregate.total_cost)} />
+            <SummaryCard label="Son 12 Ay Toplami" value={currencyFormatter.format(trailingTwelveAggregate.total_cost)} />
+            <SummaryCard
+              label={`${periodLabel} Maliyet Skoru (${periodAggregate.log_count} Kayit)`}
+              value={`${periodAggregate.cost_score}/100`}
+            />
+          </section>
 
-      <section className="premium-card p-5">
-        <h2 className="text-lg font-semibold text-white">Seçili Dönem Kategori Dağılımı</h2>
-        {isLoading ? (
-          <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
-        ) : categorySeries.length === 0 ? (
-          <p className="mt-4 text-sm text-slate-300">Seçili dönemde maliyet kaydı bulunmuyor.</p>
-        ) : (
-          <div className="mt-4 space-y-3">
-            {categorySeries.map((item) => {
-              const width = Math.max(8, (item.total / maxCategoryCost) * 100);
-              return (
-                <div key={item.label}>
-                  <div className="flex items-center justify-between text-sm text-slate-300">
-                    <span>{item.label}</span>
-                    <span>{currencyFormatter.format(item.total)}</span>
-                  </div>
-                  <div className="mt-1 h-2 rounded-full bg-white/10">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-sky-400 to-fuchsia-500"
-                      style={{ width: `${width}%` }}
-                    />
-                  </div>
+          <section className="grid gap-3 xl:grid-cols-2">
+            <article className="premium-card p-5">
+              <h2 className="text-lg font-semibold text-white">{periodLabel} Maliyet Trendi</h2>
+              <p className="mt-1 text-sm text-slate-300">Aylik servis maliyeti dagilimi.</p>
+              {isLoading ? (
+                <p className="mt-4 text-sm text-slate-300">Yukleniyor...</p>
+              ) : logs.length === 0 ? (
+                <p className="mt-4 text-sm text-slate-300">Grafik icin servis verisi bulunmuyor.</p>
+              ) : (
+                <div className="mt-4 h-72">
+                  <CostTrendLineChart points={monthlySeries} />
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
+              )}
+            </article>
+
+            <article className="premium-card p-5">
+              <h2 className="text-lg font-semibold text-white">Yillik Toplam Karsilastirmasi</h2>
+              <p className="mt-1 text-sm text-slate-300">Yillara gore toplam servis maliyeti.</p>
+              {isLoading ? (
+                <p className="mt-4 text-sm text-slate-300">Yukleniyor...</p>
+              ) : yearlySeries.length === 0 ? (
+                <p className="mt-4 text-sm text-slate-300">Yillik maliyet verisi bulunmuyor.</p>
+              ) : (
+                <div className="mt-4 h-72">
+                  <YearlyCostBarChart points={yearlySeries} />
+                </div>
+              )}
+            </article>
+          </section>
+
+          <section className="premium-card p-5">
+            <h2 className="text-lg font-semibold text-white">Secili Donem Kategori Dagilimi</h2>
+            {isLoading ? (
+              <p className="mt-4 text-sm text-slate-300">Yukleniyor...</p>
+            ) : categorySeries.length === 0 ? (
+              <p className="mt-4 text-sm text-slate-300">Secili donemde maliyet kaydi bulunmuyor.</p>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {categorySeries.map((item) => {
+                  const width = Math.max(8, (item.total / maxCategoryCost) * 100);
+                  return (
+                    <div key={item.label}>
+                      <div className="flex items-center justify-between text-sm text-slate-300">
+                        <span>{item.label}</span>
+                        <span>{currencyFormatter.format(item.total)}</span>
+                      </div>
+                      <div className="mt-1 h-2 rounded-full bg-white/10">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-sky-400 to-fuchsia-500"
+                          style={{ width: `${width}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </>
+      )}
     </AppShell>
   );
 }
@@ -310,4 +309,3 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
-

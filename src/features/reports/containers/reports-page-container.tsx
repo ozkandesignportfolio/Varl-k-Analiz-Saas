@@ -244,7 +244,7 @@ export function ReportsPageContainer() {
   }
 
   const onExportPdf = async () => {
-    if (!planConfig.features.canExportReports) {
+    if (!planConfig.features.canExportPdfReports) {
       setFeedback(`${planConfig.label} planinda PDF rapor disa aktarma ozelligi kapali.`);
       return;
     }
@@ -434,10 +434,16 @@ export function ReportsPageContainer() {
           }}
           isExporting={isExporting}
           hasValidRange={hasValidRange}
-          canExportReports={planConfig.features.canExportReports}
+          canExportPdfReports={planConfig.features.canExportPdfReports}
         />
       }
     >
+      {!planConfig.features.canExportPdfReports ? (
+        <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
+          PDF rapor disa aktarma ozelligi {planConfig.label} planinda kapali. Pro plan ile aktif olur.
+        </p>
+      ) : null}
+
       {feedback ? (
         <p className="rounded-xl border border-sky-300/25 bg-sky-300/10 px-4 py-3 text-sm text-sky-100">
           {feedback}

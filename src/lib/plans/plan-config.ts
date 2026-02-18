@@ -8,7 +8,8 @@ type PlanLimits = {
 };
 
 type PlanFeatures = {
-  canExportReports: boolean;
+  canExportPdfReports: boolean;
+  canUseAdvancedAnalytics: boolean;
 };
 
 export type PlanConfig = {
@@ -29,7 +30,8 @@ const PLAN_CONFIGS: Record<PlanCode, PlanConfig> = {
       maxDocumentStorageBytes: 250 * MB,
     },
     features: {
-      canExportReports: false,
+      canExportPdfReports: false,
+      canUseAdvancedAnalytics: false,
     },
   },
   pro: {
@@ -40,7 +42,8 @@ const PLAN_CONFIGS: Record<PlanCode, PlanConfig> = {
       maxDocumentStorageBytes: null,
     },
     features: {
-      canExportReports: true,
+      canExportPdfReports: true,
+      canUseAdvancedAnalytics: true,
     },
   },
   elite: {
@@ -51,7 +54,8 @@ const PLAN_CONFIGS: Record<PlanCode, PlanConfig> = {
       maxDocumentStorageBytes: null,
     },
     features: {
-      canExportReports: true,
+      canExportPdfReports: true,
+      canUseAdvancedAnalytics: true,
     },
   },
 };

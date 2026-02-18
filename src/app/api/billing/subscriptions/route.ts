@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logApiError } from "@/lib/api/logging";
 import {
   createBillingSubscription,
   type CreateBillingSubscriptionPayload,
@@ -9,11 +10,13 @@ const readBody = async (request: Request) =>
   (await request.json().catch(() => null)) as CreateBillingSubscriptionPayload | null;
 
 export async function POST(request: Request) {
+  let userId: string | null = null;
   try {
     const auth = await requireRouteUser(request);
     if ("response" in auth) {
       return auth.response;
     }
+    userId = auth.user.id;
 
     const payload = await readBody(request);
     if (!payload) {
@@ -26,7 +29,14 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(result.body, { status: result.status });
-  } catch {
+  } catch (error) {
+    logApiError({
+      route: "/api/billing/subscriptions",
+      method: "POST",
+      userId,
+      error,
+      message: "Billing subscription create request failed unexpectedly",
+    });
     return NextResponse.json({ error: "Abonelik istegi islenemedi." }, { status: 500 });
   }
 }

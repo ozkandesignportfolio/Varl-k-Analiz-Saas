@@ -10,23 +10,17 @@ import {
   type DashboardChartServiceLogRow,
 } from "@/features/dashboard/components/dashboard-charts-section";
 import { DashboardKpiSection } from "@/features/dashboard/components/dashboard-kpi-section";
-import {
-  DashboardRecentActivity,
-} from "@/features/dashboard/components/dashboard-recent-activity";
-import {
-  DashboardRiskCards,
-  type DashboardPredictionItem,
-} from "@/features/dashboard/components/dashboard-risk-cards";
+import { DashboardRecentActivity } from "@/features/dashboard/components/dashboard-recent-activity";
+import { DashboardRiskCards, type DashboardPredictionItem } from "@/features/dashboard/components/dashboard-risk-cards";
 import { useDashboardMetrics } from "@/features/dashboard/hooks/use-dashboard-metrics";
+import { getPlanConfig, getUserPlanConfig, type PlanConfig } from "@/lib/plans/plan-config";
 import { countByUser as countDocumentsByUser } from "@/lib/repos/documents-repo";
 import { listForDashboard as listRulesForDashboard } from "@/lib/repos/maintenance-rules-repo";
 import { listForDashboard as listServiceLogsForDashboard } from "@/lib/repos/service-logs-repo";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type AssetRow = DashboardChartAssetRow;
-
 type ServiceLogRow = DashboardChartServiceLogRow;
-
 type RuleRow = DashboardChartRuleRow;
 
 type SubscriptionRow = {
@@ -81,6 +75,8 @@ const getDateRangeStarts = () => {
   };
 };
 
+const DEFAULT_PLAN_CONFIG: PlanConfig = getPlanConfig("starter");
+
 export function DashboardPageContainer() {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const router = useRouter();
@@ -89,6 +85,7 @@ export function DashboardPageContainer() {
   const [hasValidSession, setHasValidSession] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [feedback, setFeedback] = useState("");
+  const [planConfig, setPlanConfig] = useState<PlanConfig>(DEFAULT_PLAN_CONFIG);
 
   const [assets, setAssets] = useState<AssetRow[]>([]);
   const [serviceLogs, setServiceLogs] = useState<ServiceLogRow[]>([]);
@@ -121,6 +118,7 @@ export function DashboardPageContainer() {
     setPredictions([]);
     setPredictionMeta(null);
     setPredictionError("");
+    setPlanConfig(DEFAULT_PLAN_CONFIG);
   };
 
   useEffect(() => {
@@ -142,6 +140,11 @@ export function DashboardPageContainer() {
 
       setHasValidSession(true);
       setEmail(user.email ?? "");
+
+      const userPlan = getUserPlanConfig(user);
+      setPlanConfig(userPlan);
+      const canUseAdvancedAnalytics = userPlan.features.canUseAdvancedAnalytics;
+
       const {
         currentMonthStartDate,
         dashboardStartDate,
@@ -150,28 +153,25 @@ export function DashboardPageContainer() {
         todayDate,
       } = getDateRangeStarts();
 
-      const predictionRequest = fetch("/api/maintenance-predictions", {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      })
-        .then(async (response) => {
-          const body = (await response.json().catch(() => null)) as
-            | PredictionApiResponse
-            | { error?: string }
-            | null;
+      const predictionRequest = canUseAdvancedAnalytics
+        ? fetch("/api/maintenance-predictions", {
+            method: "GET",
+            headers: { Accept: "application/json" },
+          })
+            .then(async (response) => {
+              const body = (await response.json().catch(() => null)) as PredictionApiResponse | { error?: string } | null;
 
-          if (!response.ok) {
-            throw new Error(
-              body && "error" in body
-                ? body.error || "Tahmin verisi alınamadı."
-                : "Tahmin verisi alınamadı.",
-            );
-          }
+              if (!response.ok) {
+                throw new Error(
+                  body && "error" in body ? body.error || "Tahmin verisi alinamadi." : "Tahmin verisi alinamadi.",
+                );
+              }
 
-          return body as PredictionApiResponse;
-        })
-        .then((data) => ({ data, error: "" }))
-        .catch((error: Error) => ({ data: null, error: error.message }));
+              return body as PredictionApiResponse;
+            })
+            .then((data) => ({ data, error: "" }))
+            .catch((error: Error) => ({ data: null, error: error.message }))
+        : Promise.resolve({ data: null, error: "" });
 
       const coreDataPromise = Promise.all([
         supabase.from("assets").select("id,name,category,warranty_end_date").eq("user_id", user.id),
@@ -225,19 +225,25 @@ export function DashboardPageContainer() {
       setDocumentCount(docsRes.data ?? 0);
       setSubscriptions((subscriptionsRes.data ?? []) as SubscriptionRow[]);
       setExpenses((expensesRes.data ?? []) as ExpenseRow[]);
-      setPredictions((predictionRes.data?.items ?? []) as PredictionItem[]);
-      setPredictionMeta(
-        predictionRes.data
-          ? {
-              generatedAt: predictionRes.data.generatedAt,
-              model: predictionRes.data.model,
-              warning: predictionRes.data.warning,
-            }
-          : null,
-      );
 
-      if (predictionRes.error) {
-        setPredictionError(predictionRes.error);
+      if (canUseAdvancedAnalytics) {
+        setPredictions((predictionRes.data?.items ?? []) as PredictionItem[]);
+        setPredictionMeta(
+          predictionRes.data
+            ? {
+                generatedAt: predictionRes.data.generatedAt,
+                model: predictionRes.data.model,
+                warning: predictionRes.data.warning,
+              }
+            : null,
+        );
+        if (predictionRes.error) {
+          setPredictionError(predictionRes.error);
+        }
+      } else {
+        setPredictions([]);
+        setPredictionMeta(null);
+        setPredictionError("");
       }
 
       setIsLoading(false);
@@ -280,19 +286,15 @@ export function DashboardPageContainer() {
   return (
     <AppShell
       badge="Kontrol Merkezi"
-      title="Gösterge Paneli"
-      subtitle={
-        isLoading
-          ? "Veriler yükleniyor..."
-          : `Hoş geldiniz, ${email || "kullanıcı"}. Bu ekran gerçek verilerinizle güncellenir.`
-      }
+      title="Gosterge Paneli"
+      subtitle={isLoading ? "Veriler yukleniyor..." : `Hos geldiniz, ${email || "kullanici"}. Bu ekran gercek verilerinizle guncellenir.`}
       actions={
         <button
           type="button"
           onClick={onSignOut}
           className="rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
         >
-          Çıkış Yap
+          Cikis Yap
         </button>
       }
     >
@@ -302,9 +304,15 @@ export function DashboardPageContainer() {
         </p>
       ) : null}
 
-      {predictionError ? (
+      {!planConfig.features.canUseAdvancedAnalytics ? (
         <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
-          AI tahmin servisi şu anda kullanılamıyor: {predictionError}
+          Gelismis analitik grafikler ve AI bakim riskleri {planConfig.label} planinda kapali. Pro plan ile aktif olur.
+        </p>
+      ) : null}
+
+      {planConfig.features.canUseAdvancedAnalytics && predictionError ? (
+        <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
+          AI tahmin servisi su anda kullanilamiyor: {predictionError}
         </p>
       ) : null}
 
@@ -314,10 +322,19 @@ export function DashboardPageContainer() {
         overdueCount={String(overdueCount)}
         upcomingWarrantyCount={String(upcomingWarrantyCount)}
         thisMonthCost={`${thisMonthCost.toFixed(2)} TL`}
-        highRiskCount={String(highRiskCount)}
+        highRiskCount={planConfig.features.canUseAdvancedAnalytics ? String(highRiskCount) : "-"}
       />
 
-      <DashboardChartsSection assets={assets} serviceLogs={serviceLogs} rules={rules} isLoading={isLoading} />
+      {planConfig.features.canUseAdvancedAnalytics ? (
+        <DashboardChartsSection assets={assets} serviceLogs={serviceLogs} rules={rules} isLoading={isLoading} />
+      ) : (
+        <article className="premium-card p-5">
+          <h2 className="text-lg font-semibold text-white">Gelismis Grafikler Kilitli</h2>
+          <p className="mt-2 text-sm text-slate-300">
+            12 aylik maliyet trendi, varlik performans karsilastirma ve bakim oncelik panosu Pro plan ozelligidir.
+          </p>
+        </article>
+      )}
 
       <section className="grid gap-3 lg:grid-cols-[0.9fr_1.1fr]">
         <DashboardRecentActivity
@@ -326,16 +343,24 @@ export function DashboardPageContainer() {
           categoryCount={String(new Set(assets.map((asset) => asset.category)).size)}
         />
 
-        <DashboardRiskCards
-          isLoading={isLoading}
-          topPredictions={topPredictions}
-          predictionMeta={predictionMeta}
-          predictionGeneratedAt={predictionGeneratedAt}
-          upcomingSubscriptionCharges={upcomingSubscriptionCharges}
-          monthlyExpenseWarning={monthlyExpenseWarning}
-        />
+        {planConfig.features.canUseAdvancedAnalytics ? (
+          <DashboardRiskCards
+            isLoading={isLoading}
+            topPredictions={topPredictions}
+            predictionMeta={predictionMeta}
+            predictionGeneratedAt={predictionGeneratedAt}
+            upcomingSubscriptionCharges={upcomingSubscriptionCharges}
+            monthlyExpenseWarning={monthlyExpenseWarning}
+          />
+        ) : (
+          <article className="premium-card p-5">
+            <h2 className="text-lg font-semibold text-white">AI Risk Kartlari Kilitli</h2>
+            <p className="mt-2 text-sm text-slate-300">
+              AI bakim risk puanlari ve onerilen aksiyonlar Pro plan ile kullanilabilir.
+            </p>
+          </article>
+        )}
       </section>
     </AppShell>
   );
 }
-

@@ -2,6 +2,7 @@ import "server-only";
 
 import type { User } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { isDevelopmentEnvironment, isEmailNotConfirmedError } from "@/lib/supabase/auth-errors";
 import { createClient } from "@/lib/supabase/server";
 
 type RouteSupabaseClient = Awaited<ReturnType<typeof createClient>>;
@@ -48,8 +49,21 @@ export async function requireRouteUser(
   } = bearerToken
     ? await supabase.auth.getUser(bearerToken)
     : await supabase.auth.getUser();
+  let authenticatedUser = user;
+  let authenticatedError = error;
 
-  if (error || !user) {
+  if (!authenticatedUser && error && isDevelopmentEnvironment() && isEmailNotConfirmedError(error)) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (session?.user) {
+      authenticatedUser = session.user;
+      authenticatedError = null;
+    }
+  }
+
+  if (authenticatedError || !authenticatedUser) {
     return {
       response: NextResponse.json({ error: UNAUTHORIZED_ERROR }, { status: 401 }),
     };
@@ -57,6 +71,6 @@ export async function requireRouteUser(
 
   return {
     supabase,
-    user,
+    user: authenticatedUser,
   };
 }

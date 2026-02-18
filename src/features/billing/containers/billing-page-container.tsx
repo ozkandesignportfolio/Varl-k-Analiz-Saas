@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { GuidedEmptyState } from "@/components/guided-empty-state";
 import { BillingInvoiceForm } from "@/features/billing/components/billing-invoice-form";
 import {
   BillingInvoiceTable,
@@ -368,6 +369,22 @@ export function BillingPageContainer() {
     setIsSavingInvoice(false);
   };
 
+  const focusCreateSubscriptionForm = useCallback(() => {
+    const createForm = document.getElementById("subscription-create-form");
+    if (!createForm) return;
+
+    createForm.scrollIntoView({ behavior: "smooth", block: "start" });
+    createForm.querySelector<HTMLInputElement>("input[name='providerName']")?.focus();
+  }, []);
+
+  const focusCreateInvoiceForm = useCallback(() => {
+    const createForm = document.getElementById("invoice-create-form");
+    if (!createForm) return;
+
+    createForm.scrollIntoView({ behavior: "smooth", block: "start" });
+    createForm.querySelector<HTMLSelectElement>("select[name='subscriptionId']")?.focus();
+  }, []);
+
   if (!hasValidSession) {
     return null;
   }
@@ -401,33 +418,54 @@ export function BillingPageContainer() {
       </section>
 
       <section className="grid gap-3 xl:grid-cols-[1.02fr_0.98fr]">
-        <BillingSubscriptionForm
-          mode="create"
-          onSubmit={onCreateSubscription}
-          isSubmitting={isSavingSubscription}
-          inputClassName={inputClassName}
-          maintenanceRules={maintenanceRules}
-        />
+        <div id="subscription-create-form">
+          <BillingSubscriptionForm
+            mode="create"
+            onSubmit={onCreateSubscription}
+            isSubmitting={isSavingSubscription}
+            inputClassName={inputClassName}
+            maintenanceRules={maintenanceRules}
+          />
+        </div>
 
         <BillingSubscriptionTable
           isLoading={isLoading}
           subscriptions={subscriptions}
           unpaidInvoiceCount={unpaidInvoiceCount}
           formatCurrency={(value) => currencyFormatter.format(value)}
+          emptyState={
+            !isLoading ? (
+              <GuidedEmptyState
+                title="Ilk aboneligi ekle"
+                description="Onboarding adimi olarak once bir abonelik kaydi olustur. Sonra bu abonelige fatura baglayabilirsin."
+                primaryAction={{
+                  label: "Abonelik formuna git",
+                  onClick: focusCreateSubscriptionForm,
+                }}
+                secondaryAction={
+                  maintenanceRules.length > 0
+                    ? { label: "Bakim kurallarina git", href: "/maintenance" }
+                    : undefined
+                }
+              />
+            ) : undefined
+          }
         />
       </section>
 
       <section className="grid gap-3 xl:grid-cols-[1.02fr_0.98fr]">
-        <BillingInvoiceForm
-          subscriptions={subscriptions}
-          selectedSubscriptionId={selectedSubscriptionId}
-          onSelectedSubscriptionIdChange={setSelectedSubscriptionId}
-          onSubmit={onCreateInvoice}
-          isSubmitting={isSavingInvoice}
-          isDisabled={!invoiceModuleReady}
-          inputClassName={inputClassName}
-          defaultIssuedAt={toDateInput(new Date())}
-        />
+        <div id="invoice-create-form">
+          <BillingInvoiceForm
+            subscriptions={subscriptions}
+            selectedSubscriptionId={selectedSubscriptionId}
+            onSelectedSubscriptionIdChange={setSelectedSubscriptionId}
+            onSubmit={onCreateInvoice}
+            isSubmitting={isSavingInvoice}
+            isDisabled={!invoiceModuleReady}
+            inputClassName={inputClassName}
+            defaultIssuedAt={toDateInput(new Date())}
+          />
+        </div>
 
         <BillingInvoiceTable
           isLoading={isLoading}
@@ -435,6 +473,26 @@ export function BillingPageContainer() {
           invoices={invoices}
           subscriptionLabelById={subscriptionLabelById}
           formatCurrency={(value) => currencyFormatter.format(value)}
+          emptyState={
+            !isLoading && invoiceModuleReady ? (
+              subscriptions.length === 0 ? (
+                <GuidedEmptyState
+                  title="Fatura icin once abonelik eklenmeli"
+                  description="Sistemde abonelik olmadigi icin fatura olusturulamaz. Once bir abonelik kaydi olustur."
+                  primaryAction={{
+                    label: "Abonelik olustur",
+                    onClick: focusCreateSubscriptionForm,
+                  }}
+                />
+              ) : (
+                <GuidedEmptyState
+                  title="Ilk faturani kaydet"
+                  description="Abonelikler olustu. Simdi ilk fatura kaydini ekleyerek odeme takibini baslat."
+                  primaryAction={{ label: "Fatura formuna git", onClick: focusCreateInvoiceForm }}
+                />
+              )
+            ) : undefined
+          }
         />
       </section>
     </AppShell>
@@ -449,6 +507,3 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
-
-
-

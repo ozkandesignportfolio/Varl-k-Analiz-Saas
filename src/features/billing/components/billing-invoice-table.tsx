@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { BillingInvoiceStatus } from "@/features/billing/components/billing-invoice-form";
 
 export type BillingInvoiceTableRow = {
@@ -20,13 +21,14 @@ type BillingInvoiceTableProps = {
   invoices: BillingInvoiceTableRow[];
   subscriptionLabelById: Map<string, string>;
   formatCurrency: (value: number) => string;
+  emptyState?: ReactNode;
 };
 
 const invoiceStatusLabelMap: Record<BillingInvoiceStatus, string> = {
   pending: "Beklemede",
-  paid: "Ödendi",
-  overdue: "Gecikmiş",
-  cancelled: "İptal",
+  paid: "Odendi",
+  overdue: "Gecikmis",
+  cancelled: "Iptal",
 };
 
 export function BillingInvoiceTable({
@@ -35,16 +37,17 @@ export function BillingInvoiceTable({
   invoices,
   subscriptionLabelById,
   formatCurrency,
+  emptyState,
 }: BillingInvoiceTableProps) {
   return (
     <article className="premium-card p-5">
-      <h2 className="text-xl font-semibold text-white">Fatura Geçmişi</h2>
+      <h2 className="text-xl font-semibold text-white">Fatura Gecmisi</h2>
       {isLoading ? (
-        <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
+        <p className="mt-4 text-sm text-slate-300">Yukleniyor...</p>
       ) : !invoiceModuleReady ? (
-        <p className="mt-4 text-sm text-slate-300">Fatura tablosu hazır olduğunda geçmiş burada listelenecek.</p>
+        <p className="mt-4 text-sm text-slate-300">Fatura tablosu hazir oldugunda gecmis burada listelenecek.</p>
       ) : invoices.length === 0 ? (
-        <p className="mt-4 text-sm text-slate-300">Henüz fatura kaydı yok.</p>
+        emptyState ?? <p className="mt-4 text-sm text-slate-300">Henuz fatura kaydi yok.</p>
       ) : (
         <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
           <table className="min-w-full text-left text-sm">
@@ -61,7 +64,7 @@ export function BillingInvoiceTable({
                 <tr key={invoice.id} className="border-b border-white/10 text-slate-100">
                   <td className="px-3 py-3">{new Date(invoice.issued_at).toLocaleDateString("tr-TR")}</td>
                   <td className="px-3 py-3">
-                    {subscriptionLabelById.get(invoice.subscription_id) ?? "Silinmiş abonelik"}
+                    {subscriptionLabelById.get(invoice.subscription_id) ?? "Silinmis abonelik"}
                   </td>
                   <td className="px-3 py-3">{formatCurrency(Number(invoice.total_amount ?? 0))}</td>
                   <td className="px-3 py-3">

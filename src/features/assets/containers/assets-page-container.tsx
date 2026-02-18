@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { AuditHistoryPanel } from "@/components/audit-history-panel";
+import { GuidedEmptyState } from "@/components/guided-empty-state";
 import { QrScannerModal } from "@/components/qr-scanner-modal";
 import { AssetForm } from "@/features/assets/components/asset-form";
 import { AssetListTable } from "@/features/assets/components/asset-list-table";
@@ -416,6 +417,14 @@ export function AssetsPageContainer() {
     [categoryDistribution],
   );
 
+  const focusCreateAssetForm = useCallback(() => {
+    const createForm = document.getElementById("asset-create-form");
+    if (!createForm) return;
+
+    createForm.scrollIntoView({ behavior: "smooth", block: "start" });
+    createForm.querySelector<HTMLInputElement>("input[name='name']")?.focus();
+  }, []);
+
   if (!hasValidSession) {
     return null;
   }
@@ -444,13 +453,15 @@ export function AssetsPageContainer() {
       />
 
       <section className="grid gap-3 xl:grid-cols-[1.05fr_0.95fr]">
-        <AssetForm
-          mode="create"
-          onSubmit={onCreateAsset}
-          isSubmitting={isSaving}
-          categoryOptions={categoryOptions}
-          inputClassName={inputClassName}
-        />
+        <div id="asset-create-form">
+          <AssetForm
+            mode="create"
+            onSubmit={onCreateAsset}
+            isSubmitting={isSaving}
+            categoryOptions={categoryOptions}
+            inputClassName={inputClassName}
+          />
+        </div>
 
         <article className="premium-card p-5">
           <h2 className="text-xl font-semibold text-white">Envanter Özeti</h2>
@@ -518,6 +529,16 @@ export function AssetsPageContainer() {
         assets={assets}
         onStartEdit={onStartEdit}
         onDeleteAsset={onDeleteAsset}
+        emptyState={
+          !isLoading ? (
+            <GuidedEmptyState
+              title="Ilk varligini ekleyerek basla"
+              description="Yeni hesaplarda demo kayitlar otomatik gelir. Kendi envanterinle devam etmek icin yeni bir varlik olustur."
+              primaryAction={{ label: "Varlik formuna git", onClick: focusCreateAssetForm }}
+              secondaryAction={{ label: "Ornek verileri gor", href: "/dashboard" }}
+            />
+          ) : undefined
+        }
       />
 
       <AuditHistoryPanel

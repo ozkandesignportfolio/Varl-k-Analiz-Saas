@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logApiError } from "@/lib/api/logging";
 import {
   deleteMaintenanceRule,
   getMaintenanceRule,
@@ -19,73 +20,112 @@ export async function GET(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  const ruleId = await getRuleId(context);
-  if (!ruleId) {
-    return NextResponse.json({ error: "Kural kimligi zorunludur." }, { status: 400 });
+  let userId: string | null = null;
+  try {
+    const ruleId = await getRuleId(context);
+    if (!ruleId) {
+      return NextResponse.json({ error: "Kural kimligi zorunludur." }, { status: 400 });
+    }
+
+    const auth = await requireRouteUser(request);
+    if ("response" in auth) {
+      return auth.response;
+    }
+    const { supabase, user } = auth;
+    userId = user.id;
+
+    const result = await getMaintenanceRule(supabase, {
+      userId: user.id,
+      ruleId,
+    });
+
+    return NextResponse.json(result.body, { status: result.status });
+  } catch (error) {
+    logApiError({
+      route: "/api/maintenance-rules/[id]",
+      method: "GET",
+      userId,
+      error,
+      message: "Maintenance rule detail request failed unexpectedly",
+    });
+    return NextResponse.json({ error: "Bakim kurali okunamadi." }, { status: 500 });
   }
-
-  const auth = await requireRouteUser(request);
-  if ("response" in auth) {
-    return auth.response;
-  }
-  const { supabase, user } = auth;
-
-  const result = await getMaintenanceRule(supabase, {
-    userId: user.id,
-    ruleId,
-  });
-
-  return NextResponse.json(result.body, { status: result.status });
 }
 
 export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  const ruleId = await getRuleId(context);
-  if (!ruleId) {
-    return NextResponse.json({ error: "Kural kimligi zorunludur." }, { status: 400 });
+  let userId: string | null = null;
+  try {
+    const ruleId = await getRuleId(context);
+    if (!ruleId) {
+      return NextResponse.json({ error: "Kural kimligi zorunludur." }, { status: 400 });
+    }
+
+    const auth = await requireRouteUser(request);
+    if ("response" in auth) {
+      return auth.response;
+    }
+    const { supabase, user } = auth;
+    userId = user.id;
+
+    const payload = await readBody(request);
+    if (!payload) {
+      return NextResponse.json({ error: "Gecersiz istek govdesi." }, { status: 400 });
+    }
+
+    const result = await updateMaintenanceRule(supabase, {
+      userId: user.id,
+      ruleId,
+      payload,
+    });
+
+    return NextResponse.json(result.body, { status: result.status });
+  } catch (error) {
+    logApiError({
+      route: "/api/maintenance-rules/[id]",
+      method: "PATCH",
+      userId,
+      error,
+      message: "Maintenance rule update request failed unexpectedly",
+    });
+    return NextResponse.json({ error: "Bakim kurali guncellenemedi." }, { status: 500 });
   }
-
-  const auth = await requireRouteUser(request);
-  if ("response" in auth) {
-    return auth.response;
-  }
-  const { supabase, user } = auth;
-
-  const payload = await readBody(request);
-  if (!payload) {
-    return NextResponse.json({ error: "Gecersiz istek govdesi." }, { status: 400 });
-  }
-
-  const result = await updateMaintenanceRule(supabase, {
-    userId: user.id,
-    ruleId,
-    payload,
-  });
-
-  return NextResponse.json(result.body, { status: result.status });
 }
 
 export async function DELETE(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  const ruleId = await getRuleId(context);
-  if (!ruleId) {
-    return NextResponse.json({ error: "Kural kimligi zorunludur." }, { status: 400 });
+  let userId: string | null = null;
+  try {
+    const ruleId = await getRuleId(context);
+    if (!ruleId) {
+      return NextResponse.json({ error: "Kural kimligi zorunludur." }, { status: 400 });
+    }
+
+    const auth = await requireRouteUser(request);
+    if ("response" in auth) {
+      return auth.response;
+    }
+    const { supabase, user } = auth;
+    userId = user.id;
+
+    const result = await deleteMaintenanceRule(supabase, {
+      userId: user.id,
+      ruleId,
+    });
+
+    return NextResponse.json(result.body, { status: result.status });
+  } catch (error) {
+    logApiError({
+      route: "/api/maintenance-rules/[id]",
+      method: "DELETE",
+      userId,
+      error,
+      message: "Maintenance rule delete request failed unexpectedly",
+    });
+    return NextResponse.json({ error: "Bakim kurali silinemedi." }, { status: 500 });
   }
-
-  const auth = await requireRouteUser(request);
-  if ("response" in auth) {
-    return auth.response;
-  }
-  const { supabase, user } = auth;
-
-  const result = await deleteMaintenanceRule(supabase, {
-    userId: user.id,
-    ruleId,
-  });
-
-  return NextResponse.json(result.body, { status: result.status });
 }

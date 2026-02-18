@@ -1,4 +1,5 @@
 import { calculateNextDueDate, type IntervalUnit } from "@/lib/maintenance/next-due";
+import { logAuditEvent } from "@/lib/api/logging";
 import { existsById } from "@/lib/repos/assets-repo";
 import {
   create as createRule,
@@ -194,6 +195,14 @@ export async function createMaintenanceRule(
     };
   }
 
+  logAuditEvent({
+    route: "/api/maintenance-rules",
+    userId,
+    entityType: "maintenance_rules",
+    entityId: data.id,
+    action: "create",
+  });
+
   return { status: 201, body: { ok: true, id: data.id } };
 }
 
@@ -344,6 +353,15 @@ export async function updateMaintenanceRule(
     };
   }
 
+  logAuditEvent({
+    route: "/api/maintenance-rules/[id]",
+    userId,
+    entityType: "maintenance_rules",
+    entityId: data.id,
+    action: "update",
+    meta: { fields: Object.keys(updatePayload) },
+  });
+
   return { status: 200, body: { ok: true, id: data.id } };
 }
 
@@ -362,6 +380,14 @@ export async function deleteMaintenanceRule(
       body: { error: "Kural silinemedi veya bulunamadi." },
     };
   }
+
+  logAuditEvent({
+    route: "/api/maintenance-rules/[id]",
+    userId: params.userId,
+    entityType: "maintenance_rules",
+    entityId: data.id,
+    action: "delete",
+  });
 
   return {
     status: 200,

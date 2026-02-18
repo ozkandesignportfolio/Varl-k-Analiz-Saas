@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isDevelopmentEnvironment, isEmailNotConfirmedError } from "./src/lib/supabase/auth-errors";
 
 const protectedRoutes = [
   "/dashboard",
@@ -77,12 +78,25 @@ export async function middleware(request: NextRequest) {
     data: { user },
     error: userError,
   } = await supabase.auth.getUser();
+  let authenticatedUser = user;
+  let authenticatedUserError = userError;
+
+  if (!authenticatedUser && userError && isDevelopmentEnvironment() && isEmailNotConfirmedError(userError)) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (session?.user) {
+      authenticatedUser = session.user;
+      authenticatedUserError = null;
+    }
+  }
 
   const { pathname, search } = request.nextUrl;
   const isProtected = isProtectedRoute(pathname);
   const isAuth = isAuthRoute(pathname);
 
-  if ((userError || !user) && isProtected) {
+  if ((authenticatedUserError || !authenticatedUser) && isProtected) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
     redirectUrl.searchParams.set("next", `${pathname}${search}`);
@@ -92,7 +106,7 @@ export async function middleware(request: NextRequest) {
     return redirectResponse;
   }
 
-  if (user && isAuth) {
+  if (authenticatedUser && isAuth) {
     const redirectUrl = request.nextUrl.clone();
     const nextPath = getSafeInternalPath(request.nextUrl.searchParams.get("next"));
     if (nextPath) {

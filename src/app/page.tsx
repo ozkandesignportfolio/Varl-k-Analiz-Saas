@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
+import { formatStorageBytes, getPlanConfig } from "@/lib/plans/plan-config";
 
-type PlanCode = "free" | "premium";
-type ApiPlanCode = "starter" | "pro";
+type PlanCode = "starter" | "pro";
 
 type Plan = {
   code: PlanCode;
-  apiCode: ApiPlanCode;
   name: string;
   headline: string;
   description: string;
@@ -21,26 +20,37 @@ type FaqItem = {
   answer: string;
 };
 
+const starterPlan = getPlanConfig("starter");
+const proPlan = getPlanConfig("pro");
+
 const plans: Plan[] = [
   {
-    code: "free",
-    apiCode: "starter",
-    name: "Ücretsiz Deneme",
+    code: "starter",
+    name: "Ucretsiz Deneme",
     headline: "0 TL",
-    description: "3 varlığa kadar temel takip",
-    features: ["En fazla 3 varlık", "Bakım ve servis kayıtları", "Temel zaman akışı görünümü"],
+    description: "Temel takip ve giris seviyesi limitler",
+    features: [
+      starterPlan.limits.maxAssets === null ? "Sinirsiz varlik" : `En fazla ${starterPlan.limits.maxAssets} varlik`,
+      starterPlan.limits.maxDocumentStorageBytes === null
+        ? "Yuksek belge depolama limiti"
+        : `${formatStorageBytes(starterPlan.limits.maxDocumentStorageBytes)} belge depolama limiti`,
+      starterPlan.features.canUseAdvancedAnalytics ? "Gelismis analitik" : "Gelismis analitik kapali",
+      starterPlan.features.canExportPdfReports ? "PDF rapor disa aktarma" : "PDF rapor disa aktarma kapali",
+    ],
   },
   {
-    code: "premium",
-    apiCode: "pro",
-    name: "Premium",
+    code: "pro",
+    name: "Pro",
     headline: "149 TL / ay",
-    description: "Sınırsız varlık, rapor ve abonelik modülü",
+    description: "Sinirsiz varlik, gelismis analitik ve PDF raporlar",
     highlight: true,
     features: [
-      "Sınırsız varlık",
-      "Maliyet analizi ve raporlama",
-      "Belge kasası, abonelik ve fatura takibi",
+      proPlan.limits.maxAssets === null ? "Sinirsiz varlik" : `En fazla ${proPlan.limits.maxAssets} varlik`,
+      proPlan.limits.maxDocumentStorageBytes === null
+        ? "Yuksek belge depolama limiti"
+        : `${formatStorageBytes(proPlan.limits.maxDocumentStorageBytes)} belge depolama limiti`,
+      proPlan.features.canUseAdvancedAnalytics ? "Gelismis analitik panolari" : "Gelismis analitik kapali",
+      proPlan.features.canExportPdfReports ? "PDF rapor disa aktarma" : "PDF rapor disa aktarma kapali",
     ],
   },
 ];
@@ -109,12 +119,13 @@ const faqItems: FaqItem[] = [
   },
   {
     question: "Ücretsiz planın sınırları nelerdir?",
-    answer: "Ücretsiz plan en fazla 3 varlıkla temel takip sunar. Premium planda sınır kaldırılır.",
+    answer:
+      "Ücretsiz plan en fazla 3 varlık, sınırlı belge depolama ve temel takip sunar. Pro planda bu limitler genişler.",
   },
   {
-    question: "Premium plan içinde raporlama var mı?",
+    question: "Pro plan içinde raporlama var mı?",
     answer:
-      "Evet. Maliyet analizi, PDF dışa aktarım ve dönem bazlı karşılaştırma raporları Premium plan ile kullanılabilir.",
+      "Evet. Gelismis analitik, PDF disa aktarim ve daha yuksek belge depolama Pro plan ile kullanilabilir.",
   },
   {
     question: "Kurulum ne kadar sürer?",
@@ -129,7 +140,7 @@ const faqItems: FaqItem[] = [
 ];
 
 export default function Home() {
-  const [selectedPlan, setSelectedPlan] = useState<PlanCode>("premium");
+  const [selectedPlan, setSelectedPlan] = useState<PlanCode>("pro");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
@@ -164,7 +175,7 @@ export default function Home() {
           fullName,
           email,
           phone,
-          planCode: selectedPlanDetail.apiCode,
+          planCode: selectedPlanDetail.code,
           billingCycle: "monthly",
           source: "landing-page",
         }),

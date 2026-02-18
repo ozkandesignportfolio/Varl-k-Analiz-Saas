@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
+import {
+  isDevelopmentEnvironment,
+  isEmailNotConfirmedError,
+  isEmailRateLimitError,
+} from "@/lib/supabase/auth-errors";
 import { createClient } from "@/lib/supabase/client";
 
 const inputClassName =
@@ -45,16 +50,43 @@ export default function LoginPage() {
 
     setIsSubmitting(true);
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (error) {
-      setMessage(error.message);
+      if (error) {
+        if (isEmailRateLimitError(error)) {
+          setMessage("E-posta limiti asildi. Lutfen kisa bir sure sonra tekrar deneyin.");
+          return;
+        }
+
+        if (isEmailNotConfirmedError(error)) {
+          if (isDevelopmentEnvironment()) {
+            const {
+              data: { session },
+            } = await supabase.auth.getSession();
+
+            if (data.session || session) {
+              router.push(nextPath);
+              router.refresh();
+              return;
+            }
+          }
+
+          setMessage("E-posta adresiniz henuz onaylanmamis. Lutfen e-postanizi onaylayip tekrar deneyin.");
+          return;
+        }
+
+        setMessage(error.message || "Giris yapilamadi. Lutfen tekrar deneyin.");
+        return;
+      }
+
+      router.push(nextPath);
+      router.refresh();
+    } catch {
+      setMessage("Giris sirasinda beklenmeyen bir hata olustu. Lutfen tekrar deneyin.");
+    } finally {
       setIsSubmitting(false);
-      return;
     }
-
-    router.push(nextPath);
-    router.refresh();
   };
 
   return (

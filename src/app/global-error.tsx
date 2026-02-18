@@ -8,9 +8,16 @@ type GlobalErrorProps = {
   reset: () => void;
 };
 
+const reportRuntimeError = (error: Error) => {
+  const reporter = (window as Window & { reportError?: (value: unknown) => void }).reportError;
+  if (typeof reporter === "function") {
+    reporter(error);
+  }
+};
+
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
   useEffect(() => {
-    console.error(error);
+    reportRuntimeError(error);
   }, [error]);
 
   return (

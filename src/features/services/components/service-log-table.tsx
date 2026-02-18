@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { ServiceDeleteDialog } from "./service-delete-dialog";
 
 export type ServiceLogTableRow = {
@@ -19,6 +20,7 @@ type ServiceLogTableProps = {
   ruleNameById: Map<string, string>;
   onStartEdit?: (log: ServiceLogTableRow) => void;
   onDeleteLog?: (log: ServiceLogTableRow) => void;
+  emptyState?: ReactNode;
 };
 
 export function ServiceLogTable({
@@ -28,28 +30,29 @@ export function ServiceLogTable({
   ruleNameById,
   onStartEdit,
   onDeleteLog,
+  emptyState,
 }: ServiceLogTableProps) {
   const hasActions = Boolean(onStartEdit || onDeleteLog);
 
   return (
     <section className="premium-card p-5">
-      <h2 className="text-xl font-semibold text-white">Servis Geçmişi</h2>
+      <h2 className="text-xl font-semibold text-white">Servis Gecmisi</h2>
       {isLoading ? (
-        <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
+        <p className="mt-4 text-sm text-slate-300">Yukleniyor...</p>
       ) : logs.length === 0 ? (
-        <p className="mt-4 text-sm text-slate-300">Henüz servis kaydı yok.</p>
+        emptyState ?? <p className="mt-4 text-sm text-slate-300">Henuz servis kaydi yok.</p>
       ) : (
         <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
           <table className="min-w-full text-left text-sm">
             <thead>
               <tr className="border-b border-white/10 bg-white/5 text-slate-300">
                 <th className="px-3 py-2">Tarih</th>
-                <th className="px-3 py-2">Varlık</th>
+                <th className="px-3 py-2">Varlik</th>
                 <th className="px-3 py-2">Kural</th>
-                <th className="px-3 py-2">Tür</th>
+                <th className="px-3 py-2">Tur</th>
                 <th className="px-3 py-2">Maliyet</th>
-                <th className="px-3 py-2">Sağlayıcı</th>
-                {hasActions ? <th className="px-3 py-2">İşlem</th> : null}
+                <th className="px-3 py-2">Saglayici</th>
+                {hasActions ? <th className="px-3 py-2">Islem</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -72,7 +75,7 @@ export function ServiceLogTable({
                             onClick={() => onStartEdit(log)}
                             className="rounded-full border border-sky-300/35 bg-sky-300/10 px-3 py-1 text-xs font-semibold text-sky-100 transition hover:bg-sky-300/20"
                           >
-                            Düzenle
+                            Duzenle
                           </button>
                         ) : null}
                         {onDeleteLog ? (

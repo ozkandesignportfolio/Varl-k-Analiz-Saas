@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { formatStorageBytes, getPlanConfig, getUserPlanConfig, type PlanConfig } from "@/lib/plans/plan-config";
+import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type AppShellProps = {
   title: string;
@@ -29,8 +31,32 @@ const isActivePath = (pathname: string, href: string) => {
   return pathname === href || pathname.startsWith(`${href}/`);
 };
 
+const DEFAULT_PLAN_CONFIG: PlanConfig = getPlanConfig("starter");
+
 export function AppShell({ title, subtitle, children, actions, badge }: AppShellProps) {
   const pathname = usePathname();
+  const supabase = useMemo(() => getSupabaseBrowserClient(), []);
+  const [planConfig, setPlanConfig] = useState<PlanConfig>(DEFAULT_PLAN_CONFIG);
+
+  useEffect(() => {
+    const loadPlan = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      setPlanConfig(getUserPlanConfig(user));
+    };
+
+    void loadPlan();
+  }, [supabase]);
+
+  const storageLimitText =
+    planConfig.limits.maxDocumentStorageBytes === null
+      ? "Belge depolama: yuksek limit"
+      : `Belge depolama limiti: ${formatStorageBytes(planConfig.limits.maxDocumentStorageBytes)}`;
+
+  const featureStatusText = planConfig.features.canUseAdvancedAnalytics
+    ? "Gelismis analitik ve PDF rapor aktif"
+    : "Temel erisim aktif. Pro ile gelismis analitik ve PDF rapor acilir";
 
   return (
     <main className="relative min-h-screen overflow-x-hidden px-4 py-4 sm:px-6 lg:px-8">
@@ -79,8 +105,9 @@ export function AppShell({ title, subtitle, children, actions, badge }: AppShell
 
           <div className="mt-6 rounded-[calc(var(--ui-radius)-2px)] border border-white/10 bg-white/[0.03] px-3 py-3">
             <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Abonelik</p>
-            <p className="mt-2 text-sm text-slate-200">Premium aktif: 149 TL / ay</p>
-            <p className="mt-1 text-xs text-slate-400">Sınırsız varlık ve takip</p>
+            <p className="mt-2 text-sm text-slate-200">{planConfig.label} plani aktif</p>
+            <p className="mt-1 text-xs text-slate-400">{featureStatusText}</p>
+            <p className="mt-1 text-xs text-slate-400">{storageLimitText}</p>
           </div>
         </aside>
 

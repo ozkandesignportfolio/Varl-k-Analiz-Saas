@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { AuditHistoryPanel } from "@/components/audit-history-panel";
+import { GuidedEmptyState } from "@/components/guided-empty-state";
 import {
   ServiceLogForm,
   type ServiceLogFormAssetOption,
@@ -285,6 +286,14 @@ export function ServicesPageContainer() {
     [serviceTypeDistribution],
   );
 
+  const focusCreateServiceForm = useCallback(() => {
+    const createForm = document.getElementById("service-log-form");
+    if (!createForm) return;
+
+    createForm.scrollIntoView({ behavior: "smooth", block: "start" });
+    createForm.querySelector<HTMLSelectElement>("select")?.focus();
+  }, []);
+
   if (!hasValidSession) {
     return null;
   }
@@ -296,24 +305,26 @@ export function ServicesPageContainer() {
       subtitle="Servis kayıtlarini varlık bazinda yönetin, kurallarla ilişkilendirin ve tarih resetini otomatik calistirin."
     >
       <section className="grid gap-3 xl:grid-cols-[1.05fr_0.95fr]">
-        <ServiceLogForm
-          mode="create"
-          assets={assets}
-          activeRulesForSelectedAsset={activeRulesForSelectedAsset}
-          selectedAssetId={selectedAssetId}
-          selectedRuleId={selectedRuleId}
-          onSelectedAssetIdChange={(assetId) => {
-            setSelectedAssetId(assetId);
-            setSelectedRuleId("");
-          }}
-          onSelectedRuleIdChange={setSelectedRuleId}
-          onSubmit={onCreateServiceLog}
-          isSubmitting={isSaving}
-          isSubmitDisabled={assets.length === 0}
-          serviceTypes={serviceTypes}
-          inputClassName={inputClassName}
-          fileInputClassName={fileInputClassName}
-        />
+        <div id="service-log-form">
+          <ServiceLogForm
+            mode="create"
+            assets={assets}
+            activeRulesForSelectedAsset={activeRulesForSelectedAsset}
+            selectedAssetId={selectedAssetId}
+            selectedRuleId={selectedRuleId}
+            onSelectedAssetIdChange={(assetId) => {
+              setSelectedAssetId(assetId);
+              setSelectedRuleId("");
+            }}
+            onSelectedRuleIdChange={setSelectedRuleId}
+            onSubmit={onCreateServiceLog}
+            isSubmitting={isSaving}
+            isSubmitDisabled={assets.length === 0}
+            serviceTypes={serviceTypes}
+            inputClassName={inputClassName}
+            fileInputClassName={fileInputClassName}
+          />
+        </div>
 
         <article className="premium-card p-5">
           <h2 className="text-xl font-semibold text-white">Servis Özeti</h2>
@@ -362,6 +373,24 @@ export function ServicesPageContainer() {
         logs={logs}
         assetNameById={assetNameById}
         ruleNameById={ruleNameById}
+        emptyState={
+          !isLoading ? (
+            assets.length === 0 ? (
+              <GuidedEmptyState
+                title="Servis kaydi icin once varlik gerekli"
+                description="Yeni kullanicilar demo veri ile gelir. Eger liste bossa once varlik olusturup sonra servis kaydi ekleyebilirsin."
+                primaryAction={{ label: "Varliklara git", href: "/assets" }}
+                secondaryAction={{ label: "Dashboard ac", href: "/dashboard" }}
+              />
+            ) : (
+              <GuidedEmptyState
+                title="Ilk servis kaydini ekle"
+                description="Servis formunu doldurarak maliyet ve tarih takibini hemen baslat."
+                primaryAction={{ label: "Servis formuna git", onClick: focusCreateServiceForm }}
+              />
+            )
+          ) : undefined
+        }
       />
 
       <AuditHistoryPanel
@@ -383,4 +412,3 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
-

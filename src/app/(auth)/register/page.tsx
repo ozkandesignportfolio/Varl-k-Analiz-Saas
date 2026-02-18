@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
+import { isEmailNotConfirmedError, isEmailRateLimitError } from "@/lib/supabase/auth-errors";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const inputClassName =
@@ -41,16 +42,30 @@ export default function RegisterPage() {
 
     setIsSubmitting(true);
 
-    const { error } = await supabase.auth.signUp({ email, password });
+    try {
+      const { error } = await supabase.auth.signUp({ email, password });
 
-    if (error) {
-      setMessage(error.message);
+      if (error) {
+        if (isEmailRateLimitError(error)) {
+          setMessage("E-posta limiti asildi. Lutfen kisa bir sure sonra tekrar deneyin.");
+          return;
+        }
+
+        if (isEmailNotConfirmedError(error)) {
+          setMessage("Hesap olusturuldu ancak e-posta onayi gerekiyor. E-posta kutunuzu kontrol edin.");
+          return;
+        }
+
+        setMessage(error.message || "Kayit sirasinda bir hata olustu. Lutfen tekrar deneyin.");
+        return;
+      }
+
+      setMessage("Kayit alindi. E-posta onayi gerekiyorsa kutunuzu kontrol edin, aksi halde giris yapabilirsiniz.");
+    } catch {
+      setMessage("Kayit sirasinda beklenmeyen bir hata olustu. Lutfen tekrar deneyin.");
+    } finally {
       setIsSubmitting(false);
-      return;
     }
-
-    setMessage("Check email confirmation or login if confirmation disabled");
-    setIsSubmitting(false);
   };
 
   return (
