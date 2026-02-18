@@ -1,16 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
 
 export default function RegisterPage() {
-  const supabase = useMemo(() => createClient(), []);
-  const router = useRouter();
+  const supabase = useMemo(() => getSupabaseBrowserClient(), []);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
@@ -51,8 +49,8 @@ export default function RegisterPage() {
       return;
     }
 
-    router.push("/dashboard");
-    router.refresh();
+    setMessage("Check email confirmation or login if confirmation disabled");
+    setIsSubmitting(false);
   };
 
   return (

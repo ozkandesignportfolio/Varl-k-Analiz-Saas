@@ -13,6 +13,8 @@ import { ReportsExportButtons } from "@/features/reports/components/reports-expo
 import { ReportsFilterPanel } from "@/features/reports/components/reports-filter-panel";
 import { ReportsSummaryCards } from "@/features/reports/components/reports-summary-cards";
 import { listIdName } from "@/lib/repos/assets-repo";
+import { listForReports as listDocumentsForReports } from "@/lib/repos/documents-repo";
+import { listForReports as listServiceLogsForReports } from "@/lib/repos/service-logs-repo";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type AssetRow = {
@@ -53,6 +55,7 @@ const inputClassName =
 
 export function ReportsPageContainer() {
   const router = useRouter();
+  const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const today = useMemo(() => new Date(), []);
   const initialStart = useMemo(() => new Date(today.getFullYear(), today.getMonth(), 1), [today]);
 
@@ -65,10 +68,10 @@ export function ReportsPageContainer() {
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [hasValidSession, setHasValidSession] = useState(true);
 
   useEffect(() => {
     const load = async () => {
-      const supabase = getSupabaseBrowserClient();
       setIsLoading(true);
       setFeedback("");
 
@@ -77,25 +80,19 @@ export function ReportsPageContainer() {
       } = await supabase.auth.getUser();
 
       if (!user) {
+        setHasValidSession(false);
         router.replace("/login");
         setIsLoading(false);
         return;
       }
 
+      setHasValidSession(true);
       setUserEmail(user.email ?? "bilinmiyor");
 
       const [assetsRes, servicesRes, docsRes] = await Promise.all([
         listIdName(supabase, { userId: user.id }),
-        supabase
-          .from("service_logs")
-          .select("id,asset_id,service_date,service_type,cost")
-          .eq("user_id", user.id)
-          .order("service_date", { ascending: false }),
-        supabase
-          .from("documents")
-          .select("id,asset_id,file_name,uploaded_at")
-          .eq("user_id", user.id)
-          .order("uploaded_at", { ascending: false }),
+        listServiceLogsForReports(supabase, { userId: user.id }),
+        listDocumentsForReports(supabase, { userId: user.id }),
       ]);
 
       if (assetsRes.error) setFeedback(assetsRes.error.message);
@@ -109,7 +106,7 @@ export function ReportsPageContainer() {
     };
 
     void load();
-  }, [router]);
+  }, [router, supabase]);
 
   const hasValidRange = useMemo(() => startDate <= endDate, [startDate, endDate]);
 
@@ -187,6 +184,10 @@ export function ReportsPageContainer() {
       })
       .sort((a, b) => b.totalCost - a.totalCost || b.serviceCount - a.serviceCount);
   }, [assetNameById, documentsInRange, servicesInRange]);
+
+  if (!hasValidSession) {
+    return null;
+  }
 
   const onExportPdf = async () => {
     if (!hasValidRange) {

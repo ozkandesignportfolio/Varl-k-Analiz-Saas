@@ -15,21 +15,19 @@ import {
 } from "@/features/dashboard/components/dashboard-recent-activity";
 import {
   DashboardRiskCards,
-  type DashboardMonthlyExpenseWarning,
   type DashboardPredictionItem,
-  type DashboardUpcomingSubscriptionCharge,
 } from "@/features/dashboard/components/dashboard-risk-cards";
-import { createClient } from "@/lib/supabase/client";
+import { useDashboardMetrics } from "@/features/dashboard/hooks/use-dashboard-metrics";
+import { countByUser as countDocumentsByUser } from "@/lib/repos/documents-repo";
+import { listForDashboard as listRulesForDashboard } from "@/lib/repos/maintenance-rules-repo";
+import { listForDashboard as listServiceLogsForDashboard } from "@/lib/repos/service-logs-repo";
+import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type AssetRow = DashboardChartAssetRow;
 
 type ServiceLogRow = DashboardChartServiceLogRow;
 
 type RuleRow = DashboardChartRuleRow;
-
-type DocumentRow = {
-  id: string;
-};
 
 type SubscriptionRow = {
   id: string;
@@ -57,27 +55,26 @@ type PredictionApiResponse = {
   items: PredictionItem[];
 };
 
-const parseDateOnly = (value: string) => {
-  const [yearRaw, monthRaw, dayRaw] = value.split("-");
-  const year = Number(yearRaw);
-  const month = Number(monthRaw);
-  const day = Number(dayRaw);
-  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null;
-  return new Date(year, month - 1, day);
+const toDateInput = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 };
 
 export function DashboardPageContainer() {
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const router = useRouter();
 
   const [email, setEmail] = useState("");
+  const [hasValidSession, setHasValidSession] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [feedback, setFeedback] = useState("");
 
   const [assets, setAssets] = useState<AssetRow[]>([]);
   const [serviceLogs, setServiceLogs] = useState<ServiceLogRow[]>([]);
   const [rules, setRules] = useState<RuleRow[]>([]);
-  const [documents, setDocuments] = useState<DocumentRow[]>([]);
+  const [documentCount, setDocumentCount] = useState(0);
   const [subscriptions, setSubscriptions] = useState<SubscriptionRow[]>([]);
   const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
 
@@ -91,12 +88,13 @@ export function DashboardPageContainer() {
 
   const clearClientState = () => {
     setEmail("");
+    setHasValidSession(false);
     setIsLoading(false);
     setFeedback("");
     setAssets([]);
     setServiceLogs([]);
     setRules([]);
-    setDocuments([]);
+    setDocumentCount(0);
     setSubscriptions([]);
     setExpenses([]);
     setPredictions([]);
@@ -110,16 +108,22 @@ export function DashboardPageContainer() {
       setFeedback("");
       setPredictionError("");
 
-      const { data: authData } = await supabase.auth.getUser();
-      const user = authData.user;
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
       if (!user) {
-        setFeedback("Oturum bulunamadı. Lütfen tekrar giriş yapın.");
+        setHasValidSession(false);
+        router.replace("/login");
         setIsLoading(false);
         return;
       }
 
+      setHasValidSession(true);
       setEmail(user.email ?? "");
+      const dashboardRangeStart = new Date();
+      dashboardRangeStart.setMonth(dashboardRangeStart.getMonth() - 12);
+      const dashboardStartDate = toDateInput(dashboardRangeStart);
 
       const predictionRequest = fetch("/api/maintenance-predictions", {
         method: "GET",
@@ -147,15 +151,16 @@ export function DashboardPageContainer() {
       const [assetsRes, logsRes, rulesRes, docsRes, subscriptionsRes, expensesRes, predictionRes] =
         await Promise.all([
         supabase.from("assets").select("id,name,category,warranty_end_date").eq("user_id", user.id),
-        supabase
-          .from("service_logs")
-          .select("id,asset_id,rule_id,service_type,service_date,cost")
-          .eq("user_id", user.id),
-        supabase
-          .from("maintenance_rules")
-          .select("id,asset_id,next_due_date,is_active")
-          .eq("user_id", user.id),
-        supabase.from("documents").select("id").eq("user_id", user.id),
+        listServiceLogsForDashboard(supabase, {
+          userId: user.id,
+          sinceDate: dashboardStartDate,
+          limit: 1500,
+        }),
+        listRulesForDashboard(supabase, {
+          userId: user.id,
+          onlyActive: true,
+        }),
+        countDocumentsByUser(supabase, { userId: user.id }),
         supabase
           .from("billing_subscriptions")
           .select("id,provider_name,subscription_name,amount,currency,next_billing_date,status")
@@ -177,7 +182,7 @@ export function DashboardPageContainer() {
       setAssets((assetsRes.data ?? []) as AssetRow[]);
       setServiceLogs((logsRes.data ?? []) as ServiceLogRow[]);
       setRules((rulesRes.data ?? []) as RuleRow[]);
-      setDocuments((docsRes.data ?? []) as DocumentRow[]);
+      setDocumentCount(docsRes.data ?? 0);
       setSubscriptions((subscriptionsRes.data ?? []) as SubscriptionRow[]);
       setExpenses((expensesRes.data ?? []) as ExpenseRow[]);
       setPredictions((predictionRes.data?.items ?? []) as PredictionItem[]);
@@ -199,129 +204,38 @@ export function DashboardPageContainer() {
     };
 
     void load();
-  }, [supabase]);
+  }, [router, supabase]);
 
   const onSignOut = async () => {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "global" });
     router.replace("/login");
+    router.refresh();
     clearClientState();
   };
 
-  const today = useMemo(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  }, []);
+  const {
+    upcomingDueCount,
+    overdueCount,
+    upcomingWarrantyCount,
+    thisMonthCost,
+    topPredictions,
+    highRiskCount,
+    predictionGeneratedAt,
+    upcomingSubscriptionCharges,
+    monthlyExpenseWarning,
+  } = useDashboardMetrics({
+    assets,
+    serviceLogs,
+    rules,
+    predictions,
+    predictionMeta,
+    subscriptions,
+    expenses,
+  });
 
-  const upcomingDueCount = useMemo(() => {
-    const inSevenDays = new Date(today);
-    inSevenDays.setDate(today.getDate() + 7);
-
-    return rules.filter((rule) => {
-      if (!rule.is_active || !rule.next_due_date) return false;
-      const dueDate = parseDateOnly(rule.next_due_date);
-      if (!dueDate) return false;
-      return dueDate >= today && dueDate <= inSevenDays;
-    }).length;
-  }, [rules, today]);
-
-  const overdueCount = useMemo(() => {
-    return rules.filter((rule) => {
-      if (!rule.is_active || !rule.next_due_date) return false;
-      const dueDate = parseDateOnly(rule.next_due_date);
-      if (!dueDate) return false;
-      return dueDate < today;
-    }).length;
-  }, [rules, today]);
-
-  const upcomingWarrantyCount = useMemo(() => {
-    const inThirtyDays = new Date(today);
-    inThirtyDays.setDate(today.getDate() + 30);
-
-    return assets.filter((asset) => {
-      if (!asset.warranty_end_date) return false;
-      const warrantyEndDate = parseDateOnly(asset.warranty_end_date);
-      if (!warrantyEndDate) return false;
-      return warrantyEndDate >= today && warrantyEndDate <= inThirtyDays;
-    }).length;
-  }, [assets, today]);
-
-  const thisMonthCost = useMemo(() => {
-    const now = new Date();
-    const month = now.getMonth();
-    const year = now.getFullYear();
-
-    return serviceLogs
-      .filter((log) => {
-        const d = new Date(log.service_date);
-        return d.getMonth() === month && d.getFullYear() === year;
-      })
-      .reduce((sum, log) => sum + Number(log.cost ?? 0), 0);
-  }, [serviceLogs]);
-
-  const topPredictions = useMemo(
-    () => [...predictions].sort((a, b) => b.riskScore - a.riskScore).slice(0, 6),
-    [predictions],
-  );
-
-  const highRiskCount = useMemo(
-    () => predictions.filter((item) => item.riskScore >= 70).length,
-    [predictions],
-  );
-
-  const predictionGeneratedAt = useMemo(() => {
-    if (!predictionMeta?.generatedAt) return "";
-    const parsed = new Date(predictionMeta.generatedAt);
-    if (Number.isNaN(parsed.getTime())) return "";
-    return parsed.toLocaleString("tr-TR");
-  }, [predictionMeta]);
-
-  const upcomingSubscriptionCharges = useMemo<DashboardUpcomingSubscriptionCharge[]>(() => {
-    const inThirtyDays = new Date(today);
-    inThirtyDays.setDate(today.getDate() + 30);
-
-    return subscriptions
-      .filter((subscription) => {
-        if (subscription.status !== "active" || !subscription.next_billing_date) return false;
-        const billingDate = parseDateOnly(subscription.next_billing_date);
-        if (!billingDate) return false;
-        return billingDate >= today && billingDate <= inThirtyDays;
-      })
-      .sort((a, b) => {
-        const aDate = parseDateOnly(a.next_billing_date ?? "")?.getTime() ?? Number.MAX_SAFE_INTEGER;
-        const bDate = parseDateOnly(b.next_billing_date ?? "")?.getTime() ?? Number.MAX_SAFE_INTEGER;
-        return aDate - bDate;
-      })
-      .slice(0, 4)
-      .map((subscription) => ({
-        id: subscription.id,
-        providerName: subscription.provider_name,
-        subscriptionName: subscription.subscription_name,
-        nextBillingDate: subscription.next_billing_date ?? "",
-        amount: Number(subscription.amount ?? 0),
-        currency: subscription.currency || "TRY",
-      }));
-  }, [subscriptions, today]);
-
-  const monthlyExpenseWarning = useMemo<DashboardMonthlyExpenseWarning>(() => {
-    const now = new Date();
-    const month = now.getMonth();
-    const year = now.getFullYear();
-    const threshold = 5000;
-    const total = expenses
-      .filter((expense) => {
-        const expenseDate = parseDateOnly(expense.expense_date);
-        if (!expenseDate) return false;
-        return expenseDate.getMonth() === month && expenseDate.getFullYear() === year;
-      })
-      .reduce((sum, expense) => sum + Number(expense.amount ?? 0), 0);
-
-    return {
-      isHigh: total >= threshold,
-      total,
-      threshold,
-      currency: "TRY",
-    };
-  }, [expenses]);
+  if (!hasValidSession) {
+    return null;
+  }
 
   return (
     <AppShell
@@ -368,7 +282,7 @@ export function DashboardPageContainer() {
       <section className="grid gap-3 lg:grid-cols-[0.9fr_1.1fr]">
         <DashboardRecentActivity
           serviceLogCount={String(serviceLogs.length)}
-          documentCount={String(documents.length)}
+          documentCount={String(documentCount)}
           categoryCount={String(new Set(assets.map((asset) => asset.category)).size)}
         />
 
@@ -384,3 +298,4 @@ export function DashboardPageContainer() {
     </AppShell>
   );
 }
+

@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { listForTimeline as listDocumentsForTimeline } from "@/lib/repos/documents-repo";
+import { listForTimeline as listServiceLogsForTimeline } from "@/lib/repos/service-logs-repo";
 import { createClient } from "@/lib/supabase/client";
 
 type AssetRow = {
@@ -58,11 +60,8 @@ export default function TimelinePage() {
 
       const [assetRes, serviceRes, docRes] = await Promise.all([
         supabase.from("assets").select("id,name,created_at").eq("user_id", user.id),
-        supabase
-          .from("service_logs")
-          .select("id,asset_id,service_type,service_date,created_at")
-          .eq("user_id", user.id),
-        supabase.from("documents").select("id,asset_id,file_name,uploaded_at").eq("user_id", user.id),
+        listServiceLogsForTimeline(supabase, { userId: user.id }),
+        listDocumentsForTimeline(supabase, { userId: user.id }),
       ]);
 
       if (assetRes.error) setFeedback(assetRes.error.message);

@@ -8,6 +8,18 @@ import { createClient } from "@/lib/supabase/client";
 const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
 
+const getSafeNextPath = (candidate: string | null) => {
+  if (!candidate) {
+    return "/dashboard";
+  }
+
+  if (!candidate.startsWith("/") || candidate.startsWith("//")) {
+    return "/dashboard";
+  }
+
+  return candidate;
+};
+
 export default function LoginPage() {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
@@ -15,7 +27,7 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
   const [nextPath] = useState(() => {
     if (typeof window === "undefined") return "/dashboard";
-    return new URLSearchParams(window.location.search).get("next") || "/dashboard";
+    return getSafeNextPath(new URLSearchParams(window.location.search).get("next"));
   });
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {

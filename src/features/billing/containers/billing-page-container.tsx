@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { BillingInvoiceForm } from "@/features/billing/components/billing-invoice-form";
@@ -15,7 +16,7 @@ import {
   BillingSubscriptionTable,
   type BillingSubscriptionTableRow,
 } from "@/features/billing/components/billing-subscription-table";
-import { createClient } from "@/lib/supabase/client";
+import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type SubscriptionStatus = "active" | "paused" | "cancelled";
 type BillingCycle = "monthly" | "yearly";
@@ -59,7 +60,8 @@ const isMissingTableError = (errorMessage: string, tableName: string) => {
 };
 
 export function BillingPageContainer() {
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = useMemo(() => getSupabaseBrowserClient(), []);
+  const router = useRouter();
 
   const [userId, setUserId] = useState("");
   const [subscriptions, setSubscriptions] = useState<SubscriptionRow[]>([]);
@@ -69,6 +71,7 @@ export function BillingPageContainer() {
   const [isSavingSubscription, setIsSavingSubscription] = useState(false);
   const [isSavingInvoice, setIsSavingInvoice] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [hasValidSession, setHasValidSession] = useState(true);
   const [selectedSubscriptionId, setSelectedSubscriptionId] = useState("");
   const [invoiceModuleReady, setInvoiceModuleReady] = useState(true);
 
@@ -140,18 +143,24 @@ export function BillingPageContainer() {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        setFeedback("Oturum bulunamadı. Lütfen tekrar giriş yapın.");
+        setHasValidSession(false);
+        router.replace("/login");
         setIsLoading(false);
         return;
       }
 
+      setHasValidSession(true);
       setUserId(user.id);
       await fetchBillingData(user.id);
       setIsLoading(false);
     };
 
     void load();
-  }, [fetchBillingData, supabase]);
+  }, [fetchBillingData, router, supabase]);
+
+  const ensureAuthUser = () => {
+    if (!userId) throw new Error("auth required");
+  };
 
   const subscriptionLabelById = useMemo(() => {
     return new Map(
@@ -201,7 +210,12 @@ export function BillingPageContainer() {
 
   const onCreateSubscription = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!userId) return;
+    try {
+      ensureAuthUser();
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "auth required");
+      return;
+    }
 
     setFeedback("");
     setIsSavingSubscription(true);
@@ -231,6 +245,7 @@ export function BillingPageContainer() {
       return;
     }
 
+    ensureAuthUser();
     const { data, error } = await supabase
       .from("billing_subscriptions")
       .insert({
@@ -267,8 +282,15 @@ export function BillingPageContainer() {
 
   const onCreateInvoice = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!userId || !invoiceModuleReady) {
+    if (!invoiceModuleReady) {
       setFeedback(billingSetupHint);
+      return;
+    }
+
+    try {
+      ensureAuthUser();
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "auth required");
       return;
     }
 
@@ -301,6 +323,7 @@ export function BillingPageContainer() {
     const paidAt = status === "paid" ? paidAtRaw ?? toDateInput(new Date()) : null;
     const totalAmount = amount + taxAmount;
 
+    ensureAuthUser();
     const { error } = await supabase.from("billing_invoices").insert({
       user_id: userId,
       subscription_id: subscriptionId,
@@ -330,6 +353,10 @@ export function BillingPageContainer() {
     await fetchBillingData(userId);
     setIsSavingInvoice(false);
   };
+
+  if (!hasValidSession) {
+    return null;
+  }
 
   return (
     <AppShell
@@ -408,3 +435,4 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
+

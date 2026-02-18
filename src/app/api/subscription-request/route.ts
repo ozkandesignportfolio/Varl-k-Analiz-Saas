@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+﻿import { NextResponse } from "next/server";
+import { requireRouteUser } from "@/lib/supabase/route-auth";
 
 type PlanCode = "starter" | "pro" | "elite";
 type BillingCycle = "monthly" | "yearly";
@@ -19,10 +19,16 @@ const billingCycles: BillingCycle[] = ["monthly", "yearly"];
 const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
 export async function POST(request: Request) {
+  const auth = await requireRouteUser(request);
+  if ("response" in auth) {
+    return auth.response;
+  }
+  const { supabase } = auth;
+
   const payload = (await request.json().catch(() => null)) as RequestPayload | null;
 
   if (!payload) {
-    return NextResponse.json({ error: "Geçersiz istek gövdesi." }, { status: 400 });
+    return NextResponse.json({ error: "Gecersiz istek govdesi." }, { status: 400 });
   }
 
   const fullName = String(payload.fullName ?? "").trim();
@@ -34,39 +40,22 @@ export async function POST(request: Request) {
 
   if (!fullName || !email) {
     return NextResponse.json(
-      { error: "Ad soyad ve e-posta alanları zorunludur." },
+      { error: "Ad soyad ve e-posta alanlari zorunludur." },
       { status: 400 },
     );
   }
 
   if (!isValidEmail(email)) {
-    return NextResponse.json({ error: "Geçersiz e-posta formatı." }, { status: 400 });
+    return NextResponse.json({ error: "Gecersiz e-posta formati." }, { status: 400 });
   }
 
   if (!planCodes.includes(planCode)) {
-    return NextResponse.json({ error: "Geçersiz plan seçimi." }, { status: 400 });
+    return NextResponse.json({ error: "Gecersiz plan secimi." }, { status: 400 });
   }
 
   if (!billingCycles.includes(billingCycle)) {
-    return NextResponse.json({ error: "Geçersiz ödeme dönemi." }, { status: 400 });
+    return NextResponse.json({ error: "Gecersiz odeme donemi." }, { status: 400 });
   }
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    return NextResponse.json(
-      { error: "Sunucu Supabase ayarları eksik. .env.local dosyasını kontrol edin." },
-      { status: 500 },
-    );
-  }
-
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
 
   const { error } = await supabase.from("subscription_requests").insert({
     full_name: fullName,

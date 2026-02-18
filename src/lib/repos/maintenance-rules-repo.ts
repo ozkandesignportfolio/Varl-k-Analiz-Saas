@@ -1,22 +1,12 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 import type { DbClient, Insert, RepoResult, Row, Update } from "./_shared";
 
-export type ListRulesForMaintenancePageParams = {
+export type GetRuleByIdParams = {
   userId: string;
+  ruleId: string;
 };
 
-export type ListRulesForMaintenancePageRow = Pick<
-  Row<"maintenance_rules">,
-  | "id"
-  | "asset_id"
-  | "title"
-  | "interval_value"
-  | "interval_unit"
-  | "last_service_date"
-  | "next_due_date"
-  | "is_active"
-  | "created_at"
->;
+export type GetRuleByIdRow = Row<"maintenance_rules">;
 
 export type ListRulesForServicesPageParams = {
   userId: string;
@@ -29,40 +19,13 @@ export type ListRulesForServicesPageRow = Pick<
 
 export type ListRulesForDashboardParams = {
   userId: string;
+  onlyActive?: boolean;
 };
 
 export type ListRulesForDashboardRow = Pick<
   Row<"maintenance_rules">,
   "id" | "asset_id" | "next_due_date" | "is_active"
 >;
-
-export type ListActiveRulesForPredictionParams = {
-  userId: string;
-};
-
-export type ListActiveRulesForPredictionRow = Pick<
-  Row<"maintenance_rules">,
-  "asset_id" | "next_due_date" | "is_active"
->;
-
-export type CountActiveRulesByAssetParams = {
-  userId: string;
-  assetId: string;
-};
-
-export type GetRuleByIdParams = {
-  userId: string;
-  ruleId: string;
-};
-
-export type GetRuleByIdRow = Row<"maintenance_rules">;
-
-export type GetRuleIdAndAssetByIdParams = {
-  userId: string;
-  ruleId: string;
-};
-
-export type GetRuleIdAndAssetByIdRow = Pick<Row<"maintenance_rules">, "id" | "asset_id">;
 
 export type CreateRuleParams = {
   values: Insert<"maintenance_rules">;
@@ -77,41 +40,6 @@ export type UpdateRuleByIdParams = {
 };
 
 export type UpdateRuleByIdRow = Pick<Row<"maintenance_rules">, "id">;
-
-export function listForMaintenancePage(
-  _client: DbClient,
-  _params: ListRulesForMaintenancePageParams,
-): RepoResult<ListRulesForMaintenancePageRow[]> {
-  throw new Error("not implemented");
-}
-
-export function listForServicesPage(
-  _client: DbClient,
-  _params: ListRulesForServicesPageParams,
-): RepoResult<ListRulesForServicesPageRow[]> {
-  throw new Error("not implemented");
-}
-
-export function listForDashboard(
-  _client: DbClient,
-  _params: ListRulesForDashboardParams,
-): RepoResult<ListRulesForDashboardRow[]> {
-  throw new Error("not implemented");
-}
-
-export function listActiveForPrediction(
-  _client: DbClient,
-  _params: ListActiveRulesForPredictionParams,
-): RepoResult<ListActiveRulesForPredictionRow[]> {
-  throw new Error("not implemented");
-}
-
-export function countActiveByAsset(
-  _client: DbClient,
-  _params: CountActiveRulesByAssetParams,
-): RepoResult<number> {
-  throw new Error("not implemented");
-}
 
 export function getById(
   client: DbClient,
@@ -134,13 +62,6 @@ export function getById(
   }));
 }
 
-export function getIdAndAssetById(
-  _client: DbClient,
-  _params: GetRuleIdAndAssetByIdParams,
-): RepoResult<GetRuleIdAndAssetByIdRow> {
-  throw new Error("not implemented");
-}
-
 export function create(
   client: DbClient,
   params: CreateRuleParams,
@@ -158,6 +79,46 @@ export function create(
     table.insert(values).select("id").single(),
   ).then((r) => ({
     data: (r.data as CreateRuleRow | null) ?? null,
+    error: r.error,
+  }));
+}
+
+export function listForServicesPage(
+  client: DbClient,
+  params: ListRulesForServicesPageParams,
+): RepoResult<ListRulesForServicesPageRow[]> {
+  const { userId } = params;
+
+  return Promise.resolve(
+    client
+      .from("maintenance_rules")
+      .select("id,asset_id,title,is_active,next_due_date")
+      .eq("user_id", userId)
+      .order("next_due_date", { ascending: true }),
+  ).then((r) => ({
+    data: (r.data as ListRulesForServicesPageRow[] | null) ?? [],
+    error: r.error,
+  }));
+}
+
+export function listForDashboard(
+  client: DbClient,
+  params: ListRulesForDashboardParams,
+): RepoResult<ListRulesForDashboardRow[]> {
+  const { onlyActive = true, userId } = params;
+
+  let query = client
+    .from("maintenance_rules")
+    .select("id,asset_id,next_due_date,is_active")
+    .eq("user_id", userId)
+    .order("next_due_date", { ascending: true });
+
+  if (onlyActive) {
+    query = query.eq("is_active", true);
+  }
+
+  return Promise.resolve(query).then((r) => ({
+    data: (r.data as ListRulesForDashboardRow[] | null) ?? [],
     error: r.error,
   }));
 }

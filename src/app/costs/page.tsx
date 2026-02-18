@@ -16,6 +16,7 @@ import {
   type ServiceCostLog,
   sumCost,
 } from "@/lib/charts";
+import { listForCosts } from "@/lib/repos/service-logs-repo";
 import { createClient } from "@/lib/supabase/client";
 
 type ServiceRow = ServiceCostLog & {
@@ -69,11 +70,7 @@ export default function CostsPage() {
       }
 
       const [logsRes, assetsRes] = await Promise.all([
-        supabase
-          .from("service_logs")
-          .select("id,asset_id,service_date,cost")
-          .eq("user_id", user.id)
-          .order("service_date", { ascending: false }),
+        listForCosts(supabase, { userId: user.id }),
         supabase.from("assets").select("id,category").eq("user_id", user.id),
       ]);
 

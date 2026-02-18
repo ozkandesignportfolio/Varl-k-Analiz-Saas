@@ -1,3 +1,4 @@
+import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
@@ -19,11 +20,15 @@ export const createClient = async () => {
         return cookieStore.getAll();
       },
       setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          cookieStore.set(name, value, options);
-        });
+        try {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
+        } catch {
+          // Cookie mutation can fail in some server contexts (e.g. pure Server Components).
+          // Middleware refresh flow keeps auth cookies in sync for those cases.
+        }
       },
     },
   });
 };
-

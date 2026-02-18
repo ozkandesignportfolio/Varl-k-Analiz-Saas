@@ -1,3 +1,4 @@
+import type { PostgrestError } from "@supabase/supabase-js";
 import type { DbClient, Insert, RepoResult, Row, Update } from "./_shared";
 
 export type ListBillingInvoicesByUserParams = {
@@ -54,29 +55,93 @@ export type UpdateBillingInvoiceByIdParams = {
 export type UpdateBillingInvoiceByIdRow = Pick<Row<"billing_invoices">, "id">;
 
 export function listByUser(
-  _client: DbClient,
-  _params: ListBillingInvoicesByUserParams,
+  client: DbClient,
+  params: ListBillingInvoicesByUserParams,
 ): RepoResult<ListBillingInvoicesByUserRow[]> {
-  throw new Error("not implemented");
+  const { userId } = params;
+
+  return Promise.resolve(
+    client
+      .from("billing_invoices")
+      .select(
+        "id,subscription_id,invoice_no,issued_at,due_date,paid_at,amount,tax_amount,total_amount,status,created_at",
+      )
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false }),
+  ).then((r) => ({
+    data: (r.data as ListBillingInvoicesByUserRow[] | null) ?? [],
+    error: r.error,
+  }));
 }
 
 export function listByUserAndSubscription(
-  _client: DbClient,
-  _params: ListBillingInvoicesBySubscriptionParams,
+  client: DbClient,
+  params: ListBillingInvoicesBySubscriptionParams,
 ): RepoResult<ListBillingInvoicesBySubscriptionRow[]> {
-  throw new Error("not implemented");
+  const { subscriptionId, userId } = params;
+
+  return Promise.resolve(
+    client
+      .from("billing_invoices")
+      .select(
+        "id,subscription_id,invoice_no,issued_at,due_date,paid_at,amount,tax_amount,total_amount,status,created_at",
+      )
+      .eq("user_id", userId)
+      .eq("subscription_id", subscriptionId)
+      .order("created_at", { ascending: false }),
+  ).then((r) => ({
+    data: (r.data as ListBillingInvoicesBySubscriptionRow[] | null) ?? [],
+    error: r.error,
+  }));
 }
 
 export function create(
-  _client: DbClient,
-  _params: CreateBillingInvoiceParams,
+  client: DbClient,
+  params: CreateBillingInvoiceParams,
 ): RepoResult<CreateBillingInvoiceRow> {
-  throw new Error("not implemented");
+  const { values } = params;
+  const table = client.from("billing_invoices") as unknown as {
+    insert: (insertValues: CreateBillingInvoiceParams["values"]) => {
+      select: (columns: "id") => {
+        single: () => Promise<{ data: unknown; error: PostgrestError | null }>;
+      };
+    };
+  };
+
+  return Promise.resolve(
+    table.insert(values).select("id").single(),
+  ).then((r) => ({
+    data: (r.data as CreateBillingInvoiceRow | null) ?? null,
+    error: r.error,
+  }));
 }
 
 export function updateById(
-  _client: DbClient,
-  _params: UpdateBillingInvoiceByIdParams,
+  client: DbClient,
+  params: UpdateBillingInvoiceByIdParams,
 ): RepoResult<UpdateBillingInvoiceByIdRow> {
-  throw new Error("not implemented");
+  const { invoiceId, patch, userId } = params;
+  const table = client.from("billing_invoices") as unknown as {
+    update: (updateValues: UpdateBillingInvoiceByIdParams["patch"]) => {
+      eq: (column: "id", value: string) => {
+        eq: (userColumn: "user_id", userValue: string) => {
+          select: (columns: "id") => {
+            single: () => Promise<{ data: unknown; error: PostgrestError | null }>;
+          };
+        };
+      };
+    };
+  };
+
+  return Promise.resolve(
+    table
+      .update(patch)
+      .eq("id", invoiceId)
+      .eq("user_id", userId)
+      .select("id")
+      .single(),
+  ).then((r) => ({
+    data: (r.data as UpdateBillingInvoiceByIdRow | null) ?? null,
+    error: r.error,
+  }));
 }

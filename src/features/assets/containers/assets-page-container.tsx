@@ -7,7 +7,7 @@ import { AuditHistoryPanel } from "@/components/audit-history-panel";
 import { QrScannerModal } from "@/components/qr-scanner-modal";
 import { AssetForm } from "@/features/assets/components/asset-form";
 import { AssetListTable } from "@/features/assets/components/asset-list-table";
-import { createClient } from "@/lib/supabase/client";
+import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type AssetRow = {
   id: string;
@@ -52,7 +52,7 @@ const isMissingQrCodeError = (message: string | undefined) => {
 };
 
 export function AssetsPageContainer() {
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const router = useRouter();
 
   const [assets, setAssets] = useState<AssetRow[]>([]);
@@ -61,6 +61,7 @@ export function AssetsPageContainer() {
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [hasValidSession, setHasValidSession] = useState(true);
   const [auditRefreshKey, setAuditRefreshKey] = useState(0);
   const [editingAsset, setEditingAsset] = useState<AssetRow | null>(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -114,18 +115,20 @@ export function AssetsPageContainer() {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        setFeedback("Oturum bulunamadı. Lütfen tekrar giriş yapın.");
+        setHasValidSession(false);
+        router.replace("/login");
         setIsLoading(false);
         return;
       }
 
+      setHasValidSession(true);
       setUserId(user.id);
       await fetchAssets(user.id);
       setIsLoading(false);
     };
 
     void load();
-  }, [supabase, fetchAssets]);
+  }, [fetchAssets, router, supabase]);
 
   const uploadPhoto = useCallback(
     async (assetId: string, file: File) => {
@@ -142,6 +145,10 @@ export function AssetsPageContainer() {
     },
     [supabase, userId],
   );
+
+  const ensureAuthUser = () => {
+    if (!userId) throw new Error("auth required");
+  };
 
   const onCreateAsset = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -169,19 +176,28 @@ export function AssetsPageContainer() {
 
     setIsSaving(true);
 
-    const createRes = await supabase
-      .from("assets")
-      .insert({
-        user_id: userId,
-        name,
-        category,
-        brand,
-        model,
-        purchase_date: purchaseDate,
-        warranty_end_date: warrantyEndDate,
-      })
-      .select("id")
-      .single();
+    let createRes: { data: { id: string } | null; error: { message: string } | null };
+
+    try {
+      ensureAuthUser();
+      createRes = await supabase
+        .from("assets")
+        .insert({
+          user_id: userId,
+          name,
+          category,
+          brand,
+          model,
+          purchase_date: purchaseDate,
+          warranty_end_date: warrantyEndDate,
+        })
+        .select("id")
+        .single();
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "VarlÄ±k kaydÄ± oluÅŸturulamadÄ±.");
+      setIsSaving(false);
+      return;
+    }
 
     if (createRes.error || !createRes.data) {
       setFeedback(createRes.error?.message ?? "Varlık kaydı oluşturulamadı.");
@@ -194,6 +210,7 @@ export function AssetsPageContainer() {
     if (photoFile instanceof File && photoFile.size > 0) {
       try {
         const storagePath = await uploadPhoto(assetId, photoFile);
+        ensureAuthUser();
         const updatePhotoRes = await supabase
           .from("assets")
           .update({ photo_path: storagePath })
@@ -269,19 +286,28 @@ export function AssetsPageContainer() {
       }
     }
 
-    const updateRes = await supabase
-      .from("assets")
-      .update({
-        name,
-        category,
-        brand,
-        model,
-        purchase_date: purchaseDate,
-        warranty_end_date: warrantyEndDate,
-        photo_path: nextPhotoPath,
-      })
-      .eq("id", editingAsset.id)
-      .eq("user_id", userId);
+    let updateRes: { error: { message: string } | null };
+
+    try {
+      ensureAuthUser();
+      updateRes = await supabase
+        .from("assets")
+        .update({
+          name,
+          category,
+          brand,
+          model,
+          purchase_date: purchaseDate,
+          warranty_end_date: warrantyEndDate,
+          photo_path: nextPhotoPath,
+        })
+        .eq("id", editingAsset.id)
+        .eq("user_id", userId);
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "VarlÄ±k gÃ¼ncellenemedi.");
+      setIsUpdating(false);
+      return;
+    }
 
     if (updateRes.error) {
       setFeedback(updateRes.error.message);
@@ -379,6 +405,10 @@ export function AssetsPageContainer() {
     () => Math.max(1, ...categoryDistribution.map((item) => item.count)),
     [categoryDistribution],
   );
+
+  if (!hasValidSession) {
+    return null;
+  }
 
   return (
     <AppShell
@@ -500,3 +530,4 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
+

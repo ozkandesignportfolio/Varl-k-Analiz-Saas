@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { listIdName } from "@/lib/repos/assets-repo";
+import { listForDocumentsPage } from "@/lib/repos/documents-repo";
 import { createClient } from "@/lib/supabase/client";
 
 type DocumentRow = {
@@ -48,11 +49,7 @@ export default function DocumentsPage() {
       }
 
       const [docsRes, assetsRes] = await Promise.all([
-        supabase
-          .from("documents")
-          .select("id,asset_id,document_type,file_name,storage_path,file_size,uploaded_at")
-          .eq("user_id", user.id)
-          .order("uploaded_at", { ascending: false }),
+        listForDocumentsPage(supabase, { userId: user.id }),
         listIdName(supabase, { userId: user.id }),
       ]);
 

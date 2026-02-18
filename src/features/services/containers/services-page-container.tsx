@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { AuditHistoryPanel } from "@/components/audit-history-panel";
@@ -12,7 +13,9 @@ import {
   type ServiceLogTableRow,
 } from "@/features/services/components/service-log-table";
 import { listIdName } from "@/lib/repos/assets-repo";
-import { createClient } from "@/lib/supabase/client";
+import { listForServicesPage as listRulesForServicesPage } from "@/lib/repos/maintenance-rules-repo";
+import { listForServicesPage as listServiceLogsForServicesPage } from "@/lib/repos/service-logs-repo";
+import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type AssetOption = ServiceLogFormAssetOption;
 
@@ -47,7 +50,8 @@ const getSelectedFile = (entry: FormDataEntryValue | null): File | null =>
   entry instanceof File && entry.size > 0 ? entry : null;
 
 export function ServicesPageContainer() {
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = useMemo(() => getSupabaseBrowserClient(), []);
+  const router = useRouter();
 
   const [userId, setUserId] = useState("");
   const [assets, setAssets] = useState<AssetOption[]>([]);
@@ -56,6 +60,7 @@ export function ServicesPageContainer() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [hasValidSession, setHasValidSession] = useState(true);
   const [auditRefreshKey, setAuditRefreshKey] = useState(0);
   const [selectedAssetId, setSelectedAssetId] = useState("");
   const [selectedRuleId, setSelectedRuleId] = useState("");
@@ -76,11 +81,7 @@ export function ServicesPageContainer() {
 
   const fetchRules = useCallback(
     async (currentUserId: string) => {
-      const { data, error } = await supabase
-        .from("maintenance_rules")
-        .select("id,asset_id,title,is_active,next_due_date")
-        .eq("user_id", currentUserId)
-        .order("next_due_date", { ascending: true });
+      const { data, error } = await listRulesForServicesPage(supabase, { userId: currentUserId });
 
       if (error) {
         setFeedback(error.message);
@@ -94,11 +95,7 @@ export function ServicesPageContainer() {
 
   const fetchLogs = useCallback(
     async (currentUserId: string) => {
-      const { data, error } = await supabase
-        .from("service_logs")
-        .select("id,asset_id,rule_id,service_type,service_date,cost,provider,notes,created_at")
-        .eq("user_id", currentUserId)
-        .order("service_date", { ascending: false });
+      const { data, error } = await listServiceLogsForServicesPage(supabase, { userId: currentUserId });
 
       if (error) {
         setFeedback(error.message);
@@ -119,18 +116,20 @@ export function ServicesPageContainer() {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        setFeedback("Oturum bulunamadı. Lütfen tekrar giriş yapın.");
+        setHasValidSession(false);
+        router.replace("/login");
         setIsLoading(false);
         return;
       }
 
+      setHasValidSession(true);
       setUserId(user.id);
       await Promise.all([fetchAssets(user.id), fetchRules(user.id), fetchLogs(user.id)]);
       setIsLoading(false);
     };
 
     void load();
-  }, [fetchAssets, fetchLogs, fetchRules, supabase]);
+  }, [fetchAssets, fetchLogs, fetchRules, router, supabase]);
 
   const activeRulesForSelectedAsset = useMemo(
     () => rules.filter((rule) => rule.is_active && rule.asset_id === selectedAssetId),
@@ -286,6 +285,10 @@ export function ServicesPageContainer() {
     [serviceTypeDistribution],
   );
 
+  if (!hasValidSession) {
+    return null;
+  }
+
   return (
     <AppShell
       badge="Servis Takibi"
@@ -380,3 +383,4 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
+

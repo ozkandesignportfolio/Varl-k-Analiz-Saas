@@ -12,7 +12,7 @@ import {
   type ExpenseTableRow,
 } from "@/features/expenses/components/expense-table";
 import { listIdName } from "@/lib/repos/assets-repo";
-import { createClient } from "@/lib/supabase/client";
+import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type AssetOption = ExpenseFormAssetOption;
 type ExpenseRow = ExpenseTableRow;
@@ -21,7 +21,7 @@ const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
 
 export function ExpensesPageContainer() {
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const router = useRouter();
 
   const [userId, setUserId] = useState("");
@@ -31,6 +31,7 @@ export function ExpensesPageContainer() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [hasValidSession, setHasValidSession] = useState(true);
 
   const fetchAssets = useCallback(
     async (currentUserId: string) => {
@@ -72,11 +73,13 @@ export function ExpensesPageContainer() {
       } = await supabase.auth.getUser();
 
       if (!user) {
+        setHasValidSession(false);
         router.replace("/login");
         setIsLoading(false);
         return;
       }
 
+      setHasValidSession(true);
       setUserId(user.id);
       await Promise.all([fetchAssets(user.id), fetchExpenses(user.id)]);
       setIsLoading(false);
@@ -85,12 +88,18 @@ export function ExpensesPageContainer() {
     void load();
   }, [fetchAssets, fetchExpenses, router, supabase]);
 
+  const ensureAuthUser = () => {
+    if (!userId) throw new Error("auth required");
+  };
+
   const onCreateExpense = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFeedback("");
 
-    if (!userId) {
-      setFeedback("Kullanici bilgisi bulunamadi.");
+    try {
+      ensureAuthUser();
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "auth required");
       return;
     }
 
@@ -115,6 +124,7 @@ export function ExpensesPageContainer() {
 
     setIsSaving(true);
 
+    ensureAuthUser();
     const { error } = await supabase.from("expenses").insert({
       user_id: userId,
       asset_id: selectedAssetId || null,
@@ -150,6 +160,10 @@ export function ExpensesPageContainer() {
     () => expenses.filter((expense) => Boolean(expense.asset_id)).length,
     [expenses],
   );
+
+  if (!hasValidSession) {
+    return null;
+  }
 
   return (
     <AppShell

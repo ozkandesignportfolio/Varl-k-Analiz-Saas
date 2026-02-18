@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { AuditHistoryPanel } from "@/components/audit-history-panel";
@@ -12,7 +13,7 @@ import {
   type MaintenanceRuleRow,
 } from "@/features/maintenance/components/maintenance-rules-table";
 import { listIdName } from "@/lib/repos/assets-repo";
-import { createClient } from "@/lib/supabase/client";
+import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   calculateNextDueDate,
   todayDateInputValue,
@@ -68,7 +69,8 @@ const getDueBadge = (rule: RuleRow) => {
 };
 
 export function MaintenancePageContainer() {
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = useMemo(() => getSupabaseBrowserClient(), []);
+  const router = useRouter();
 
   const [userId, setUserId] = useState("");
   const [assets, setAssets] = useState<AssetOption[]>([]);
@@ -77,6 +79,7 @@ export function MaintenancePageContainer() {
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [hasValidSession, setHasValidSession] = useState(true);
   const [auditRefreshKey, setAuditRefreshKey] = useState(0);
   const [createForm, setCreateForm] = useState<RuleFormState>(() => createInitialFormState());
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
@@ -126,18 +129,20 @@ export function MaintenancePageContainer() {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        setFeedback("Oturum bulunamadı. Lütfen tekrar giriş yapın.");
+        setHasValidSession(false);
+        router.replace("/login");
         setIsLoading(false);
         return;
       }
 
+      setHasValidSession(true);
       setUserId(user.id);
       await Promise.all([fetchAssets(user.id), fetchRules(user.id)]);
       setIsLoading(false);
     };
 
     void load();
-  }, [fetchAssets, fetchRules, supabase]);
+  }, [fetchAssets, fetchRules, router, supabase]);
 
   const createNextDuePreview = useMemo(() => {
     try {
@@ -314,6 +319,10 @@ export function MaintenancePageContainer() {
     setAuditRefreshKey((prev) => prev + 1);
   };
 
+  if (!hasValidSession) {
+    return null;
+  }
+
   return (
     <AppShell
       badge="Bakım Motoru"
@@ -401,3 +410,4 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
+

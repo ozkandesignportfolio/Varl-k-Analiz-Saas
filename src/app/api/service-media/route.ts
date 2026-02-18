@@ -1,6 +1,7 @@
 ﻿import { randomUUID } from "crypto";
+import path from "node:path";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireRouteUser, type RouteAuthSuccess } from "@/lib/supabase/route-auth";
 
 export const runtime = "nodejs";
 
@@ -8,6 +9,7 @@ const STORAGE_BUCKET = "documents-private";
 const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
 const OPENAI_TEXT_MODEL = process.env.OPENAI_MODEL?.trim() || "gpt-4.1-mini";
 const OPENAI_TRANSCRIBE_MODEL = process.env.OPENAI_TRANSCRIBE_MODEL?.trim() || "gpt-4o-mini-transcribe";
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type MediaKind = "photo" | "video" | "audio";
 
@@ -36,15 +38,64 @@ const allowedMimeTypes: Record<MediaKind, string[]> = {
   ],
 };
 
+const allowedExtensions: Record<MediaKind, string[]> = {
+  photo: ["jpg", "jpeg", "png", "webp", "heic"],
+  video: ["mp4", "mov", "qt", "webm", "mkv"],
+  audio: ["mp3", "mpeg", "wav", "m4a", "mp4", "webm", "ogg"],
+};
+
+const compatibleExtensionsByMimeType: Record<string, string[]> = {
+  "image/jpeg": ["jpg", "jpeg"],
+  "image/png": ["png"],
+  "image/webp": ["webp"],
+  "image/heic": ["heic"],
+  "video/mp4": ["mp4"],
+  "video/quicktime": ["mov", "qt"],
+  "video/webm": ["webm"],
+  "video/x-matroska": ["mkv"],
+  "audio/mpeg": ["mp3", "mpeg"],
+  "audio/mp3": ["mp3"],
+  "audio/wav": ["wav"],
+  "audio/x-wav": ["wav"],
+  "audio/mp4": ["m4a", "mp4"],
+  "audio/m4a": ["m4a", "mp4"],
+  "audio/webm": ["webm"],
+  "audio/ogg": ["ogg"],
+};
+
 const documentTypeByKind: Record<MediaKind, string> = {
   photo: "service_photo",
   video: "service_video",
   audio: "service_audio_note",
 };
 
-function sanitizeFileName(fileName: string) {
-  const normalized = fileName.toLowerCase().replace(/[^a-z0-9._-]/g, "-").replace(/-+/g, "-");
-  return normalized.slice(-120) || "media.bin";
+function normalizeUuid(value: string) {
+  const normalized = value.trim().toLowerCase();
+  if (!UUID_PATTERN.test(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
+function normalizeDisplayFileName(fileName: string) {
+  const leafName = fileName.split(/[\\/]/).pop() ?? fileName;
+  const trimmed = leafName.trim();
+  return trimmed.slice(0, 255) || "media";
+}
+
+function sanitizeFileStem(fileName: string) {
+  const leafName = normalizeDisplayFileName(fileName);
+  const extensionIndex = leafName.lastIndexOf(".");
+  const stem = extensionIndex > 0 ? leafName.slice(0, extensionIndex) : leafName;
+  const asciiOnly = stem.normalize("NFKD").replace(/[^\x00-\x7F]/g, "");
+
+  const normalized = asciiOnly
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^[._-]+|[._-]+$/g, "");
+
+  return normalized.slice(0, 80) || "media";
 }
 
 function getFileEntry(formData: FormData, key: string) {
@@ -60,7 +111,7 @@ function getExtension(fileName: string) {
   if (parts.length < 2) {
     return null;
   }
-  return parts[parts.length - 1]?.toLowerCase() ?? null;
+  return parts[parts.length - 1]?.toLowerCase().trim() ?? null;
 }
 
 function buildStoragePath(params: {
@@ -68,17 +119,26 @@ function buildStoragePath(params: {
   assetId: string;
   serviceLogId: string;
   fileName: string;
+  extension: string;
   kind: MediaKind;
 }) {
-  const timestamp = new Date().toISOString().replace(/[.:]/g, "-");
-  const safeName = sanitizeFileName(params.fileName);
-  const uniqueSuffix = randomUUID().slice(0, 8);
-  return `${params.userId}/${params.assetId}/service-logs/${params.serviceLogId}/${params.kind}-${timestamp}-${uniqueSuffix}-${safeName}`;
+  const timestamp = new Date().toISOString().replace(/\D/g, "").slice(0, 14);
+  const safeStem = sanitizeFileStem(params.fileName);
+  const uniqueSuffix = randomUUID().replace(/-/g, "").slice(0, 12);
+  const objectName = `${params.kind}-${timestamp}-${uniqueSuffix}-${safeStem}.${params.extension}`;
+  return path.posix.join(
+    params.userId,
+    params.assetId,
+    "service-logs",
+    params.serviceLogId,
+    params.kind,
+    objectName,
+  );
 }
 
-function buildMetadata(file: File) {
+function buildMetadata(file: File, mimeType: string) {
   return {
-    mime_type: file.type || null,
+    mime_type: mimeType || null,
     extension: getExtension(file.name),
     size_bytes: file.size,
     last_modified_unix: file.lastModified || null,
@@ -270,7 +330,7 @@ async function parseVideoMetadata(videoFile: File, apiKey: string | undefined) {
     return null;
   }
 
-  const metadata = buildMetadata(videoFile);
+  const metadata = buildMetadata(videoFile, videoFile.type || "application/octet-stream");
   const aiText = await callOpenAiResponsesApi({
     apiKey,
     input: [
@@ -384,41 +444,90 @@ function composeUpdatedNotes(params: {
 }
 
 function validateMediaFile(file: File, kind: MediaKind) {
+  if (file.size <= 0) {
+    return { error: `Bos dosya yuklenemez (${kind}).` };
+  }
+
   if (file.size > MAX_FILE_SIZE_BYTES) {
-    return `Dosya boyutu limit asiyor (${kind}).`;
+    return { error: `Dosya boyutu limit asiyor (${kind}). Maksimum 50 MB.` };
   }
 
-  const accepted = allowedMimeTypes[kind];
-  if (!accepted.includes(file.type)) {
-    return `Desteklenmeyen dosya tipi (${kind}): ${file.type || "unknown"}.`;
+  const mimeType = file.type.trim().toLowerCase();
+  const acceptedMimeTypes = allowedMimeTypes[kind];
+  if (!mimeType || !acceptedMimeTypes.includes(mimeType)) {
+    return { error: `Desteklenmeyen dosya tipi (${kind}): ${mimeType || "unknown"}.` };
   }
 
-  return null;
+  const extension = getExtension(file.name);
+  const acceptedExtensions = allowedExtensions[kind];
+  if (!extension || !acceptedExtensions.includes(extension)) {
+    return {
+      error: `Dosya uzantisi desteklenmiyor (${kind}): ${extension || "unknown"}.`,
+    };
+  }
+
+  const compatibleExtensions = compatibleExtensionsByMimeType[mimeType];
+  if (compatibleExtensions && !compatibleExtensions.includes(extension)) {
+    return {
+      error: `Dosya uzantisi ve MIME tipi uyusmuyor (${kind}): ${mimeType} / .${extension}.`,
+    };
+  }
+
+  return {
+    mimeType,
+    extension,
+  };
+}
+
+async function rollbackUploadBatch(params: {
+  supabase: RouteAuthSuccess["supabase"];
+  userId: string;
+  insertedDocumentPaths: string[];
+  orphanedStoragePaths: string[];
+}) {
+  const insertedDocumentPaths = [...new Set(params.insertedDocumentPaths)];
+  const storagePathsToRemove = [...new Set([...insertedDocumentPaths, ...params.orphanedStoragePaths])];
+
+  if (insertedDocumentPaths.length > 0) {
+    await params.supabase
+      .from("documents")
+      .delete()
+      .eq("user_id", params.userId)
+      .in("storage_path", insertedDocumentPaths);
+  }
+
+  if (storagePathsToRemove.length > 0) {
+    await params.supabase.storage.from(STORAGE_BUCKET).remove(storagePathsToRemove);
+  }
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Oturum bulunamadı." }, { status: 401 });
+  const auth = await requireRouteUser(request);
+  if ("response" in auth) {
+    return auth.response;
   }
+  const { supabase, user } = auth;
 
   const formData = await request.formData().catch(() => null);
   if (!formData) {
     return NextResponse.json({ error: "Geçersiz form verisi." }, { status: 400 });
   }
 
-  const assetId = String(formData.get("assetId") ?? "").trim();
-  const serviceLogId = String(formData.get("serviceLogId") ?? "").trim();
+  const rawAssetId = String(formData.get("assetId") ?? "");
+  const rawServiceLogId = String(formData.get("serviceLogId") ?? "");
   const serviceType = String(formData.get("serviceType") ?? "").trim();
   const serviceDate = String(formData.get("serviceDate") ?? "").trim();
   const provider = String(formData.get("provider") ?? "").trim() || null;
   const userNotes = String(formData.get("notes") ?? "").trim() || null;
 
-  if (!assetId || !serviceLogId || !serviceType || !serviceDate) {
+  const assetId = normalizeUuid(rawAssetId);
+  const serviceLogId = normalizeUuid(rawServiceLogId);
+
+  if (!assetId || !serviceLogId) {
+    return NextResponse.json({ error: "Varlik veya servis kaydi kimligi gecersiz." }, { status: 400 });
+  }
+
+  if (!serviceType || !serviceDate) {
     return NextResponse.json({ error: "Zorunlu alanlar eksik." }, { status: 400 });
   }
 
@@ -433,7 +542,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Servis kaydı bulunamadı." }, { status: 404 });
   }
 
-  if (serviceLog.user_id !== user.id || serviceLog.asset_id !== assetId) {
+  if (serviceLog.user_id !== user.id || serviceLog.asset_id.toLowerCase() !== assetId) {
     return NextResponse.json({ error: "Bu servis kaydına erişim izniniz yok." }, { status: 403 });
   }
 
@@ -441,37 +550,56 @@ export async function POST(request: Request) {
   const videoFile = getFileEntry(formData, "video");
   const audioFile = getFileEntry(formData, "audio");
 
-  const mediaEntries: Array<{ kind: MediaKind; file: File }> = [];
-  if (photoFile) mediaEntries.push({ kind: "photo", file: photoFile });
-  if (videoFile) mediaEntries.push({ kind: "video", file: videoFile });
-  if (audioFile) mediaEntries.push({ kind: "audio", file: audioFile });
+  const mediaEntries: Array<{ kind: MediaKind; file: File; mimeType: string; extension: string }> = [];
+  if (photoFile) {
+    const validation = validateMediaFile(photoFile, "photo");
+    if ("error" in validation) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
+    }
+    mediaEntries.push({ kind: "photo", file: photoFile, ...validation });
+  }
+  if (videoFile) {
+    const validation = validateMediaFile(videoFile, "video");
+    if ("error" in validation) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
+    }
+    mediaEntries.push({ kind: "video", file: videoFile, ...validation });
+  }
+  if (audioFile) {
+    const validation = validateMediaFile(audioFile, "audio");
+    if ("error" in validation) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
+    }
+    mediaEntries.push({ kind: "audio", file: audioFile, ...validation });
+  }
 
   if (mediaEntries.length === 0) {
     return NextResponse.json({ ok: true, uploadedCount: 0, warnings: ["Yüklenecek medya bulunamadı."] });
   }
 
-  for (const entry of mediaEntries) {
-    const fileError = validateMediaFile(entry.file, entry.kind);
-    if (fileError) {
-      return NextResponse.json({ error: fileError }, { status: 400 });
-    }
-  }
-
   const uploads: MediaUploadResult[] = [];
+  const insertedDocumentPaths: string[] = [];
   for (const entry of mediaEntries) {
     const storagePath = buildStoragePath({
       userId: user.id,
       assetId,
       serviceLogId,
       fileName: entry.file.name,
+      extension: entry.extension,
       kind: entry.kind,
     });
 
     const { error: uploadError } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .upload(storagePath, entry.file, { contentType: entry.file.type, upsert: false });
+      .upload(storagePath, entry.file, { contentType: entry.mimeType, upsert: false });
 
     if (uploadError) {
+      await rollbackUploadBatch({
+        supabase,
+        userId: user.id,
+        insertedDocumentPaths,
+        orphanedStoragePaths: [],
+      });
       return NextResponse.json({ error: `${entry.kind} dosyası yüklenemedi.` }, { status: 500 });
     }
 
@@ -480,23 +608,29 @@ export async function POST(request: Request) {
       user_id: user.id,
       service_log_id: serviceLogId,
       document_type: documentTypeByKind[entry.kind],
-      file_name: entry.file.name,
+      file_name: normalizeDisplayFileName(entry.file.name),
       storage_path: storagePath,
       file_size: entry.file.size,
     });
 
     if (docError) {
-      await supabase.storage.from(STORAGE_BUCKET).remove([storagePath]);
+      await rollbackUploadBatch({
+        supabase,
+        userId: user.id,
+        insertedDocumentPaths,
+        orphanedStoragePaths: [storagePath],
+      });
       return NextResponse.json({ error: `${entry.kind} doküman kaydı oluşturulamadı.` }, { status: 500 });
     }
 
+    insertedDocumentPaths.push(storagePath);
     uploads.push({
       kind: entry.kind,
       fileName: entry.file.name,
-      mimeType: entry.file.type,
+      mimeType: entry.mimeType,
       size: entry.file.size,
       storagePath,
-      metadata: buildMetadata(entry.file),
+      metadata: buildMetadata(entry.file, entry.mimeType),
       aiMetadata: null,
     });
   }

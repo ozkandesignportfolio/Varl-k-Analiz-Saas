@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireRouteUser } from "@/lib/supabase/route-auth";
 
 const allowedEntityTypes = ["assets", "maintenance_rules", "service_logs", "documents"] as const;
 const allowedActions = ["insert", "update", "delete"] as const;
@@ -32,14 +32,11 @@ const isMissingAuditLogsTableError = (error: { code?: string; message?: string }
 };
 
 export async function GET(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await requireRouteUser(request);
+  if ("response" in auth) {
+    return auth.response;
   }
+  const { supabase, user } = auth;
 
   const searchParams = new URL(request.url).searchParams;
   const parsedLimit = Number(searchParams.get("limit") ?? "20");

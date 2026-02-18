@@ -1,5 +1,7 @@
 ﻿import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { listForDashboard as listRulesForDashboard } from "@/lib/repos/maintenance-rules-repo";
+import { listForPrediction as listServiceLogsForPrediction } from "@/lib/repos/service-logs-repo";
+import { requireRouteUser } from "@/lib/supabase/route-auth";
 
 type AssetRow = {
   id: string;
@@ -403,20 +405,14 @@ const runAiScoring = async ({
   return applyAiOverrides({ baseItems, aiPayload: parsed });
 };
 
-const buildPredictions = async (): Promise<PredictionResponse | NextResponse> => {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError) {
-    return NextResponse.json({ error: userError.message }, { status: 500 });
+const buildPredictions = async (
+  request: Request,
+): Promise<PredictionResponse | NextResponse> => {
+  const auth = await requireRouteUser(request);
+  if ("response" in auth) {
+    return auth.response;
   }
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { supabase, user } = auth;
 
   const [assetsRes, rulesRes, logsRes] = await Promise.all([
     supabase
@@ -426,17 +422,14 @@ const buildPredictions = async (): Promise<PredictionResponse | NextResponse> =>
       .order("created_at", {
         ascending: false,
       }),
-    supabase
-      .from("maintenance_rules")
-      .select("asset_id,next_due_date,is_active")
-      .eq("user_id", user.id)
-      .eq("is_active", true),
-    supabase
-      .from("service_logs")
-      .select("asset_id,service_date,service_type,cost")
-      .eq("user_id", user.id)
-      .order("service_date", { ascending: false })
-      .limit(MAX_LOG_ROWS),
+    listRulesForDashboard(supabase, {
+      userId: user.id,
+      onlyActive: true,
+    }),
+    listServiceLogsForPrediction(supabase, {
+      userId: user.id,
+      limit: MAX_LOG_ROWS,
+    }),
   ]);
 
   if (assetsRes.error || rulesRes.error || logsRes.error) {
@@ -488,18 +481,20 @@ const buildPredictions = async (): Promise<PredictionResponse | NextResponse> =>
   }
 };
 
-const handle = async () => {
-  const result = await buildPredictions();
+const handle = async (request: Request) => {
+  const result = await buildPredictions(request);
   if (result instanceof NextResponse) return result;
   return NextResponse.json(result, { status: 200 });
 };
 
-export async function GET() {
-  return handle();
+export async function GET(request: Request) {
+  return handle(request);
 }
 
-export async function POST() {
-  return handle();
+export async function POST(request: Request) {
+  return handle(request);
 }
+
+
 
 
