@@ -1,8 +1,12 @@
-﻿"use client";
+"use client";
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import OnboardingWizard from "@/components/onboarding/OnboardingWizard";
+import { PageHeader } from "@/components/page-header";
+import { PanelSurface } from "@/components/panel-surface";
+import Surface from "@/components/ui/Surface";
 import {
   DashboardChartsSection,
   type DashboardChartAssetRow,
@@ -305,6 +309,7 @@ export function DashboardPageContainer() {
     subscriptions,
     expenses,
   });
+  const hasSummaryData = assets.length > 0 || serviceLogs.length > 0 || rules.length > 0;
 
   if (!hasValidSession) {
     return null;
@@ -325,77 +330,116 @@ export function DashboardPageContainer() {
         </button>
       }
     >
-      {feedback ? (
-        <p className="rounded-xl border border-rose-300/30 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">
-          {feedback}
-        </p>
-      ) : null}
+      <PanelSurface>
+        <PageHeader title="Gösterge Paneli" subtitle="Sistem özeti, riskler ve trendler." />
 
-      {expenseTableWarning ? (
-        <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
-          Gider tablosu su an erisilebilir değil. Gider widget verileri bos gosteriliyor. ({expenseTableWarning.code})
-        </p>
-      ) : null}
-
-      {!planConfig.features.canUseAdvancedAnalytics ? (
-        <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
-          Gelişmiş analitik grafikler ve AI bakım riskleri {planConfig.label} planında kapali. Pro plan ile aktif olur.
-        </p>
-      ) : null}
-
-      {planConfig.features.canUseAdvancedAnalytics && predictionError ? (
-        <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
-          AI tahmin servisi su anda kullanilamiyor: {predictionError}
-        </p>
-      ) : null}
-
-      <DashboardKpiSection
-        assetCount={String(assets.length)}
-        upcomingDueCount={String(upcomingDueCount)}
-        overdueCount={String(overdueCount)}
-        upcomingWarrantyCount={String(upcomingWarrantyCount)}
-        thisMonthCost={`${thisMonthCost.toFixed(2)} TL`}
-        highRiskCount={planConfig.features.canUseAdvancedAnalytics ? String(highRiskCount) : "-"}
-      />
-
-      {planConfig.features.canUseAdvancedAnalytics ? (
-        <DashboardChartsSection assets={assets} serviceLogs={serviceLogs} rules={rules} isLoading={isLoading} />
-      ) : (
-        <article className="premium-card p-5">
-          <h2 className="text-lg font-semibold text-white">Gelişmiş Grafikler Kilitli</h2>
-          <p className="mt-2 text-sm text-slate-300">
-            12 aylık maliyet trendi, varlık performans karşılaştırma ve bakım öncelik panosu Pro plan ozelligidir.
+        {feedback ? (
+          <p className="rounded-xl border border-rose-300/30 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">
+            {feedback}
           </p>
-        </article>
-      )}
+        ) : null}
 
-      <section className="grid gap-3 lg:grid-cols-[0.9fr_1.1fr]">
-        <DashboardRecentActivity
-          serviceLogCount={String(serviceLogCount)}
-          documentCount={String(documentCount)}
-          categoryCount={String(new Set(assets.map((asset) => asset.category)).size)}
+        {expenseTableWarning ? (
+          <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
+            Gider tablosu su an erisilebilir değil. Gider widget verileri bos gosteriliyor. ({expenseTableWarning.code})
+          </p>
+        ) : null}
+
+        {!planConfig.features.canUseAdvancedAnalytics ? (
+          <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
+            Gelişmiş analitik grafikler ve AI bakım riskleri {planConfig.label} planında kapali. Pro plan ile aktif olur.
+          </p>
+        ) : null}
+
+        {planConfig.features.canUseAdvancedAnalytics && predictionError ? (
+          <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
+            AI tahmin servisi su anda kullanilamiyor: {predictionError}
+          </p>
+        ) : null}
+
+        <div className="max-w-7xl mx-auto grid gap-6 md:grid-cols-3">
+          <Surface title="Yaklaşan Bakımlar">
+            <p className="text-3xl font-semibold text-white">{upcomingDueCount}</p>
+            <p className="mt-1 text-sm text-slate-300">
+              {isLoading
+                ? "Yükleniyor..."
+                : hasSummaryData
+                  ? "Önümüzdeki günlerde planlanan bakım sayısı"
+                  : "Henüz veri yok. İlk kayıt sonrası burada görünecek."}
+            </p>
+          </Surface>
+          <Surface title="Aylık Maliyet">
+            <p className="text-3xl font-semibold text-white">{thisMonthCost.toFixed(2)} TL</p>
+            <p className="mt-1 text-sm text-slate-300">
+              {isLoading
+                ? "Yükleniyor..."
+                : hasSummaryData
+                  ? "Bu ay kaydedilen toplam maliyet"
+                  : "Henüz maliyet verisi yok. Servis kayıtlarıyla dolacak."}
+            </p>
+          </Surface>
+          <Surface title="Riskli Varlıklar">
+            <p className="text-3xl font-semibold text-white">
+              {planConfig.features.canUseAdvancedAnalytics ? highRiskCount : "-"}
+            </p>
+            <p className="mt-1 text-sm text-slate-300">
+              {isLoading
+                ? "Yükleniyor..."
+                : hasSummaryData
+                  ? "AI risk değerlendirmesinde yüksek öncelik sayısı"
+                  : "Henüz risk verisi yok. Varlık eklendikçe hesaplanacak."}
+            </p>
+          </Surface>
+        </div>
+
+        <DashboardKpiSection
+          assetCount={String(assets.length)}
+          upcomingDueCount={String(upcomingDueCount)}
+          overdueCount={String(overdueCount)}
+          upcomingWarrantyCount={String(upcomingWarrantyCount)}
+          thisMonthCost={`${thisMonthCost.toFixed(2)} TL`}
+          highRiskCount={planConfig.features.canUseAdvancedAnalytics ? String(highRiskCount) : "-"}
         />
 
         {planConfig.features.canUseAdvancedAnalytics ? (
-          <DashboardRiskCards
-            isLoading={isLoading}
-            topPredictions={topPredictions}
-            predictionMeta={predictionMeta}
-            predictionGeneratedAt={predictionGeneratedAt}
-            upcomingSubscriptionCharges={upcomingSubscriptionCharges}
-            monthlyExpenseWarning={monthlyExpenseWarning}
-          />
+          <DashboardChartsSection assets={assets} serviceLogs={serviceLogs} rules={rules} isLoading={isLoading} />
         ) : (
           <article className="premium-card p-5">
-            <h2 className="text-lg font-semibold text-white">AI Risk Kartlari Kilitli</h2>
+            <h2 className="text-lg font-semibold text-white">Gelişmiş Grafikler Kilitli</h2>
             <p className="mt-2 text-sm text-slate-300">
-              AI bakım risk puanlari ve onerilen aksiyonlar Pro plan ile kullanilabilir.
+              12 aylık maliyet trendi, varlık performans karşılaştırma ve bakım öncelik panosu Pro plan ozelligidir.
             </p>
           </article>
         )}
-      </section>
+
+        <section className="grid gap-3 lg:grid-cols-[0.9fr_1.1fr]">
+          <DashboardRecentActivity
+            serviceLogCount={String(serviceLogCount)}
+            documentCount={String(documentCount)}
+            categoryCount={String(new Set(assets.map((asset) => asset.category)).size)}
+          />
+
+          {planConfig.features.canUseAdvancedAnalytics ? (
+            <DashboardRiskCards
+              isLoading={isLoading}
+              topPredictions={topPredictions}
+              predictionMeta={predictionMeta}
+              predictionGeneratedAt={predictionGeneratedAt}
+              upcomingSubscriptionCharges={upcomingSubscriptionCharges}
+              monthlyExpenseWarning={monthlyExpenseWarning}
+            />
+          ) : (
+            <article className="premium-card p-5">
+              <h2 className="text-lg font-semibold text-white">AI Risk Kartlari Kilitli</h2>
+              <p className="mt-2 text-sm text-slate-300">
+                AI bakım risk puanlari ve onerilen aksiyonlar Pro plan ile kullanilabilir.
+              </p>
+            </article>
+          )}
+        </section>
+      </PanelSurface>
+      <OnboardingWizard shouldOpen={!isLoading && assets.length === 0} />
     </AppShell>
   );
 }
-
 

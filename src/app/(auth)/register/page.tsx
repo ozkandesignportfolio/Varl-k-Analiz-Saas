@@ -82,7 +82,7 @@ export default function RegisterPage() {
           >
             AssetCare
           </Link>
-          <h1 className="mt-5 text-4xl font-semibold leading-tight text-white">
+          <h1 className="mt-5 text-4xl font-semibold leading-[1.1] text-white">
             Hesabınızı oluşturun
           </h1>
           <p className="mt-4 text-sm leading-7 text-slate-300">

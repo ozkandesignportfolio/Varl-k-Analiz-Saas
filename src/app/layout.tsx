@@ -1,17 +1,22 @@
 ﻿import type { Metadata, Viewport } from "next";
-import { Manrope, Space_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
+import { JetBrains_Mono } from "next/font/google";
 import { PwaRegister } from "@/components/pwa/register-sw";
+import { PlanProvider } from "@/contexts/PlanContext";
 import "./globals.css";
 
-const manrope = Manrope({
-  variable: "--font-manrope",
-  subsets: ["latin"],
+const inter = Inter({
+  variable: "--font-inter",
+  weight: ["400", "500", "600", "700"],
+  subsets: ["latin", "latin-ext"],
+  display: "swap",
 });
 
-const spaceMono = Space_Mono({
-  variable: "--font-space-mono",
+const jetBrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   weight: ["400", "700"],
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -22,11 +27,12 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
-      { url: "/pwa-icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/pwa-icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/assetcare-logo.svg?v=2", type: "image/svg+xml" },
+      { url: "/favicon-32x32.png?v=2", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16x16.png?v=2", sizes: "16x16", type: "image/png" },
     ],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
-    shortcut: ["/favicon.ico"],
+    shortcut: ["/favicon-32x32.png?v=2"],
+    apple: [{ url: "/apple-touch-icon.png?v=2", sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {
     capable: true,
@@ -36,7 +42,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#070b18",
+  themeColor: "#080D1A",
 };
 
 export default function RootLayout({
@@ -46,9 +52,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="tr">
-      <body className={`${manrope.variable} ${spaceMono.variable} antialiased`}>
-        <PwaRegister />
-        {children}
+      <head>
+        <meta charSet="utf-8" />
+      </head>
+      <body className={`${inter.variable} ${jetBrainsMono.variable} antialiased font-sans`}>
+        <PlanProvider>
+          <PwaRegister />
+          {children}
+        </PlanProvider>
       </body>
     </html>
   );

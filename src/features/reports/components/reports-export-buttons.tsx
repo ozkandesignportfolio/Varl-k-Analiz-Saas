@@ -1,4 +1,6 @@
-﻿type ReportsExportButtonsProps = {
+import { UpgradeGate } from "@/components/ui/UpgradeGate";
+
+type ReportsExportButtonsProps = {
   onExportPdf: () => void;
   isExporting: boolean;
   hasValidRange: boolean;
@@ -11,7 +13,7 @@ export function ReportsExportButtons({
   hasValidRange,
   canExportPdfReports,
 }: ReportsExportButtonsProps) {
-  return (
+  const button = (
     <button
       type="button"
       onClick={onExportPdf}
@@ -21,5 +23,10 @@ export function ReportsExportButtons({
       {isExporting ? "PDF hazırlanıyor..." : "PDF indir"}
     </button>
   );
-}
 
+  if (canExportPdfReports) {
+    return button;
+  }
+
+  return <UpgradeGate feature="PDF rapor export">{button}</UpgradeGate>;
+}

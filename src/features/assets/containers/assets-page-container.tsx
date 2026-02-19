@@ -6,6 +6,8 @@ import { AppShell } from "@/components/app-shell";
 import { AuditHistoryPanel } from "@/components/audit-history-panel";
 import { GuidedEmptyState } from "@/components/guided-empty-state";
 import { QrScannerModal } from "@/components/qr-scanner-modal";
+import { QuotaExceededModal } from "@/components/ui/QuotaExceededModal";
+import { usePlanContext } from "@/contexts/PlanContext";
 import { AssetForm } from "@/features/assets/components/asset-form";
 import { AssetListTable } from "@/features/assets/components/asset-list-table";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -55,6 +57,7 @@ const isMissingQrCodeError = (message: string | undefined) => {
 export function AssetsPageContainer() {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const router = useRouter();
+  const { plan, assetLimit, setAssetCount } = usePlanContext();
 
   const [assets, setAssets] = useState<AssetRow[]>([]);
   const [userId, setUserId] = useState("");
@@ -66,6 +69,7 @@ export function AssetsPageContainer() {
   const [auditRefreshKey, setAuditRefreshKey] = useState(0);
   const [editingAsset, setEditingAsset] = useState<AssetRow | null>(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isQuotaModalOpen, setIsQuotaModalOpen] = useState(false);
 
   const fetchAssets = useCallback(
     async (currentUserId: string) => {
@@ -130,6 +134,10 @@ export function AssetsPageContainer() {
 
     void load();
   }, [fetchAssets, router, supabase]);
+
+  useEffect(() => {
+    setAssetCount(assets.length);
+  }, [assets.length, setAssetCount]);
 
   const uploadPhoto = useCallback(
     async (assetId: string, file: File) => {
@@ -197,6 +205,9 @@ export function AssetsPageContainer() {
         | null;
 
       if (!createResponse.ok || !createPayload?.id) {
+        if (createResponse.status === 403 && plan === "free" && (assetLimit ?? 3) <= assets.length) {
+          setIsQuotaModalOpen(true);
+        }
         setFeedback(createPayload?.error ?? "Varlık kaydı oluşturulamadı.");
         return;
       }
@@ -451,6 +462,11 @@ export function AssetsPageContainer() {
           void onQrDetected(value);
         }}
       />
+      <QuotaExceededModal
+        open={isQuotaModalOpen}
+        onOpenChange={setIsQuotaModalOpen}
+        assets={assets.slice(0, 3).map((asset) => ({ id: asset.id, name: asset.name, category: asset.category }))}
+      />
 
       <section className="grid gap-3 xl:grid-cols-[1.05fr_0.95fr]">
         <div id="asset-create-form">
@@ -561,5 +577,6 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
+
 
 

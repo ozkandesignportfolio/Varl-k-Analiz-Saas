@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
+import { PanelSurface } from "@/components/panel-surface";
 import {
   ExpenseForm,
   type ExpenseFormAssetOption,
@@ -252,34 +254,38 @@ export function ExpensesPageContainer() {
       title="Giderler"
       subtitle="Giderlerinizi kaydedin ve varlık bazli takip edin."
     >
-      <section className="grid gap-3 sm:grid-cols-3">
-        <SummaryCard label="Toplam Kayıt" value={String(expenses.length)} />
-        <SummaryCard label="Varlık Baglantili" value={String(linkedAssetCount)} />
-        <SummaryCard label="Kategori" value={String(categoryCount)} />
-      </section>
+      <PanelSurface>
+        <PageHeader title="Giderler" subtitle="Gider girişleri, özet metrikler ve gider listesi." />
 
-      <ExpenseForm
-        assets={assets}
-        selectedAssetId={selectedAssetId}
-        onSelectedAssetIdChange={setSelectedAssetId}
-        onSubmit={onCreateExpense}
-        isSubmitting={isSaving}
-        inputClassName={inputClassName}
-      />
+        <section className="grid gap-3 sm:grid-cols-3">
+          <SummaryCard label="Toplam Kayıt" value={String(expenses.length)} />
+          <SummaryCard label="Varlık Baglantili" value={String(linkedAssetCount)} />
+          <SummaryCard label="Kategori" value={String(categoryCount)} />
+        </section>
 
-      {feedback ? (
-        <p className="rounded-xl border border-sky-300/25 bg-sky-300/10 px-4 py-3 text-sm text-sky-100">
-          {feedback}
-        </p>
-      ) : null}
+        <ExpenseForm
+          assets={assets}
+          selectedAssetId={selectedAssetId}
+          onSelectedAssetIdChange={setSelectedAssetId}
+          onSubmit={onCreateExpense}
+          isSubmitting={isSaving}
+          inputClassName={inputClassName}
+        />
 
-      {tableWarning ? (
-        <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
-          Gider tablosu su an erisilebilir değil. Bos liste gosteriliyor. ({tableWarning.code})
-        </p>
-      ) : null}
+        {feedback ? (
+          <p className="rounded-xl border border-sky-300/25 bg-sky-300/10 px-4 py-3 text-sm text-sky-100">
+            {feedback}
+          </p>
+        ) : null}
 
-      <ExpenseTable isLoading={isLoading} expenses={expenses} assetNameById={assetNameById} />
+        {tableWarning ? (
+          <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
+            Gider tablosu su an erisilebilir değil. Bos liste gosteriliyor. ({tableWarning.code})
+          </p>
+        ) : null}
+
+        <ExpenseTable isLoading={isLoading} expenses={expenses} assetNameById={assetNameById} />
+      </PanelSurface>
     </AppShell>
   );
 }

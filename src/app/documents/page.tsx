@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
+import { PanelSurface } from "@/components/panel-surface";
 import { formatStorageBytes, getPlanConfig, getUserPlanConfig, type PlanConfig } from "@/lib/plans/plan-config";
 import { listIdName } from "@/lib/repos/assets-repo";
 import { listForDocumentsPage } from "@/lib/repos/documents-repo";
@@ -138,106 +140,110 @@ export default function DocumentsPage() {
 
   return (
     <AppShell badge="Belge Kasası" title="Belgeler" subtitle="Belge özeti ve liste yalnızca veritabanındaki gerçek kayıtları gösterir.">
-      {feedback ? (
-        <p className="rounded-xl border border-rose-300/30 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">
-          {feedback}
+      <PanelSurface>
+        <PageHeader title="Belge Kasası" subtitle="Belge özetleri, depolama kullanımı ve belge listesi." />
+
+        {feedback ? (
+          <p className="rounded-xl border border-rose-300/30 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">
+            {feedback}
+          </p>
+        ) : null}
+
+        <p className="rounded-xl border border-sky-300/25 bg-sky-300/10 px-4 py-3 text-sm text-sky-100">
+          Plan: {planConfig.label}. Belge depolama kullanimi: {storageUsageText}
         </p>
-      ) : null}
 
-      <p className="rounded-xl border border-sky-300/25 bg-sky-300/10 px-4 py-3 text-sm text-sky-100">
-        Plan: {planConfig.label}. Belge depolama kullanimi: {storageUsageText}
-      </p>
+        <section className="grid gap-3 md:grid-cols-3">
+          <SummaryCard label="Toplam Belge" value={String(documents.length)} />
+          <SummaryCard label="Belge Türü" value={String(documentTypeCounts.length)} />
+          <SummaryCard label="Toplam Boyut" value={`${sizeFormatter.format(totalSize)} bayt`} />
+        </section>
 
-      <section className="grid gap-3 md:grid-cols-3">
-        <SummaryCard label="Toplam Belge" value={String(documents.length)} />
-        <SummaryCard label="Belge Türü" value={String(documentTypeCounts.length)} />
-        <SummaryCard label="Toplam Boyut" value={`${sizeFormatter.format(totalSize)} bayt`} />
-      </section>
-
-      <section className="premium-card p-5">
-        <h2 className="text-xl font-semibold text-white">Belge Türü Dağılımi</h2>
-        {isLoading ? (
-          <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
-        ) : documentTypeCounts.length === 0 ? (
-          <p className="mt-4 text-sm text-slate-300">Henüz belge kaydı yok.</p>
-        ) : (
-          <div className="mt-4 space-y-3">
-            {documentTypeCounts.map((item) => {
-              const maxCount = documentTypeCounts[0]?.count || 1;
-              const width = Math.max(8, (item.count / maxCount) * 100);
-              return (
-                <div key={item.type}>
-                  <div className="flex items-center justify-between text-sm text-slate-300">
-                    <span>{item.type}</span>
-                    <span>{item.count}</span>
+        <section className="premium-card p-5">
+          <h2 className="text-xl font-semibold text-white">Belge Türü Dağılımi</h2>
+          {isLoading ? (
+            <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
+          ) : documentTypeCounts.length === 0 ? (
+            <p className="mt-4 text-sm text-slate-300">Henüz belge kaydı yok.</p>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {documentTypeCounts.map((item) => {
+                const maxCount = documentTypeCounts[0]?.count || 1;
+                const width = Math.max(8, (item.count / maxCount) * 100);
+                return (
+                  <div key={item.type}>
+                    <div className="flex items-center justify-between text-sm text-slate-300">
+                      <span>{item.type}</span>
+                      <span>{item.count}</span>
+                    </div>
+                    <div className="mt-1 h-2 rounded-full bg-white/10">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-sky-400 to-fuchsia-500"
+                        style={{ width: `${width}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="mt-1 h-2 rounded-full bg-white/10">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-sky-400 to-fuchsia-500"
-                      style={{ width: `${width}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
-      <section className="premium-card p-5">
-        <h2 className="text-xl font-semibold text-white">Belge Listesi</h2>
-        {isLoading ? (
-          <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
-        ) : documents.length === 0 ? (
-          <p className="mt-4 text-sm text-slate-300">Henüz belge bulunmuyor.</p>
-        ) : (
-          <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
-            <table className="min-w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-white/10 bg-white/5 text-slate-300">
-                  <th className="px-3 py-2">Dosya Adı</th>
-                  <th className="px-3 py-2">Tur</th>
-                  <th className="px-3 py-2">Varlık</th>
-                  <th className="px-3 py-2">Boyut</th>
-                  <th className="px-3 py-2">Yukleme Tarihi</th>
-                  <th className="px-3 py-2">Aksiyon</th>
-                </tr>
-              </thead>
-              <tbody>
-                {documents.map((doc) => (
-                  <tr key={doc.id} className="border-b border-white/10 text-slate-100">
-                    <td className="px-3 py-3">{doc.file_name}</td>
-                    <td className="px-3 py-3">{doc.document_type}</td>
-                    <td className="px-3 py-3">{assetNameById.get(doc.asset_id) ?? "-"}</td>
-                    <td className="px-3 py-3">{sizeFormatter.format(doc.file_size ?? 0)} bayt</td>
-                    <td className="px-3 py-3">{new Date(doc.uploaded_at).toLocaleDateString("tr-TR")}</td>
-                    <td className="px-3 py-3">
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => void onPreview(doc)}
-                          disabled={previewingId === doc.id}
-                          className="rounded-full border border-sky-300/35 bg-sky-300/10 px-3 py-1 text-xs font-semibold text-sky-100 transition hover:bg-sky-300/20 disabled:cursor-not-allowed disabled:opacity-70"
-                        >
-                          {previewingId === doc.id ? "Hazirlaniyor..." : "Onizle"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void onDownload(doc)}
-                          disabled={downloadingId === doc.id}
-                          className="rounded-full border border-emerald-300/35 bg-emerald-300/10 px-3 py-1 text-xs font-semibold text-emerald-100 transition hover:bg-emerald-300/20 disabled:cursor-not-allowed disabled:opacity-70"
-                        >
-                          {downloadingId === doc.id ? "Indiriliyor..." : "Indir"}
-                        </button>
-                      </div>
-                    </td>
+        <section className="premium-card p-5">
+          <h2 className="text-xl font-semibold text-white">Belge Listesi</h2>
+          {isLoading ? (
+            <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
+          ) : documents.length === 0 ? (
+            <p className="mt-4 text-sm text-slate-300">Henüz belge bulunmuyor.</p>
+          ) : (
+            <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
+              <table className="min-w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 bg-white/5 text-slate-300">
+                    <th className="px-3 py-2">Dosya Adı</th>
+                    <th className="px-3 py-2">Tur</th>
+                    <th className="px-3 py-2">Varlık</th>
+                    <th className="px-3 py-2">Boyut</th>
+                    <th className="px-3 py-2">Yukleme Tarihi</th>
+                    <th className="px-3 py-2">Aksiyon</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+                </thead>
+                <tbody>
+                  {documents.map((doc) => (
+                    <tr key={doc.id} className="border-b border-white/10 text-slate-100">
+                      <td className="px-3 py-3">{doc.file_name}</td>
+                      <td className="px-3 py-3">{doc.document_type}</td>
+                      <td className="px-3 py-3">{assetNameById.get(doc.asset_id) ?? "-"}</td>
+                      <td className="px-3 py-3">{sizeFormatter.format(doc.file_size ?? 0)} bayt</td>
+                      <td className="px-3 py-3">{new Date(doc.uploaded_at).toLocaleDateString("tr-TR")}</td>
+                      <td className="px-3 py-3">
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void onPreview(doc)}
+                            disabled={previewingId === doc.id}
+                            className="rounded-full border border-sky-300/35 bg-sky-300/10 px-3 py-1 text-xs font-semibold text-sky-100 transition hover:bg-sky-300/20 disabled:cursor-not-allowed disabled:opacity-70"
+                          >
+                            {previewingId === doc.id ? "Hazirlaniyor..." : "Onizle"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void onDownload(doc)}
+                            disabled={downloadingId === doc.id}
+                            className="rounded-full border border-emerald-300/35 bg-emerald-300/10 px-3 py-1 text-xs font-semibold text-emerald-100 transition hover:bg-emerald-300/20 disabled:cursor-not-allowed disabled:opacity-70"
+                          >
+                            {downloadingId === doc.id ? "Indiriliyor..." : "Indir"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </PanelSurface>
     </AppShell>
   );
 }

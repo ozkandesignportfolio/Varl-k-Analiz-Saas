@@ -10,6 +10,8 @@ type PlanLimits = {
 type PlanFeatures = {
   canExportPdfReports: boolean;
   canUseAdvancedAnalytics: boolean;
+  canUseAutomation: boolean;
+  hasPrioritySupport: boolean;
 };
 
 export type PlanConfig = {
@@ -24,38 +26,44 @@ const MB = 1024 * 1024;
 const PLAN_CONFIGS: Record<PlanCode, PlanConfig> = {
   starter: {
     code: "starter",
-    label: "Starter",
+    label: "Ücretsiz",
     limits: {
       maxAssets: 3,
-      maxDocumentStorageBytes: 250 * MB,
+      maxDocumentStorageBytes: 50 * MB,
     },
     features: {
       canExportPdfReports: false,
       canUseAdvancedAnalytics: false,
+      canUseAutomation: false,
+      hasPrioritySupport: false,
     },
   },
   pro: {
     code: "pro",
-    label: "Pro",
+    label: "Premium",
     limits: {
       maxAssets: null,
-      maxDocumentStorageBytes: null,
+      maxDocumentStorageBytes: 5 * 1024 * MB,
     },
     features: {
       canExportPdfReports: true,
       canUseAdvancedAnalytics: true,
+      canUseAutomation: true,
+      hasPrioritySupport: true,
     },
   },
   elite: {
     code: "elite",
-    label: "Elite",
+    label: "Premium",
     limits: {
       maxAssets: null,
-      maxDocumentStorageBytes: null,
+      maxDocumentStorageBytes: 5 * 1024 * MB,
     },
     features: {
       canExportPdfReports: true,
       canUseAdvancedAnalytics: true,
+      canUseAutomation: true,
+      hasPrioritySupport: true,
     },
   },
 };
@@ -99,6 +107,11 @@ const normalizePlanCode = (raw: unknown): PlanCode => {
 export const formatStorageBytes = (bytes: number) => {
   if (!Number.isFinite(bytes) || bytes <= 0) {
     return "0 MB";
+  }
+
+  if (bytes >= 1024 * MB) {
+    const gb = bytes / (1024 * MB);
+    return `${gb.toFixed(gb % 1 === 0 ? 0 : 1)} GB`;
   }
 
   const mb = bytes / MB;

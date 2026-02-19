@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -174,7 +174,7 @@ export function QrScannerModal({ isOpen, onClose, onDetected }: QrScannerModalPr
         </div>
 
         <div className="mt-4">
-          <p className="mb-2 text-xs uppercase tracking-wider text-slate-400">Elle Kod Gir</p>
+          <p className="mb-2 text-xs uppercase tracking-tight text-slate-400">Elle Kod Gir</p>
           <div className="flex gap-2">
             <input
               value={manualCode}

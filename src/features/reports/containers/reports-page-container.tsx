@@ -1,8 +1,10 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
+import { PanelSurface } from "@/components/panel-surface";
 import {
   ReportsDataTable,
   type ReportsAssetSummaryRow,
@@ -450,49 +452,53 @@ export function ReportsPageContainer() {
         />
       }
     >
-      {!planConfig.features.canExportPdfReports ? (
-        <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
-          PDF rapor dışa aktarma özelliği {planConfig.label} planında kapalı. Pro plan ile aktif olur.
-        </p>
-      ) : null}
+      <PanelSurface>
+        <PageHeader title="Raporlar" subtitle="Filtreleme, özet metrikler ve dışa aktarma." />
 
-      {feedback ? (
-        <p className="rounded-xl border border-sky-300/25 bg-sky-300/10 px-4 py-3 text-sm text-sky-100">{feedback}</p>
-      ) : null}
+        {!planConfig.features.canExportPdfReports ? (
+          <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
+            PDF rapor dışa aktarma özelliği {planConfig.label} planında kapalı. Pro plan ile aktif olur.
+          </p>
+        ) : null}
 
-      {!hasValidRange ? (
-        <p className="rounded-xl border border-rose-300/30 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">
-          Başlangıç tarihi bitiş tarihinden büyük olamaz.
-        </p>
-      ) : null}
+        {feedback ? (
+          <p className="rounded-xl border border-sky-300/25 bg-sky-300/10 px-4 py-3 text-sm text-sky-100">{feedback}</p>
+        ) : null}
 
-      <ReportsFilterPanel
-        startDate={startDate}
-        endDate={endDate}
-        onStartDateChange={setStartDate}
-        onEndDateChange={setEndDate}
-        inputClassName={inputClassName}
-      />
+        {!hasValidRange ? (
+          <p className="rounded-xl border border-rose-300/30 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">
+            Başlangıç tarihi bitiş tarihinden büyük olamaz.
+          </p>
+        ) : null}
 
-      <ReportsSummaryCards
-        totalAssetCount={String(totalAssetCount)}
-        activeAssetCount={String(activeAssetCount)}
-        serviceCount={String(servicesInRange.length)}
-        documentCount={String(documentsInRange.length)}
-        totalCost={currencyFormatter.format(totalCost)}
-        averageCost={currencyFormatter.format(averageCost)}
-      />
+        <ReportsFilterPanel
+          startDate={startDate}
+          endDate={endDate}
+          onStartDateChange={setStartDate}
+          onEndDateChange={setEndDate}
+          inputClassName={inputClassName}
+        />
 
-      <ReportsDataTable
-        isLoading={isLoading}
-        assetSummary={assetSummary}
-        servicesInRange={servicesInRange}
-        documentsInRange={documentsInRange}
-        assetNameById={assetNameById}
-        totalCost={totalCost}
-        toTrDate={toTrDate}
-        formatCurrency={(value) => currencyFormatter.format(value)}
-      />
+        <ReportsSummaryCards
+          totalAssetCount={String(totalAssetCount)}
+          activeAssetCount={String(activeAssetCount)}
+          serviceCount={String(servicesInRange.length)}
+          documentCount={String(documentsInRange.length)}
+          totalCost={currencyFormatter.format(totalCost)}
+          averageCost={currencyFormatter.format(averageCost)}
+        />
+
+        <ReportsDataTable
+          isLoading={isLoading}
+          assetSummary={assetSummary}
+          servicesInRange={servicesInRange}
+          documentsInRange={documentsInRange}
+          assetNameById={assetNameById}
+          totalCost={totalCost}
+          toTrDate={toTrDate}
+          formatCurrency={(value) => currencyFormatter.format(value)}
+        />
+      </PanelSurface>
     </AppShell>
   );
 }

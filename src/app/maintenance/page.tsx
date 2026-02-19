@@ -1,5 +1,5 @@
-import { MaintenancePageContainer } from "@/features/maintenance/containers/maintenance-page-container";
+import { AppShell } from "@/components/app-shell";
 
-export default function MaintenancePage() {
-  return <MaintenancePageContainer />;
+export default function Page() {
+  return <AppShell />;
 }
