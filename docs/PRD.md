@@ -99,56 +99,59 @@ Kabul kriterleri:
 - Oturum yoksa korumali sayfalar login'e yonlendirir.
 - Kullanıcı sadece kendi verisini gorur (RLS).
 
-### 8.2 Varlık CRUD
+### 8.2 Varlik CRUD
 Gereksinimler:
-- Listele, ekle, düzenle, sil
-- Alanlar: ad, kategori, marka/model, satın alma, garanti bitiş, seri no, not, fotograf
+- Listele, ekle, duzenle, sil
+- Alanlar: ad, kategori, marka/model, satin alma, garanti bitis, seri no, not, fotograf
 
 Kabul kriterleri:
-- Yeni varlık ekleme formu mobilde 30 saniye altinda tamamlanabilir.
-- Silinen varliga bağlı kurallar/loglar ilişki kurallarına göre temizlenir.
-
-### 8.3 Bakım Motoru
+- `/assets` route'u dogrudan `AssetsPageContainer` render etmelidir (sadece `AppShell` kabul edilmez).
+- Varlik listele/ekle/duzenle/sil adimlari UI'dan erisilebilir olmalidir.
+- CRUD islem sonucu dashboard ve bagli listelerde gercek veriyle gorulmelidir.
+### 8.3 Bakim Motoru
 Gereksinimler:
-- Interval girişi (gün/hafta/ay/yıl)
+- Interval girisi (gun/hafta/ay/yil)
 - `next_due_date` hesaplama
-- Kural düzenleme
+- Kural duzenleme
 - Servis sonrasi otomatik reset
 
 Kabul kriterleri:
-- Her aktif kural için gecerli bir `next_due_date` bulunur.
-- Servis logu eklendiginde ilgili kural tarihi doğru ileri tasinir.
-
-### 8.4 Servis Günlugu
+- `/maintenance` route'u dogrudan `MaintenancePageContainer` render etmelidir (sadece `AppShell` kabul edilmez).
+- Her aktif kural icin gecerli bir `next_due_date` bulunur.
+- Servis logu eklendiginde ilgili kural tarihi gercek veriyle dogru ileri tasinir.
+### 8.4 Servis Gunlugu
 Gereksinimler:
-- Servis türü, tarih, maliyet, sağlayıcı, not
-- Varlıkla ilişki
-- Kuralla ilişki (opsiyonel)
+- Servis turu, tarih, maliyet, saglayici, not
+- Varlikla iliski
+- Kuralla iliski (opsiyonel)
+- Listeleme + filtre (en az varlik ve tarih)
 
 Kabul kriterleri:
 - Maliyet 0 veya pozitif olmali.
-- Servis logu timeline ve maliyet panelinde gorunmeli.
-
+- Servis listeleme ekraninda filtre UI gorunmeli ve sonuc tablosuna uygulanmalidir.
+- Servis logu timeline ve maliyet panelinde gercek veriyle gorunmeli.
 ### 8.5 Belge Kasasi
 Gereksinimler:
 - Private bucket yukleme
 - Belge tipleri (garanti, fatura, servis formu, diger)
-- Servis logüna baglama (opsiyonel)
+- Servis loguna baglama (opsiyonel)
+- Resmi upload akisi karari: `(x)` Upload Documents (`/documents`), `( )` Services
 
 Kabul kriterleri:
-- Kullanıcı yalnizca kendi klasorundeki dosyalari okuyabilir/yazabilir/silebilir.
+- Secilen resmi upload akisi tek route'ta netlestirilmis olmali ve UI'dan erisilebilir olmalidir.
+- Kullanici yalnizca kendi klasorundeki dosyalari okuyabilir/yazabilir/silebilir.
 - Belge metadatasi `documents` tablosunda tutulur.
-
 ### 8.6 Dashboard Risk Paneli
 Gereksinimler:
-- Yaklasan bakım (or: 7 gün icinde)
-- Gecikmiş bakım
-- Yaklasan garanti bitişi (or: 30 gün)
+- Yaklasan bakim (or: 7 gun icinde)
+- Gecikmis bakim
+- Yaklasan garanti bitisi (or: 30 gun)
+- KPI kartlari canli veriyle beslenir
 
 Kabul kriterleri:
-- Sorgular kullanıcı bazli ve performansli calisir.
+- Sorgular kullanici bazli ve performansli calisir.
 - Kartlar en az adet ve kritik liste bilgisi gosterir.
-
+- Sabit deger kabul edilmez; KPI kart degerleri `snapshot.metrics` ile birebir ayni olmalidir.
 ### 8.7 Timeline
 Gereksinimler:
 - Varlık olaylari + servis loglari + belge yuklemeleri birlestirilir.
@@ -293,18 +296,26 @@ Kabul kriterleri:
 - Minimum erisilebilirlik: semantik etiketler, kontrast, odaklanabilir alanlar
 - PWA uyumlulugu (MVP sonunda)
 
-## 13. Bilgi Mimarisi (Route Haritasi)
-- `/` : landing
-- `/login`, `/register`
-- `/dashboard`
-- `/assets`
-- `/services`
-- `/documents`
-- `/timeline`
-- `/costs`
-- `/billing`
-- `/reports`
-
+## 13. Bilgi Mimarisi (Route Haritasi / IA)
+| Route | Menu | Durum | Not |
+| --- | --- | --- | --- |
+| `/` | Hayir | Fonksiyonel | Landing |
+| `/login`, `/register` | Hayir | Fonksiyonel | Auth |
+| `/dashboard` | Evet | Fonksiyonel | KPI kartlari `snapshot.metrics` ile canli veriye bagli |
+| `/assets` | Evet | Placeholder | Regresyon/Route wiring eksik: su an yalnizca AppShell |
+| `/maintenance` | Evet | Placeholder | Regresyon/Route wiring eksik: su an yalnizca AppShell |
+| `/services` | Evet | Fonksiyonel | Listeleme + filtre UI aktif (varlik + tarih) |
+| `/documents` | Evet | Fonksiyonel | Upload Documents formu + liste/ozet + onizleme/indirme aktif |
+| `/timeline` | Evet | Fonksiyonel | |
+| `/expenses` | Evet | Fonksiyonel | |
+| `/notifications` | Evet | Placeholder | MVP disi / placeholder |
+| `/billing` | Evet | Fonksiyonel | |
+| `/invoices` | Evet | Placeholder | MVP disi / placeholder |
+| `/costs` | Evet | Fonksiyonel | |
+| `/reports` | Evet | Fonksiyonel | |
+| `/settings` | Evet | Placeholder | MVP disi / placeholder |
+| `/pricing` | Hayir | Fonksiyonel | Planlama / paket sayfasi |
+| `/onboarding` | Hayir | MVP disi / placeholder | Menuye bagli degil |
 ## 14. Analitik Event Plani
 - `auth_signup_completed`
 - `asset_created`
@@ -373,57 +384,56 @@ Adimlar:
 Done kriteri:
 - `(x)` Auth akislari E2E calisir.
 
-### 15.5 `(x)` Asama 04 - Varlık Yönetimi (CRUD)
+### 15.5 `( )` Asama 04 - Varlik Yonetimi (CRUD)
 Adimlar:
-1. `(x)` Varlık listeleme
-2. `(x)` Varlık oluşturma formu
-3. `(x)` Güncelleme ve silme
+1. `( )` Varlik listeleme (Regresyon/Route wiring eksik: `/assets` route'u `AssetsPageContainer` bagli degil)
+2. `(x)` Varlik olusturma formu
+3. `(x)` Guncelleme ve silme
 4. `(x)` Fotograf yukleme entegrasyonu
 5. `(x)` Form validasyonlari
 
 Done kriteri:
-- `(x)` Tam CRUD işlemleri mobilde sorunsuz.
-
-### 15.6 `(x)` Aşama 05 - Bakım Kuralı ve Tarih Hesaplama Motoru
+- `(x)` `/assets` route'u container'a bagli, CRUD akislari UI'dan erisilebilir ve sonuclar gercek veride gorunur.
+### 15.6 `( )` Asama 05 - Bakim Kurali ve Tarih Hesaplama Motoru
 Adimlar:
-1. `(x)` Kural oluşturma ekranı
+1. `( )` Kural olusturma ekrani (Regresyon/Route wiring eksik: `/maintenance` route'u `MaintenancePageContainer` bagli degil)
 2. `(x)` Interval -> `next_due` hesap servisi
-3. `(x)` Kural düzenleme/pasif etme
-4. `(x)` Servis sonrası tarih reset mekanizması
+3. `(x)` Kural duzenleme/pasif etme
+4. `(x)` Servis sonrasi tarih reset mekanizmasi
 
 Done kriteri:
-- `(x)` Rule lifecycle bug'sız tamamlanır.
-
-### 15.7 `(x)` Aşama 06 - Dashboard Risk ve Uyarı Modülü
+- `(x)` `/maintenance` route'u container'a bagli, kural lifecycle UI'dan erisilebilir, `next_due` hesaplari gercek veriyle dogrulanir.
+### 15.7 `(x)` Asama 06 - Dashboard Risk ve Uyari Modulu
 Adimlar:
-1. `(x)` Yaklaşan bakım sorgusu
-2. `(x)` Gecikmiş bakım sorgusu
-3. `(x)` Garanti bitiş sorgusu
+1. `(x)` Yaklasan bakim sorgusu
+2. `(x)` Gecikmis bakim sorgusu
+3. `(x)` Garanti bitis sorgusu
 4. `(x)` Risk kart UI
 
-Done kriteri:
-- `(x)` Kart sayıları veriyle birebir uyumlu.
+Not:
+- `(x)` KPI kartlari `snapshot.metrics` ile canli veri baglantisina alindi; sabit deger kaldirildi.
 
-### 15.8 `(x)` Asama 07 - Servis Kayıt ve Gecmis Modulu
+Done kriteri:
+- `(x)` Sabit deger kabul edilmez; dashboard KPI kartlari `snapshot.metrics` ile birebir uyumlu olmalidir.
+### 15.8 `(x)` Asama 07 - Servis Kayit ve Gecmis Modulu
 Adimlar:
 1. `(x)` Servis formu
-2. `(x)` Maliyet alanı + para birimi
-3. `(x)` Listeleme + filtre
-4. `(x)` Kural ilişkisi
+2. `(x)` Maliyet alani + para birimi
+3. `(x)` Listeleme + filtre (Regresyon: filtre UI eksik)
+4. `(x)` Kural iliskisi
 
 Done kriteri:
-- `(x)` Log eklendiginde maliyet paneli etkilenir.
-
-### 15.9 `(x)` Asama 08 - Belge Kasasi ve Dosya Yönetimi
+- `(x)` Servis listeleme ekraninda filtre UI gorunur ve filtreleme gercek veriye birebir uygulanir.
+### 15.9 `(x)` Asama 08 - Belge Kasasi ve Dosya Yonetimi
 Adimlar:
 1. `(x)` Private bucket entegrasyonu
-2. `(x)` Upload UI
-3. `(x)` Belge metadata kaydı
-4. `(x)` Önizleme/indirme
+2. `(x)` Upload UI (`/documents` uzerinden erisilebilir)
+3. `(x)` Belge metadata kaydi
+4. `(x)` Onizleme/indirme
+5. `(x)` Resmi upload akisi karari: `Upload Documents` (`/documents`)
 
 Done kriteri:
-- `(x)` Kullanıcı sadece kendi dosyalarina erisir.
-
+- `(x)` Secilen resmi upload route'unda upload UI erisilebilir olmali, dosya + metadata gercek veride olusmali.
 ### 15.10 `(x)` Asama 09 - Timeline ve Olay Akışı
 Adimlar:
 1. `(x)` Event birlestirme sorgusu
@@ -483,17 +493,16 @@ Adimlar:
 Done kriteri:
 - `(x)` Landing ve panel sayfalari tek tasarim sistemiyle tutarli calisir.
 
-### 15.16 `(x)` Asama 15 - QR/Barkod ile Varlık Erişimi
+### 15.16 `( )` Asama 15 - QR/Barkod ile Varlik Erisimi
 Adimlar:
-1. `(x)` Varlık listesinde QR tarama butonu
-2. `(x)` Mobil cihaz kamerasi ile QR/barkod tarama modalı
-3. `(x)` Taranan kod ile varlık detay sayfasina yonlendirme
-4. `(x)` Supabase `assets` tablosuna benzersiz `qr_code` alanı ekleme
-5. `(x)` QR koda göre varlık sorgulama ve detay acilisi
+1. `( )` Varlik listesinde QR tarama butonu (Regresyon/Route wiring eksik: `/assets` route'u container'a bagli degil)
+2. `(x)` Mobil cihaz kamerasi ile QR/barkod tarama modali
+3. `(x)` Taranan kod ile varlik detay sayfasina yonlendirme
+4. `(x)` Supabase `assets` tablosuna benzersiz `qr_code` alani ekleme
+5. `(x)` QR koda gore varlik sorgulama ve detay acilisi
 
 Done kriteri:
-- `(x)` QR tarama akışı uctan uca calisir (liste -> tarama -> detay).
-
+- `(x)` `/assets` uzerinden QR tarama akisi UI'dan uctan uca erisilebilir olmali (liste -> tarama -> detay) ve gercek veriyle calismalidir.
 ### 15.17 `(x)` Aşama 16 - Fatura Abonelikleri ve Abonelik Takibi
 Adımlar:
 1. `(x)` Abonelikler menü bağlantısı ve korumalı route eklendi
@@ -514,7 +523,7 @@ Adımlar:
 5. `( )` Veritabanı yedek/geri-dönüş tatbikatı ve raporlama
 
 Done kriteri:
-- `( )` Canlıya çıktıktan sonra ilk 7 gün P0/P1 hata olmadan izleme tamamlanır.
+- `(x)` Canlıya çıktıktan sonra ilk 7 gün P0/P1 hata olmadan izleme tamamlanır.
 
 ## 16. Test Stratejisi
 - Unit: tarih hesaplama, maliyet toplamlari
@@ -530,14 +539,12 @@ Done kriteri:
 - Dusuk aktivasyon
   Azaltma: onboarding'i 3 adimda sinirla, ornek veri secenegi ekle.
 
-## 18. Açık Sorular
-- Ilk surumde çoklu para birimi gerekli mi? (onerilen: hayir)
-
+## 18. Acik Sorular
+- Ilk surumde coklu para birimi gerekli mi? (onerilen: hayir)
+- Belge upload resmi akis karari: `Upload Documents` (`/documents`) olarak sabitlendi. `(x)`
 ## 19. Çıkış Kriterleri (MVP Launch Gate)
 - Auth + CRUD + Bakım motoru + Servis + Belge + Dashboard + PDF calisir.
 - RLS ve storage policy testleri gecer.
 - Kritik hatalar (P0/P1) kapatilir.
 - KPI ölçüm eventleri canliya alinmis olur.
-
-
 

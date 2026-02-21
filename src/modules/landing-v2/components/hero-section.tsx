@@ -1,38 +1,12 @@
 ﻿"use client"
 
 import Link from "next/link"
-import { useEffect, useRef } from "react"
-import { ArrowRight, FileText, Play, Shield, TrendingUp, Wrench } from "lucide-react"
+import { ArrowRight, Play } from "lucide-react"
 import { Button } from "@/components/ui/button"
-
-function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: string }) {
-  const ref = useRef<HTMLSpanElement>(null)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    let start = 0
-    const duration = 2000
-    const startTime = performance.now()
-
-    function animate(currentTime: number) {
-      const elapsed = currentTime - startTime
-      const progress = Math.min(elapsed / duration, 1)
-      const eased = 1 - Math.pow(1 - progress, 3)
-      start = Math.floor(eased * target)
-      if (el) el.textContent = start.toLocaleString("tr-TR") + suffix
-      if (progress < 1) requestAnimationFrame(animate)
-    }
-
-    requestAnimationFrame(animate)
-  }, [target, suffix])
-
-  return <span ref={ref}>0{suffix}</span>
-}
 
 export function HeroSection() {
   return (
-    <section className="relative isolate flex min-h-screen items-center justify-center overflow-x-hidden overflow-y-visible pt-20">
+    <section className="relative isolate flex min-h-screen items-center justify-center overflow-x-hidden overflow-y-visible pb-10 pt-20 sm:pb-16">
       <div className="hero-glow pointer-events-none absolute inset-0 -z-10" />
 
       <div aria-hidden="true" className="landing-v2-hero-motion pointer-events-none absolute inset-0 -z-10 overflow-hidden">
@@ -81,8 +55,7 @@ export function HeroSection() {
           Bakım, garanti, servis ve belge süreçlerinizi tek panelde takip edin. Akıllı bildirimler, abonelik yönetimi
           ve skor analizi ile her zaman kontrolde kalın.
         </p>
-
-        <div className="animate-slide-up mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row" style={{ animationDelay: "0.3s" }}>
+        <div className="animate-slide-up mb-8 mt-12 flex flex-col items-center justify-center gap-4 sm:mb-12 sm:flex-row" style={{ animationDelay: "0.3s" }}>
           <Button
             asChild
             size="lg"
@@ -94,30 +67,16 @@ export function HeroSection() {
             </Link>
           </Button>
           <Button
+            asChild
             size="lg"
             variant="outline"
             className="border-border px-8 py-6 text-base text-foreground hover:bg-secondary/50 focus-visible:ring-primary/60"
           >
-            <Play className="mr-2 h-4 w-4" />
-            Demo İzle
+            <Link href="/demo">
+              <Play className="mr-2 h-4 w-4" />
+              Demo İzle
+            </Link>
           </Button>
-        </div>
-
-        <div className="animate-slide-up mt-20 grid grid-cols-2 gap-6 sm:grid-cols-4" style={{ animationDelay: "0.5s" }}>
-          {[
-            { icon: Shield, value: 12500, suffix: "+", label: "Aktif Kullanıcı" },
-            { icon: Wrench, value: 45000, suffix: "+", label: "Takip Edilen Varlık" },
-            { icon: FileText, value: 98, suffix: "%", label: "Memnuniyet Oranı" },
-            { icon: TrendingUp, value: 340, suffix: "K", label: "İşlem Tamamlandı" },
-          ].map((stat, i) => (
-            <div key={i} className="glass-card group rounded-2xl p-6 transition-all duration-300 hover:scale-105">
-              <stat.icon className="mx-auto mb-3 h-6 w-6 text-primary opacity-80 transition-opacity group-hover:opacity-100" />
-              <div className="animate-count-up text-2xl font-bold text-foreground sm:text-3xl">
-                <AnimatedCounter target={stat.value} suffix={stat.suffix} />
-              </div>
-              <div className="mt-1 text-sm text-muted-foreground">{stat.label}</div>
-            </div>
-          ))}
         </div>
       </div>
 

@@ -2,6 +2,13 @@
 
 import { ArrowRight, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { getPlanConfig } from "@/lib/plans/plan-config"
+
+const trialPlan = getPlanConfig("starter")
+const trialAssetLimit = trialPlan.limits.assetsLimit ?? 0
+const trialDocumentLimit = trialPlan.limits.documentsLimit ?? 0
+const trialSubscriptionLimit = trialPlan.limits.subscriptionsLimit ?? 0
+const trialInvoiceUploadLimit = trialPlan.limits.invoiceUploadsLimit ?? 0
 
 export function CTASection() {
   return (
@@ -45,7 +52,8 @@ export function CTASection() {
           </div>
 
           <p className="mt-8 text-sm text-muted-foreground">
-            İlk 3 varlık sonsuza kadar ücretsiz
+            {trialAssetLimit} varlik, {trialDocumentLimit} belge, {trialSubscriptionLimit} abonelik,{" "}
+            {trialInvoiceUploadLimit} fatura yukleme ile baslayin
           </p>
         </div>
       </div>

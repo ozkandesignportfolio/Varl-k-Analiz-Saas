@@ -1,5 +1,5 @@
-import { AppShell } from "@/components/app-shell";
+import { AssetsPageContainer } from "@/features/assets/containers/assets-page-container";
 
-export default function Page() {
-  return <AppShell />;
+export default function AssetsPage() {
+  return <AssetsPageContainer />;
 }

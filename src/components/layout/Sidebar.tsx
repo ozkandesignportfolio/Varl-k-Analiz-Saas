@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Shield, type LucideIcon } from "lucide-react";
+import { ChevronDown, Shield, type LucideIcon } from "lucide-react";
 import { usePlanContext } from "@/contexts/PlanContext";
 import { cn } from "@/lib/utils";
 
@@ -13,7 +13,6 @@ export type SidebarNavItem = {
   label: string;
   shortLabel?: string;
   icon?: LucideIcon;
-  isNew?: boolean;
 };
 
 type SidebarProps = {
@@ -40,16 +39,48 @@ const getShortLabel = (item: SidebarNavItem) => {
 
 export function Sidebar({ items, collapsed = false, brand, footer, className, onNavigate }: SidebarProps) {
   const pathname = usePathname();
-  const { plan, assetCount, assetLimit } = usePlanContext();
+  const {
+    plan,
+    assetCount,
+    assetLimit,
+    documentCount,
+    documentLimit,
+    subscriptionCount,
+    subscriptionLimit,
+    invoiceUploadCount,
+    invoiceUploadLimit,
+  } = usePlanContext();
   const isFreePlan = plan === "free";
+  const primaryItems = collapsed ? items : items.slice(0, 8);
+  const secondaryItems = collapsed ? [] : items.slice(8);
+  const hasSecondaryActive = secondaryItems.some((item) => isActivePath(pathname, item.href));
 
   const usageLimit = assetLimit ?? 3;
+  const formatUsage = (count: number, limit: number | null) => `${count}/${limit ?? "∞"}`;
   const usagePercent = useMemo(() => {
     if (!isFreePlan || usageLimit <= 0) {
       return 100;
     }
-    return Math.max(0, Math.min(100, Math.round((assetCount / usageLimit) * 100)));
-  }, [assetCount, isFreePlan, usageLimit]);
+    const ratios = [
+      assetLimit && assetLimit > 0 ? assetCount / assetLimit : 0,
+      documentLimit && documentLimit > 0 ? documentCount / documentLimit : 0,
+      subscriptionLimit && subscriptionLimit > 0 ? subscriptionCount / subscriptionLimit : 0,
+      invoiceUploadLimit && invoiceUploadLimit > 0 ? invoiceUploadCount / invoiceUploadLimit : 0,
+    ];
+    const highestRatio = Math.max(...ratios);
+    return Math.max(0, Math.min(100, Math.round(highestRatio * 100)));
+  }, [
+    assetCount,
+    assetLimit,
+    documentCount,
+    documentLimit,
+    invoiceUploadCount,
+    invoiceUploadLimit,
+    isFreePlan,
+    subscriptionCount,
+    subscriptionLimit,
+    usageLimit,
+  ]);
 
   const nextBillingDate = useMemo(() => {
     const date = new Date();
@@ -58,12 +89,13 @@ export function Sidebar({ items, collapsed = false, brand, footer, className, on
   }, []);
 
   return (
-    <aside className={cn("auth-shell-sidebar ui-pad flex h-full flex-col", className)}>
+    <aside className={cn("auth-shell-sidebar ui-pad flex h-full flex-col overflow-hidden", className)}>
       <div className="mb-6">
         {brand ?? (
           <Link
             href="/"
             onClick={onNavigate}
+            aria-label="AssetCare ana sayfa"
             className={cn(
               "auth-shell-brand auth-focus-ring flex items-center gap-3 rounded-xl px-2 py-2",
               collapsed && "justify-center px-2",
@@ -83,7 +115,7 @@ export function Sidebar({ items, collapsed = false, brand, footer, className, on
       </div>
 
       <nav aria-label="Ana menü" className="auth-nav-list">
-        {items.map((item) => {
+        {primaryItems.map((item) => {
           const active = isActivePath(pathname, item.href);
           const shortLabel = getShortLabel(item);
           const Icon = item.icon;
@@ -97,14 +129,14 @@ export function Sidebar({ items, collapsed = false, brand, footer, className, on
               aria-current={active ? "page" : undefined}
               data-state={active ? "active" : "inactive"}
               className={cn(
-                "auth-nav-item auth-focus-ring flex items-center rounded-lg px-3 py-2 text-xs",
-                collapsed ? "justify-center px-2.5" : "justify-between gap-3",
+                "auth-nav-item auth-focus-ring flex items-center rounded-lg px-3.5 py-2 text-sm",
+                collapsed ? "justify-center px-3" : "justify-between gap-3",
               )}
             >
               {collapsed ? (
                 Icon ? (
                   <span className="relative z-10 inline-flex h-7 w-7 items-center justify-center rounded-md">
-                    <Icon className="h-3.5 w-3.5" />
+                    <Icon className="h-4 w-4" />
                   </span>
                 ) : (
                   <span className="auth-nav-short-badge relative z-10 rounded-md px-2 py-0.5 text-[10px] tracking-tight">
@@ -113,16 +145,15 @@ export function Sidebar({ items, collapsed = false, brand, footer, className, on
                 )
               ) : (
                 <>
-                  <span className="relative z-10 flex min-w-0 items-center gap-2.5">
+                  <span className="relative z-10 flex min-w-0 flex-1 items-center gap-3">
                     {Icon ? (
                       <span className="inline-flex items-center justify-center">
-                        <Icon className="auth-nav-icon h-3.5 w-3.5" />
+                        <Icon className="auth-nav-icon h-4 w-4" />
                       </span>
                     ) : null}
-                    <span className="truncate">{item.label}</span>
+                    <span className="truncate font-medium">{item.label}</span>
                   </span>
                   <span className="auth-nav-meta relative z-10">
-                    {item.isNew ? <span className="auth-nav-new-chip">YENİ</span> : null}
                     <span className="auth-nav-short-badge">{shortLabel}</span>
                   </span>
                 </>
@@ -130,14 +161,64 @@ export function Sidebar({ items, collapsed = false, brand, footer, className, on
             </Link>
           );
         })}
+        {secondaryItems.length > 0 ? (
+          <details className="auth-nav-more-group" open={hasSecondaryActive || undefined}>
+            <summary
+              data-state={hasSecondaryActive ? "active" : "inactive"}
+              className="auth-nav-item auth-focus-ring flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-3.5 py-2 text-sm"
+            >
+              <span className="relative z-10 truncate font-medium">Diğer</span>
+              <ChevronDown className="auth-nav-more-icon relative z-10 h-4 w-4" />
+            </summary>
+            <div className="mt-1 flex flex-col gap-1">
+              {secondaryItems.map((item) => {
+                const active = isActivePath(pathname, item.href);
+                const shortLabel = getShortLabel(item);
+                const Icon = item.icon;
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onNavigate}
+                    aria-current={active ? "page" : undefined}
+                    data-state={active ? "active" : "inactive"}
+                    className="auth-nav-item auth-focus-ring flex items-center justify-between gap-3 rounded-lg px-3.5 py-2 text-sm"
+                  >
+                    <span className="relative z-10 flex min-w-0 flex-1 items-center gap-3">
+                      {Icon ? (
+                        <span className="inline-flex items-center justify-center">
+                          <Icon className="auth-nav-icon h-4 w-4" />
+                        </span>
+                      ) : null}
+                      <span className="truncate font-medium">{item.label}</span>
+                    </span>
+                    <span className="auth-nav-meta relative z-10">
+                      <span className="auth-nav-short-badge">{shortLabel}</span>
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </details>
+        ) : null}
       </nav>
 
       {!collapsed ? (
-        <div className="auth-sidebar-footer mt-4 flex flex-1 flex-col justify-end gap-3">
+        <div className="auth-sidebar-footer mt-3 flex flex-1 flex-col justify-end gap-3">
           {isFreePlan ? (
             <article className="auth-plan-card auth-plan-card-free rounded-xl p-3">
-              <p className="text-xs uppercase tracking-[0.2em] text-amber-100">Ücretsiz Plan</p>
-              <p className="mt-2 text-sm font-semibold text-[var(--auth-foreground)]">{assetCount} / {usageLimit} Varlık</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-amber-100">Deneme Planı</p>
+              <p className="mt-2 text-sm font-semibold text-[var(--auth-foreground)]">
+                Varlıklar: {formatUsage(assetCount, assetLimit)}
+              </p>
+              <p className="mt-1 text-xs text-[var(--auth-muted)]">Belgeler: {formatUsage(documentCount, documentLimit)}</p>
+              <p className="mt-1 text-xs text-[var(--auth-muted)]">
+                Abonelikler: {formatUsage(subscriptionCount, subscriptionLimit)}
+              </p>
+              <p className="mt-1 text-xs text-[var(--auth-muted)]">
+                Fatura Yükleme: {formatUsage(invoiceUploadCount, invoiceUploadLimit)}
+              </p>
               <div className="auth-plan-progress mt-2 h-2 rounded-full">
                 <div
                   className="auth-plan-progress-fill h-full rounded-full transition-[width] duration-300 ease-out"

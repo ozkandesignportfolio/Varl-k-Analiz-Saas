@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { PanelSurface } from "@/components/panel-surface";
-import { formatStorageBytes, getPlanConfig, getUserPlanConfig, type PlanConfig } from "@/lib/plans/plan-config";
+import { getPlanConfig, getUserPlanConfig, type PlanConfig } from "@/lib/plans/plan-config";
 import { listIdName } from "@/lib/repos/assets-repo";
 import { listForDocumentsPage } from "@/lib/repos/documents-repo";
 import { createClient } from "@/lib/supabase/client";
@@ -24,8 +24,30 @@ type AssetRow = {
   name: string;
 };
 
+type UploadApiResponse = {
+  ok?: boolean;
+  id?: string;
+  error?: string;
+};
+
 const sizeFormatter = new Intl.NumberFormat("tr-TR");
 const DEFAULT_PLAN_CONFIG: PlanConfig = getPlanConfig("starter");
+const DEFAULT_DOCUMENT_TYPE = "garanti";
+
+const documentTypeOptions = [
+  { value: "garanti", label: "Garanti" },
+  { value: "fatura", label: "Fatura" },
+  { value: "servis_formu", label: "Servis Formu" },
+  { value: "diger", label: "Diger" },
+] as const;
+
+const inputClassName =
+  "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
+
+const fileInputClassName =
+  "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white file:mr-3 file:rounded-full file:border-0 file:bg-white/15 file:px-3 file:py-1 file:text-xs file:font-semibold file:text-white";
+
+type FeedbackTone = "info" | "error" | "success";
 
 export default function DocumentsPage() {
   const supabase = useMemo(() => createClient(), []);
@@ -34,42 +56,53 @@ export default function DocumentsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [previewingId, setPreviewingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [selectedAssetId, setSelectedAssetId] = useState("");
+  const [selectedDocumentType, setSelectedDocumentType] = useState(DEFAULT_DOCUMENT_TYPE);
   const [feedback, setFeedback] = useState("");
+  const [feedbackTone, setFeedbackTone] = useState<FeedbackTone>("info");
   const [planConfig, setPlanConfig] = useState<PlanConfig>(DEFAULT_PLAN_CONFIG);
 
-  useEffect(() => {
-    const load = async () => {
-      setIsLoading(true);
-      setFeedback("");
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    setFeedback("");
+    setFeedbackTone("info");
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-      if (userError || !user) {
-        setFeedback(userError?.message ?? "Oturum bulunamadı. Lütfen tekrar giriş yapın.");
-        setIsLoading(false);
-        return;
-      }
-
-      setPlanConfig(getUserPlanConfig(user));
-
-      const [docsRes, assetsRes] = await Promise.all([
-        listForDocumentsPage(supabase, { userId: user.id }),
-        listIdName(supabase, { userId: user.id }),
-      ]);
-
-      if (docsRes.error) setFeedback(docsRes.error.message);
-      if (assetsRes.error) setFeedback(assetsRes.error.message);
-
-      setDocuments((docsRes.data ?? []) as DocumentRow[]);
-      setAssets((assetsRes.data ?? []) as AssetRow[]);
+    if (userError || !user) {
+      setFeedback(userError?.message ?? "Oturum bulunamadi. Lutfen tekrar giris yapin.");
+      setFeedbackTone("error");
       setIsLoading(false);
-    };
+      return;
+    }
 
-    void load();
+    setPlanConfig(getUserPlanConfig(user));
+
+    const [docsRes, assetsRes] = await Promise.all([
+      listForDocumentsPage(supabase, { userId: user.id }),
+      listIdName(supabase, { userId: user.id }),
+    ]);
+
+    if (docsRes.error) {
+      setFeedback(docsRes.error.message);
+      setFeedbackTone("error");
+    } else if (assetsRes.error) {
+      setFeedback(assetsRes.error.message);
+      setFeedbackTone("error");
+    }
+
+    setDocuments((docsRes.data ?? []) as DocumentRow[]);
+    setAssets((assetsRes.data ?? []) as AssetRow[]);
+    setIsLoading(false);
   }, [supabase]);
+
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
 
   const getExtension = (fileName: string) => {
     const parts = fileName.toLowerCase().split(".");
@@ -83,7 +116,8 @@ export default function DocumentsPage() {
 
   const onPreview = async (doc: DocumentRow) => {
     if (!canPreview(doc)) {
-      setFeedback("Bu dosya türü için önizleme desteklenmiyor.");
+      setFeedback("Bu dosya turu icin onizleme desteklenmiyor.");
+      setFeedbackTone("error");
       return;
     }
 
@@ -91,7 +125,8 @@ export default function DocumentsPage() {
     const { data, error } = await supabase.storage.from("documents-private").createSignedUrl(doc.storage_path, 60 * 5);
 
     if (error || !data?.signedUrl) {
-      setFeedback(error?.message ?? "Önizleme bağlantısı oluşturulamadı.");
+      setFeedback(error?.message ?? "Onizleme baglantisi olusturulamadi.");
+      setFeedbackTone("error");
       setPreviewingId(null);
       return;
     }
@@ -107,6 +142,7 @@ export default function DocumentsPage() {
 
     if (error || !data) {
       setFeedback(error?.message ?? "Dosya indirilemedi.");
+      setFeedbackTone("error");
       setDownloadingId(null);
       return;
     }
@@ -122,6 +158,66 @@ export default function DocumentsPage() {
     setDownloadingId(null);
   };
 
+  const onUpload = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setFeedback("");
+    setFeedbackTone("info");
+
+    if (!selectedAssetId) {
+      setFeedback("Belge yuklemek icin once bir varlik secin.");
+      setFeedbackTone("error");
+      return;
+    }
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const selectedFile = formData.get("file");
+
+    if (!(selectedFile instanceof File) || selectedFile.size <= 0) {
+      setFeedback("Lutfen yuklenecek bir dosya secin.");
+      setFeedbackTone("error");
+      return;
+    }
+
+    formData.set("assetId", selectedAssetId);
+    formData.set("documentType", selectedDocumentType);
+
+    setIsUploading(true);
+
+    try {
+      const response = await fetch("/api/documents", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = (await response.json().catch(() => null)) as UploadApiResponse | null;
+      if (!response.ok || !payload?.ok) {
+        setFeedback(payload?.error ?? "Belge yuklenemedi.");
+        setFeedbackTone("error");
+        return;
+      }
+
+      setFeedback("Belge yuklendi.");
+      setFeedbackTone("success");
+      form.reset();
+      setSelectedAssetId("");
+      setSelectedDocumentType(DEFAULT_DOCUMENT_TYPE);
+      await loadData();
+    } catch {
+      setFeedback("Belge yukleme sirasinda beklenmeyen bir hata olustu.");
+      setFeedbackTone("error");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const feedbackClassName =
+    feedbackTone === "error"
+      ? "rounded-xl border border-rose-300/30 bg-rose-300/10 px-4 py-3 text-sm text-rose-100"
+      : feedbackTone === "success"
+        ? "rounded-xl border border-emerald-300/30 bg-emerald-300/10 px-4 py-3 text-sm text-emerald-100"
+        : "rounded-xl border border-sky-300/25 bg-sky-300/10 px-4 py-3 text-sm text-sky-100";
+
   const assetNameById = useMemo(() => new Map(assets.map((asset) => [asset.id, asset.name])), [assets]);
 
   const documentTypeCounts = useMemo(() => {
@@ -133,38 +229,106 @@ export default function DocumentsPage() {
   }, [documents]);
 
   const totalSize = useMemo(() => documents.reduce((sum, doc) => sum + Number(doc.file_size ?? 0), 0), [documents]);
-  const storageUsageText =
-    planConfig.limits.maxDocumentStorageBytes === null
-      ? `${formatStorageBytes(totalSize)} / yuksek limit`
-      : `${formatStorageBytes(totalSize)} / ${formatStorageBytes(planConfig.limits.maxDocumentStorageBytes)}`;
+  const documentsLimit = planConfig.limits.documentsLimit;
+  const documentUsageText = documentsLimit === null ? `${documents.length}/sinirsiz` : `${documents.length}/${documentsLimit}`;
 
   return (
-    <AppShell badge="Belge Kasası" title="Belgeler" subtitle="Belge özeti ve liste yalnızca veritabanındaki gerçek kayıtları gösterir.">
+    <AppShell
+      badge="Belge Kasasi"
+      title="Belgeler"
+      subtitle="Resmi upload akisi bu sayfadan ilerler. Belge ozeti ve liste gercek kayitlari gosterir."
+    >
       <PanelSurface>
-        <PageHeader title="Belge Kasası" subtitle="Belge özetleri, depolama kullanımı ve belge listesi." />
+        <PageHeader title="Belge Kasasi" subtitle="Belge yukleme, depolama ozetleri ve belge listesi." />
 
-        {feedback ? (
-          <p className="rounded-xl border border-rose-300/30 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">
-            {feedback}
-          </p>
-        ) : null}
+        {feedback ? <p className={feedbackClassName}>{feedback}</p> : null}
 
         <p className="rounded-xl border border-sky-300/25 bg-sky-300/10 px-4 py-3 text-sm text-sky-100">
-          Plan: {planConfig.label}. Belge depolama kullanimi: {storageUsageText}
+          Plan: {planConfig.label}. Belge limiti kullanim: {documentUsageText}
         </p>
+
+        <section className="premium-card p-5">
+          <h2 className="text-xl font-semibold text-white">Upload Documents</h2>
+          <p className="mt-2 text-sm text-slate-300">
+            Resmi belge yukleme akisi bu ekranda standartlastirildi.
+          </p>
+
+          <form onSubmit={onUpload} className="mt-4 grid gap-3 md:grid-cols-2">
+            <label className="block">
+              <span className="mb-1.5 block text-sm text-slate-300">Varlik</span>
+              <select
+                required
+                value={selectedAssetId}
+                onChange={(event) => setSelectedAssetId(event.target.value)}
+                className={inputClassName}
+                disabled={assets.length === 0}
+              >
+                <option value="" disabled className="bg-slate-900">
+                  Varlik secin
+                </option>
+                {assets.map((asset) => (
+                  <option key={asset.id} value={asset.id} className="bg-slate-900">
+                    {asset.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="mb-1.5 block text-sm text-slate-300">Belge Tipi</span>
+              <select
+                required
+                value={selectedDocumentType}
+                onChange={(event) => setSelectedDocumentType(event.target.value)}
+                className={inputClassName}
+              >
+                {documentTypeOptions.map((item) => (
+                  <option key={item.value} value={item.value} className="bg-slate-900">
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block md:col-span-2">
+              <span className="mb-1.5 block text-sm text-slate-300">Dosya</span>
+              <input
+                name="file"
+                type="file"
+                required
+                accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,video/mp4,video/quicktime,video/webm,video/x-matroska,audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/mp4,audio/m4a,audio/webm,audio/ogg"
+                className={fileInputClassName}
+              />
+            </label>
+
+            <div className="md:col-span-2 pt-1">
+              <button
+                type="submit"
+                disabled={isUploading || assets.length === 0}
+                className="rounded-full bg-gradient-to-r from-sky-400 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isUploading ? "Yukleniyor..." : "Belge Yukle"}
+              </button>
+            </div>
+          </form>
+
+          {assets.length === 0 ? (
+            <p className="mt-3 text-sm text-amber-200">Belge yuklemek icin once bir varlik olusturmalisiniz.</p>
+          ) : null}
+        </section>
 
         <section className="grid gap-3 md:grid-cols-3">
           <SummaryCard label="Toplam Belge" value={String(documents.length)} />
-          <SummaryCard label="Belge Türü" value={String(documentTypeCounts.length)} />
+          <SummaryCard label="Belge Turu" value={String(documentTypeCounts.length)} />
           <SummaryCard label="Toplam Boyut" value={`${sizeFormatter.format(totalSize)} bayt`} />
         </section>
 
         <section className="premium-card p-5">
-          <h2 className="text-xl font-semibold text-white">Belge Türü Dağılımi</h2>
+          <h2 className="text-xl font-semibold text-white">Belge Turu Dagilimi</h2>
           {isLoading ? (
-            <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
+            <p className="mt-4 text-sm text-slate-300">Yukleniyor...</p>
           ) : documentTypeCounts.length === 0 ? (
-            <p className="mt-4 text-sm text-slate-300">Henüz belge kaydı yok.</p>
+            <p className="mt-4 text-sm text-slate-300">Henuz belge kaydi yok.</p>
           ) : (
             <div className="mt-4 space-y-3">
               {documentTypeCounts.map((item) => {
@@ -192,17 +356,17 @@ export default function DocumentsPage() {
         <section className="premium-card p-5">
           <h2 className="text-xl font-semibold text-white">Belge Listesi</h2>
           {isLoading ? (
-            <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
+            <p className="mt-4 text-sm text-slate-300">Yukleniyor...</p>
           ) : documents.length === 0 ? (
-            <p className="mt-4 text-sm text-slate-300">Henüz belge bulunmuyor.</p>
+            <p className="mt-4 text-sm text-slate-300">Henuz belge bulunmuyor.</p>
           ) : (
             <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
               <table className="min-w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-white/10 bg-white/5 text-slate-300">
-                    <th className="px-3 py-2">Dosya Adı</th>
+                    <th className="px-3 py-2">Dosya Adi</th>
                     <th className="px-3 py-2">Tur</th>
-                    <th className="px-3 py-2">Varlık</th>
+                    <th className="px-3 py-2">Varlik</th>
                     <th className="px-3 py-2">Boyut</th>
                     <th className="px-3 py-2">Yukleme Tarihi</th>
                     <th className="px-3 py-2">Aksiyon</th>
@@ -256,5 +420,4 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
-
 

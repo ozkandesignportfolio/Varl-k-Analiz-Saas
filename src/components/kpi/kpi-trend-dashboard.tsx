@@ -36,16 +36,16 @@ export function KpiTrendDashboard({
       <article className="premium-card p-5 xl:col-span-3">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <h2 className="text-lg font-semibold text-white">12 Aylık Maliyet Trendi</h2>
-            <p className="mt-1 text-sm text-slate-300">
+            <h2 className="auth-card-title text-lg font-semibold">12 Aylık Maliyet Trendi</h2>
+            <p className="auth-card-subtitle mt-1 text-sm">
               Servis loglarından oluşan son 12 ayın maliyet çizgisi.
             </p>
           </div>
         </div>
         {isLoading ? (
-          <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
+          <p className="auth-card-subtitle mt-4 text-sm">Yükleniyor...</p>
         ) : serviceLogs.length === 0 ? (
-          <p className="mt-4 text-sm text-slate-300">Grafik için servis verisi bulunmuyor.</p>
+          <p className="auth-card-subtitle mt-4 text-sm">Grafik için servis verisi bulunmuyor.</p>
         ) : (
           <div className="mt-4 h-72">
             <YearlyCostLineChart points={yearlyCostPoints} />
@@ -54,14 +54,14 @@ export function KpiTrendDashboard({
       </article>
 
       <article className="premium-card p-5 xl:col-span-2">
-        <h2 className="text-lg font-semibold text-white">Varlık Performans Karşılaştırma</h2>
-        <p className="mt-1 text-sm text-slate-300">
+        <h2 className="auth-card-title text-lg font-semibold">Varlık Performans Karşılaştırma</h2>
+        <p className="auth-card-subtitle mt-1 text-sm">
           Skor: servis kapsama + planlı servis oranı + maliyet verimliliği.
         </p>
         {isLoading ? (
-          <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
+          <p className="auth-card-subtitle mt-4 text-sm">Yükleniyor...</p>
         ) : assetPerformancePoints.length === 0 ? (
-          <p className="mt-4 text-sm text-slate-300">Karşılaştırma için yeterli veri yok.</p>
+          <p className="auth-card-subtitle mt-4 text-sm">Karşılaştırma için yeterli veri yok.</p>
         ) : (
           <div className="mt-4 h-80">
             <AssetPerformanceComparisonChart points={assetPerformancePoints} />
@@ -70,12 +70,12 @@ export function KpiTrendDashboard({
       </article>
 
       <article className="premium-card p-5">
-        <h2 className="text-lg font-semibold text-white">Bakım Öncelik Panosu</h2>
-        <p className="mt-1 text-sm text-slate-300">
+        <h2 className="auth-card-title text-lg font-semibold">Bakım Öncelik Panosu</h2>
+        <p className="auth-card-subtitle mt-1 text-sm">
           Son 90 gün verisine göre plan uyumu ve operasyonel aksiyon özeti.
         </p>
         {isLoading ? (
-          <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
+          <p className="auth-card-subtitle mt-4 text-sm">Yükleniyor...</p>
         ) : (
           <div className="mt-4 space-y-4">
             <MetricBar
@@ -135,15 +135,15 @@ function MetricBar({
   const normalized = clamp(value, 0, 100);
 
   return (
-    <div className="rounded-xl border border-white/15 bg-white/[0.04] p-3">
+    <div className="auth-subtle-block rounded-xl p-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium text-slate-200">{label}</p>
-        <p className="text-sm font-semibold text-white">{percentText(normalized)}</p>
+        <p className="auth-row-value text-sm font-medium">{label}</p>
+        <p className="auth-row-value text-sm font-semibold">{percentText(normalized)}</p>
       </div>
-      <p className="mt-1 text-xs text-slate-400">{hint}</p>
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
+      <p className="auth-meta-text mt-1 text-xs">{hint}</p>
+      <div className="auth-progress-track mt-3 h-2 overflow-hidden rounded-full">
         <div
-          className="line-shimmer h-full rounded-full bg-gradient-to-r from-sky-400 via-indigo-500 to-fuchsia-500"
+          className="auth-progress-fill line-shimmer h-full rounded-full"
           style={{ width: `${normalized}%` }}
         />
       </div>
@@ -162,17 +162,17 @@ function PriorityChip({
 }) {
   const toneClass =
     tone === "warn"
-      ? "border-amber-300/35 bg-amber-300/10"
+      ? "auth-tone-chip-warn"
       : tone === "ok"
-        ? "border-emerald-300/35 bg-emerald-300/10"
-        : tone === "info"
-          ? "border-sky-300/35 bg-sky-300/10"
-          : "border-white/15 bg-white/[0.04]";
+        ? "auth-tone-chip-ok"
+      : tone === "info"
+          ? "auth-tone-chip-info"
+          : "auth-tone-chip-neutral";
 
   return (
-    <div className={`rounded-xl border px-3 py-2 ${toneClass}`}>
-      <p className="text-xs text-slate-300">{label}</p>
-      <p className="mt-1 text-base font-semibold text-white">{value}</p>
+    <div className={`auth-tone-chip rounded-xl border px-3 py-2 ${toneClass}`}>
+      <p className="auth-row-label text-xs">{label}</p>
+      <p className="auth-row-value mt-1 text-base font-semibold">{value}</p>
     </div>
   );
 }

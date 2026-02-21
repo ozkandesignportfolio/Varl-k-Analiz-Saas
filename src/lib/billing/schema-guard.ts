@@ -1,38 +1,9 @@
-﻿import "server-only";
-
-import { createClient as createSupabaseClient, type PostgrestError } from "@supabase/supabase-js";
-import type { DbClient } from "@/lib/repos/_shared";
-import type { Database } from "@/types/database";
+import type { PostgrestError } from "@supabase/supabase-js";
 
 export const billingTables = ["billing_subscriptions", "billing_invoices"] as const;
 export type BillingTableName = (typeof billingTables)[number];
 
-type BillingSchemaCheckSource = "startup" | "request" | "runtime-error";
-
-type CatalogCheckResult = {
-  tableNames: string[];
-  error: PostgrestError | null;
-};
-
-type CatalogRow = {
-  table_name?: string | null;
-  tablename?: string | null;
-};
-
-type CatalogSchemaClient = {
-  schema: (schema: string) => {
-    from: (table: string) => {
-      select: (columns: string) => {
-        eq: (column: string, value: string) => {
-          in: (column: string, values: readonly string[]) => Promise<{
-            data: CatalogRow[] | null;
-            error: PostgrestError | null;
-          }>;
-        };
-      };
-    };
-  };
-};
+export type BillingSchemaCheckSource = "startup" | "request" | "runtime-error";
 
 export type BillingSchemaState = {
   enabled: boolean;
@@ -52,9 +23,6 @@ const MISSING_TABLE_CODES = new Set(["42P01", "PGRST205", "PGRST204"]);
 const MISSING_TABLE_PATTERNS = ["schema cache", "does not exist", "relation", "unknown relation"];
 
 let cachedSchemaState: BillingSchemaState | null = null;
-let startupSchemaCheckPromise: Promise<BillingSchemaState> | null = null;
-
-const asCatalogClient = (client: DbClient) => client as unknown as CatalogSchemaClient;
 
 const isBillingTable = (value: string): value is BillingTableName =>
   (billingTables as readonly string[]).includes(value);
@@ -64,49 +32,12 @@ const normalizeMessage = (value: unknown) => String(value ?? "").toLowerCase();
 const getErrorLike = (value: unknown) =>
   typeof value === "object" && value !== null ? (value as { code?: unknown; message?: unknown }) : null;
 
-const extractTableNames = (rows: CatalogRow[] | null) =>
-  (rows ?? [])
-    .map((row) => {
-      const tableName = typeof row.table_name === "string" ? row.table_name : null;
-      const pgTableName = typeof row.tablename === "string" ? row.tablename : null;
-      return (tableName ?? pgTableName ?? "").trim().toLowerCase();
-    })
-    .filter((value) => value.length > 0);
-
-const readFromInformationSchema = async (client: DbClient): Promise<CatalogCheckResult> => {
-  const { data, error } = await asCatalogClient(client)
-    .schema("information_schema")
-    .from("tables")
-    .select("table_name")
-    .eq("table_schema", "public")
-    .in("table_name", billingTables);
-
-  return {
-    tableNames: extractTableNames(data),
-    error,
-  };
-};
-
-const readFromPgCatalog = async (client: DbClient): Promise<CatalogCheckResult> => {
-  const { data, error } = await asCatalogClient(client)
-    .schema("pg_catalog")
-    .from("pg_tables")
-    .select("tablename")
-    .eq("schemaname", "public")
-    .in("tablename", billingTables);
-
-  return {
-    tableNames: extractTableNames(data),
-    error,
-  };
-};
-
 const resolveMissingTables = (tableNames: readonly string[]): BillingTableName[] => {
   const found = new Set(tableNames.map((tableName) => tableName.toLowerCase()));
   return billingTables.filter((tableName) => !found.has(tableName));
 };
 
-const buildSchemaState = (
+export const buildBillingSchemaState = (
   tableNames: readonly string[],
   source: BillingSchemaCheckSource,
 ): BillingSchemaState => {
@@ -119,75 +50,12 @@ const buildSchemaState = (
   };
 };
 
-const queryBillingSchemaState = async (
-  client: DbClient,
-  source: BillingSchemaCheckSource,
-): Promise<BillingSchemaState> => {
-  const infoSchemaResult = await readFromInformationSchema(client);
-  if (!infoSchemaResult.error) {
-    return buildSchemaState(infoSchemaResult.tableNames, source);
-  }
+export function getCachedBillingSchemaState(): BillingSchemaState | null {
+  return cachedSchemaState;
+}
 
-  const pgCatalogResult = await readFromPgCatalog(client);
-  if (!pgCatalogResult.error) {
-    return buildSchemaState(pgCatalogResult.tableNames, source);
-  }
-
-  return buildSchemaState(billingTables, source);
-};
-
-const createStartupClient = (): DbClient | null => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return null;
-  }
-
-  return createSupabaseClient<Database>(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
-};
-
-const runStartupSchemaCheck = () => {
-  if (startupSchemaCheckPromise) {
-    return;
-  }
-
-  const startupClient = createStartupClient();
-  if (!startupClient) {
-    return;
-  }
-
-  startupSchemaCheckPromise = queryBillingSchemaState(startupClient, "startup")
-    .then((schemaState) => {
-      cachedSchemaState = schemaState;
-      return schemaState;
-    })
-    .catch(() => buildSchemaState(billingTables, "startup"));
-};
-
-runStartupSchemaCheck();
-
-export async function getBillingSchemaState(client: DbClient): Promise<BillingSchemaState> {
-  if (startupSchemaCheckPromise) {
-    const startupState = await startupSchemaCheckPromise;
-    if (!startupState.enabled) {
-      cachedSchemaState = startupState;
-      return startupState;
-    }
-  }
-
-  if (cachedSchemaState) {
-    return cachedSchemaState;
-  }
-
-  const requestState = await queryBillingSchemaState(client, "request");
-  cachedSchemaState = requestState;
-  return requestState;
+export function setCachedBillingSchemaState(schemaState: BillingSchemaState) {
+  cachedSchemaState = schemaState;
 }
 
 export function markBillingTablesMissing(tables: readonly BillingTableName[]) {
@@ -271,4 +139,3 @@ export function createBillingMissingTablePostgrestError(
     code: "42P01",
   };
 }
-

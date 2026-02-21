@@ -23,7 +23,6 @@ type ServiceLogFormBaseProps = {
   isSubmitDisabled: boolean;
   serviceTypes: string[];
   inputClassName: string;
-  fileInputClassName: string;
 };
 
 type CreateServiceLogFormProps = ServiceLogFormBaseProps & {
@@ -51,7 +50,6 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
       isSubmitDisabled,
       serviceTypes,
       inputClassName,
-      fileInputClassName,
     } = props;
 
     return (
@@ -137,38 +135,9 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
             <textarea name="notes" rows={3} className={inputClassName} placeholder="Ek notlar" />
           </label>
 
-          <label className="block">
-            <span className="mb-1.5 block text-sm text-slate-300">Fotoğraf (Opsiyonel)</span>
-            <input
-              name="photo"
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/heic"
-              className={fileInputClassName}
-            />
-          </label>
-
-          <label className="block">
-            <span className="mb-1.5 block text-sm text-slate-300">Video (Opsiyonel)</span>
-            <input
-              name="video"
-              type="file"
-              accept="video/mp4,video/quicktime,video/webm,video/x-matroska"
-              className={fileInputClassName}
-            />
-          </label>
-
-          <label className="block md:col-span-2">
-            <span className="mb-1.5 block text-sm text-slate-300">Ses Notu (Opsiyonel)</span>
-            <input
-              name="audio"
-              type="file"
-              accept="audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/mp4,audio/m4a,audio/webm,audio/ogg"
-              className={fileInputClassName}
-            />
-            <span className="mt-1.5 block text-xs text-slate-400">
-              Maksimum dosya boyutu: 50 MB. Yüklenen medya servis kaydına bağlı olarak saklanır.
-            </span>
-          </label>
+          <p className="md:col-span-2 text-xs text-slate-400">
+            Belge yukleme resmi olarak <span className="font-semibold">/documents</span> ekranindan yapilir.
+          </p>
 
           <div className="md:col-span-2 pt-1">
             <button
@@ -196,7 +165,6 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
     isSubmitDisabled,
     serviceTypes,
     inputClassName,
-    fileInputClassName,
     onCancel,
   } = props;
 
@@ -293,38 +261,9 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
           <textarea name="notes" rows={3} className={inputClassName} placeholder="Ek notlar" />
         </label>
 
-        <label className="block">
-          <span className="mb-1.5 block text-sm text-slate-300">Fotoğraf (Opsiyonel)</span>
-          <input
-            name="photo"
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/heic"
-            className={fileInputClassName}
-          />
-        </label>
-
-        <label className="block">
-          <span className="mb-1.5 block text-sm text-slate-300">Video (Opsiyonel)</span>
-          <input
-            name="video"
-            type="file"
-            accept="video/mp4,video/quicktime,video/webm,video/x-matroska"
-            className={fileInputClassName}
-          />
-        </label>
-
-        <label className="block md:col-span-2">
-          <span className="mb-1.5 block text-sm text-slate-300">Ses Notu (Opsiyonel)</span>
-          <input
-            name="audio"
-            type="file"
-            accept="audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/mp4,audio/m4a,audio/webm,audio/ogg"
-            className={fileInputClassName}
-          />
-          <span className="mt-1.5 block text-xs text-slate-400">
-            Maksimum dosya boyutu: 50 MB. Yüklenen medya servis kaydına bağlı olarak saklanır.
-          </span>
-        </label>
+        <p className="md:col-span-2 text-xs text-slate-400">
+          Belge yukleme resmi olarak <span className="font-semibold">/documents</span> ekranindan yapilir.
+        </p>
 
         <div className="md:col-span-2 pt-1">
           <button
@@ -339,4 +278,5 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
     </section>
   );
 }
+
 

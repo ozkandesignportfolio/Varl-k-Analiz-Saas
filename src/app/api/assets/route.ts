@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { logApiError, logAuditEvent } from "@/lib/api/logging";
 import { countByUser as countAssetsByUser } from "@/lib/repos/assets-repo";
-import { getUserPlanConfig } from "@/lib/plans/plan-config";
+import { canCreateAsset, getUserPlanConfig } from "@/lib/plans/plan-config";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
 
 type CreateAssetPayload = {
@@ -166,24 +166,26 @@ export async function POST(request: Request) {
     }
 
     const userPlan = getUserPlanConfig(auth.user);
-    const maxAssets = userPlan.limits.maxAssets;
-    if (maxAssets !== null) {
-      const { data: currentAssetCount, error: countError } = await countAssetsByUser(auth.supabase, {
-        userId: auth.user.id,
-      });
+    const { data: currentAssetCount, error: countError } = await countAssetsByUser(auth.supabase, {
+      userId: auth.user.id,
+    });
 
-      if (countError) {
-        return NextResponse.json({ error: countError.message }, { status: 400 });
-      }
+    if (countError) {
+      return NextResponse.json({ error: countError.message }, { status: 400 });
+    }
 
-      if ((currentAssetCount ?? 0) >= maxAssets) {
-        return NextResponse.json(
-          {
-            error: `${userPlan.label} planında en fazla ${maxAssets} varlık oluşturabilirsiniz.`,
-          },
-          { status: 403 },
-        );
-      }
+    const assetLimitCheck = canCreateAsset({
+      planConfig: userPlan,
+      currentCount: currentAssetCount ?? 0,
+    });
+
+    if (!assetLimitCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: assetLimitCheck.errorMessage ?? "Plan limitine ulastiniz.",
+        },
+        { status: 403 },
+      );
     }
 
     const { data, error } = await auth.supabase

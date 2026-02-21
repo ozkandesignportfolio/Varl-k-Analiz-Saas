@@ -39,7 +39,10 @@ export function Topbar({ title, breadcrumb, userEmail }: TopbarProps) {
           <span className="auth-topbar-separator" aria-hidden />
 
           <details className="auth-topbar-menu relative">
-            <summary className="auth-topbar-control auth-focus-ring flex list-none items-center gap-2 rounded-lg px-2.5 py-1.5 text-[var(--auth-foreground)] [&::-webkit-details-marker]:hidden">
+            <summary
+              aria-label="Kullanıcı menüsü"
+              className="auth-topbar-control auth-focus-ring flex list-none items-center gap-2 rounded-lg px-2.5 py-1.5 text-[var(--auth-foreground)] [&::-webkit-details-marker]:hidden"
+            >
               <span className="auth-topbar-avatar inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium">
                 {getUserInitial(userEmail)}
               </span>

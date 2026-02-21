@@ -1,21 +1,28 @@
-﻿"use client"
+"use client"
 
-import { useInView } from "@/modules/landing-v2/hooks/use-in-view"
 import { Check, Sparkles, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { getPlanConfig } from "@/lib/plans/plan-config"
+import { useInView } from "@/modules/landing-v2/hooks/use-in-view"
+
+const trialPlan = getPlanConfig("starter")
+const trialAssetLimit = trialPlan.limits.assetsLimit ?? 0
+const trialDocumentLimit = trialPlan.limits.documentsLimit ?? 0
+const trialSubscriptionLimit = trialPlan.limits.subscriptionsLimit ?? 0
+const trialInvoiceUploadLimit = trialPlan.limits.invoiceUploadsLimit ?? 0
 
 const plans = [
   {
-    name: "Ücretsiz",
+    name: "Deneme",
     price: "0",
     period: "sonsuza dek",
-    description: "Keşfetmek isteyenler için",
+    description: "Başlangıç seviyesi takip",
     features: [
-      "3 varlık takibi",
-      "Temel bakım hatırlatmaları",
-      "5 belge yükleme",
-      "Temel dashboard",
-      "Email bildirimleri",
+      `${trialAssetLimit} varlık takibi`,
+      `${trialDocumentLimit} belge yükleme`,
+      `${trialSubscriptionLimit} abonelik takibi`,
+      `${trialInvoiceUploadLimit} fatura yükleme`,
+      "Temel dashboard ve bildirim",
     ],
     cta: "Ücretsiz Başla",
     popular: false,
@@ -27,10 +34,9 @@ const plans = [
     description: "Varlıklarınızı profesyonel yönetin",
     features: [
       "Sınırsız varlık takibi",
-      "Gelişmiş bakım motoru",
       "Sınırsız belge yükleme",
+      "Sınırsız abonelik ve fatura",
       "Skor analizi",
-      "Abonelik ve fatura takibi",
       "Gelişmiş bildirimler",
       "PDF raporlama",
       "QR/Barkod erişimi",
@@ -46,7 +52,7 @@ export function PricingSection() {
   const { ref, inView } = useInView()
 
   return (
-    <section id="pricing" className="relative isolate py-32" ref={ref}>
+    <section id="fiyatlandirma" className="relative isolate py-32" ref={ref}>
       <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
       <div className="pointer-events-none absolute top-1/2 left-1/2 z-0 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/5 blur-[150px]" />
 
@@ -57,11 +63,11 @@ export function PricingSection() {
             <span className="text-xs tracking-widest text-primary">Fiyatlandırma</span>
           </div>
           <h2 className="text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl text-balance">
-            Basit ve{" "}
-            <span className="text-gradient">şeffaf fiyatlandırma</span>
+            Basit ve <span className="text-gradient">şeffaf fiyatlandırma</span>
           </h2>
           <p className="mx-auto mt-6 max-w-xl text-lg text-muted-foreground">
-            Ücretsiz başlayın, ihtiyacınız olduğunda Premium&apos;a geçin
+            Deneme planı: {trialAssetLimit} varlık, {trialDocumentLimit} belge, {trialSubscriptionLimit} abonelik,{" "}
+            {trialInvoiceUploadLimit} fatura yükleme
           </p>
         </div>
 
@@ -71,11 +77,7 @@ export function PricingSection() {
               key={i}
               className={`relative rounded-3xl p-8 transition-all duration-500 ${
                 inView ? "animate-slide-up" : "opacity-0"
-              } ${
-                plan.popular
-                  ? "glass-card border-primary/30 animate-pulse-glow"
-                  : "glass-card"
-              }`}
+              } ${plan.popular ? "glass-card border-primary/30 animate-pulse-glow" : "glass-card"}`}
               style={{ animationDelay: `${i * 0.15}s` }}
             >
               {plan.popular && (
@@ -92,18 +94,14 @@ export function PricingSection() {
 
               <div className="mb-8 flex items-baseline gap-1">
                 <span className="text-5xl font-bold text-foreground">{plan.price}</span>
-                <span className="text-lg text-muted-foreground">
-                  {plan.price === "0" ? "" : " TL"}
-                </span>
+                <span className="text-lg text-muted-foreground">{plan.price === "0" ? "" : " TL"}</span>
                 <span className="text-sm text-muted-foreground">{plan.period}</span>
               </div>
 
               <div className="mb-8 flex flex-col gap-3">
                 {plan.features.map((feature, j) => (
                   <div key={j} className="flex items-center gap-3">
-                    <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
-                      plan.popular ? "bg-primary/20" : "bg-secondary"
-                    }`}>
+                    <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${plan.popular ? "bg-primary/20" : "bg-secondary"}`}>
                       <Check className={`h-3 w-3 ${plan.popular ? "text-primary" : "text-muted-foreground"}`} />
                     </div>
                     <span className="text-sm text-muted-foreground">{feature}</span>

@@ -11,10 +11,10 @@ const sidebarItems = [
   { icon: Folder, label: "Belgeler", badge: "BG" },
   { icon: Clock, label: "Zaman Akışı", badge: "ZA" },
   { icon: DollarSign, label: "Giderler", badge: "GD" },
-  { icon: Bell, label: "Bildirimler", badge: "BL", isNew: true },
-  { icon: CreditCard, label: "Abonelikler", badge: "AB", isNew: true },
-  { icon: Receipt, label: "Fatura Takip", badge: "FT", isNew: true },
-  { icon: BarChart3, label: "Skor Analizi", badge: "SK", isNew: true },
+  { icon: Bell, label: "Bildirimler", badge: "BL" },
+  { icon: CreditCard, label: "Abonelikler", badge: "AB" },
+  { icon: Receipt, label: "Fatura Takip", badge: "FT" },
+  { icon: BarChart3, label: "Skor Analizi", badge: "SK" },
   { icon: FileText, label: "Raporlar", badge: "RP" },
   { icon: Settings, label: "Ayarlar", badge: "AY" },
 ]
@@ -71,11 +71,6 @@ export function DashboardPreview() {
                         <span>{item.label}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        {item.isNew && (
-                          <span className="flex h-4 items-center rounded bg-primary/20 px-1.5 text-[8px] font-bold text-primary">
-                            YENİ
-                          </span>
-                        )}
                         <span className="text-[9px] text-muted-foreground/50">{item.badge}</span>
                       </div>
                     </div>

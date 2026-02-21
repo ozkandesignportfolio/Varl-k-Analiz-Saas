@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="bg" x1="8" y1="6" x2="56" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#121B32"/>
+      <stop offset="1" stop-color="#090D18"/>
+    </linearGradient>
+    <linearGradient id="shield" x1="20" y1="16" x2="44" y2="49" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3AC8FF"/>
+      <stop offset="1" stop-color="#17D18F"/>
+    </linearGradient>
+    <linearGradient id="gloss" x1="18" y1="10" x2="42" y2="36" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="shadow" x="11" y="8" width="42" height="48" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="1.4" stdDeviation="1.4" flood-color="#02050D" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <rect x="3" y="3" width="58" height="58" rx="14" fill="url(#bg)"/>
+  <rect x="3" y="3" width="58" height="58" rx="14" stroke="#1F2A46" stroke-opacity="0.7"/>
+
+  <g filter="url(#shadow)">
+    <path d="M32 10.5L47.5 17.8V30.2C47.5 40.6 41.2 48.1 32 51.8C22.8 48.1 16.5 40.6 16.5 30.2V17.8L32 10.5Z" fill="url(#shield)"/>
+    <path d="M32 10.5L47.5 17.8V30.2C47.5 40.6 41.2 48.1 32 51.8C22.8 48.1 16.5 40.6 16.5 30.2V17.8L32 10.5Z" fill="url(#gloss)"/>
+  </g>
+
+  <path d="M32 21.5C27.8 21.5 24.5 24.7 24.5 28.8C24.5 32.1 26.6 35 29.8 37.1L32 38.6L34.2 37.1C37.4 35 39.5 32.1 39.5 28.8C39.5 24.7 36.2 21.5 32 21.5Z" fill="#0B1222" fill-opacity="0.56"/>
+  <rect x="29.5" y="39.4" width="5" height="4.9" rx="2.2" fill="#0B1222" fill-opacity="0.56"/>
+
+  <circle cx="43.5" cy="19.5" r="1.8" fill="white" fill-opacity="0.23"/>
+</svg>

@@ -3,14 +3,13 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 import { logApiError, logAuditEvent } from "@/lib/api/logging";
 import { existsById } from "@/lib/repos/assets-repo";
-import { sumFileSizeByUser } from "@/lib/repos/documents-repo";
-import { formatStorageBytes, getUserPlanConfig } from "@/lib/plans/plan-config";
+import { countByUser as countDocumentsByUser } from "@/lib/repos/documents-repo";
+import { canUploadDocument, getUserPlanConfig } from "@/lib/plans/plan-config";
 import { requireRouteUser, type RouteAuthSuccess } from "@/lib/supabase/route-auth";
 
 export const runtime = "nodejs";
 
 const STORAGE_BUCKET = "documents-private";
-const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
 const OPENAI_TEXT_MODEL = process.env.OPENAI_MODEL?.trim() || "gpt-4.1-mini";
 const OPENAI_TRANSCRIBE_MODEL = process.env.OPENAI_TRANSCRIBE_MODEL?.trim() || "gpt-4o-mini-transcribe";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -506,10 +505,6 @@ function validateMediaFile(file: File, kind: MediaKind) {
     return { error: `Bos dosya yuklenemez (${kind}).` };
   }
 
-  if (file.size > MAX_FILE_SIZE_BYTES) {
-    return { error: `Dosya boyutu limit asiyor (${kind}). Maksimum 50 MB.` };
-  }
-
   const mimeType = file.type.trim().toLowerCase();
   const acceptedMimeTypes = allowedMimeTypes[kind];
   if (!mimeType || !acceptedMimeTypes.includes(mimeType)) {
@@ -690,26 +685,25 @@ export async function POST(request: Request) {
     }
 
     const userPlan = getUserPlanConfig(user);
-    const maxDocumentStorageBytes = userPlan.limits.maxDocumentStorageBytes;
-    if (maxDocumentStorageBytes !== null) {
-      const incomingStorageBytes = mediaEntries.reduce((sum, entry) => sum + entry.file.size, 0);
-      const { data: currentStorageBytes, error: storageUsageError } = await sumFileSizeByUser(supabase, {
-        userId: user.id,
-      });
+    const { data: currentDocumentCount, error: documentCountError } = await countDocumentsByUser(supabase, {
+      userId: user.id,
+    });
 
-      if (storageUsageError) {
-        return NextResponse.json({ error: storageUsageError.message }, { status: 400 });
-      }
+    if (documentCountError) {
+      return NextResponse.json({ error: documentCountError.message }, { status: 400 });
+    }
 
-      const projectedStorageBytes = (currentStorageBytes ?? 0) + incomingStorageBytes;
-      if (projectedStorageBytes > maxDocumentStorageBytes) {
-        return NextResponse.json(
-          {
-            error: `${userPlan.label} planında belge depolama limiti ${formatStorageBytes(maxDocumentStorageBytes)}. Mevcut kullanim: ${formatStorageBytes(currentStorageBytes ?? 0)}.`,
-          },
-          { status: 403 },
-        );
-      }
+    const documentLimitCheck = canUploadDocument({
+      planConfig: userPlan,
+      currentCount: currentDocumentCount ?? 0,
+      requestedCount: mediaEntries.length,
+    });
+
+    if (!documentLimitCheck.allowed) {
+      return NextResponse.json(
+        { error: documentLimitCheck.errorMessage ?? "Plan limitine ulastiniz." },
+        { status: 403 },
+      );
     }
 
     const uploads: MediaUploadResult[] = [];

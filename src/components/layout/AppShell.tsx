@@ -37,10 +37,10 @@ const NAV_ITEMS: SidebarNavItem[] = [
   { href: "/documents", label: "Belgeler", shortLabel: "BG", icon: FolderOpen },
   { href: "/timeline", label: "Zaman Akışı", shortLabel: "ZA", icon: Clock3 },
   { href: "/expenses", label: "Giderler", shortLabel: "GD", icon: HandCoins },
-  { href: "/notifications", label: "Bildirimler", shortLabel: "BL", icon: Bell, isNew: true },
-  { href: "/billing", label: "Abonelikler", shortLabel: "AB", icon: CreditCard, isNew: true },
-  { href: "/invoices", label: "Fatura Takip", shortLabel: "FT", icon: Receipt, isNew: true },
-  { href: "/costs", label: "Skor Analizi", shortLabel: "SK", icon: TrendingUp, isNew: true },
+  { href: "/notifications", label: "Bildirimler", shortLabel: "BL", icon: Bell },
+  { href: "/billing", label: "Abonelikler", shortLabel: "AB", icon: CreditCard },
+  { href: "/invoices", label: "Fatura Takip", shortLabel: "FT", icon: Receipt },
+  { href: "/costs", label: "Skor Analizi", shortLabel: "SK", icon: TrendingUp },
   { href: "/reports", label: "Raporlar", shortLabel: "RP", icon: FileText },
   { href: "/settings", label: "Ayarlar", shortLabel: "AY", icon: Settings },
 ];
@@ -123,7 +123,7 @@ export function AppShell({ title, subtitle, children, actions, badge }: AppShell
         <Topbar title={resolvedTitle} breadcrumb={breadcrumb} userEmail={userEmail} />
 
         <main className="auth-shell-main px-4 py-4 sm:px-6 lg:px-8">
-          <nav className="auth-mobile-nav mb-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
+          <nav aria-label="Mobil menü" className="auth-mobile-nav mb-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
             {NAV_ITEMS.map((item) => {
               const active = isActivePath(pathname, item.href);
 
@@ -136,7 +136,6 @@ export function AppShell({ title, subtitle, children, actions, badge }: AppShell
                   className="auth-shell-chip auth-focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs"
                 >
                   <span>{item.label}</span>
-                  {item.isNew ? <span className="auth-nav-new-chip">YENİ</span> : null}
                   <span className="auth-nav-short-badge">{item.shortLabel ?? item.label.slice(0, 2).toUpperCase()}</span>
                 </Link>
               );
@@ -165,3 +164,4 @@ export function AppShell({ title, subtitle, children, actions, badge }: AppShell
     </div>
   );
 }
+

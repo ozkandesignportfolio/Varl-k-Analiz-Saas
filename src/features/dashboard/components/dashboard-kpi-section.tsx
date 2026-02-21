@@ -29,9 +29,9 @@ export function DashboardKpiSection({
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <article className="premium-card p-5">
-      <p className="text-xs uppercase tracking-[0.18em] text-slate-400">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
+    <article className="premium-card auth-metric-card p-5">
+      <p className="auth-kpi-label text-xs uppercase tracking-[0.18em]">{label}</p>
+      <p className="auth-kpi-value mt-2 text-2xl font-semibold">{value}</p>
     </article>
   );
 }

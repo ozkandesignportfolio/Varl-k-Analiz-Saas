@@ -10,10 +10,11 @@ const productLinks = [
 ];
 
 const legalLinks = [
-  { href: "/gizlilik-politikasi", label: "Gizlilik" },
-  { href: "/kullanim-kosullari", label: "Kullanım Şartları" },
-  { href: "/kvkk", label: "KVKK" },
-  { href: "/security", label: "Güvenlik" },
+  { href: "/legal/privacy", label: "Gizlilik Politikası" },
+  { href: "/legal/terms", label: "Kullanım Şartları" },
+  { href: "/legal/kvkk", label: "KVKK Aydınlatma Metni" },
+  { href: "/legal/cookies", label: "Çerez Politikası" },
+  { href: "/legal/notice", label: "Hukuki Bilgilendirme" },
 ];
 
 const accountLinks = [

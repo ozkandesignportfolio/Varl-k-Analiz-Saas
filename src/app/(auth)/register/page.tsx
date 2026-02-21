@@ -2,11 +2,17 @@
 
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
+import { getPlanConfig } from "@/lib/plans/plan-config";
 import { isEmailNotConfirmedError, isEmailRateLimitError } from "@/lib/supabase/auth-errors";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
+const trialPlan = getPlanConfig("starter");
+const trialAssetLimit = trialPlan.limits.assetsLimit ?? 0;
+const trialDocumentLimit = trialPlan.limits.documentsLimit ?? 0;
+const trialSubscriptionLimit = trialPlan.limits.subscriptionsLimit ?? 0;
+const trialInvoiceUploadLimit = trialPlan.limits.invoiceUploadsLimit ?? 0;
 
 export default function RegisterPage() {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
@@ -86,7 +92,8 @@ export default function RegisterPage() {
             Hesabınızı oluşturun
           </h1>
           <p className="mt-4 text-sm leading-7 text-slate-300">
-            Ücretsiz denemede 3 varlığa kadar takip edin. İstediğiniz zaman 149 TL premium plana geçin.
+            Deneme planinda {trialAssetLimit} varlik, {trialDocumentLimit} belge, {trialSubscriptionLimit} abonelik ve{" "}
+            {trialInvoiceUploadLimit} fatura yukleme ile baslayin. Istediginiz zaman 149 TL premium plana gecin.
           </p>
         </section>
 
@@ -151,5 +158,4 @@ export default function RegisterPage() {
     </main>
   );
 }
-
 

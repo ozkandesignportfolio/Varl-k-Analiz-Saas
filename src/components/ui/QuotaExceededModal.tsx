@@ -22,9 +22,10 @@ type QuotaExceededModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   assets: AssetPreviewItem[];
+  assetLimit: number;
 };
 
-export function QuotaExceededModal({ open, onOpenChange, assets }: QuotaExceededModalProps) {
+export function QuotaExceededModal({ open, onOpenChange, assets, assetLimit }: QuotaExceededModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="border-amber-300/35 bg-[#0E1525]">
@@ -32,7 +33,7 @@ export function QuotaExceededModal({ open, onOpenChange, assets }: QuotaExceeded
           <div className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-amber-300/35 bg-amber-300/10">
             <AlertTriangle className="h-5 w-5 text-amber-300" />
           </div>
-          <DialogTitle className="pt-3 text-white">3 varlık limitine ulaştınız</DialogTitle>
+          <DialogTitle className="pt-3 text-white">{assetLimit} varlık limitine ulaştınız</DialogTitle>
           <DialogDescription className="text-slate-300">
             Premium ile sınırsız varlık ekleyin
           </DialogDescription>

@@ -6,7 +6,7 @@ import { Menu, Shield, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { LANDING_NAV_SECTIONS, isLandingSectionHash } from "@/modules/landing-v2/components/section-nav"
 
-const DEFAULT_SECTION = LANDING_NAV_SECTIONS[0]?.href ?? "#features"
+const DEFAULT_SECTION = LANDING_NAV_SECTIONS[0]?.href ?? "#ozellikler"
 
 const getFocusableElements = (container: HTMLElement) =>
   Array.from(
@@ -23,9 +23,28 @@ export function Navbar() {
   const mobileToggleRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20)
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
+    let frame: number | null = null
+
+    const updateScrolled = () => {
+      const nextScrolled = window.scrollY > 20
+      setScrolled((prev) => (prev === nextScrolled ? prev : nextScrolled))
+      frame = null
+    }
+
+    const handleScroll = () => {
+      if (frame !== null) return
+      frame = window.requestAnimationFrame(updateScrolled)
+    }
+
+    handleScroll()
+    window.addEventListener("scroll", handleScroll, { passive: true })
+
+    return () => {
+      if (frame !== null) {
+        window.cancelAnimationFrame(frame)
+      }
+      window.removeEventListener("scroll", handleScroll)
+    }
   }, [])
 
   useEffect(() => {

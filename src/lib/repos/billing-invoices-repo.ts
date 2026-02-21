@@ -12,6 +12,10 @@ export type ListBillingInvoicesByUserParams = {
   userId: string;
 };
 
+export type CountBillingInvoicesByUserParams = {
+  userId: string;
+};
+
 export type ListBillingInvoicesByUserRow = Pick<
   Row<"billing_invoices">,
   | "id"
@@ -209,8 +213,23 @@ export function listByUserAndSubscription(
       .select(selectColumns)
       .eq("user_id", userId)
       .eq("subscription_id", subscriptionId)
-      .order("created_at", { ascending: false }),
+    .order("created_at", { ascending: false }),
   );
+}
+
+export function countByUser(
+  client: DbClient,
+  params: CountBillingInvoicesByUserParams,
+): RepoResult<number> {
+  const { userId } = params;
+
+  return wrapBillingInvoicesQuery(
+    client.from("billing_invoices").select("id", { count: "exact", head: true }).eq("user_id", userId),
+    0,
+  ).then((r) => ({
+    data: Number(r.data ?? 0),
+    error: r.error,
+  }));
 }
 
 export function create(

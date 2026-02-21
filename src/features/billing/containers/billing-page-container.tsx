@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { GuidedEmptyState } from "@/components/guided-empty-state";
+import { usePlanContext } from "@/contexts/PlanContext";
 import { BillingInvoiceForm } from "@/features/billing/components/billing-invoice-form";
 import {
   BillingInvoiceTable,
@@ -107,6 +108,7 @@ const normalizeInvoiceRow = (row: InvoiceReadRow): InvoiceRow => {
 export function BillingPageContainer() {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const router = useRouter();
+  const { refreshPlanState } = usePlanContext();
 
   const [userId, setUserId] = useState("");
   const [subscriptions, setSubscriptions] = useState<SubscriptionRow[]>([]);
@@ -342,6 +344,7 @@ export function BillingPageContainer() {
         : "Abonelik başarıyla eklendi.",
     );
     await fetchBillingData(userId);
+    await refreshPlanState();
     setIsSavingSubscription(false);
   };
 
@@ -426,6 +429,7 @@ export function BillingPageContainer() {
         : "Fatura başarıyla eklendi.",
     );
     await fetchBillingData(userId);
+    await refreshPlanState();
     setIsSavingInvoice(false);
   };
 

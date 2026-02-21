@@ -34,12 +34,6 @@ const ACTION_BUTTON_CLASS =
 
 const COST_TREND_LABEL = "-15% geçen aya göre";
 const RULE_TREND_LABEL = "+2 bu ay";
-const METRIC_CARD_VALUES = {
-  totalAssets: 8,
-  activeRules: 12,
-  totalServiceCost: 4850,
-  documentCount: 23,
-};
 
 const CATEGORY_ICON_MAP: Record<string, LucideIcon> = {
   üretim: Factory,
@@ -359,6 +353,7 @@ export default async function DashboardPage() {
   }
 
   const snapshot = await getDashboardSnapshot(supabase as DbClient, user.id);
+  const metrics = snapshot.data.metrics;
   const riskCount =
     snapshot.data.riskPanel.overdueMaintenance.length +
     snapshot.data.riskPanel.upcomingMaintenance.length +
@@ -396,28 +391,28 @@ export default async function DashboardPage() {
           <section className="col-span-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard
               title="Toplam Varlık"
-              value={METRIC_CARD_VALUES.totalAssets}
+              value={metrics.totalAssets}
               icon={Package}
               trendLabel="Stabil"
               trendTone="neutral"
             />
             <MetricCard
               title="Aktif Bakım Kuralı"
-              value={METRIC_CARD_VALUES.activeRules}
+              value={metrics.activeRules}
               icon={Wrench}
               trendLabel={RULE_TREND_LABEL}
               trendTone="neutral"
             />
             <MetricCard
               title="Toplam Servis Maliyeti"
-              value={formatTry(METRIC_CARD_VALUES.totalServiceCost)}
+              value={formatTry(metrics.totalServiceCost)}
               icon={TrendingUp}
               trendLabel={COST_TREND_LABEL}
               trendTone="positive"
             />
             <MetricCard
               title="Belge Sayısı"
-              value={METRIC_CARD_VALUES.documentCount}
+              value={metrics.documentCount}
               icon={FileText}
               trendLabel="Stabil"
               trendTone="neutral"
@@ -471,3 +466,4 @@ export default async function DashboardPage() {
     </AppShell>
   );
 }
+

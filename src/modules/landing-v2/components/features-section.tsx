@@ -78,7 +78,7 @@ export function FeaturesSection() {
   const { ref, inView } = useInView(0.1)
 
   return (
-    <section id="features" className="relative isolate py-32" ref={ref}>
+    <section id="ozellikler" className="relative isolate py-32" ref={ref}>
       <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
       <div className="mx-auto max-w-7xl px-6">
@@ -104,8 +104,8 @@ export function FeaturesSection() {
               }`}
               style={{ animationDelay: `${i * 0.08}s` }}
             >
-              <div className="landing-v2-feature-icon mb-4 flex h-12 w-12 items-center justify-center rounded-xl transition-all group-hover:scale-110 group-hover:rotate-1">
-                <feature.icon aria-hidden className="landing-v2-feature-icon-glyph h-6 w-6" />
+              <div className="landing-v2-feature-icon mb-4 flex h-12 w-12 items-center justify-center rounded-xl transition-all group-hover:-translate-y-0.5 group-hover:scale-105">
+                <feature.icon aria-hidden className="landing-v2-feature-icon-glyph h-5 w-5" />
               </div>
               <h3 className="mb-2 text-base font-semibold text-foreground">{feature.title}</h3>
               <p className="text-sm leading-relaxed text-muted-foreground">{feature.description}</p>

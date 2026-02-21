@@ -3,8 +3,10 @@ import type { User } from "@supabase/supabase-js";
 export type PlanCode = "starter" | "pro" | "elite";
 
 type PlanLimits = {
-  maxAssets: number | null;
-  maxDocumentStorageBytes: number | null;
+  assetsLimit: number | null;
+  documentsLimit: number | null;
+  subscriptionsLimit: number | null;
+  invoiceUploadsLimit: number | null;
 };
 
 type PlanFeatures = {
@@ -21,15 +23,15 @@ export type PlanConfig = {
   features: PlanFeatures;
 };
 
-const MB = 1024 * 1024;
-
 const PLAN_CONFIGS: Record<PlanCode, PlanConfig> = {
   starter: {
     code: "starter",
-    label: "Ücretsiz",
+    label: "Deneme",
     limits: {
-      maxAssets: 3,
-      maxDocumentStorageBytes: 50 * MB,
+      assetsLimit: 3,
+      documentsLimit: 5,
+      subscriptionsLimit: 3,
+      invoiceUploadsLimit: 5,
     },
     features: {
       canExportPdfReports: false,
@@ -42,8 +44,10 @@ const PLAN_CONFIGS: Record<PlanCode, PlanConfig> = {
     code: "pro",
     label: "Premium",
     limits: {
-      maxAssets: null,
-      maxDocumentStorageBytes: 5 * 1024 * MB,
+      assetsLimit: null,
+      documentsLimit: null,
+      subscriptionsLimit: null,
+      invoiceUploadsLimit: null,
     },
     features: {
       canExportPdfReports: true,
@@ -56,8 +60,10 @@ const PLAN_CONFIGS: Record<PlanCode, PlanConfig> = {
     code: "elite",
     label: "Premium",
     limits: {
-      maxAssets: null,
-      maxDocumentStorageBytes: 5 * 1024 * MB,
+      assetsLimit: null,
+      documentsLimit: null,
+      subscriptionsLimit: null,
+      invoiceUploadsLimit: null,
     },
     features: {
       canExportPdfReports: true,
@@ -71,6 +77,7 @@ const PLAN_CONFIGS: Record<PlanCode, PlanConfig> = {
 const PLAN_ALIASES: Record<string, PlanCode> = {
   starter: "starter",
   free: "starter",
+  trial: "starter",
   pro: "pro",
   premium: "pro",
   elite: "elite",
@@ -104,20 +111,6 @@ const normalizePlanCode = (raw: unknown): PlanCode => {
   return PLAN_ALIASES[key] ?? DEFAULT_PLAN_CODE;
 };
 
-export const formatStorageBytes = (bytes: number) => {
-  if (!Number.isFinite(bytes) || bytes <= 0) {
-    return "0 MB";
-  }
-
-  if (bytes >= 1024 * MB) {
-    const gb = bytes / (1024 * MB);
-    return `${gb.toFixed(gb % 1 === 0 ? 0 : 1)} GB`;
-  }
-
-  const mb = bytes / MB;
-  return `${mb.toFixed(0)} MB`;
-};
-
 export const getPlanConfig = (code: PlanCode) => PLAN_CONFIGS[code];
 
 export const getUserPlanConfig = (user: Pick<User, "app_metadata" | "user_metadata"> | null | undefined) => {
@@ -126,3 +119,90 @@ export const getUserPlanConfig = (user: Pick<User, "app_metadata" | "user_metada
   const code = normalizePlanCode(appMetadataCode ?? userMetadataCode);
   return PLAN_CONFIGS[code];
 };
+
+type PlanLimitResource = "asset" | "document" | "subscription" | "invoiceUpload";
+
+type PlanLimitGuardParams = {
+  planConfig: PlanConfig;
+  resource: PlanLimitResource;
+  currentCount: number;
+  requestedCount?: number;
+};
+
+type PlanLimitGuardResult = {
+  allowed: boolean;
+  limit: number | null;
+  currentCount: number;
+  projectedCount: number;
+  errorMessage: string | null;
+};
+
+const planLimitFieldByResource: Record<PlanLimitResource, keyof PlanLimits> = {
+  asset: "assetsLimit",
+  document: "documentsLimit",
+  subscription: "subscriptionsLimit",
+  invoiceUpload: "invoiceUploadsLimit",
+};
+
+const planLimitMessageByResource = (resource: PlanLimitResource, limit: number) => {
+  switch (resource) {
+    case "asset":
+      return `Deneme planinda en fazla ${limit} varlik ekleyebilirsiniz.`;
+    case "document":
+      return `Deneme planinda en fazla ${limit} belge yukleyebilirsiniz.`;
+    case "subscription":
+      return `Deneme planinda en fazla ${limit} abonelik ekleyebilirsiniz.`;
+    case "invoiceUpload":
+      return `Deneme planinda en fazla ${limit} fatura yukleme yapabilirsiniz.`;
+    default:
+      return "Plan limitine ulastiniz.";
+  }
+};
+
+const applyPlanLimitGuard = (params: PlanLimitGuardParams): PlanLimitGuardResult => {
+  const { currentCount, planConfig, requestedCount = 1, resource } = params;
+  const normalizedCurrentCount = Number.isFinite(currentCount) && currentCount > 0 ? currentCount : 0;
+  const normalizedRequestedCount = Number.isFinite(requestedCount) && requestedCount > 0 ? requestedCount : 1;
+  const limit = planConfig.limits[planLimitFieldByResource[resource]];
+  const projectedCount = normalizedCurrentCount + normalizedRequestedCount;
+
+  if (limit === null) {
+    return {
+      allowed: true,
+      limit,
+      currentCount: normalizedCurrentCount,
+      projectedCount,
+      errorMessage: null,
+    };
+  }
+
+  if (projectedCount <= limit) {
+    return {
+      allowed: true,
+      limit,
+      currentCount: normalizedCurrentCount,
+      projectedCount,
+      errorMessage: null,
+    };
+  }
+
+  return {
+    allowed: false,
+    limit,
+    currentCount: normalizedCurrentCount,
+    projectedCount,
+    errorMessage: planLimitMessageByResource(resource, limit),
+  };
+};
+
+export const canCreateAsset = (params: Omit<PlanLimitGuardParams, "resource">) =>
+  applyPlanLimitGuard({ ...params, resource: "asset" });
+
+export const canUploadDocument = (params: Omit<PlanLimitGuardParams, "resource">) =>
+  applyPlanLimitGuard({ ...params, resource: "document" });
+
+export const canCreateSubscription = (params: Omit<PlanLimitGuardParams, "resource">) =>
+  applyPlanLimitGuard({ ...params, resource: "subscription" });
+
+export const canUploadInvoice = (params: Omit<PlanLimitGuardParams, "resource">) =>
+  applyPlanLimitGuard({ ...params, resource: "invoiceUpload" });

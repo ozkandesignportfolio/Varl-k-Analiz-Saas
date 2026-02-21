@@ -31,6 +31,7 @@ export async function POST(request: Request) {
 
     const result = await createBillingSubscription(auth.supabase, {
       userId: auth.user.id,
+      user: auth.user,
       payload,
     });
 

@@ -205,7 +205,8 @@ export function AssetsPageContainer() {
         | null;
 
       if (!createResponse.ok || !createPayload?.id) {
-        if (createResponse.status === 403 && plan === "free" && (assetLimit ?? 3) <= assets.length) {
+        const trialAssetLimit = assetLimit ?? 3;
+        if (createResponse.status === 403 && plan === "free" && trialAssetLimit <= assets.length) {
           setIsQuotaModalOpen(true);
         }
         setFeedback(createPayload?.error ?? "Varlık kaydı oluşturulamadı.");
@@ -465,7 +466,8 @@ export function AssetsPageContainer() {
       <QuotaExceededModal
         open={isQuotaModalOpen}
         onOpenChange={setIsQuotaModalOpen}
-        assets={assets.slice(0, 3).map((asset) => ({ id: asset.id, name: asset.name, category: asset.category }))}
+        assetLimit={assetLimit ?? 3}
+        assets={assets.slice(0, assetLimit ?? 3).map((asset) => ({ id: asset.id, name: asset.name, category: asset.category }))}
       />
 
       <section className="grid gap-3 xl:grid-cols-[1.05fr_0.95fr]">

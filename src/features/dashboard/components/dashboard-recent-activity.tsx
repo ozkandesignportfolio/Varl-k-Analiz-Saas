@@ -13,7 +13,7 @@ export function DashboardRecentActivity({
 }: DashboardRecentActivityProps) {
   return (
     <article className="premium-card p-5">
-      <h2 className="text-lg font-semibold text-white">Özet</h2>
+      <h2 className="auth-card-title text-lg font-semibold">Özet</h2>
       <div className="mt-4 space-y-2">
         <SummaryRow label="Toplam Servis Kaydı" value={serviceLogCount} />
         <SummaryRow label="Toplam Belge" value={documentCount} />
@@ -31,9 +31,9 @@ export function DashboardRecentActivity({
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between rounded-xl border border-white/15 bg-white/[0.04] px-3 py-2">
-      <span className="text-sm text-slate-300">{label}</span>
-      <span className="text-sm font-semibold text-white">{value}</span>
+    <div className="auth-list-row flex items-center justify-between rounded-xl px-3 py-2">
+      <span className="auth-row-label text-sm">{label}</span>
+      <span className="auth-row-value text-sm font-semibold">{value}</span>
     </div>
   );
 }
@@ -42,7 +42,7 @@ function LinkItem({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
-      className="flex items-center justify-between rounded-xl border border-white/15 bg-white/[0.04] px-3 py-2 text-sm text-slate-200 transition hover:bg-white/10"
+      className="auth-list-row auth-list-link auth-focus-ring flex items-center justify-between rounded-xl px-3 py-2 text-sm"
     >
       <span>{label}</span>
       <span>{"->"}</span>

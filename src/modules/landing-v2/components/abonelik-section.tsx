@@ -4,14 +4,17 @@ import { useInView } from "@/modules/landing-v2/hooks/use-in-view"
 import { CreditCard, RefreshCw, PauseCircle, TrendingUp, ArrowUpRight, ArrowDownRight } from "lucide-react"
 
 const subscriptions = [
-  { name: "Netflix", plan: "Premium", amount: "239", cycle: "Aylık", status: "active", color: "bg-chart-5/20 text-chart-5" },
-  { name: "Spotify", plan: "Aile", amount: "59", cycle: "Aylık", status: "active", color: "bg-primary/20 text-primary" },
-  { name: "Adobe CC", plan: "Tüm Uygulamalar", amount: "1.199", cycle: "Yıllık", status: "active", color: "bg-chart-3/20 text-chart-3" },
-  { name: "iCloud", plan: "200GB", amount: "49", cycle: "Aylık", status: "paused", color: "bg-chart-4/20 text-chart-4" },
+  { name: "Ev İnterneti", plan: "100 Mbps", amount: 899, cycle: "Aylık", status: "active", color: "bg-chart-5/20 text-chart-5" },
+  { name: "Mobil Hat", plan: "20 GB + 1000 DK", amount: 349, cycle: "Aylık", status: "active", color: "bg-primary/20 text-primary" },
+  { name: "Ofis Programı", plan: "Yıllık", amount: 1200, cycle: "Yıllık", status: "active", color: "bg-chart-3/20 text-chart-3" },
+  { name: "Bulut Depolama", plan: "200 GB", amount: 129, cycle: "Aylık", status: "paused", color: "bg-chart-4/20 text-chart-4" },
+  { name: "Alan Adı & Hosting", plan: "Standart Paket", amount: 279, cycle: "Aylık", status: "active", color: "bg-chart-2/20 text-chart-2" },
+  { name: "E-Fatura Hizmeti", plan: "Aylık", amount: 99, cycle: "Aylık", status: "active", color: "bg-chart-1/20 text-chart-1" },
 ]
 
 export function AbonelikSection() {
   const { ref, inView } = useInView()
+  const currencyFormatter = new Intl.NumberFormat("tr-TR")
 
   return (
     <section id="abonelik" className="relative isolate py-32" ref={ref}>
@@ -30,7 +33,7 @@ export function AbonelikSection() {
                   <div className="text-[10px] text-muted-foreground mt-1">Aktif Abonelik</div>
                 </div>
                 <div className="rounded-xl bg-secondary/50 p-4 text-center">
-                  <div className="text-2xl font-bold text-primary">{"1.845"}<span className="text-sm font-normal text-muted-foreground ml-0.5">{"TL"}</span></div>
+                  <div className="text-2xl font-bold text-primary">{"1.855"}<span className="text-sm font-normal text-muted-foreground ml-0.5">{"TL"}</span></div>
                   <div className="text-[10px] text-muted-foreground mt-1">Aylık Toplam</div>
                 </div>
                 <div className="rounded-xl bg-secondary/50 p-4 text-center">
@@ -60,7 +63,7 @@ export function AbonelikSection() {
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="text-right">
-                        <div className="text-sm font-semibold text-foreground">{sub.amount} TL</div>
+                        <div className="text-sm font-semibold text-foreground">{currencyFormatter.format(sub.amount)} TL</div>
                         <div className={`text-[10px] ${sub.status === "active" ? "text-primary" : "text-chart-4"}`}>
                           {sub.status === "active" ? "Aktif" : "Duraklatıldı"}
                         </div>
@@ -88,7 +91,7 @@ export function AbonelikSection() {
               <span className="text-gradient">kontrol altında</span>
             </h2>
             <p className="mt-6 text-lg leading-relaxed text-muted-foreground">
-              Netflix, Spotify, bulut hizmetleri ve daha fazlası. Tüm dijital ve fiziksel aboneliklerinizi tek panelden yönetin, gereksiz harcamaları tespit edin.
+              Ev interneti, mobil hat, ofis programı, bulut depolama ve e-fatura gibi hizmetleri tek panelden yönetin, gereksiz harcamaları tespit edin.
             </p>
 
             <div className="mt-10 flex flex-col gap-4">

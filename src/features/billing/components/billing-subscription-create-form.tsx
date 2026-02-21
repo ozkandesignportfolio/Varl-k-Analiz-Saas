@@ -12,7 +12,12 @@ export function BillingSubscriptionCreateForm({
       <form onSubmit={onSubmit} className="mt-4 grid gap-3 md:grid-cols-2">
         <label className="block">
           <span className="mb-1.5 block text-sm text-slate-300">Sağlayıcı</span>
-          <input name="providerName" className={inputClassName} required placeholder="Örnek: Spotify" />
+          <input
+            name="providerName"
+            className={inputClassName}
+            required
+            placeholder="Örnek: Fiber İnternet Aboneliği"
+          />
         </label>
         <label className="block">
           <span className="mb-1.5 block text-sm text-slate-300">Abonelik Adı</span>
@@ -20,12 +25,12 @@ export function BillingSubscriptionCreateForm({
             name="subscriptionName"
             className={inputClassName}
             required
-            placeholder="Örnek: Aile Planı"
+            placeholder="Örnek: GSM Kurumsal Hat"
           />
         </label>
         <label className="block">
           <span className="mb-1.5 block text-sm text-slate-300">Plan (Opsiyonel)</span>
-          <input name="planName" className={inputClassName} placeholder="Örnek: Premium" />
+          <input name="planName" className={inputClassName} placeholder="Örnek: Yıllık Ekip Lisansı" />
         </label>
         <label className="block">
           <span className="mb-1.5 block text-sm text-slate-300">Bakım Kuralı (Opsiyonel)</span>

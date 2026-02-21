@@ -5,6 +5,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { AuditHistoryPanel } from "@/components/audit-history-panel";
 import { GuidedEmptyState } from "@/components/guided-empty-state";
+import { usePlanContext } from "@/contexts/PlanContext";
 import {
   ServiceLogForm,
   type ServiceLogFormAssetOption,
@@ -30,29 +31,15 @@ type RuleOption = {
 
 type ServiceRow = ServiceLogTableRow;
 
-type ServiceMediaApiResponse = {
-  ok?: boolean;
-  uploadedCount?: number;
-  transcription?: string | null;
-  suggestedDescription?: string | null;
-  warnings?: string[];
-  error?: string;
-};
-
 const serviceTypes = ["Periyodik Bakım", "Arıza Onarım", "Temizlik", "Parça Değişimi", "Diğer"];
 
 const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
 
-const fileInputClassName =
-  "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white file:mr-3 file:rounded-full file:border-0 file:bg-white/15 file:px-3 file:py-1 file:text-xs file:font-semibold file:text-white";
-
-const getSelectedFile = (entry: FormDataEntryValue | null): File | null =>
-  entry instanceof File && entry.size > 0 ? entry : null;
-
 export function ServicesPageContainer() {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const router = useRouter();
+  const { refreshPlanState } = usePlanContext();
 
   const [userId, setUserId] = useState("");
   const [assets, setAssets] = useState<AssetOption[]>([]);
@@ -65,6 +52,9 @@ export function ServicesPageContainer() {
   const [auditRefreshKey, setAuditRefreshKey] = useState(0);
   const [selectedAssetId, setSelectedAssetId] = useState("");
   const [selectedRuleId, setSelectedRuleId] = useState("");
+  const [filterAssetId, setFilterAssetId] = useState("");
+  const [filterStartDate, setFilterStartDate] = useState("");
+  const [filterEndDate, setFilterEndDate] = useState("");
 
   const fetchAssets = useCallback(
     async (currentUserId: string) => {
@@ -161,11 +151,7 @@ export function ServicesPageContainer() {
     const costRaw = String(formData.get("cost") ?? "").trim();
     const provider = String(formData.get("provider") ?? "").trim();
     const notes = String(formData.get("notes") ?? "").trim();
-    const photoFile = getSelectedFile(formData.get("photo"));
-    const videoFile = getSelectedFile(formData.get("video"));
-    const audioFile = getSelectedFile(formData.get("audio"));
     const cost = Number(costRaw || "0");
-    const hasMedia = Boolean(photoFile || videoFile || audioFile);
 
     if (!assetId || !serviceType || !serviceDate) {
       setFeedback("Varlık, servis türü ve servis tarihi zorunludur.");
@@ -204,49 +190,6 @@ export function ServicesPageContainer() {
         return;
       }
 
-      let mediaFeedback = "";
-      if (hasMedia) {
-        const mediaFormData = new FormData();
-        mediaFormData.append("assetId", assetId);
-        mediaFormData.append("serviceLogId", insertedLogId);
-        mediaFormData.append("serviceType", serviceType);
-        mediaFormData.append("serviceDate", serviceDate);
-        mediaFormData.append("provider", provider);
-        mediaFormData.append("notes", notes);
-
-        if (photoFile) mediaFormData.append("photo", photoFile);
-        if (videoFile) mediaFormData.append("video", videoFile);
-        if (audioFile) mediaFormData.append("audio", audioFile);
-
-        const mediaResponse = await fetch("/api/service-media", {
-          method: "POST",
-          body: mediaFormData,
-        });
-
-        const mediaPayload = (await mediaResponse.json().catch(() => null)) as
-          | ServiceMediaApiResponse
-          | null;
-
-        if (!mediaResponse.ok) {
-          mediaFeedback = mediaPayload?.error
-            ? ` Medya yükleme hatası: ${mediaPayload.error}`
-            : " Medya yükleme tamamlanamadı.";
-        } else {
-          const mediaCount = mediaPayload?.uploadedCount ?? 0;
-          const warnings = mediaPayload?.warnings?.length
-            ? ` Uyarılar: ${mediaPayload.warnings.join(" | ")}`
-            : "";
-          const aiParts = [
-            mediaPayload?.transcription ? "Ses transkripsiyonu notlara eklendi." : null,
-            mediaPayload?.suggestedDescription ? "AI açıklama önerisi notlara eklendi." : null,
-          ]
-            .filter(Boolean)
-            .join(" ");
-
-          mediaFeedback = ` ${mediaCount} medya dosyası yüklendi.${aiParts ? ` ${aiParts}` : ""}${warnings}`;
-        }
-      }
-
       form.reset();
       setSelectedAssetId("");
       setSelectedRuleId("");
@@ -255,10 +198,11 @@ export function ServicesPageContainer() {
           ruleId
             ? "Servis kaydı eklendi ve bağlı kuralın tarihleri otomatik sıfırlandı."
             : "Servis kaydı eklendi."
-        }${mediaFeedback}`,
+        } Belge yuklemek icin /documents ekranini kullanin.`,
       );
 
       await Promise.all([fetchLogs(userId), fetchRules(userId)]);
+      await refreshPlanState();
       setAuditRefreshKey((prev) => prev + 1);
     } catch {
       setFeedback("Servis kaydı işlenirken beklenmeyen bir hata oluştu.");
@@ -271,15 +215,35 @@ export function ServicesPageContainer() {
 
   const ruleNameById = useMemo(() => new Map(rules.map((rule) => [rule.id, rule.title])), [rules]);
 
-  const totalCost = useMemo(() => logs.reduce((sum, log) => sum + Number(log.cost ?? 0), 0), [logs]);
+  const hasActiveFilters = Boolean(filterAssetId || filterStartDate || filterEndDate);
+
+  const isDateRangeInvalid = Boolean(filterStartDate && filterEndDate && filterStartDate > filterEndDate);
+
+  const filteredLogs = useMemo(() => {
+    if (isDateRangeInvalid) {
+      return [];
+    }
+
+    return logs.filter((log) => {
+      if (filterAssetId && log.asset_id !== filterAssetId) return false;
+      if (filterStartDate && log.service_date < filterStartDate) return false;
+      if (filterEndDate && log.service_date > filterEndDate) return false;
+      return true;
+    });
+  }, [filterAssetId, filterEndDate, filterStartDate, isDateRangeInvalid, logs]);
+
+  const totalCost = useMemo(
+    () => filteredLogs.reduce((sum, log) => sum + Number(log.cost ?? 0), 0),
+    [filteredLogs],
+  );
 
   const serviceTypeDistribution = useMemo(() => {
     const map = new Map<string, number>();
-    for (const log of logs) {
+    for (const log of filteredLogs) {
       map.set(log.service_type, (map.get(log.service_type) ?? 0) + 1);
     }
     return [...map.entries()].map(([type, count]) => ({ type, count })).sort((a, b) => b.count - a.count);
-  }, [logs]);
+  }, [filteredLogs]);
 
   const maxDistributionCount = useMemo(
     () => Math.max(1, ...serviceTypeDistribution.map((item) => item.count)),
@@ -322,17 +286,22 @@ export function ServicesPageContainer() {
             isSubmitDisabled={assets.length === 0}
             serviceTypes={serviceTypes}
             inputClassName={inputClassName}
-            fileInputClassName={fileInputClassName}
           />
         </div>
 
         <article className="premium-card p-5">
           <h2 className="text-xl font-semibold text-white">Servis Özeti</h2>
           <div className="mt-4 grid grid-cols-3 gap-2">
-            <SummaryItem label="Toplam Kayıt" value={String(logs.length)} />
-            <SummaryItem label="Toplam Maliyet" value={`${totalCost.toFixed(2)} TL`} />
-            <SummaryItem label="Varlık" value={String(new Set(logs.map((log) => log.asset_id)).size)} />
+            <SummaryItem label={hasActiveFilters ? "Gorunen Kayit" : "Toplam Kayit"} value={String(filteredLogs.length)} />
+            <SummaryItem
+              label={hasActiveFilters ? "Gorunen Maliyet" : "Toplam Maliyet"}
+              value={`${totalCost.toFixed(2)} TL`}
+            />
+            <SummaryItem label="Varlik" value={String(new Set(filteredLogs.map((log) => log.asset_id)).size)} />
           </div>
+          {hasActiveFilters ? (
+            <p className="mt-2 text-xs text-slate-300">Toplam kayit: {logs.length}</p>
+          ) : null}
           <div className="mt-5">
             <h3 className="text-sm font-semibold text-slate-200">Tür Dağılımı</h3>
             {serviceTypeDistribution.length === 0 ? (
@@ -362,6 +331,68 @@ export function ServicesPageContainer() {
         </article>
       </section>
 
+      <section className="premium-card p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-white">Listeleme Filtreleri</h2>
+            <p className="mt-1 text-sm text-slate-300">Varlik ve tarih araligi ile servis kayitlarini filtreleyin.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setFilterAssetId("");
+              setFilterStartDate("");
+              setFilterEndDate("");
+            }}
+            className="rounded-full border border-white/20 px-3 py-1 text-xs font-semibold text-slate-200 transition hover:bg-white/10"
+          >
+            Filtreyi Temizle
+          </button>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <label className="text-sm text-slate-200">
+            <span className="mb-1.5 block text-sm text-slate-300">Varlik</span>
+            <select
+              value={filterAssetId}
+              onChange={(event) => setFilterAssetId(event.target.value)}
+              className={inputClassName}
+            >
+              <option value="">Tum Varliklar</option>
+              {assets.map((asset) => (
+                <option key={asset.id} value={asset.id}>
+                  {asset.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-sm text-slate-200">
+            <span className="mb-1.5 block text-sm text-slate-300">Baslangic Tarihi</span>
+            <input
+              type="date"
+              value={filterStartDate}
+              onChange={(event) => setFilterStartDate(event.target.value)}
+              className={inputClassName}
+            />
+          </label>
+          <label className="text-sm text-slate-200">
+            <span className="mb-1.5 block text-sm text-slate-300">Bitis Tarihi</span>
+            <input
+              type="date"
+              value={filterEndDate}
+              onChange={(event) => setFilterEndDate(event.target.value)}
+              className={inputClassName}
+            />
+          </label>
+        </div>
+        {isDateRangeInvalid ? (
+          <p className="mt-3 text-sm text-amber-300">Baslangic tarihi, bitis tarihinden sonra olamaz.</p>
+        ) : (
+          <p className="mt-3 text-sm text-slate-300">
+            {filteredLogs.length} kayit listeleniyor{hasActiveFilters ? ` / ${logs.length} toplam kayit` : "."}
+          </p>
+        )}
+      </section>
+
       {feedback ? (
         <p className="rounded-xl border border-sky-300/25 bg-sky-300/10 px-4 py-3 text-sm text-sky-100">
           {feedback}
@@ -370,24 +401,30 @@ export function ServicesPageContainer() {
 
       <ServiceLogTable
         isLoading={isLoading}
-        logs={logs}
+        logs={filteredLogs}
         assetNameById={assetNameById}
         ruleNameById={ruleNameById}
         emptyState={
           !isLoading ? (
-            assets.length === 0 ? (
-              <GuidedEmptyState
-                title="Servis kaydı için önce varlık gerekli"
-                description="Yeni kullanıcılar demo veri ile gelir. Eğer liste boşsa önce varlık oluşturup sonra servis kaydı ekleyebilirsin."
-                primaryAction={{ label: "Varlıklara git", href: "/assets" }}
-                secondaryAction={{ label: "Dashboard ac", href: "/dashboard" }}
-              />
+            hasActiveFilters ? (
+              <p className="mt-4 text-sm text-slate-300">
+                Secili filtrelere uygun servis kaydi bulunamadi. Filtreyi genisletmeyi deneyin.
+              </p>
             ) : (
-              <GuidedEmptyState
-                title="İlk servis kaydını ekle"
-                description="Servis formunu doldurarak maliyet ve tarih takibini hemen başlat."
-                primaryAction={{ label: "Servis formuna git", onClick: focusCreateServiceForm }}
-              />
+              assets.length === 0 ? (
+                <GuidedEmptyState
+                  title="Servis kaydı için önce varlık gerekli"
+                  description="Yeni kullanıcılar demo veri ile gelir. Eğer liste boşsa önce varlık oluşturup sonra servis kaydı ekleyebilirsin."
+                  primaryAction={{ label: "Varlıklara git", href: "/assets" }}
+                  secondaryAction={{ label: "Dashboard ac", href: "/dashboard" }}
+                />
+              ) : (
+                <GuidedEmptyState
+                  title="İlk servis kaydını ekle"
+                  description="Servis formunu doldurarak maliyet ve tarih takibini hemen başlat."
+                  primaryAction={{ label: "Servis formuna git", onClick: focusCreateServiceForm }}
+                />
+              )
             )
           ) : undefined
         }
@@ -412,5 +449,4 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
-
 

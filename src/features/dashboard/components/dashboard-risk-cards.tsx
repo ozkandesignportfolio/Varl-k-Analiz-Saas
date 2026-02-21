@@ -52,29 +52,29 @@ export function DashboardRiskCards({
   return (
     <article className="premium-card p-5">
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <h2 className="text-lg font-semibold text-white">AI Bakım Riskleri</h2>
-        {predictionMeta?.model ? <p className="text-xs text-slate-400">Model: {predictionMeta.model}</p> : null}
+        <h2 className="auth-card-title text-lg font-semibold">AI Bakım Riskleri</h2>
+        {predictionMeta?.model ? <p className="auth-meta-text text-xs">Model: {predictionMeta.model}</p> : null}
       </div>
       {predictionGeneratedAt ? (
-        <p className="mt-1 text-xs text-slate-400">Üretim zamanı: {predictionGeneratedAt}</p>
+        <p className="auth-meta-text mt-1 text-xs">Üretim zamanı: {predictionGeneratedAt}</p>
       ) : null}
       {predictionMeta?.warning ? (
-        <p className="mt-2 rounded-lg border border-amber-300/30 bg-amber-300/10 px-2 py-1 text-xs text-amber-100">
+        <p className="auth-alert auth-alert-warning mt-2 rounded-lg px-2 py-1 text-xs">
           {predictionMeta.warning}
         </p>
       ) : null}
       {upcomingSubscriptionCharges.length > 0 ? (
-        <div className="mt-3 rounded-lg border border-white/15 bg-white/[0.04] p-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-300">
+        <div className="auth-subtle-block mt-3 rounded-lg p-3">
+          <p className="auth-row-label text-xs font-semibold uppercase tracking-[0.15em]">
             Yaklaşan abonelik tahsilatları
           </p>
           <div className="mt-2 space-y-1.5">
             {upcomingSubscriptionCharges.map((charge) => (
               <div key={charge.id} className="flex items-center justify-between gap-2 text-xs">
-                <p className="text-slate-200">
+                <p className="auth-row-value">
                   {charge.providerName} - {charge.subscriptionName}
                 </p>
-                <p className="text-slate-300">
+                <p className="auth-row-label">
                   {new Date(charge.nextBillingDate).toLocaleDateString("tr-TR")} -{" "}
                   {charge.amount.toFixed(2)} {charge.currency}
                 </p>
@@ -84,7 +84,7 @@ export function DashboardRiskCards({
         </div>
       ) : null}
       {monthlyExpenseWarning.isHigh ? (
-        <p className="mt-2 rounded-lg border border-rose-300/30 bg-rose-300/10 px-2 py-1 text-xs text-rose-100">
+        <p className="auth-alert auth-alert-danger mt-2 rounded-lg px-2 py-1 text-xs">
           Yüksek aylık gider uyarısı: {monthlyExpenseWarning.total.toFixed(2)}{" "}
           {monthlyExpenseWarning.currency} (eşik {monthlyExpenseWarning.threshold.toFixed(2)}{" "}
           {monthlyExpenseWarning.currency})
@@ -92,22 +92,22 @@ export function DashboardRiskCards({
       ) : null}
 
       {isLoading ? (
-        <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
+        <p className="auth-card-subtitle mt-4 text-sm">Yükleniyor...</p>
       ) : topPredictions.length === 0 ? (
-        <p className="mt-4 text-sm text-slate-300">Risk tahmini bulunmuyor.</p>
+        <p className="auth-card-subtitle mt-4 text-sm">Risk tahmini bulunmuyor.</p>
       ) : (
         <div className="mt-4 space-y-2">
           {topPredictions.map((item) => (
             <div
               key={`${item.assetId}-${item.predictedMaintenanceDate ?? "none"}-${item.riskScore}`}
-              className="rounded-xl border border-white/15 bg-white/[0.04] px-3 py-2"
+              className="auth-subtle-block rounded-xl px-3 py-2"
             >
               <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-medium text-white">{item.assetName}</p>
+                <p className="auth-row-value text-sm font-medium">{item.assetName}</p>
                 <RiskBadge score={item.riskScore} />
               </div>
-              <p className="mt-1 text-xs text-slate-300">{item.recommendedAction}</p>
-              <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-400">
+              <p className="auth-card-subtitle mt-1 text-xs">{item.recommendedAction}</p>
+              <div className="auth-meta-text mt-1 flex flex-wrap items-center gap-3 text-xs">
                 <span>Güven: %{item.confidence.toFixed(0)}</span>
                 {item.overdueDays !== null ? <span>Gecikme: {item.overdueDays} gün</span> : null}
                 {item.predictedMaintenanceDate ? (
@@ -126,13 +126,13 @@ function RiskBadge({ score }: { score: number }) {
   const normalized = Math.max(0, Math.min(100, score));
   const toneClass =
     normalized >= 70
-      ? "border-rose-300/40 bg-rose-300/15 text-rose-100"
+      ? "auth-risk-pill-high"
       : normalized >= 40
-        ? "border-amber-300/40 bg-amber-300/15 text-amber-100"
-        : "border-emerald-300/40 bg-emerald-300/15 text-emerald-100";
+        ? "auth-risk-pill-medium"
+        : "auth-risk-pill-low";
 
   return (
-    <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${toneClass}`}>
+    <span className={`auth-risk-pill rounded-full border px-2 py-0.5 text-xs font-semibold ${toneClass}`}>
       Risk %{normalized.toFixed(0)}
     </span>
   );

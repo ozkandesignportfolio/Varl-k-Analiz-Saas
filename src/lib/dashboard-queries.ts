@@ -87,142 +87,24 @@ const dayDiff = (date: Date, from: Date) => {
   return Math.ceil(diff / DAY_IN_MS);
 };
 
-const toIsoDate = (date: Date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-const addDays = (date: Date, days: number) => {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-};
-
-const MOCK_TODAY = startOfToday();
-
-export const DASHBOARD_MOCK_DATA: DashboardSnapshot = {
+const EMPTY_DASHBOARD_DATA: DashboardSnapshot = {
   metrics: {
-    totalAssets: 8,
-    activeRules: 12,
-    totalServiceCost: 4850,
-    documentCount: 23,
+    totalAssets: 0,
+    activeRules: 0,
+    totalServiceCost: 0,
+    documentCount: 0,
   },
   riskPanel: {
-    overdueMaintenance: [
-      {
-        id: "mock-overdue-1",
-        assetId: "asset-1",
-        assetName: "CNC Kesim Makinesi",
-        ruleTitle: "Aylık Yağlama Kontrolü",
-        dueDate: toIsoDate(addDays(MOCK_TODAY, -12)),
-        dayCount: 12,
-      },
-      {
-        id: "mock-overdue-2",
-        assetId: "asset-2",
-        assetName: "Forklift Linde E20",
-        ruleTitle: "250 Saat Hidrolik Bakım",
-        dueDate: toIsoDate(addDays(MOCK_TODAY, -6)),
-        dayCount: 6,
-      },
-    ],
-    upcomingMaintenance: [
-      {
-        id: "mock-upcoming-1",
-        assetId: "asset-3",
-        assetName: "Kompresör Atlas Copco GA11",
-        ruleTitle: "Filtre Değişimi",
-        dueDate: toIsoDate(addDays(MOCK_TODAY, 2)),
-        dayCount: 2,
-      },
-      {
-        id: "mock-upcoming-2",
-        assetId: "asset-4",
-        assetName: "Jeneratör FG Wilson P33",
-        ruleTitle: "Yakıt Sistemi Testi",
-        dueDate: toIsoDate(addDays(MOCK_TODAY, 5)),
-        dayCount: 5,
-      },
-    ],
-    upcomingWarranty: [
-      {
-        id: "mock-warranty-1",
-        assetId: "asset-5",
-        assetName: "Klima Santrali AHU-02",
-        warrantyEndDate: toIsoDate(addDays(MOCK_TODAY, 11)),
-        daysRemaining: 11,
-      },
-      {
-        id: "mock-warranty-2",
-        assetId: "asset-6",
-        assetName: "Yangın Paneli Honeywell XLS",
-        warrantyEndDate: toIsoDate(addDays(MOCK_TODAY, 24)),
-        daysRemaining: 24,
-      },
-    ],
+    overdueMaintenance: [],
+    upcomingMaintenance: [],
+    upcomingWarranty: [],
   },
-  recentServices: [
-    {
-      id: "mock-service-1",
-      assetId: "asset-2",
-      assetName: "Forklift Linde E20",
-      serviceType: "Periyodik Bakım",
-      serviceDate: toIsoDate(addDays(MOCK_TODAY, -1)),
-      cost: 950,
-    },
-    {
-      id: "mock-service-2",
-      assetId: "asset-1",
-      assetName: "CNC Kesim Makinesi",
-      serviceType: "Acil Onarım",
-      serviceDate: toIsoDate(addDays(MOCK_TODAY, -4)),
-      cost: 1850,
-    },
-    {
-      id: "mock-service-3",
-      assetId: "asset-4",
-      assetName: "Jeneratör FG Wilson P33",
-      serviceType: "Yedek Parça Değişimi",
-      serviceDate: toIsoDate(addDays(MOCK_TODAY, -6)),
-      cost: 700,
-    },
-    {
-      id: "mock-service-4",
-      assetId: "asset-7",
-      assetName: "Soğutma Kulesi CT-20",
-      serviceType: "Kalibrasyon",
-      serviceDate: toIsoDate(addDays(MOCK_TODAY, -8)),
-      cost: 650,
-    },
-    {
-      id: "mock-service-5",
-      assetId: "asset-8",
-      assetName: "UPS Schneider Galaxy",
-      serviceType: "Batarya Testi",
-      serviceDate: toIsoDate(addDays(MOCK_TODAY, -12)),
-      cost: 700,
-    },
-  ],
+  recentServices: [],
   costSummary: {
-    total: 4850,
-    categories: [
-      { id: "mock-cost-1", label: "Acil Onarım", amount: 2200, color: COST_COLORS[0] },
-      { id: "mock-cost-2", label: "Periyodik Bakım", amount: 1600, color: COST_COLORS[1] },
-      { id: "mock-cost-3", label: "Yedek Parça", amount: 1050, color: COST_COLORS[2] },
-    ],
+    total: 0,
+    categories: [],
   },
-  quickAssets: [
-    { id: "asset-1", name: "CNC Kesim Makinesi", category: "Üretim", nextDueDate: toIsoDate(addDays(MOCK_TODAY, -12)) },
-    { id: "asset-2", name: "Forklift Linde E20", category: "Lojistik", nextDueDate: toIsoDate(addDays(MOCK_TODAY, -6)) },
-    { id: "asset-3", name: "Kompresör GA11", category: "Mekanik", nextDueDate: toIsoDate(addDays(MOCK_TODAY, 2)) },
-    { id: "asset-4", name: "Jeneratör P33", category: "Enerji", nextDueDate: toIsoDate(addDays(MOCK_TODAY, 5)) },
-    { id: "asset-5", name: "Klima Santrali AHU-02", category: "HVAC", nextDueDate: toIsoDate(addDays(MOCK_TODAY, 14)) },
-    { id: "asset-6", name: "Yangın Paneli XLS", category: "Güvenlik", nextDueDate: toIsoDate(addDays(MOCK_TODAY, 20)) },
-    { id: "asset-7", name: "Soğutma Kulesi CT-20", category: "Soğutma", nextDueDate: toIsoDate(addDays(MOCK_TODAY, 27)) },
-    { id: "asset-8", name: "UPS Schneider Galaxy", category: "Elektrik", nextDueDate: toIsoDate(addDays(MOCK_TODAY, 30)) },
-  ],
+  quickAssets: [],
 };
 
 const toMaintenanceRisk = (
@@ -331,7 +213,7 @@ const toCostSummary = (serviceLogs: DashboardServiceLogRow[]) => {
 
   return {
     total,
-    categories: categories.length > 0 ? categories : DASHBOARD_MOCK_DATA.costSummary.categories,
+    categories,
   };
 };
 
@@ -385,9 +267,9 @@ export async function getDashboardSnapshot(client: DbClient, userId: string): Pr
   const firstError = assetRes.error ?? ruleRes.error ?? serviceRes.error ?? documentCountRes.error;
   if (firstError) {
     return {
-      data: DASHBOARD_MOCK_DATA,
-      isMock: true,
-      warning: "Canlı veriler alınamadı. Demo gösterim verileri kullanılıyor.",
+      data: EMPTY_DASHBOARD_DATA,
+      isMock: false,
+      warning: "Canli veriler alinamadi. Dashboard sifir metriklerle gosteriliyor.",
     };
   }
 
@@ -395,15 +277,6 @@ export async function getDashboardSnapshot(client: DbClient, userId: string): Pr
   const rules = (ruleRes.data ?? []) as DashboardRuleRow[];
   const serviceLogs = (serviceRes.data ?? []) as DashboardServiceLogRow[];
   const documentCount = documentCountRes.count ?? 0;
-
-  const hasAnyData = assets.length > 0 || rules.length > 0 || serviceLogs.length > 0 || documentCount > 0;
-  if (!hasAnyData) {
-    return {
-      data: DASHBOARD_MOCK_DATA,
-      isMock: true,
-      warning: null,
-    };
-  }
 
   const today = startOfToday();
   const assetsById = new Map(assets.map((asset) => [asset.id, asset]));
@@ -432,3 +305,4 @@ export async function getDashboardSnapshot(client: DbClient, userId: string): Pr
     warning: null,
   };
 }
+

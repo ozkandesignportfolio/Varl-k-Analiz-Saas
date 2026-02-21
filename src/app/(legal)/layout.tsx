@@ -2,11 +2,11 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 const legalLinks = [
-  { href: "/privacy", label: "Gizlilik" },
-  { href: "/terms", label: "Şartlar" },
-  { href: "/kvkk", label: "KVKK" },
-  { href: "/security", label: "Güvenlik" },
-  { href: "/faq", label: "SSS" },
+  { href: "/legal/privacy", label: "Gizlilik Politikası" },
+  { href: "/legal/terms", label: "Kullanım Şartları" },
+  { href: "/legal/kvkk", label: "KVKK Aydınlatma Metni" },
+  { href: "/legal/cookies", label: "Çerez Politikası" },
+  { href: "/legal/notice", label: "Hukuki Bilgilendirme" },
 ];
 
 export default function LegalLayout({ children }: { children: ReactNode }) {
