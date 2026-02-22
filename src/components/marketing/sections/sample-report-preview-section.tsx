@@ -2,7 +2,7 @@
 
 export default function SampleReportPreviewSection() {
   return (
-    <section id="rapor-onizleme" className="premium-panel motion-fade-up motion-delay-3 p-6 sm:p-7">
+    <section id="rapor-önizleme" className="premium-panel motion-fade-up motion-delay-3 p-6 sm:p-7">
       <h2 className="text-2xl font-semibold text-white">PDF Raporunuz Böyle Görünür</h2>
       <p className="mt-2 text-sm text-slate-300">
         Varlık, servis ve maliyet verileri tek raporda düzenli şekilde bir araya gelir.
@@ -92,3 +92,4 @@ export default function SampleReportPreviewSection() {
     </section>
   );
 }
+

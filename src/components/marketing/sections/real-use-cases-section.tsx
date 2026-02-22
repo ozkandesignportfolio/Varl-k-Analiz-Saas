@@ -91,7 +91,7 @@ const scenarios: Scenario[] = [
 
 export default function RealUseCasesSection() {
   return (
-    <section id="gercek-senaryolar" className="premium-panel motion-fade-up motion-delay-2 p-6 sm:p-7">
+    <section id="gerçek-senaryolar" className="premium-panel motion-fade-up motion-delay-2 p-6 sm:p-7">
       <h2 className="text-2xl font-semibold text-white">Gerçek Senaryolar</h2>
       <div className="mt-5 space-y-4">
         {scenarios.map((scenario, index) => (
@@ -117,3 +117,4 @@ export default function RealUseCasesSection() {
     </section>
   );
 }
+

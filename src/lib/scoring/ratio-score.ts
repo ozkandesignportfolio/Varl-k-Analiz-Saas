@@ -1,6 +1,6 @@
 const DEFAULT_ASSET_VALUE = 10_000;
 
-const PURCHASE_HINTS = ["satin alma", "satın alma", "purchase", "urun", "ürün", "cihaz", "fiyat", "bedel"];
+const PURCHASE_HINTS = ["satın alma", "satın alma", "purchase", "urun", "ürün", "cihaz", "fiyat", "bedel"];
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
@@ -299,3 +299,4 @@ export function calculateRatioScore(params: {
     assets,
   };
 }
+

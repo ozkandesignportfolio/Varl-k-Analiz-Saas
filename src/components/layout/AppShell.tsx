@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Bell,
-  Box,
+  Package,
   Clock3,
   CreditCard,
   FileText,
@@ -31,7 +31,7 @@ export type AppShellProps = {
 
 const NAV_ITEMS: SidebarNavItem[] = [
   { href: "/dashboard", label: "Gösterge", shortLabel: "GS", icon: LayoutDashboard },
-  { href: "/assets", label: "Varlıklar", shortLabel: "VR", icon: Box },
+  { href: "/assets", label: "Varlıklar", shortLabel: "VR", icon: Package },
   { href: "/maintenance", label: "Bakım", shortLabel: "BK", icon: Wrench },
   { href: "/services", label: "Servisler", shortLabel: "SR", icon: Wrench },
   { href: "/documents", label: "Belgeler", shortLabel: "BG", icon: FolderOpen },

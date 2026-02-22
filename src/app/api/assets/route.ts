@@ -7,6 +7,7 @@ import { requireRouteUser } from "@/lib/supabase/route-auth";
 type CreateAssetPayload = {
   name?: unknown;
   category?: unknown;
+  serialNumber?: unknown;
   brand?: unknown;
   model?: unknown;
   purchaseDate?: unknown;
@@ -17,6 +18,7 @@ type UpdateAssetPayload = {
   id?: unknown;
   name?: unknown;
   category?: unknown;
+  serialNumber?: unknown;
   brand?: unknown;
   model?: unknown;
   purchaseDate?: unknown;
@@ -32,6 +34,7 @@ const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MAX_NAME_LENGTH = 120;
 const MAX_CATEGORY_LENGTH = 80;
+const MAX_SERIAL_NUMBER_LENGTH = 160;
 const MAX_BRAND_LENGTH = 120;
 const MAX_MODEL_LENGTH = 120;
 const MAX_PHOTO_PATH_LENGTH = 1024;
@@ -125,6 +128,7 @@ export async function POST(request: Request) {
 
     const nameResult = readRequiredText(payload.name, MAX_NAME_LENGTH);
     const categoryResult = readRequiredText(payload.category, MAX_CATEGORY_LENGTH);
+    const serialNumberResult = readOptionalText(payload.serialNumber, MAX_SERIAL_NUMBER_LENGTH);
     const brandResult = readOptionalText(payload.brand, MAX_BRAND_LENGTH);
     const modelResult = readOptionalText(payload.model, MAX_MODEL_LENGTH);
     const purchaseDateResult = readOptionalText(payload.purchaseDate, 10);
@@ -133,6 +137,7 @@ export async function POST(request: Request) {
     if (
       nameResult.invalidType ||
       categoryResult.invalidType ||
+      serialNumberResult.invalidType ||
       brandResult.invalidType ||
       modelResult.invalidType ||
       purchaseDateResult.invalidType ||
@@ -144,12 +149,13 @@ export async function POST(request: Request) {
     if (
       nameResult.tooLong ||
       categoryResult.tooLong ||
+      serialNumberResult.tooLong ||
       brandResult.tooLong ||
       modelResult.tooLong ||
       purchaseDateResult.tooLong ||
       warrantyEndDateResult.tooLong
     ) {
-      return NextResponse.json({ error: "Metin alanlarindan biri çok uzun." }, { status: 400 });
+      return NextResponse.json({ error: "Metin alanlarından biri çok uzun." }, { status: 400 });
     }
 
     const purchaseDate = purchaseDateResult.value;
@@ -162,7 +168,10 @@ export async function POST(request: Request) {
     }
 
     if (purchaseDateParsed && warrantyEndDateParsed && warrantyEndDateParsed < purchaseDateParsed) {
-      return NextResponse.json({ error: "Garanti bitiş tarihi satın alma tarihinden önce olamaz." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Garanti bitiş tarihi satın alma tarihinden önce olamaz." },
+        { status: 400 },
+      );
     }
 
     const userPlan = getUserPlanConfig(auth.user);
@@ -182,7 +191,7 @@ export async function POST(request: Request) {
     if (!assetLimitCheck.allowed) {
       return NextResponse.json(
         {
-          error: assetLimitCheck.errorMessage ?? "Plan limitine ulastiniz.",
+          error: assetLimitCheck.errorMessage ?? "Plan limitine ulaştınız.",
         },
         { status: 403 },
       );
@@ -194,6 +203,7 @@ export async function POST(request: Request) {
         user_id: auth.user.id,
         name: nameResult.value,
         category: categoryResult.value,
+        serial_number: serialNumberResult.value,
         brand: brandResult.value,
         model: modelResult.value,
         purchase_date: purchaseDateParsed,
@@ -248,13 +258,23 @@ export async function PATCH(request: Request) {
 
     const hasName = payload.name !== undefined;
     const hasCategory = payload.category !== undefined;
+    const hasSerialNumber = payload.serialNumber !== undefined;
     const hasBrand = payload.brand !== undefined;
     const hasModel = payload.model !== undefined;
     const hasPurchaseDate = payload.purchaseDate !== undefined;
     const hasWarrantyEndDate = payload.warrantyEndDate !== undefined;
     const hasPhotoPath = payload.photoPath !== undefined;
 
-    if (!hasName && !hasCategory && !hasBrand && !hasModel && !hasPurchaseDate && !hasWarrantyEndDate && !hasPhotoPath) {
+    if (
+      !hasName &&
+      !hasCategory &&
+      !hasSerialNumber &&
+      !hasBrand &&
+      !hasModel &&
+      !hasPurchaseDate &&
+      !hasWarrantyEndDate &&
+      !hasPhotoPath
+    ) {
       return NextResponse.json({ error: "Güncellenecek alan bulunamadı." }, { status: 400 });
     }
 
@@ -274,6 +294,14 @@ export async function PATCH(request: Request) {
         return NextResponse.json({ error: "Kategori geçersiz." }, { status: 400 });
       }
       patch.category = categoryResult.value;
+    }
+
+    if (hasSerialNumber) {
+      const serialNumberResult = readOptionalText(payload.serialNumber, MAX_SERIAL_NUMBER_LENGTH);
+      if (serialNumberResult.invalidType || serialNumberResult.tooLong) {
+        return NextResponse.json({ error: "Seri numarası geçersiz." }, { status: 400 });
+      }
+      patch.serial_number = serialNumberResult.value;
     }
 
     if (hasBrand) {
@@ -309,7 +337,9 @@ export async function PATCH(request: Request) {
       if (warrantyEndDateResult.invalidType || warrantyEndDateResult.tooLong) {
         return NextResponse.json({ error: "Garanti bitiş tarihi geçersiz." }, { status: 400 });
       }
-      const warrantyEndDateParsed = warrantyEndDateResult.value ? parseDateOnly(warrantyEndDateResult.value) : null;
+      const warrantyEndDateParsed = warrantyEndDateResult.value
+        ? parseDateOnly(warrantyEndDateResult.value)
+        : null;
       if (warrantyEndDateResult.value && !warrantyEndDateParsed) {
         return NextResponse.json({ error: "Garanti bitiş tarihi geçersiz." }, { status: 400 });
       }
@@ -342,7 +372,10 @@ export async function PATCH(request: Request) {
     const nextPurchaseDate = (patch.purchase_date ?? existingAsset.purchase_date) || null;
     const nextWarrantyEndDate = (patch.warranty_end_date ?? existingAsset.warranty_end_date) || null;
     if (nextPurchaseDate && nextWarrantyEndDate && nextWarrantyEndDate < nextPurchaseDate) {
-      return NextResponse.json({ error: "Garanti bitiş tarihi satın alma tarihinden önce olamaz." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Garanti bitiş tarihi satın alma tarihinden önce olamaz." },
+        { status: 400 },
+      );
     }
 
     const { error, data } = await auth.supabase
@@ -379,7 +412,7 @@ export async function PATCH(request: Request) {
       error,
       message: "Asset update request failed unexpectedly",
     });
-    return NextResponse.json({ error: "Varlık güncelleme isteği işlenemedi." }, { status: 500 });
+    return NextResponse.json({ error: "Varlık göncelleme isteği işlenemedi." }, { status: 500 });
   }
 }
 

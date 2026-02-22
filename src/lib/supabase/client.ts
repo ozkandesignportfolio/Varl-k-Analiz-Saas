@@ -10,6 +10,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-export const createClient = () =>
-  createBrowserClient(supabaseUrl, supabaseAnonKey);
+let browserClient: ReturnType<typeof createBrowserClient> | undefined;
+
+export const createClient = () => {
+  if (!browserClient) {
+    browserClient = createBrowserClient(supabaseUrl, supabaseAnonKey);
+  }
+
+  return browserClient;
+};
 

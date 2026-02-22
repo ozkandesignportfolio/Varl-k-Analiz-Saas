@@ -54,7 +54,7 @@ export default function RootLayout({
   return (
     <html lang="tr">
       <head>
-        <meta charSet="utf-8" />
+        <meta charSet="UTF-8" />
       </head>
       <body className={`${inter.variable} ${jetBrainsMono.variable} antialiased font-sans`}>
         <PlanProvider>

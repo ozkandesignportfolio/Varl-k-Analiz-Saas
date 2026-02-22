@@ -222,6 +222,15 @@ a {
   background-color: rgb(from var(--bg-elevated) r g b / 0.72);
 }
 
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 .hover-lift {
   transition:
     box-shadow 230ms ease,

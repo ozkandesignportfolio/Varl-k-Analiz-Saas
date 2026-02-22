@@ -10,7 +10,7 @@ type ApiErrorLogParams = {
   meta?: Record<string, unknown>;
 };
 
-type CoreEntityType = "assets" | "maintenance_rules" | "service_logs" | "documents";
+type CoreEntityType = "assets" | "maintenance_rules" | "service_logs" | "documents" | "asset_media";
 type AuditAction = "create" | "update" | "delete";
 
 type AuditLogParams = {

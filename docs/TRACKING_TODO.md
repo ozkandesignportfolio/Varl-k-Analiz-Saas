@@ -2,9 +2,9 @@
 
 | Oncelik | Is | Etkilenen route/sayfa | PRD referansi | Kabul kriteri | Durum |
 | --- | --- | --- | --- | --- | --- |
-| High | Assets route wiring duzelt | `/assets` | `15.5 Asama 04 - Varlik Yonetimi (CRUD)` | `/assets` route'u `AssetsPageContainer` render eder; liste/ekle/duzenle/sil UI'dan erisilebilir. | `( )` |
-| High | Maintenance route wiring duzelt | `/maintenance` | `15.6 Asama 05 - Bakim Kurali ve Tarih Hesaplama Motoru` | `/maintenance` route'u `MaintenancePageContainer` render eder; kural lifecycle UI'dan calisir. | `( )` |
-| High | QR akisini UI'dan erisilebilir yap | `/assets`, `/assets/[id]` | `15.16 Asama 15 - QR/Barkod ile Varlik Erisimi` | Liste -> tarama -> detay akisi `/assets` uzerinden canli veriyle uctan uca calisir. | `( )` |
+| High | Assets route wiring duzelt | `/assets` | `15.5 Asama 04 - Varlik Yonetimi (CRUD)` | `/assets` route'u `AssetsPageContainer` render eder; liste/ekle/duzenle/sil UI'dan erisilebilir. | `(x)` |
+| High | Maintenance route wiring duzelt | `/maintenance` | `15.6 Asama 05 - Bakim Kurali ve Tarih Hesaplama Motoru` | `/maintenance` route'u `MaintenancePageContainer` render eder; kural lifecycle UI'dan calisir. | `(x)` |
+| High | QR akisini UI'dan erisilebilir yap | `/assets`, `/assets/[id]` | `15.16 Asama 15 - QR/Barkod ile Varlik Erisimi` | Liste -> tarama -> detay akisi `/assets` uzerinden canli veriyle uctan uca calisir. | `(x)` |
 | High | KPI kartlarini canli veriye bagla | `/dashboard` | `8.6 Dashboard Risk Paneli`, `15.7 Asama 06` | Sabit deger kullanilmaz; KPI degerleri `snapshot.metrics` ile birebir ayni olur. | `(x)` |
 | Medium | Services listeleme filtre UI ekle | `/services` | `8.4 Servis Gunlugu`, `15.8 Asama 07` | En az varlik + tarih filtresi UI'da gorunur; tablo sonuclari filtreye birebir uyar. | `(x)` |
 | Medium | Belge upload resmi akis kararini ver | `/documents` | `8.5 Belge Kasasi`, `15.9 Asama 08`, `18. Acik Sorular` | Tek resmi akis `Upload Documents` (`/documents`) olarak sabitlenir. | `(x)` |

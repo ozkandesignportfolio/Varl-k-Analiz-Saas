@@ -1,4 +1,4 @@
-﻿import type { FormEvent } from "react";
+import type { FormEvent } from "react";
 
 export type ServiceLogFormAssetOption = {
   id: string;
@@ -136,7 +136,7 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
           </label>
 
           <p className="md:col-span-2 text-xs text-slate-400">
-            Belge yukleme resmi olarak <span className="font-semibold">/documents</span> ekranindan yapilir.
+            Belge yükleme resmi olarak <span className="font-semibold">/documents</span> ekranindan yapilir.
           </p>
 
           <div className="md:col-span-2 pt-1">
@@ -262,7 +262,7 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
         </label>
 
         <p className="md:col-span-2 text-xs text-slate-400">
-          Belge yukleme resmi olarak <span className="font-semibold">/documents</span> ekranindan yapilir.
+          Belge yükleme resmi olarak <span className="font-semibold">/documents</span> ekranindan yapilir.
         </p>
 
         <div className="md:col-span-2 pt-1">
@@ -278,5 +278,6 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
     </section>
   );
 }
+
 
 

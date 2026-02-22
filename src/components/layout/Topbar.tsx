@@ -50,7 +50,7 @@ export function Topbar({ title, breadcrumb, userEmail }: TopbarProps) {
             </summary>
 
             <div className="auth-topbar-menu-panel absolute right-0 mt-2 w-56 rounded-xl p-2">
-              <p className="truncate px-2 py-1 text-xs text-[var(--auth-muted)]">{userEmail ?? "kullanici@assetcare.app"}</p>
+              <p className="truncate px-2 py-1 text-xs text-[var(--auth-muted)]">{userEmail ?? "kullanıcı@assetcare.app"}</p>
               <Link
                 href="/settings"
                 className="auth-topbar-menu-link auth-focus-ring mt-1 block rounded-md px-2 py-1.5 text-sm text-[var(--auth-muted)]"
@@ -64,3 +64,4 @@ export function Topbar({ title, breadcrumb, userEmail }: TopbarProps) {
     </header>
   );
 }
+

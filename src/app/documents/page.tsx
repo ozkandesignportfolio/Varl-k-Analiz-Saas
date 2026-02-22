@@ -38,7 +38,7 @@ const documentTypeOptions = [
   { value: "garanti", label: "Garanti" },
   { value: "fatura", label: "Fatura" },
   { value: "servis_formu", label: "Servis Formu" },
-  { value: "diger", label: "Diger" },
+  { value: "diğer", label: "Diğer" },
 ] as const;
 
 const inputClassName =
@@ -74,7 +74,7 @@ export default function DocumentsPage() {
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      setFeedback(userError?.message ?? "Oturum bulunamadi. Lutfen tekrar giris yapin.");
+      setFeedback(userError?.message ?? "Oturum bulunamadı. Lütfen tekrar giriş yapın.");
       setFeedbackTone("error");
       setIsLoading(false);
       return;
@@ -116,7 +116,7 @@ export default function DocumentsPage() {
 
   const onPreview = async (doc: DocumentRow) => {
     if (!canPreview(doc)) {
-      setFeedback("Bu dosya turu icin onizleme desteklenmiyor.");
+      setFeedback("Bu dosya türü için önizleme desteklenmiyor.");
       setFeedbackTone("error");
       return;
     }
@@ -125,7 +125,7 @@ export default function DocumentsPage() {
     const { data, error } = await supabase.storage.from("documents-private").createSignedUrl(doc.storage_path, 60 * 5);
 
     if (error || !data?.signedUrl) {
-      setFeedback(error?.message ?? "Onizleme baglantisi olusturulamadi.");
+      setFeedback(error?.message ?? "önizleme bağlantısı oluşturulamadı.");
       setFeedbackTone("error");
       setPreviewingId(null);
       return;
@@ -164,7 +164,7 @@ export default function DocumentsPage() {
     setFeedbackTone("info");
 
     if (!selectedAssetId) {
-      setFeedback("Belge yuklemek icin once bir varlik secin.");
+      setFeedback("Belge yüklemek için önce bir varlık seçin.");
       setFeedbackTone("error");
       return;
     }
@@ -174,7 +174,7 @@ export default function DocumentsPage() {
     const selectedFile = formData.get("file");
 
     if (!(selectedFile instanceof File) || selectedFile.size <= 0) {
-      setFeedback("Lutfen yuklenecek bir dosya secin.");
+      setFeedback("Lütfen yuklenecek bir dosya seçin.");
       setFeedbackTone("error");
       return;
     }
@@ -192,19 +192,19 @@ export default function DocumentsPage() {
 
       const payload = (await response.json().catch(() => null)) as UploadApiResponse | null;
       if (!response.ok || !payload?.ok) {
-        setFeedback(payload?.error ?? "Belge yuklenemedi.");
+        setFeedback(payload?.error ?? "Belge yüklenemedi.");
         setFeedbackTone("error");
         return;
       }
 
-      setFeedback("Belge yuklendi.");
+      setFeedback("Belge yüklendi.");
       setFeedbackTone("success");
       form.reset();
       setSelectedAssetId("");
       setSelectedDocumentType(DEFAULT_DOCUMENT_TYPE);
       await loadData();
     } catch {
-      setFeedback("Belge yukleme sirasinda beklenmeyen bir hata olustu.");
+      setFeedback("Belge yükleme sırasında beklenmeyen bir hata oluştu.");
       setFeedbackTone("error");
     } finally {
       setIsUploading(false);
@@ -230,16 +230,16 @@ export default function DocumentsPage() {
 
   const totalSize = useMemo(() => documents.reduce((sum, doc) => sum + Number(doc.file_size ?? 0), 0), [documents]);
   const documentsLimit = planConfig.limits.documentsLimit;
-  const documentUsageText = documentsLimit === null ? `${documents.length}/sinirsiz` : `${documents.length}/${documentsLimit}`;
+  const documentUsageText = documentsLimit === null ? `${documents.length}/sınırsız` : `${documents.length}/${documentsLimit}`;
 
   return (
     <AppShell
-      badge="Belge Kasasi"
+      badge="Belge Kasası"
       title="Belgeler"
-      subtitle="Resmi upload akisi bu sayfadan ilerler. Belge ozeti ve liste gercek kayitlari gosterir."
+      subtitle="Resmi upload akışı bu sayfadan ilerler. Belge Özeti ve liste gerçek kayıtları gosterir."
     >
       <PanelSurface>
-        <PageHeader title="Belge Kasasi" subtitle="Belge yukleme, depolama ozetleri ve belge listesi." />
+        <PageHeader title="Belge Kasası" subtitle="Belge yükleme, depolama ozetleri ve belge listesi." />
 
         {feedback ? <p className={feedbackClassName}>{feedback}</p> : null}
 
@@ -250,12 +250,12 @@ export default function DocumentsPage() {
         <section className="premium-card p-5">
           <h2 className="text-xl font-semibold text-white">Upload Documents</h2>
           <p className="mt-2 text-sm text-slate-300">
-            Resmi belge yukleme akisi bu ekranda standartlastirildi.
+            Resmi belge yükleme akışı bu ekranda standartlaştırıldı.
           </p>
 
           <form onSubmit={onUpload} className="mt-4 grid gap-3 md:grid-cols-2">
             <label className="block">
-              <span className="mb-1.5 block text-sm text-slate-300">Varlik</span>
+              <span className="mb-1.5 block text-sm text-slate-300">Varlık</span>
               <select
                 required
                 value={selectedAssetId}
@@ -264,7 +264,7 @@ export default function DocumentsPage() {
                 disabled={assets.length === 0}
               >
                 <option value="" disabled className="bg-slate-900">
-                  Varlik secin
+                  Varlık seçin
                 </option>
                 {assets.map((asset) => (
                   <option key={asset.id} value={asset.id} className="bg-slate-900">
@@ -307,28 +307,28 @@ export default function DocumentsPage() {
                 disabled={isUploading || assets.length === 0}
                 className="rounded-full bg-gradient-to-r from-sky-400 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
               >
-                {isUploading ? "Yukleniyor..." : "Belge Yukle"}
+                {isUploading ? "Yükleniyor..." : "Belge Yükle"}
               </button>
             </div>
           </form>
 
           {assets.length === 0 ? (
-            <p className="mt-3 text-sm text-amber-200">Belge yuklemek icin once bir varlik olusturmalisiniz.</p>
+            <p className="mt-3 text-sm text-amber-200">Belge yüklemek için önce bir varlık oluşturmalısınız.</p>
           ) : null}
         </section>
 
         <section className="grid gap-3 md:grid-cols-3">
           <SummaryCard label="Toplam Belge" value={String(documents.length)} />
-          <SummaryCard label="Belge Turu" value={String(documentTypeCounts.length)} />
+          <SummaryCard label="Belge Türü" value={String(documentTypeCounts.length)} />
           <SummaryCard label="Toplam Boyut" value={`${sizeFormatter.format(totalSize)} bayt`} />
         </section>
 
         <section className="premium-card p-5">
-          <h2 className="text-xl font-semibold text-white">Belge Turu Dagilimi</h2>
+          <h2 className="text-xl font-semibold text-white">Belge Türü Dagilimi</h2>
           {isLoading ? (
-            <p className="mt-4 text-sm text-slate-300">Yukleniyor...</p>
+            <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
           ) : documentTypeCounts.length === 0 ? (
-            <p className="mt-4 text-sm text-slate-300">Henuz belge kaydi yok.</p>
+            <p className="mt-4 text-sm text-slate-300">Henüz belge kaydı yok.</p>
           ) : (
             <div className="mt-4 space-y-3">
               {documentTypeCounts.map((item) => {
@@ -356,19 +356,19 @@ export default function DocumentsPage() {
         <section className="premium-card p-5">
           <h2 className="text-xl font-semibold text-white">Belge Listesi</h2>
           {isLoading ? (
-            <p className="mt-4 text-sm text-slate-300">Yukleniyor...</p>
+            <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
           ) : documents.length === 0 ? (
-            <p className="mt-4 text-sm text-slate-300">Henuz belge bulunmuyor.</p>
+            <p className="mt-4 text-sm text-slate-300">Henüz belge bulunmuyor.</p>
           ) : (
             <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
               <table className="min-w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-white/10 bg-white/5 text-slate-300">
                     <th className="px-3 py-2">Dosya Adi</th>
-                    <th className="px-3 py-2">Tur</th>
-                    <th className="px-3 py-2">Varlik</th>
+                    <th className="px-3 py-2">Tür</th>
+                    <th className="px-3 py-2">Varlık</th>
                     <th className="px-3 py-2">Boyut</th>
-                    <th className="px-3 py-2">Yukleme Tarihi</th>
+                    <th className="px-3 py-2">Yükleme Tarihi</th>
                     <th className="px-3 py-2">Aksiyon</th>
                   </tr>
                 </thead>
@@ -388,7 +388,7 @@ export default function DocumentsPage() {
                             disabled={previewingId === doc.id}
                             className="rounded-full border border-sky-300/35 bg-sky-300/10 px-3 py-1 text-xs font-semibold text-sky-100 transition hover:bg-sky-300/20 disabled:cursor-not-allowed disabled:opacity-70"
                           >
-                            {previewingId === doc.id ? "Hazirlaniyor..." : "Onizle"}
+                            {previewingId === doc.id ? "Hazırlanıyor..." : "Önizle"}
                           </button>
                           <button
                             type="button"
@@ -396,7 +396,7 @@ export default function DocumentsPage() {
                             disabled={downloadingId === doc.id}
                             className="rounded-full border border-emerald-300/35 bg-emerald-300/10 px-3 py-1 text-xs font-semibold text-emerald-100 transition hover:bg-emerald-300/20 disabled:cursor-not-allowed disabled:opacity-70"
                           >
-                            {downloadingId === doc.id ? "Indiriliyor..." : "Indir"}
+                            {downloadingId === doc.id ? "İndiriliyor..." : "İndir"}
                           </button>
                         </div>
                       </td>
@@ -420,4 +420,5 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
+
 

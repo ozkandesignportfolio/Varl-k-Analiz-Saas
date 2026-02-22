@@ -176,7 +176,7 @@ export function DashboardPageContainer() {
 
               if (!response.ok) {
                 throw new Error(
-                  body && "error" in body ? body.error || "Tahmin verisi alinamadi." : "Tahmin verisi alinamadi.",
+                  body && "error" in body ? body.error || "Tahmin verisi alınamadı." : "Tahmin verisi alınamadı.",
                 );
               }
 
@@ -341,19 +341,19 @@ export function DashboardPageContainer() {
 
         {expenseTableWarning ? (
           <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
-            Gider tablosu su an erisilebilir değil. Gider widget verileri bos gosteriliyor. ({expenseTableWarning.code})
+            Gider tablosu şu an erisilebilir değil. Gider widget verileri bos gosteriliyor. ({expenseTableWarning.code})
           </p>
         ) : null}
 
         {!planConfig.features.canUseAdvancedAnalytics ? (
           <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
-            Gelişmiş analitik grafikler ve AI bakım riskleri {planConfig.label} planında kapali. Pro plan ile aktif olur.
+            Gelişmiş analitik grafikler ve AI bakım riskleri {planConfig.label} planında kapalı. Pro plan ile aktif olur.
           </p>
         ) : null}
 
         {planConfig.features.canUseAdvancedAnalytics && predictionError ? (
           <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
-            AI tahmin servisi su anda kullanilamiyor: {predictionError}
+            AI tahmin servisi su anda kullanılamıyor: {predictionError}
           </p>
         ) : null}
 
@@ -407,7 +407,7 @@ export function DashboardPageContainer() {
           <article className="premium-card p-5">
             <h2 className="text-lg font-semibold text-white">Gelişmiş Grafikler Kilitli</h2>
             <p className="mt-2 text-sm text-slate-300">
-              12 aylık maliyet trendi, varlık performans karşılaştırma ve bakım öncelik panosu Pro plan ozelligidir.
+              12 aylık maliyet trendi, varlık performans karşılaştırma ve bakım öncelik panosu Pro plan özelliğidir.
             </p>
           </article>
         )}
@@ -430,9 +430,9 @@ export function DashboardPageContainer() {
             />
           ) : (
             <article className="premium-card p-5">
-              <h2 className="text-lg font-semibold text-white">AI Risk Kartlari Kilitli</h2>
+              <h2 className="text-lg font-semibold text-white">AI Risk Kartlar? Kilitli</h2>
               <p className="mt-2 text-sm text-slate-300">
-                AI bakım risk puanlari ve onerilen aksiyonlar Pro plan ile kullanilabilir.
+                AI bakım risk puanları ve önerilen aksiyonlar Pro plan ile kullanılabilir.
               </p>
             </article>
           )}
@@ -442,4 +442,5 @@ export function DashboardPageContainer() {
     </AppShell>
   );
 }
+
 

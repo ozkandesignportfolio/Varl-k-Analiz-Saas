@@ -48,7 +48,7 @@ type QueryError = {
 
 const MISSING_TABLE_CODES = new Set(["42P01", "PGRST205"]);
 const PRICE_KEYS = ["price", "purchase_price", "asset_price", "current_value", "value"] as const;
-const PURCHASE_HINTS = ["satin alma", "satÄ±n alma", "purchase", "urun", "Ã¼rÃ¼n", "cihaz", "fiyat", "bedel"];
+const PURCHASE_HINTS = ["satın alma", "satın alma", "purchase", "urun", "ürün", "cihaz", "fiyat", "bedel"];
 
 export const dynamic = "force-dynamic";
 
@@ -273,14 +273,15 @@ export async function GET() {
       scope: "user",
       warning:
         isMissingTableError(expensesRes.error) || isMissingTableError(invoicesRes.error)
-          ? "BazÄ± opsiyonel tablolar bulunamadÄ±, skor sÄ±nÄ±rlÄ± veriyle hesaplandÄ±."
+          ? "Bazı opsiyonel tablolar bulunamadı, skor sınırlı veriyle hesaplandı."
           : null,
     });
 
     return NextResponse.json(payload, { status: 200 });
   } catch (error) {
     const fallback = createEmptyPanelHealthPayload("user");
-    fallback.warning = error instanceof Error ? error.message : "Panel saÄŸlÄ±k verisi hesaplanamadÄ±.";
+    fallback.warning = error instanceof Error ? error.message : "Panel sağlık verisi hesaplanamadı.";
     return NextResponse.json(fallback, { status: 200 });
   }
 }
+

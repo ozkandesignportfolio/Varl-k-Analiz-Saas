@@ -302,8 +302,8 @@ Kabul kriterleri:
 | `/` | Hayir | Fonksiyonel | Landing |
 | `/login`, `/register` | Hayir | Fonksiyonel | Auth |
 | `/dashboard` | Evet | Fonksiyonel | KPI kartlari `snapshot.metrics` ile canli veriye bagli |
-| `/assets` | Evet | Placeholder | Regresyon/Route wiring eksik: su an yalnizca AppShell |
-| `/maintenance` | Evet | Placeholder | Regresyon/Route wiring eksik: su an yalnizca AppShell |
+| `/assets` | Evet | Fonksiyonel | `AssetsPageContainer` bagli; listeleme + QR tarama akisi aktif |
+| `/maintenance` | Evet | Fonksiyonel | `MaintenancePageContainer` bagli; kural olusturma/duzenleme/pasif etme akisi aktif |
 | `/services` | Evet | Fonksiyonel | Listeleme + filtre UI aktif (varlik + tarih) |
 | `/documents` | Evet | Fonksiyonel | Upload Documents formu + liste/ozet + onizleme/indirme aktif |
 | `/timeline` | Evet | Fonksiyonel | |
@@ -384,9 +384,9 @@ Adimlar:
 Done kriteri:
 - `(x)` Auth akislari E2E calisir.
 
-### 15.5 `( )` Asama 04 - Varlik Yonetimi (CRUD)
+### 15.5 `(x)` Asama 04 - Varlik Yonetimi (CRUD)
 Adimlar:
-1. `( )` Varlik listeleme (Regresyon/Route wiring eksik: `/assets` route'u `AssetsPageContainer` bagli degil)
+1. `(x)` Varlik listeleme (`/assets` route'u `AssetsPageContainer` bagli)
 2. `(x)` Varlik olusturma formu
 3. `(x)` Guncelleme ve silme
 4. `(x)` Fotograf yukleme entegrasyonu
@@ -394,9 +394,9 @@ Adimlar:
 
 Done kriteri:
 - `(x)` `/assets` route'u container'a bagli, CRUD akislari UI'dan erisilebilir ve sonuclar gercek veride gorunur.
-### 15.6 `( )` Asama 05 - Bakim Kurali ve Tarih Hesaplama Motoru
+### 15.6 `(x)` Asama 05 - Bakim Kurali ve Tarih Hesaplama Motoru
 Adimlar:
-1. `( )` Kural olusturma ekrani (Regresyon/Route wiring eksik: `/maintenance` route'u `MaintenancePageContainer` bagli degil)
+1. `(x)` Kural olusturma ekrani (`/maintenance` route'u `MaintenancePageContainer` bagli)
 2. `(x)` Interval -> `next_due` hesap servisi
 3. `(x)` Kural duzenleme/pasif etme
 4. `(x)` Servis sonrasi tarih reset mekanizmasi
@@ -493,9 +493,9 @@ Adimlar:
 Done kriteri:
 - `(x)` Landing ve panel sayfalari tek tasarim sistemiyle tutarli calisir.
 
-### 15.16 `( )` Asama 15 - QR/Barkod ile Varlik Erisimi
+### 15.16 `(x)` Asama 15 - QR/Barkod ile Varlik Erisimi
 Adimlar:
-1. `( )` Varlik listesinde QR tarama butonu (Regresyon/Route wiring eksik: `/assets` route'u container'a bagli degil)
+1. `(x)` Varlik listesinde QR tarama butonu (`/assets` route'u container'a bagli)
 2. `(x)` Mobil cihaz kamerasi ile QR/barkod tarama modali
 3. `(x)` Taranan kod ile varlik detay sayfasina yonlendirme
 4. `(x)` Supabase `assets` tablosuna benzersiz `qr_code` alani ekleme

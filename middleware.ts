@@ -13,6 +13,8 @@ const protectedRoutes = [
   "/documents",
   "/timeline",
   "/costs",
+  "/notifications",
+  "/settings",
 ];
 
 const authRoutes = ["/login", "/register"];
@@ -138,6 +140,8 @@ export const config = {
     "/documents/:path*",
     "/timeline/:path*",
     "/costs/:path*",
+    "/notifications/:path*",
+    "/settings/:path*",
     "/login",
     "/register",
   ],

@@ -186,6 +186,35 @@ export type Database = {
           file_size?: number | null;
         };
       };
+      asset_media: {
+        Row: {
+          id: string;
+          asset_id: string;
+          user_id: string;
+          type: "image" | "video" | "audio";
+          storage_path: string;
+          mime_type: string;
+          size_bytes: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          asset_id: string;
+          user_id: string;
+          type: "image" | "video" | "audio";
+          storage_path: string;
+          mime_type: string;
+          size_bytes: number;
+          created_at?: string;
+        };
+        Update: {
+          type?: "image" | "video" | "audio";
+          storage_path?: string;
+          mime_type?: string;
+          size_bytes?: number;
+          created_at?: string;
+        };
+      };
       billing_subscriptions: {
         Row: {
           id: string;

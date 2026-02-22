@@ -8,7 +8,7 @@ import { Footer } from "@/modules/landing-v2/components/footer";
 import { HeroSection } from "@/modules/landing-v2/components/hero-section";
 import { Navbar } from "@/modules/landing-v2/components/navbar";
 import { PricingSection } from "@/modules/landing-v2/components/pricing-section";
-import { SkorSection } from "@/modules/landing-v2/components/skor-section";
+import { ScoreAnalysisSection } from "@/modules/landing-v2/components/score-analysis-section";
 import styles from "@/modules/landing-v2/landing-v2.module.css";
 
 export function LandingV2Page() {
@@ -21,7 +21,7 @@ export function LandingV2Page() {
       <BildirimSection />
       <AbonelikSection />
       <FaturaSection />
-      <SkorSection />
+      <ScoreAnalysisSection />
       <PricingSection />
       <CTASection />
       <Footer />

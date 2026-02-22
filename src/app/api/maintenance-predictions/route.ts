@@ -419,7 +419,7 @@ const buildPredictions = async (
   if (!userPlan.features.canUseAdvancedAnalytics) {
     return NextResponse.json(
       {
-        error: `${userPlan.label} planında gelişmiş analitik tahminleri kapali. Pro plan ile aktif olur.`,
+        error: `${userPlan.label} planında gelişmiş analitik tahminleri kapalı. Pro plan ile aktif olur.`,
       },
       { status: 403 },
     );
@@ -505,6 +505,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   return handle(request);
 }
+
 
 
 

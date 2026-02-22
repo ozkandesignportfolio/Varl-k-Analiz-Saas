@@ -307,7 +307,7 @@ export async function createBillingSubscription(
   });
 
   if (!subscriptionLimitCheck.allowed) {
-    return { status: 403, body: { error: subscriptionLimitCheck.errorMessage ?? "Plan limitine ulastiniz." } };
+    return { status: 403, body: { error: subscriptionLimitCheck.errorMessage ?? "Plan limitine ulaştınız." } };
   }
 
   const providerNameResult = readRequiredText(payload.providerName, MAX_PROVIDER_NAME_LENGTH);
@@ -342,7 +342,7 @@ export async function createBillingSubscription(
     planNameResult.tooLong ||
     notesResult.tooLong
   ) {
-    return { status: 400, body: { error: "Metin alanlarindan biri çok uzun." } };
+    return { status: 400, body: { error: "Metin alanlarından biri çok uzun." } };
   }
 
   const providerName = providerNameResult.value;
@@ -459,7 +459,7 @@ export async function createBillingInvoice(
   });
 
   if (!invoiceLimitCheck.allowed) {
-    return { status: 403, body: { error: invoiceLimitCheck.errorMessage ?? "Plan limitine ulastiniz." } };
+    return { status: 403, body: { error: invoiceLimitCheck.errorMessage ?? "Plan limitine ulaştınız." } };
   }
 
   const subscriptionIdResult = readRequiredText(payload.subscriptionId, 64);
@@ -484,7 +484,7 @@ export async function createBillingInvoice(
   }
 
   if (subscriptionIdResult.tooLong || invoiceNoResult.tooLong) {
-    return { status: 400, body: { error: "Metin alanlarindan biri çok uzun." } };
+    return { status: 400, body: { error: "Metin alanlarından biri çok uzun." } };
   }
 
   const subscriptionIdRaw = subscriptionIdResult.value;
@@ -623,5 +623,6 @@ export async function createBillingInvoice(
 
   return { status: 201, body: { ok: true, id: data.id } };
 }
+
 
 

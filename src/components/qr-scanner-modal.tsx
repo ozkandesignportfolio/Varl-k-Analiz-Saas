@@ -93,7 +93,7 @@ export function QrScannerModal({ isOpen, onClose, onDetected }: QrScannerModalPr
 
     const start = async () => {
       if (!navigator.mediaDevices?.getUserMedia) {
-        setStatus("Tarayıcı kamera erişimini desteklemiyor.");
+        setStatus("Tarayıcı kamera erişimini desteklemiyor. QR kod içeriğini alttan yapıştırabilirsiniz.");
         return;
       }
 
@@ -123,7 +123,7 @@ export function QrScannerModal({ isOpen, onClose, onDetected }: QrScannerModalPr
 
         const Ctor = getBarcodeDetectorCtor();
         if (!Ctor) {
-          setStatus("Bu tarayıcı barkod algılamayı desteklemiyor. Kodu alttan elle girebilirsiniz.");
+          setStatus("Bu tarayıcı QR algılamayı desteklemiyor. QR kod içeriğini alttan yapıştırabilirsiniz.");
           return;
         }
 
@@ -131,7 +131,7 @@ export function QrScannerModal({ isOpen, onClose, onDetected }: QrScannerModalPr
         setStatus("Kamerayı QR/Barkod üzerine tutun.");
         void loop();
       } catch {
-        setStatus("Kamera açılamadı. İzinleri kontrol edin.");
+        setStatus("Kamera açılamadı veya izin verilmedi. QR kod içeriğini alttan yapıştırabilirsiniz.");
       }
     };
 
@@ -157,7 +157,7 @@ export function QrScannerModal({ isOpen, onClose, onDetected }: QrScannerModalPr
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
       <div className="w-full max-w-lg rounded-2xl border border-white/15 bg-slate-950 p-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">QR / Barkod Tara</h2>
+          <h2 className="text-lg font-semibold text-white">QR ile Ekle</h2>
           <button
             type="button"
             onClick={handleClose}
@@ -174,12 +174,12 @@ export function QrScannerModal({ isOpen, onClose, onDetected }: QrScannerModalPr
         </div>
 
         <div className="mt-4">
-          <p className="mb-2 text-xs uppercase tracking-tight text-slate-400">Elle Kod Gir</p>
+          <p className="mb-2 text-xs uppercase tracking-tight text-slate-400">QR kod içeriğini yapıştır</p>
           <div className="flex gap-2">
             <input
               value={manualCode}
               onChange={(event) => setManualCode(event.target.value)}
-              placeholder="Örn: AC-1A2B3C4D5E"
+              placeholder="Örn: assetcare://asset?name=Kombi&category=Isitma"
               className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
             />
             <button
@@ -192,7 +192,7 @@ export function QrScannerModal({ isOpen, onClose, onDetected }: QrScannerModalPr
               }}
               className="rounded-xl bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-4 py-2 text-sm font-semibold text-white"
             >
-              Git
+              Doldur
             </button>
           </div>
         </div>
@@ -200,4 +200,3 @@ export function QrScannerModal({ isOpen, onClose, onDetected }: QrScannerModalPr
     </div>
   );
 }
-

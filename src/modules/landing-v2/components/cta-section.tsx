@@ -52,11 +52,12 @@ export function CTASection() {
           </div>
 
           <p className="mt-8 text-sm text-muted-foreground">
-            {trialAssetLimit} varlik, {trialDocumentLimit} belge, {trialSubscriptionLimit} abonelik,{" "}
-            {trialInvoiceUploadLimit} fatura yukleme ile baslayin
+            {trialAssetLimit} varlık, {trialDocumentLimit} belge, {trialSubscriptionLimit} abonelik,{" "}
+            {trialInvoiceUploadLimit} fatura yükleme ile başlayın
           </p>
         </div>
       </div>
     </section>
   )
 }
+

@@ -276,7 +276,7 @@ export async function POST(request: Request) {
     }
 
     if (!assetExists) {
-      return NextResponse.json({ error: "Seçilen varliga erişim izniniz yok." }, { status: 403 });
+      return NextResponse.json({ error: "Seçilen varlığa erişim izniniz yok." }, { status: 403 });
     }
 
     if (ruleId) {
@@ -412,7 +412,7 @@ export async function PATCH(request: Request) {
       }
 
       if (!assetExists) {
-        return NextResponse.json({ error: "Seçilen varliga erişim izniniz yok." }, { status: 403 });
+        return NextResponse.json({ error: "Seçilen varlığa erişim izniniz yok." }, { status: 403 });
       }
 
       patch.asset_id = nextAssetId;
@@ -537,7 +537,7 @@ export async function PATCH(request: Request) {
 
     if (syncErrors.length > 0) {
       return NextResponse.json(
-        { ok: true, id: updatedLog.id, warning: `Bakım senkronizasyon uyarisi: ${syncErrors.join(" | ")}` },
+        { ok: true, id: updatedLog.id, warning: `Bakım senkronizasyon uyarısı: ${syncErrors.join(" | ")}` },
         { status: 200 },
       );
     }
@@ -554,5 +554,6 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Servis kaydı güncelleme isteği işlenemedi." }, { status: 500 });
   }
 }
+
 
 

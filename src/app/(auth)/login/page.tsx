@@ -83,7 +83,7 @@ export default function LoginPage() {
       router.push(nextPath);
       router.refresh();
     } catch {
-      setMessage("Giriş sirasinda beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.");
+      setMessage("Giriş sırasında beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.");
     } finally {
       setIsSubmitting(false);
     }
@@ -156,5 +156,6 @@ export default function LoginPage() {
     </main>
   );
 }
+
 
 

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { logApiError } from "@/lib/api/logging";
 import {
   createMaintenanceRule,
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
       error,
       message: "Maintenance rules list request failed unexpectedly",
     });
-    return NextResponse.json({ error: "Bakım kurallari listelenemedi." }, { status: 500 });
+    return NextResponse.json({ error: "Bakım kurallar? listelenemedi." }, { status: 500 });
   }
 }
 
@@ -69,5 +69,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Bakım kuralı isteği işlenemedi." }, { status: 500 });
   }
 }
+
 
 

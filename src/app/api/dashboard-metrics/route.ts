@@ -255,7 +255,7 @@ const calculateFallbackHealthAverage = async (params: {
 
   const assets = ((assetsRes.data ?? []) as AssetRow[]).map((asset) => ({
     id: asset.id,
-    name: asset.name ?? "Varlik",
+    name: asset.name ?? "Varlık",
   }));
   if (assets.length === 0) {
     return 0;
@@ -396,3 +396,4 @@ export async function GET(request: Request) {
     return NextResponse.json(buildZeroPayload(), { status: 200 });
   }
 }
+

@@ -113,7 +113,7 @@ export function DashboardPreview() {
                       <span className="text-chart-4">{"!"}</span>
                       <span className="text-sm font-semibold text-foreground">Risk Paneli</span>
                     </div>
-                    <span className="text-[10px] text-muted-foreground">0 kayit</span>
+                    <span className="text-[10px] text-muted-foreground">0 kayıt</span>
                   </div>
                   <div className="rounded-lg bg-primary/5 border border-primary/10 p-3 text-xs text-primary flex items-center gap-2">
                     <span>{"Tüm varlıklar kontrol altında"}</span>

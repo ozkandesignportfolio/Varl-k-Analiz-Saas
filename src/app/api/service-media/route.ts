@@ -634,7 +634,7 @@ export async function POST(request: Request) {
     }
 
     if (!assetExists) {
-      return NextResponse.json({ error: "Seçilen varliga erişim izniniz yok." }, { status: 403 });
+      return NextResponse.json({ error: "Seçilen varlığa erişim izniniz yok." }, { status: 403 });
     }
 
     const { data: serviceLog, error: serviceLogError } = await supabase
@@ -701,7 +701,7 @@ export async function POST(request: Request) {
 
     if (!documentLimitCheck.allowed) {
       return NextResponse.json(
-        { error: documentLimitCheck.errorMessage ?? "Plan limitine ulastiniz." },
+        { error: documentLimitCheck.errorMessage ?? "Plan limitine ulaştınız." },
         { status: 403 },
       );
     }
@@ -873,6 +873,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Medya isteği işlenemedi." }, { status: 500 });
   }
 }
+
 
 
 

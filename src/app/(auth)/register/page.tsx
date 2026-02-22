@@ -62,13 +62,13 @@ export default function RegisterPage() {
           return;
         }
 
-        setMessage(error.message || "Kayıt sirasinda bir hata oluştu. Lütfen tekrar deneyin.");
+        setMessage(error.message || "Kayıt sırasında bir hata oluştu. Lütfen tekrar deneyin.");
         return;
       }
 
-      setMessage("Kayıt alindi. E-posta onayı gerekiyorsa kutunuzu kontrol edin, aksi halde giriş yapabilirsiniz.");
+      setMessage("Kayıt alındı. E-posta onayı gerekiyorsa kutunuzu kontrol edin, aksi halde giriş yapabilirsiniz.");
     } catch {
-      setMessage("Kayıt sirasinda beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.");
+      setMessage("Kayıt sırasında beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.");
     } finally {
       setIsSubmitting(false);
     }
@@ -92,8 +92,8 @@ export default function RegisterPage() {
             Hesabınızı oluşturun
           </h1>
           <p className="mt-4 text-sm leading-7 text-slate-300">
-            Deneme planinda {trialAssetLimit} varlik, {trialDocumentLimit} belge, {trialSubscriptionLimit} abonelik ve{" "}
-            {trialInvoiceUploadLimit} fatura yukleme ile baslayin. Istediginiz zaman 149 TL premium plana gecin.
+            Deneme planında {trialAssetLimit} varlık, {trialDocumentLimit} belge, {trialSubscriptionLimit} abonelik ve{" "}
+            {trialInvoiceUploadLimit} fatura yükleme ile başlayın. İstediğiniz zaman 149 TL premium plana geçin.
           </p>
         </section>
 
@@ -158,4 +158,5 @@ export default function RegisterPage() {
     </main>
   );
 }
+
 

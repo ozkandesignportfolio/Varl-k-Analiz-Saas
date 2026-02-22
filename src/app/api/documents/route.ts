@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 const STORAGE_BUCKET = "documents-private";
 const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const ALLOWED_DOCUMENT_TYPES = ["garanti", "fatura", "servis_formu", "diger"] as const;
+const ALLOWED_DOCUMENT_TYPES = ["garanti", "fatura", "servis_formu", "diğer"] as const;
 
 const ALLOWED_MIME_TYPES = [
   "application/pdf",
@@ -175,7 +175,7 @@ export async function POST(request: Request) {
 
     const formData = await request.formData().catch(() => null);
     if (!formData) {
-      return NextResponse.json({ error: "Gecersiz form verisi." }, { status: 400 });
+      return NextResponse.json({ error: "Geçersiz form verisi." }, { status: 400 });
     }
 
     const rawAssetId = String(formData.get("assetId") ?? "").trim();
@@ -184,17 +184,17 @@ export async function POST(request: Request) {
 
     const assetId = normalizeUuid(rawAssetId);
     if (!assetId) {
-      return NextResponse.json({ error: "Varlik kimligi gecersiz." }, { status: 400 });
+      return NextResponse.json({ error: "Varlık kimliği geçersiz." }, { status: 400 });
     }
 
     if (!ALLOWED_DOCUMENT_TYPES.includes(rawDocumentType as (typeof ALLOWED_DOCUMENT_TYPES)[number])) {
-      return NextResponse.json({ error: "Belge tipi gecersiz." }, { status: 400 });
+      return NextResponse.json({ error: "Belge tipi geçersiz." }, { status: 400 });
     }
 
     const documentType = rawDocumentType as (typeof ALLOWED_DOCUMENT_TYPES)[number];
 
     if (!file) {
-      return NextResponse.json({ error: "Yuklenecek dosya bulunamadi." }, { status: 400 });
+      return NextResponse.json({ error: "Yüklenecek dosya bulunamadı." }, { status: 400 });
     }
 
     const fileValidation = validateUploadFile(file);
@@ -212,7 +212,7 @@ export async function POST(request: Request) {
     }
 
     if (!assetExists) {
-      return NextResponse.json({ error: "Secilen varliga erisim izniniz yok." }, { status: 403 });
+      return NextResponse.json({ error: "Seçilen varlığa erişim izniniz yok." }, { status: 403 });
     }
 
     const userPlan = getUserPlanConfig(user);
@@ -232,7 +232,7 @@ export async function POST(request: Request) {
 
     if (!documentLimitCheck.allowed) {
       return NextResponse.json(
-        { error: documentLimitCheck.errorMessage ?? "Plan limitine ulastiniz." },
+        { error: documentLimitCheck.errorMessage ?? "Plan limitine ulaştınız." },
         { status: 403 },
       );
     }
@@ -250,7 +250,7 @@ export async function POST(request: Request) {
       .upload(storagePath, file, { contentType: fileValidation.mimeType, upsert: false });
 
     if (uploadError) {
-      return NextResponse.json({ error: "Dosya yuklenemedi." }, { status: 500 });
+      return NextResponse.json({ error: "Dosya yüklenemedi." }, { status: 500 });
     }
 
     const { data: insertedDocument, error: insertError } = await supabase
@@ -269,7 +269,7 @@ export async function POST(request: Request) {
 
     if (insertError || !insertedDocument?.id) {
       await supabase.storage.from(STORAGE_BUCKET).remove([storagePath]);
-      return NextResponse.json({ error: insertError?.message ?? "Belge kaydi olusturulamadi." }, { status: 500 });
+      return NextResponse.json({ error: insertError?.message ?? "Belge kaydı oluşturulamadı." }, { status: 500 });
     }
 
     logAuditEvent({
@@ -296,7 +296,8 @@ export async function POST(request: Request) {
       error,
       message: "Document upload request failed unexpectedly",
     });
-    return NextResponse.json({ error: "Belge yukleme istegi islenemedi." }, { status: 500 });
+    return NextResponse.json({ error: "Belge yükleme isteği işlenemedi." }, { status: 500 });
   }
 }
+
 

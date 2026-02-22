@@ -20,6 +20,11 @@ Ardindan abonelik talep tablosu migrationini calistirin:
 `supabase/migrations/20260215193000_subscription_requests.sql`
 Ardindan audit log tablosu ve trigger migrationini calistirin:
 `supabase/migrations/20260216124500_audit_logs.sql`
+Yeni premium medya ozelligi icin su migrationi da calistirin:
+`supabase/migrations/20260222153000_asset_media_premium_uploads.sql`
+
+Not: `public.asset_media` tablosu olusmadiginda Supabase sorgulari
+"Could not find the table 'public.asset_media' in the schema cache" hatasi dondurebilir.
 
 ## 4) Private bucket
 - Bucket adı: `documents-private`

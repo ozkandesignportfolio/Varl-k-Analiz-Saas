@@ -104,7 +104,7 @@ export function ExpensesPageContainer() {
           id: expense.id,
           asset_id: expense.asset_id ?? null,
           title: category || "Gider",
-          category: category || "Diger",
+          category: category || "Diğer",
           amount: Number(expense.amount ?? 0),
           currency: "TRY",
           expense_date: expenseDate,
@@ -259,7 +259,7 @@ export function ExpensesPageContainer() {
 
         <section className="grid gap-3 sm:grid-cols-3">
           <SummaryCard label="Toplam Kayıt" value={String(expenses.length)} />
-          <SummaryCard label="Varlık Baglantili" value={String(linkedAssetCount)} />
+          <SummaryCard label="Varlık Bağlantılı" value={String(linkedAssetCount)} />
           <SummaryCard label="Kategori" value={String(categoryCount)} />
         </section>
 
@@ -280,7 +280,7 @@ export function ExpensesPageContainer() {
 
         {tableWarning ? (
           <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
-            Gider tablosu su an erisilebilir değil. Bos liste gosteriliyor. ({tableWarning.code})
+            Gider tablosu şu an erisilebilir değil. Bos liste gösteriliyor. ({tableWarning.code})
           </p>
         ) : null}
 
@@ -298,5 +298,6 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
+
 
 

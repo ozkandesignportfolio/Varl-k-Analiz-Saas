@@ -24,6 +24,12 @@
 - Otomasyon trigger/action motoru icin
   `supabase/migrations/20260216130000_automation_events.sql`
   dosyasini da calistirin.
+- Premium medya tablolari/bucket policy'leri icin
+  `supabase/migrations/20260222153000_asset_media_premium_uploads.sql`
+  dosyasini da calistirin.
+
+Not: Bu migration calismadiysa API tarafinda
+"Could not find the table 'public.asset_media' in the schema cache" hatasi alinabilir.
 
 ## 2.1) Dogrulama
 - Kurulum sonrasi su dosyayi calistirin:

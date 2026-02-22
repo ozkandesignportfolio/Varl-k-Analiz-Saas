@@ -23,7 +23,7 @@ export default function DistanceSalesPage() {
 
       <LegalSection title="2. Instant Performance Clause">
         <p>
-          Service performance begins immediately once account setup and subscription activation are completed. By
+          Service performance begins immediately önce account setup and subscription activation are completed. By
           confirming the order, the customer acknowledges that digital service delivery starts without delay and that
           access to premium capabilities may be enabled before the end of any general cooling-off period.
         </p>
@@ -58,3 +58,4 @@ export default function DistanceSalesPage() {
     </LegalLayout>
   );
 }
+

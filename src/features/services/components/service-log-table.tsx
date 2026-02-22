@@ -49,7 +49,7 @@ export function ServiceLogTable({
                 <th className="px-3 py-2">Tarih</th>
                 <th className="px-3 py-2">Varlık</th>
                 <th className="px-3 py-2">Kural</th>
-                <th className="px-3 py-2">Tur</th>
+                <th className="px-3 py-2">Tür</th>
                 <th className="px-3 py-2">Maliyet</th>
                 <th className="px-3 py-2">Sağlayıcı</th>
                 {hasActions ? <th className="px-3 py-2">İşlem</th> : null}
@@ -98,4 +98,5 @@ export function ServiceLogTable({
     </section>
   );
 }
+
 

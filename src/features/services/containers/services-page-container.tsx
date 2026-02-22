@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { AuditHistoryPanel } from "@/components/audit-history-panel";
@@ -39,6 +39,7 @@ const inputClassName =
 export function ServicesPageContainer() {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { refreshPlanState } = usePlanContext();
 
   const [userId, setUserId] = useState("");
@@ -122,6 +123,22 @@ export function ServicesPageContainer() {
     void load();
   }, [fetchAssets, fetchLogs, fetchRules, router, supabase]);
 
+  useEffect(() => {
+    if (assets.length === 0 || selectedAssetId) {
+      return;
+    }
+
+    const queryAssetId = searchParams.get("assetId");
+    if (!queryAssetId) {
+      return;
+    }
+
+    const hasAsset = assets.some((asset) => asset.id === queryAssetId);
+    if (hasAsset) {
+      setSelectedAssetId(queryAssetId);
+    }
+  }, [assets, searchParams, selectedAssetId]);
+
   const activeRulesForSelectedAsset = useMemo(
     () => rules.filter((rule) => rule.is_active && rule.asset_id === selectedAssetId),
     [rules, selectedAssetId],
@@ -198,7 +215,7 @@ export function ServicesPageContainer() {
           ruleId
             ? "Servis kaydı eklendi ve bağlı kuralın tarihleri otomatik sıfırlandı."
             : "Servis kaydı eklendi."
-        } Belge yuklemek icin /documents ekranini kullanin.`,
+        } Belge yüklemek için /documents ekranını kullanın.`,
       );
 
       await Promise.all([fetchLogs(userId), fetchRules(userId)]);
@@ -266,7 +283,7 @@ export function ServicesPageContainer() {
     <AppShell
       badge="Servis Takibi"
       title="Servis Kayıtları"
-      subtitle="Servis kayıtlarini varlık bazinda yönetin, kurallarla ilişkilendirin ve tarih resetini otomatik calistirin."
+      subtitle="Servis kayıtlarını varlık bazında yönetin, kurallarla ilişkilendirin ve tarih resetini otomatik çalıştırın."
     >
       <section className="grid gap-3 xl:grid-cols-[1.05fr_0.95fr]">
         <div id="service-log-form">
@@ -292,15 +309,15 @@ export function ServicesPageContainer() {
         <article className="premium-card p-5">
           <h2 className="text-xl font-semibold text-white">Servis Özeti</h2>
           <div className="mt-4 grid grid-cols-3 gap-2">
-            <SummaryItem label={hasActiveFilters ? "Gorunen Kayit" : "Toplam Kayit"} value={String(filteredLogs.length)} />
+            <SummaryItem label={hasActiveFilters ? "Görünen Kayıt" : "Toplam Kayıt"} value={String(filteredLogs.length)} />
             <SummaryItem
-              label={hasActiveFilters ? "Gorunen Maliyet" : "Toplam Maliyet"}
+              label={hasActiveFilters ? "Görünen Maliyet" : "Toplam Maliyet"}
               value={`${totalCost.toFixed(2)} TL`}
             />
-            <SummaryItem label="Varlik" value={String(new Set(filteredLogs.map((log) => log.asset_id)).size)} />
+            <SummaryItem label="Varlık" value={String(new Set(filteredLogs.map((log) => log.asset_id)).size)} />
           </div>
           {hasActiveFilters ? (
-            <p className="mt-2 text-xs text-slate-300">Toplam kayit: {logs.length}</p>
+            <p className="mt-2 text-xs text-slate-300">Toplam kayıt: {logs.length}</p>
           ) : null}
           <div className="mt-5">
             <h3 className="text-sm font-semibold text-slate-200">Tür Dağılımı</h3>
@@ -335,7 +352,7 @@ export function ServicesPageContainer() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-white">Listeleme Filtreleri</h2>
-            <p className="mt-1 text-sm text-slate-300">Varlik ve tarih araligi ile servis kayitlarini filtreleyin.</p>
+            <p className="mt-1 text-sm text-slate-300">Varlık ve tarih aralığı ile servis kayıtlarını filtreleyin.</p>
           </div>
           <button
             type="button"
@@ -351,13 +368,13 @@ export function ServicesPageContainer() {
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           <label className="text-sm text-slate-200">
-            <span className="mb-1.5 block text-sm text-slate-300">Varlik</span>
+            <span className="mb-1.5 block text-sm text-slate-300">Varlık</span>
             <select
               value={filterAssetId}
               onChange={(event) => setFilterAssetId(event.target.value)}
               className={inputClassName}
             >
-              <option value="">Tum Varliklar</option>
+              <option value="">Tüm Varlıklar</option>
               {assets.map((asset) => (
                 <option key={asset.id} value={asset.id}>
                   {asset.name}
@@ -366,7 +383,7 @@ export function ServicesPageContainer() {
             </select>
           </label>
           <label className="text-sm text-slate-200">
-            <span className="mb-1.5 block text-sm text-slate-300">Baslangic Tarihi</span>
+            <span className="mb-1.5 block text-sm text-slate-300">Başlang?? Tarihi</span>
             <input
               type="date"
               value={filterStartDate}
@@ -375,7 +392,7 @@ export function ServicesPageContainer() {
             />
           </label>
           <label className="text-sm text-slate-200">
-            <span className="mb-1.5 block text-sm text-slate-300">Bitis Tarihi</span>
+            <span className="mb-1.5 block text-sm text-slate-300">Biti? Tarihi</span>
             <input
               type="date"
               value={filterEndDate}
@@ -385,10 +402,10 @@ export function ServicesPageContainer() {
           </label>
         </div>
         {isDateRangeInvalid ? (
-          <p className="mt-3 text-sm text-amber-300">Baslangic tarihi, bitis tarihinden sonra olamaz.</p>
+          <p className="mt-3 text-sm text-amber-300">Başlang?? tarihi, bitiş tarihinden sonra olamaz.</p>
         ) : (
           <p className="mt-3 text-sm text-slate-300">
-            {filteredLogs.length} kayit listeleniyor{hasActiveFilters ? ` / ${logs.length} toplam kayit` : "."}
+            {filteredLogs.length} kayıt listeleniyor{hasActiveFilters ? ` / ${logs.length} toplam kayıt` : "."}
           </p>
         )}
       </section>
@@ -408,7 +425,7 @@ export function ServicesPageContainer() {
           !isLoading ? (
             hasActiveFilters ? (
               <p className="mt-4 text-sm text-slate-300">
-                Secili filtrelere uygun servis kaydi bulunamadi. Filtreyi genisletmeyi deneyin.
+                Seçili filtrelere uygun servis kaydı bulunamadı. Filtreyi genişletmeyi deneyin.
               </p>
             ) : (
               assets.length === 0 ? (
@@ -416,7 +433,7 @@ export function ServicesPageContainer() {
                   title="Servis kaydı için önce varlık gerekli"
                   description="Yeni kullanıcılar demo veri ile gelir. Eğer liste boşsa önce varlık oluşturup sonra servis kaydı ekleyebilirsin."
                   primaryAction={{ label: "Varlıklara git", href: "/assets" }}
-                  secondaryAction={{ label: "Dashboard ac", href: "/dashboard" }}
+                  secondaryAction={{ label: "Dashboard aç", href: "/dashboard" }}
                 />
               ) : (
                 <GuidedEmptyState
@@ -432,7 +449,7 @@ export function ServicesPageContainer() {
 
       <AuditHistoryPanel
         title="Servis ve Kural Audit Geçmişi"
-        subtitle="Servis kayıtlari ve tetiklenen bakım kural degisikliklerini alan bazinda inceleyin."
+        subtitle="Servis kayıtları ve tetiklenen bakım kural değişikliklerini alan bazında inceleyin."
         entityTypes={["service_logs", "maintenance_rules"]}
         limit={15}
         refreshKey={auditRefreshKey}
@@ -449,4 +466,5 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
+
 

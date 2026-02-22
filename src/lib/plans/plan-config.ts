@@ -147,15 +147,15 @@ const planLimitFieldByResource: Record<PlanLimitResource, keyof PlanLimits> = {
 const planLimitMessageByResource = (resource: PlanLimitResource, limit: number) => {
   switch (resource) {
     case "asset":
-      return `Deneme planinda en fazla ${limit} varlik ekleyebilirsiniz.`;
+      return `Deneme planında en fazla ${limit} varlık ekleyebilirsiniz.`;
     case "document":
-      return `Deneme planinda en fazla ${limit} belge yukleyebilirsiniz.`;
+      return `Deneme planında en fazla ${limit} belge yükleyebilirsiniz.`;
     case "subscription":
-      return `Deneme planinda en fazla ${limit} abonelik ekleyebilirsiniz.`;
+      return `Deneme planında en fazla ${limit} abonelik ekleyebilirsiniz.`;
     case "invoiceUpload":
-      return `Deneme planinda en fazla ${limit} fatura yukleme yapabilirsiniz.`;
+      return `Deneme planında en fazla ${limit} fatura yükleme yapabilirsiniz.`;
     default:
-      return "Plan limitine ulastiniz.";
+      return "Plan limitine ulaştınız.";
   }
 };
 
@@ -206,3 +206,4 @@ export const canCreateSubscription = (params: Omit<PlanLimitGuardParams, "resour
 
 export const canUploadInvoice = (params: Omit<PlanLimitGuardParams, "resource">) =>
   applyPlanLimitGuard({ ...params, resource: "invoiceUpload" });
+
