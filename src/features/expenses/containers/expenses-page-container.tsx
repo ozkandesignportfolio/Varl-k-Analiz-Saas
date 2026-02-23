@@ -168,7 +168,7 @@ export function ExpensesPageContainer() {
     const notes = String(formData.get("notes") ?? "").trim();
 
     if (!title || !category || !expenseDate) {
-      setFeedback("Baslik, kategori ve tarih zorunludur.");
+      setFeedback("Başlık, kategori ve tarih zorunludur.");
       return;
     }
 
@@ -252,7 +252,7 @@ export function ExpensesPageContainer() {
     <AppShell
       badge="Gider Takibi"
       title="Giderler"
-      subtitle="Giderlerinizi kaydedin ve varlık bazli takip edin."
+      subtitle="Giderlerinizi kaydedin ve varlık bazlı takip edin."
     >
       <PanelSurface>
         <PageHeader title="Giderler" subtitle="Gider girişleri, özet metrikler ve gider listesi." />
@@ -280,7 +280,7 @@ export function ExpensesPageContainer() {
 
         {tableWarning ? (
           <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
-            Gider tablosu şu an erisilebilir değil. Bos liste gösteriliyor. ({tableWarning.code})
+            Gider tablosu şu an erişilebilir değil. Boş liste gösteriliyor. ({tableWarning.code})
           </p>
         ) : null}
 
@@ -298,6 +298,5 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
-
 
 

@@ -16,6 +16,7 @@ export type NotificationPrefsState = {
 type NotificationPrefsProps = {
   value: NotificationPrefsState;
   onChange: (nextValue: NotificationPrefsState) => void;
+  isSaving?: boolean;
 };
 
 type ToggleRowProps = {
@@ -55,7 +56,7 @@ function ToggleRow({ label, description, checked, disabled, onToggle }: ToggleRo
 
 const FREQUENCY_OPTIONS: NotificationFrequency[] = ["Anında", "Günlük özet", "Haftalık özet"];
 
-export function NotificationPrefs({ value, onChange }: NotificationPrefsProps) {
+export function NotificationPrefs({ value, onChange, isSaving = false }: NotificationPrefsProps) {
   return (
     <section className="space-y-4">
       <article className="premium-card border-white/10 bg-white/[0.02] p-5">
@@ -63,6 +64,7 @@ export function NotificationPrefs({ value, onChange }: NotificationPrefsProps) {
         <p className="mt-1 text-sm text-slate-300">
           Hangi bildirimleri almak istediğinizi ve gönderim sıklığını buradan belirleyin.
         </p>
+        {isSaving ? <p className="mt-1 text-xs text-sky-200">Tercihler kaydediliyor...</p> : null}
 
         <div className="mt-4 grid gap-2">
           <ToggleRow
@@ -108,10 +110,9 @@ export function NotificationPrefs({ value, onChange }: NotificationPrefsProps) {
             onToggle={() => onChange({ ...value, inApp: !value.inApp })}
           />
           <ToggleRow
-            label="E-posta (Yakında)"
+            label="E-posta"
             description="Özet ve kritik uyarıları e-posta üzerinden gönder."
             checked={value.email}
-            disabled
             onToggle={() => onChange({ ...value, email: !value.email })}
           />
         </div>
@@ -142,4 +143,3 @@ export function NotificationPrefs({ value, onChange }: NotificationPrefsProps) {
     </section>
   );
 }
-

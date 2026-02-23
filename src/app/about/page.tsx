@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Hakkımızda | AssetCare",
   description:
-    "AssetCare'in varlık takibi, garanti/bakım/servis süreçleri ve belge yönetimi yaklaşımını tanıtan kurumsal sayfa.",
+    "AssetCare’in varlık takibi, garanti/bakım/servis süreçleri ve belge yönetimi yaklaşımını tanıtan kurumsal sayfa.",
 };
 
 export default function AboutPage() {

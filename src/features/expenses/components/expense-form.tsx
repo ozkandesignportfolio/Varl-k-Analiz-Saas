@@ -37,7 +37,7 @@ export function ExpenseForm({
             className={inputClassName}
           >
             <option value="" className="bg-slate-900">
-              Varlık secmeden devam et
+              Varlık seçmeden devam et
             </option>
             {assets.map((asset) => (
               <option key={asset.id} value={asset.id} className="bg-slate-900">
@@ -48,13 +48,13 @@ export function ExpenseForm({
         </label>
 
         <label className="block">
-          <span className="mb-1.5 block text-sm text-slate-300">Baslik</span>
-          <input name="title" required className={inputClassName} placeholder="Ornek: Filtre alimi" />
+          <span className="mb-1.5 block text-sm text-slate-300">Başlık</span>
+          <input name="title" required className={inputClassName} placeholder="Örnek: Filtre alımı" />
         </label>
 
         <label className="block">
           <span className="mb-1.5 block text-sm text-slate-300">Kategori</span>
-          <input name="category" required className={inputClassName} placeholder="Ornek: Yedek Parca" />
+          <input name="category" required className={inputClassName} placeholder="Örnek: Yedek Parça" />
         </label>
 
         <label className="block">

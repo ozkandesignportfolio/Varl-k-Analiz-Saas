@@ -75,7 +75,7 @@ export function KPICards({ metrics, trends, selectedRange }: KPICardsProps) {
     },
     {
       id: "rules",
-      title: "Aktif Bakım Kurali",
+      title: "Aktif Bakım Kuralı",
       value: new Intl.NumberFormat("tr-TR").format(metrics.activeRules),
       trend: trends.activeRules,
       icon: Wrench,
@@ -184,4 +184,3 @@ function Sparkline({ points, pathClass }: { points: number[]; pathClass: string 
     </svg>
   );
 }
-

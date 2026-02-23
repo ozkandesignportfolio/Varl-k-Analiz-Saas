@@ -269,7 +269,7 @@ export function AssetForm(props: AssetFormProps) {
                       href="/pricing"
                       className="mt-3 inline-flex rounded-full bg-gradient-to-r from-amber-400 to-orange-400 px-4 py-2 text-xs font-semibold text-slate-950"
                     >
-                      Premium&apos;a Geç
+                      Premium’a Geç
                     </Link>
                   </div>
                 ) : null}

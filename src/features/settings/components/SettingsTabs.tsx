@@ -19,7 +19,7 @@ type SettingsTabsProps = {
 const TAB_ITEMS: { value: SettingsTab; label: string }[] = [
   { value: "profile", label: "Profil" },
   { value: "notification-preferences", label: "Bildirim Tercihleri" },
-  { value: "plan-usage", label: "Plan & Kullanım" },
+  { value: "plan-usage", label: "Plan ve Kullanım" },
   { value: "security", label: "Güvenlik" },
   { value: "organization", label: "Organizasyon" },
 ];
@@ -57,4 +57,3 @@ export function SettingsTabs({ value, onValueChange, children }: SettingsTabsPro
     </Tabs>
   );
 }
-

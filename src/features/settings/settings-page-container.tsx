@@ -2,9 +2,10 @@
 
 import { Building2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { TabsContent } from "@/components/ui/tabs";
 import { usePlanContext } from "@/contexts/PlanContext";
 import {
@@ -65,6 +66,21 @@ const toFullName = (metadata: Record<string, unknown> | undefined, fallbackEmail
   return "";
 };
 
+const toMetadataNotificationPrefs = (prefs: NotificationPrefsState) => ({
+  maintenance: prefs.maintenance,
+  warranty: prefs.warranty,
+  document: prefs.document,
+  payment: prefs.payment,
+  system: prefs.system,
+  inApp: prefs.inApp,
+  email: prefs.email,
+  frequency: prefs.frequency,
+  maintenance_email: prefs.maintenance,
+  warranty_email: prefs.warranty,
+  document_email: prefs.document,
+  subscription_email: prefs.payment,
+});
+
 const getMetadataPrefs = (metadata: Record<string, unknown> | undefined): NotificationPrefsState => {
   const source =
     (metadata?.notification_preferences as Record<string, unknown> | undefined) ??
@@ -80,7 +96,7 @@ const getMetadataPrefs = (metadata: Record<string, unknown> | undefined): Notifi
     document: toBoolean(source.document ?? source.document_email, defaultNotificationPrefs.document),
     payment: toBoolean(source.payment ?? source.subscription_email, defaultNotificationPrefs.payment),
     system: toBoolean(source.system, defaultNotificationPrefs.system),
-    inApp: true,
+    inApp: toBoolean(source.inApp ?? source.in_app, defaultNotificationPrefs.inApp),
     email: toBoolean(source.email, defaultNotificationPrefs.email),
     frequency: toNotificationFrequency(source.frequency, defaultNotificationPrefs.frequency),
   };
@@ -100,7 +116,10 @@ export function SettingsPageContainer() {
     subscriptionLimit,
     invoiceUploadCount,
     invoiceUploadLimit,
+    refreshPlanState,
   } = usePlanContext();
+  const checkoutState = searchParams.get("checkout");
+  const checkoutSessionId = searchParams.get("session_id");
   const resolvedInitialTab = useMemo(
     () => resolveSettingsTab(searchParams.get("tab")),
     [searchParams],
@@ -112,7 +131,11 @@ export function SettingsPageContainer() {
     useState<NotificationPrefsState>(defaultNotificationPrefs);
   const [feedback, setFeedback] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isSavingNotificationPrefs, setIsSavingNotificationPrefs] = useState(false);
+  const [isStartingCheckout, setIsStartingCheckout] = useState(false);
+  const [isConfirmingCheckout, setIsConfirmingCheckout] = useState(false);
   const [organizationName, setOrganizationName] = useState("Kişisel Çalışma Alanı");
+  const notificationSaveRequestIdRef = useRef(0);
 
   useEffect(() => {
     setActiveTab(resolvedInitialTab);
@@ -150,6 +173,63 @@ export function SettingsPageContainer() {
     void load();
   }, [router, supabase.auth]);
 
+  const persistNotificationPrefs = useCallback(
+    async (nextPrefs: NotificationPrefsState) => {
+      const requestId = notificationSaveRequestIdRef.current + 1;
+      notificationSaveRequestIdRef.current = requestId;
+      setIsSavingNotificationPrefs(true);
+      setFeedback("Bildirim tercihleri kaydediliyor...");
+
+      const {
+        data: { user },
+        error: getUserError,
+      } = await supabase.auth.getUser();
+
+      if (requestId !== notificationSaveRequestIdRef.current) {
+        return;
+      }
+
+      if (getUserError || !user) {
+        setFeedback("Oturum doğrulanamadı. Lütfen tekrar giriş yapın.");
+        setIsSavingNotificationPrefs(false);
+        router.replace("/login?next=/settings");
+        return;
+      }
+
+      const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
+      const nextMetadataPrefs = toMetadataNotificationPrefs(nextPrefs);
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: {
+          ...metadata,
+          notification_preferences: nextMetadataPrefs,
+          notificationPreferences: nextMetadataPrefs,
+        },
+      });
+
+      if (requestId !== notificationSaveRequestIdRef.current) {
+        return;
+      }
+
+      if (updateError) {
+        setFeedback("Bildirim tercihleri kaydedilemedi. Lütfen tekrar deneyin.");
+        setIsSavingNotificationPrefs(false);
+        return;
+      }
+
+      setFeedback("Bildirim tercihleri güncellendi.");
+      setIsSavingNotificationPrefs(false);
+    },
+    [router, supabase.auth],
+  );
+
+  const handleNotificationPrefsChange = useCallback(
+    (nextPrefs: NotificationPrefsState) => {
+      setNotificationPrefs(nextPrefs);
+      void persistNotificationPrefs(nextPrefs);
+    },
+    [persistNotificationPrefs],
+  );
+
   const usageItems = useMemo(
     () => [
       { id: "assets", label: "Varlıklar", used: assetCount, limit: assetLimit },
@@ -169,6 +249,67 @@ export function SettingsPageContainer() {
     ],
   );
 
+  const startCheckout = useCallback(async () => {
+    setFeedback("");
+    setIsStartingCheckout(true);
+
+    try {
+      const response = await fetch("/api/stripe/checkout", {
+        method: "POST",
+      });
+      const payload = (await response.json().catch(() => null)) as { url?: string; error?: string } | null;
+
+      if (!response.ok || !payload?.url) {
+        setFeedback(payload?.error ?? "Stripe checkout başlatılamadı.");
+        setIsStartingCheckout(false);
+        return;
+      }
+
+      window.location.assign(payload.url);
+    } catch {
+      setFeedback("Stripe checkout başlatılamadı.");
+      setIsStartingCheckout(false);
+    }
+  }, []);
+
+  const confirmCheckout = useCallback(async () => {
+    if (!checkoutSessionId) {
+      return;
+    }
+
+    setFeedback("");
+    setIsConfirmingCheckout(true);
+
+    try {
+      const response = await fetch("/api/stripe/confirm", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          session_id: checkoutSessionId,
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+
+      if (!response.ok || !payload?.ok) {
+        setFeedback(payload?.error ?? "Premium planı aktifleştirilemedi.");
+        setIsConfirmingCheckout(false);
+        return;
+      }
+
+      await refreshPlanState();
+      setFeedback("Premium planınız aktifleştirildi.");
+      router.replace("/settings?checkout=confirmed");
+    } catch {
+      setFeedback("Premium planı aktifleştirilemedi.");
+      setIsConfirmingCheckout(false);
+      return;
+    }
+
+    setIsConfirmingCheckout(false);
+  }, [checkoutSessionId, refreshPlanState, router]);
+
   return (
     <AppShell title="Ayarlar" badge="Hesap ve Tercihler">
       <section className="premium-card border-white/10 bg-white/[0.02] p-5">
@@ -176,6 +317,29 @@ export function SettingsPageContainer() {
         <p className="mt-2 max-w-3xl text-sm text-slate-300">
           Profil bilgilerinizi, bildirim tercihlerinizi, plan kullanımınızı ve güvenlik ayarlarınızı tek ekrandan yönetin.
         </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {plan !== "premium" ? (
+            <Button
+              type="button"
+              onClick={startCheckout}
+              disabled={isStartingCheckout}
+              className="bg-white/10 text-white hover:bg-white/15"
+            >
+              {isStartingCheckout ? "Yönlendiriliyor..." : "Premium’a Geç"}
+            </Button>
+          ) : null}
+
+          {checkoutState === "success" && checkoutSessionId ? (
+            <Button
+              type="button"
+              onClick={confirmCheckout}
+              disabled={isConfirmingCheckout}
+              className="bg-emerald-500/20 text-emerald-100 hover:bg-emerald-500/30"
+            >
+              {isConfirmingCheckout ? "Aktifleştiriliyor..." : "Premium’u Aktif Et"}
+            </Button>
+          ) : null}
+        </div>
       </section>
 
       {feedback ? (
@@ -193,7 +357,11 @@ export function SettingsPageContainer() {
           </TabsContent>
 
           <TabsContent value="notification-preferences" className="outline-none">
-            <NotificationPrefs value={notificationPrefs} onChange={setNotificationPrefs} />
+            <NotificationPrefs
+              value={notificationPrefs}
+              onChange={handleNotificationPrefsChange}
+              isSaving={isSavingNotificationPrefs}
+            />
           </TabsContent>
 
           <TabsContent value="plan-usage" className="outline-none">

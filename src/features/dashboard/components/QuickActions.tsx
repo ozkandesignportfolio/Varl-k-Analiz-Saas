@@ -17,13 +17,13 @@ const ACTIONS: ActionItem[] = [
   },
   {
     href: "/maintenance",
-    title: "Bakım Kurali Oluştur",
+    title: "Bakım Kuralı Oluştur",
     description: "Periyodik bakım düzenini dakikalar içinde tanımla.",
     icon: Wrench,
   },
   {
     href: "/services",
-    title: "Servis Kaydi Ekle",
+    title: "Servis Kaydı Ekle",
     description: "Yapılan işlemleri maliyetleriyle birlikte kaydet.",
     icon: ReceiptText,
   },
@@ -38,7 +38,7 @@ const ACTIONS: ActionItem[] = [
 export function QuickActions() {
   return (
     <section className="space-y-3">
-      <h2 className="text-lg font-semibold text-[#F8FAFC]">Hizli Aksiyonlar</h2>
+      <h2 className="text-lg font-semibold text-[#F8FAFC]">Hızlı Aksiyonlar</h2>
       <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
         {ACTIONS.map((action) => {
           const Icon = action.icon;

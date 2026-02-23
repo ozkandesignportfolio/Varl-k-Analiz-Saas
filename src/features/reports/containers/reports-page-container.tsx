@@ -16,7 +16,6 @@ import { ReportsFilterPanel } from "@/features/reports/components/reports-filter
 import { ReportsSummaryCards } from "@/features/reports/components/reports-summary-cards";
 import { ensurePdfUnicodeFont } from "@/features/reports/lib/pdf-font";
 import { REPORTS_TURKISH_SMOKE_TEXT, assertNoMojibakeText } from "@/features/reports/lib/text-integrity";
-import { getPlanConfig, getUserPlanConfig, type PlanConfig } from "@/lib/plans/plan-config";
 import { countByUser as countAssetsByUser } from "@/lib/repos/assets-repo";
 import { listForReports as listDocumentsForReports } from "@/lib/repos/documents-repo";
 import { listForReports as listServiceLogsForReports } from "@/lib/repos/service-logs-repo";
@@ -75,8 +74,6 @@ const truncate = (value: string | null | undefined, length: number) => {
 const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
 
-const DEFAULT_PLAN_CONFIG: PlanConfig = getPlanConfig("starter");
-
 const reportsSubtitle = `${REPORTS_TURKISH_SMOKE_TEXT} özet, tablo ve toplamlar ile indirilebilir PDF raporu üretin.`;
 assertNoMojibakeText(REPORTS_TURKISH_SMOKE_TEXT, "Raporlar duman testi");
 assertNoMojibakeText(reportsSubtitle, "Raporlar alt başlığı");
@@ -97,7 +94,6 @@ export function ReportsPageContainer() {
   const [isExporting, setIsExporting] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [hasValidSession, setHasValidSession] = useState(true);
-  const [planConfig, setPlanConfig] = useState<PlanConfig>(DEFAULT_PLAN_CONFIG);
 
   useEffect(() => {
     const load = async () => {
@@ -117,7 +113,6 @@ export function ReportsPageContainer() {
 
       setHasValidSession(true);
       setUserEmail(user.email ?? "bilinmiyor");
-      setPlanConfig(getUserPlanConfig(user));
 
       const [assetCountRes, servicesRes, docsRes] = await Promise.all([
         countAssetsByUser(supabase, { userId: user.id }),
@@ -252,11 +247,6 @@ export function ReportsPageContainer() {
   }
 
   const onExportPdf = async () => {
-    if (!planConfig.features.canExportPdfReports) {
-      setFeedback(`${planConfig.label} planında PDF rapor dışa aktarma özelliği kapalı.`);
-      return;
-    }
-
     if (!hasValidRange) {
       setFeedback("Başlangıç tarihi bitiş tarihinden büyük olamaz.");
       return;
@@ -448,18 +438,12 @@ export function ReportsPageContainer() {
           }}
           isExporting={isExporting}
           hasValidRange={hasValidRange}
-          canExportPdfReports={planConfig.features.canExportPdfReports}
+          canExportPdfReports
         />
       }
     >
       <PanelSurface>
         <PageHeader title="Raporlar" subtitle="Filtreleme, özet metrikler ve dışa aktarma." />
-
-        {!planConfig.features.canExportPdfReports ? (
-          <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
-            PDF rapor dışa aktarma özelliği {planConfig.label} planında kapalı. Pro plan ile aktif olur.
-          </p>
-        ) : null}
 
         {feedback ? (
           <p className="rounded-xl border border-sky-300/25 bg-sky-300/10 px-4 py-3 text-sm text-sky-100">{feedback}</p>
@@ -502,5 +486,4 @@ export function ReportsPageContainer() {
     </AppShell>
   );
 }
-
 

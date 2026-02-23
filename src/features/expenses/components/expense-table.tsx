@@ -33,7 +33,7 @@ export function ExpenseTable({ isLoading, expenses, assetNameById }: ExpenseTabl
             <thead>
               <tr className="border-b border-white/10 bg-white/5 text-slate-300">
                 <th className="px-3 py-2">Tarih</th>
-                <th className="px-3 py-2">Baslik</th>
+                <th className="px-3 py-2">Başlık</th>
                 <th className="px-3 py-2">Kategori</th>
                 <th className="px-3 py-2">Varlık</th>
                 <th className="px-3 py-2">Tutar</th>
@@ -64,5 +64,4 @@ export function ExpenseTable({ isLoading, expenses, assetNameById }: ExpenseTabl
     </section>
   );
 }
-
 

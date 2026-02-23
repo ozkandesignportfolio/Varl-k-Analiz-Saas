@@ -1002,14 +1002,14 @@ export function AssetsPageContainer() {
             <div className="mt-4 rounded-xl border border-amber-300/35 bg-amber-300/10 p-3">
               <p className="text-sm font-semibold text-amber-100">Ek Medya (Premium) kilitli</p>
               <p className="mt-1 text-xs text-amber-100/90">
-                Trial planda yalnızca temel varlık alanları açıktır. Medya yükleme için Premium&apos;a geçebilirsiniz.
+                Trial planda yalnızca temel varlık alanları açıktır. Medya yükleme için Premium’a geçebilirsiniz.
               </p>
               <button
                 type="button"
                 onClick={() => router.push("/pricing")}
                 className="mt-3 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 px-4 py-2 text-xs font-semibold text-slate-950"
               >
-                Premium&apos;a geç
+                Premium’a geç
               </button>
             </div>
           ) : (
@@ -1067,4 +1067,3 @@ function SummaryItem({
     </article>
   );
 }
-

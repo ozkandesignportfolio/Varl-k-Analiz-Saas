@@ -20,15 +20,13 @@ import {
 } from "@/features/notifications/components/NotificationsFilters";
 import { NotificationsList } from "@/features/notifications/components/NotificationsList";
 import {
-  mockNotifications,
   type NotificationRecord,
   type NotificationStatus,
   type NotificationType,
 } from "@/features/notifications/data/mock-notifications";
-import { isNotificationMockFallbackEnabled } from "@/features/notifications/utils/mock-fallback";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
-type LooseError = {
+type SupabaseError = {
   message: string;
 };
 
@@ -40,29 +38,36 @@ type AutomationEventRow = {
   created_at: string;
 };
 
-type AutomationEventsTableQuery = {
-  select: (columns: string) => {
-    eq: (column: string, value: string) => {
-      order: (column: string, options: { ascending: boolean }) => {
-        limit: (value: number) => Promise<{ data: AutomationEventRow[] | null; error: LooseError | null }>;
-      };
-    };
-  };
+type AutomationEventsResponse = {
+  data: AutomationEventRow[] | null;
+  error: SupabaseError | null;
+};
+
+type MutationResponse = {
+  error: SupabaseError | null;
 };
 
 type LooseSupabaseAutomationClient = {
-  from: (table: string) => AutomationEventsTableQuery;
-};
-
-const isMissingAutomationEventsTableError = (message: string | undefined) => {
-  const normalized = (message ?? "").toLowerCase();
-  return (
-    normalized.includes("automation_events") &&
-    (normalized.includes("does not exist") ||
-      normalized.includes("schema cache") ||
-      normalized.includes("could not find the table") ||
-      normalized.includes("not found in schema cache"))
-  );
+  from: (table: string) => {
+    select: (columns: string) => {
+      eq: (column: string, value: string) => {
+        order: (column: string, options: { ascending: boolean }) => {
+          limit: (value: number) => Promise<AutomationEventsResponse>;
+        };
+      };
+    };
+    update: (values: Record<string, unknown>) => {
+      eq: (column: string, value: string) => {
+        eq: (column: string, value: string) => Promise<MutationResponse>;
+        in: (column: string, values: string[]) => Promise<MutationResponse>;
+      };
+    };
+    delete: () => {
+      eq: (column: string, value: string) => {
+        eq: (column: string, value: string) => Promise<MutationResponse>;
+      };
+    };
+  };
 };
 
 const toSafeString = (value: unknown, fallback = "") => {
@@ -180,6 +185,7 @@ export function NotificationsPageContainer() {
     [supabase],
   );
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [feedback, setFeedback] = useState("");
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
@@ -204,6 +210,8 @@ export function NotificationsPageContainer() {
         return;
       }
 
+      setCurrentUserId(user.id);
+
       const response = await automationClient
         .from("automation_events")
         .select("id,trigger_type,payload,status,created_at")
@@ -212,27 +220,15 @@ export function NotificationsPageContainer() {
         .limit(200);
 
       if (response.error) {
-        if (isMissingAutomationEventsTableError(response.error.message)) {
-          if (isNotificationMockFallbackEnabled()) {
-            setNotifications(mockNotifications);
-            setFeedback(
-              "Canl? bildirim tablosu bu ortamda bulunamad?. ?nizleme i?in ?rnek bildirim ak??? g?steriliyor.",
-            );
-          } else {
-            setNotifications([]);
-            setFeedback(
-              "Canl? bildirim tablosu bu ortamda bulunamad? ve mock fallback kapal?. NEXT_PUBLIC_ENABLE_NOTIFICATION_MOCK_FALLBACK=true ile a?abilirsiniz.",
-            );
-          }
-        } else {
-          setNotifications([]);
-          setFeedback(response.error.message);
-        }
+        setNotifications([]);
+        setFeedback(`Bildirimler veritabanından alınamadı. ${response.error.message}`);
         setIsLoading(false);
         return;
       }
 
-      setNotifications((response.data ?? []).map(toNotificationRecord));
+      const nextNotifications = (response.data ?? []).map(toNotificationRecord);
+      setNotifications(nextNotifications);
+      setFeedback(nextNotifications.length === 0 ? "Henüz bildiriminiz yok." : "");
       setIsLoading(false);
     };
 
@@ -276,17 +272,67 @@ export function NotificationsPageContainer() {
     [notifications],
   );
 
-  const onMarkRead = (id: string) => {
+  const onMarkRead = async (id: string) => {
+    const target = notifications.find((item) => item.id === id);
+    if (!target || target.status === "Okundu" || !currentUserId) {
+      return;
+    }
+
+    const response = await automationClient
+      .from("automation_events")
+      .update({ status: "completed" })
+      .eq("user_id", currentUserId)
+      .eq("id", id);
+
+    if (response.error) {
+      setFeedback(`Bildirim güncellenemedi. ${response.error.message}`);
+      return;
+    }
+
     setNotifications((prev) =>
       prev.map((item) => (item.id === id ? { ...item, status: "Okundu" } : item)),
     );
   };
 
-  const onDelete = (id: string) => {
+  const onDelete = async (id: string) => {
+    if (!currentUserId) {
+      return;
+    }
+
+    const response = await automationClient
+      .from("automation_events")
+      .delete()
+      .eq("user_id", currentUserId)
+      .eq("id", id);
+
+    if (response.error) {
+      setFeedback(`Bildirim silinemedi. ${response.error.message}`);
+      return;
+    }
+
     setNotifications((prev) => prev.filter((item) => item.id !== id));
   };
 
-  const onMarkAllAsRead = () => {
+  const onMarkAllAsRead = async () => {
+    const unreadAutomationIds = notifications
+      .filter((item) => item.status === "Okunmadı")
+      .map((item) => item.id);
+
+    if (unreadAutomationIds.length === 0 || !currentUserId) {
+      return;
+    }
+
+    const response = await automationClient
+      .from("automation_events")
+      .update({ status: "completed" })
+      .eq("user_id", currentUserId)
+      .in("id", unreadAutomationIds);
+
+    if (response.error) {
+      setFeedback(`Bildirimler güncellenemedi. ${response.error.message}`);
+      return;
+    }
+
     setNotifications((prev) =>
       prev.map((item) => ({
         ...item,

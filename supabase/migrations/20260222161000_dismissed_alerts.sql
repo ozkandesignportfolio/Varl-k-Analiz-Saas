@@ -1,4 +1,6 @@
-﻿create extension if not exists pgcrypto;
+SELECT 1;
+
+create extension if not exists pgcrypto;
 
 create table if not exists public.dismissed_alerts (
   id uuid primary key default gen_random_uuid(),

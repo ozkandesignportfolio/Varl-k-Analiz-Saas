@@ -120,7 +120,7 @@ export default function LoginPage() {
           <form onSubmit={onSubmit} className="mt-6 space-y-4">
             <label className="block">
               <span className="mb-1.5 block text-sm text-slate-300">E-posta</span>
-              <input name="email" type="email" required className={inputClassName} placeholder="ornek@mail.com" />
+              <input name="email" type="email" required className={inputClassName} placeholder="örnek@mail.com" />
             </label>
 
             <label className="block">
@@ -156,6 +156,5 @@ export default function LoginPage() {
     </main>
   );
 }
-
 
 

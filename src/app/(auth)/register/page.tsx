@@ -109,7 +109,7 @@ export default function RegisterPage() {
 
             <label className="block">
               <span className="mb-1.5 block text-sm text-slate-300">E-posta</span>
-              <input name="email" type="email" required className={inputClassName} placeholder="ornek@mail.com" />
+              <input name="email" type="email" required className={inputClassName} placeholder="örnek@mail.com" />
             </label>
 
             <label className="block">
@@ -158,5 +158,4 @@ export default function RegisterPage() {
     </main>
   );
 }
-
 

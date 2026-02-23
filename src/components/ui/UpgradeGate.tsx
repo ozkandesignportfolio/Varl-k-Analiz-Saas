@@ -39,7 +39,7 @@ export function UpgradeGate({ feature, children }: UpgradeGateProps) {
           <span className="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-full border border-indigo-300/40 bg-indigo-400/15">
             <Lock className="h-5 w-5 text-indigo-100" />
           </span>
-          <p className="mt-3 text-base font-semibold text-white">Bu özellik Premium&apos;a özel</p>
+          <p className="mt-3 text-base font-semibold text-white">Bu özellik Premium’a özel</p>
           <p className="mt-1 text-sm text-indigo-100">{feature}</p>
           <p className="mt-1 text-xs text-slate-300">{getFeatureBenefitText(feature)}</p>
 
@@ -48,7 +48,7 @@ export function UpgradeGate({ feature, children }: UpgradeGateProps) {
               href="/pricing"
               className="rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-400 px-4 py-2 text-sm font-semibold text-white transition hover:shadow-[0_0_22px_rgba(99,102,241,0.5)]"
             >
-              Premium&apos;a Geç
+              Premium’a Geç
             </Link>
             <button
               type="button"

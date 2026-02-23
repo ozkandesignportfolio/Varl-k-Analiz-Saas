@@ -34,7 +34,7 @@ export function PlanUsageCard({ plan, items }: PlanUsageCardProps) {
     <section className="premium-card border-white/10 bg-white/[0.02] p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-white">Plan & Kullanım</h3>
+          <h3 className="text-lg font-semibold text-white">Plan ve Kullanım</h3>
           <p className="mt-1 text-sm text-slate-300">
             Kullanım durumunu takip edin ve ihtiyaç halinde planınızı yükseltin.
           </p>
@@ -73,9 +73,8 @@ export function PlanUsageCard({ plan, items }: PlanUsageCardProps) {
       </div>
 
       <Button asChild className="mt-5 bg-white/10 text-white hover:bg-white/15">
-        <Link href="/pricing">Premium&apos;a Geç</Link>
+        <Link href="/pricing">Premium’a Geç</Link>
       </Button>
     </section>
   );
 }
-

@@ -1,4 +1,5 @@
-﻿-- Repair migration: ensures billing tables/policies exist even when previous migration was not applied.
+SELECT 1;
+-- Repair migration: ensures billing tables/policies exist even when previous migration was not applied.
 
 create table if not exists public.billing_subscriptions (
   id uuid primary key default gen_random_uuid(),

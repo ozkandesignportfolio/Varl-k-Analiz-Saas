@@ -19,6 +19,8 @@ const sidebarItems = [
   { icon: Settings, label: "Ayarlar", badge: "AY" },
 ]
 
+const RISK_RECORD_COUNT_LABEL = "0 kayit"
+
 export function DashboardPreview() {
   const { ref, inView } = useInView(0.1)
 
@@ -113,7 +115,9 @@ export function DashboardPreview() {
                       <span className="text-chart-4">{"!"}</span>
                       <span className="text-sm font-semibold text-foreground">Risk Paneli</span>
                     </div>
-                    <span className="text-[10px] text-muted-foreground">0 kayıt</span>
+                    <span suppressHydrationWarning className="text-[10px] text-muted-foreground">
+                      {RISK_RECORD_COUNT_LABEL}
+                    </span>
                   </div>
                   <div className="rounded-lg bg-primary/5 border border-primary/10 p-3 text-xs text-primary flex items-center gap-2">
                     <span>{"Tüm varlıklar kontrol altında"}</span>

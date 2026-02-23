@@ -27,7 +27,7 @@ type BillingInvoiceTableProps = {
 const invoiceStatusLabelMap: Record<BillingInvoiceStatus, string> = {
   pending: "Beklemede",
   paid: "Odendi",
-  overdue: "Gecikmis",
+  overdue: "Gecikmiş",
   cancelled: "İptal",
 };
 
@@ -41,11 +41,11 @@ export function BillingInvoiceTable({
 }: BillingInvoiceTableProps) {
   return (
     <article className="premium-card p-5">
-      <h2 className="text-xl font-semibold text-white">Fatura Gecmisi</h2>
+      <h2 className="text-xl font-semibold text-white">Fatura Geçmişi</h2>
       {isLoading ? (
         <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
       ) : !invoiceModuleReady ? (
-        <p className="mt-4 text-sm text-slate-300">Fatura tablosu hazir oldugunda gecmis burada listelenecek.</p>
+        <p className="mt-4 text-sm text-slate-300">Fatura tablosu hazır olduğunda geçmiş burada listelenecek.</p>
       ) : invoices.length === 0 ? (
         emptyState ?? <p className="mt-4 text-sm text-slate-300">Henüz fatura kaydı yok.</p>
       ) : (
@@ -96,4 +96,3 @@ function InvoiceStatusBadge({ status }: { status: BillingInvoiceStatus }) {
     </span>
   );
 }
-

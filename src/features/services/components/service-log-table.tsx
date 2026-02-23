@@ -36,7 +36,7 @@ export function ServiceLogTable({
 
   return (
     <section className="premium-card p-5">
-      <h2 className="text-xl font-semibold text-white">Servis Gecmisi</h2>
+      <h2 className="text-xl font-semibold text-white">Servis Geçmişi</h2>
       {isLoading ? (
         <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
       ) : logs.length === 0 ? (
@@ -98,5 +98,4 @@ export function ServiceLogTable({
     </section>
   );
 }
-
 

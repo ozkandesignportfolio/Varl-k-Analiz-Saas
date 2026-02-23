@@ -70,7 +70,7 @@ export default function ForgotPasswordPage() {
                 type="email"
                 required
                 className={inputClassName}
-                placeholder="ornek@mail.com"
+                placeholder="örnek@mail.com"
               />
             </label>
 
@@ -97,4 +97,3 @@ export default function ForgotPasswordPage() {
     </main>
   );
 }
-

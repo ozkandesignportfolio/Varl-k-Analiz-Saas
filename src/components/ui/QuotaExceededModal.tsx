@@ -64,7 +64,7 @@ export function QuotaExceededModal({ open, onOpenChange, assets, assetLimit }: Q
             asChild
             className="bg-gradient-to-r from-indigo-500 to-indigo-400 text-white hover:shadow-[0_0_22px_rgba(99,102,241,0.5)]"
           >
-            <Link href="/pricing">Premium&apos;a Geç</Link>
+            <Link href="/pricing">Premium’a Geç</Link>
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -236,15 +236,15 @@ export default function DocumentsPage() {
     <AppShell
       badge="Belge Kasası"
       title="Belgeler"
-      subtitle="Resmi upload akışı bu sayfadan ilerler. Belge Özeti ve liste gerçek kayıtları gosterir."
+      subtitle="Resmi upload akışı bu sayfadan ilerler. Belge Özeti ve liste gerçek kayıtları gösterir."
     >
       <PanelSurface>
-        <PageHeader title="Belge Kasası" subtitle="Belge yükleme, depolama ozetleri ve belge listesi." />
+        <PageHeader title="Belge Kasası" subtitle="Belge yükleme, depolama özetleri ve belge listesi." />
 
         {feedback ? <p className={feedbackClassName}>{feedback}</p> : null}
 
         <p className="rounded-xl border border-sky-300/25 bg-sky-300/10 px-4 py-3 text-sm text-sky-100">
-          Plan: {planConfig.label}. Belge limiti kullanim: {documentUsageText}
+          Plan: {planConfig.label}. Belge limiti kullanım: {documentUsageText}
         </p>
 
         <section className="premium-card p-5">
@@ -324,7 +324,7 @@ export default function DocumentsPage() {
         </section>
 
         <section className="premium-card p-5">
-          <h2 className="text-xl font-semibold text-white">Belge Türü Dagilimi</h2>
+          <h2 className="text-xl font-semibold text-white">Belge Türü Dağılımı</h2>
           {isLoading ? (
             <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
           ) : documentTypeCounts.length === 0 ? (
@@ -420,5 +420,4 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
-
 

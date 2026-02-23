@@ -502,7 +502,7 @@ function composeUpdatedNotes(params: {
 
 function validateMediaFile(file: File, kind: MediaKind) {
   if (file.size <= 0) {
-    return { error: `Bos dosya yuklenemez (${kind}).` };
+    return { error: `Boş dosya yüklenemez (${kind}).` };
   }
 
   const mimeType = file.type.trim().toLowerCase();
@@ -873,7 +873,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Medya isteği işlenemedi." }, { status: 500 });
   }
 }
-
 
 
 

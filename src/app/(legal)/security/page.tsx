@@ -9,7 +9,7 @@ const securityControls = [
   {
     icon: "🗄️",
     title: "Private Storage",
-    description: "Belgeleriniz şifreli, özel bucket'ta",
+    description: "Belgeleriniz şifreli, özel bucket’ta",
   },
   {
     icon: "🔑",

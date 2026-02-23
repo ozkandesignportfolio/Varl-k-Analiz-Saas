@@ -134,11 +134,11 @@ const buildStoragePath = (params: {
 
 const validateUploadFile = (file: File) => {
   if (file.size <= 0) {
-    return { error: "Bos dosya yuklenemez." };
+    return { error: "Boş dosya yüklenemez." };
   }
 
   if (file.size > MAX_FILE_SIZE_BYTES) {
-    return { error: "Dosya boyutu 50 MB sinirini asiyor." };
+    return { error: "Dosya boyutu 50 MB sınırını aşıyor." };
   }
 
   const mimeType = file.type.trim().toLowerCase();
@@ -299,5 +299,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Belge yükleme isteği işlenemedi." }, { status: 500 });
   }
 }
-
 

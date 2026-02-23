@@ -464,14 +464,14 @@ export function ControlCenterHeader({ selectedRange, status }: ControlCenterHead
           <details className="group relative">
             <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl border border-[#2F4569] bg-[#10243F] px-4 py-2 text-sm font-semibold text-[#E2E8F0] transition hover:bg-[#143158]">
               <Plus className="size-4" aria-hidden />
-              Hizli Ekle
+              Hızlı Ekle
               <ChevronDown className="size-4 transition group-open:rotate-180" aria-hidden />
             </summary>
             <div className="absolute right-0 z-20 mt-2 min-w-52 rounded-xl border border-[#2B3E5B] bg-[#0A162A]/95 p-1.5 shadow-[0_16px_30px_rgba(2,8,20,0.5)] backdrop-blur">
-              <HeaderDropdownLink href="/assets" label="Varlik Ekle" />
-              <HeaderDropdownLink href="/maintenance" label="Bakım Kurali Olustur" />
-              <HeaderDropdownLink href="/services" label="Servis Kaydi Ekle" />
-              <HeaderDropdownLink href="/documents" label="Belge Yukle" />
+              <HeaderDropdownLink href="/assets" label="Varlık Ekle" />
+              <HeaderDropdownLink href="/maintenance" label="Bakım Kuralı Oluştur" />
+              <HeaderDropdownLink href="/services" label="Servis Kaydı Ekle" />
+              <HeaderDropdownLink href="/documents" label="Belge Yükle" />
             </div>
           </details>
         </div>

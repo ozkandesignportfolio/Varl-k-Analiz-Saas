@@ -75,7 +75,18 @@ create table if not exists public.subscription_requests (
 
 create index if not exists idx_assets_user_id on public.assets(user_id);
 create index if not exists idx_assets_warranty_end on public.assets(user_id, warranty_end_date);
-create unique index if not exists idx_assets_qr_code on public.assets(qr_code);
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'assets'
+      AND column_name = 'qr_code'
+  ) THEN
+    EXECUTE 'create unique index if not exists idx_assets_qr_code on public.assets(qr_code)';
+  END IF;
+END $$;
 create index if not exists idx_rules_due on public.maintenance_rules(user_id, next_due_date) where is_active = true;
 create index if not exists idx_service_logs_date on public.service_logs(user_id, service_date desc);
 create index if not exists idx_documents_uploaded on public.documents(user_id, uploaded_at desc);
