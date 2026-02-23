@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
-import { GuidedEmptyState } from "@/components/guided-empty-state";
+import { GuidedEmptyState } from "@/components/shared/guided-empty-state";
 import { usePlanContext } from "@/contexts/PlanContext";
 import { BillingInvoiceForm } from "@/features/billing/components/billing-invoice-form";
 import {

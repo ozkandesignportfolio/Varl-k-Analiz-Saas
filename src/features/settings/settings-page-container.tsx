@@ -1,7 +1,7 @@
 "use client";
 
 import { Building2 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,8 @@ import {
 import { PlanUsageCard } from "@/features/settings/components/PlanUsageCard";
 import { ProfileForm, type ProfileFormValues } from "@/features/settings/components/ProfileForm";
 import { SecuritySection } from "@/features/settings/components/SecuritySection";
-import { SettingsTabs, type SettingsTab } from "@/features/settings/components/SettingsTabs";
+import { SettingsTabs } from "@/features/settings/components/SettingsTabs";
+import { resolveSettingsTab } from "@/features/settings/utils/resolve-settings-tab";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const defaultProfile: ProfileFormValues = {
@@ -85,13 +86,10 @@ const getMetadataPrefs = (metadata: Record<string, unknown> | undefined): Notifi
   };
 };
 
-type SettingsPageContainerProps = {
-  initialTab?: SettingsTab;
-};
-
-export function SettingsPageContainer({ initialTab = "profile" }: SettingsPageContainerProps) {
+export function SettingsPageContainer() {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const {
     plan,
     assetCount,
@@ -103,14 +101,22 @@ export function SettingsPageContainer({ initialTab = "profile" }: SettingsPageCo
     invoiceUploadCount,
     invoiceUploadLimit,
   } = usePlanContext();
+  const resolvedInitialTab = useMemo(
+    () => resolveSettingsTab(searchParams.get("tab")),
+    [searchParams],
+  );
 
-  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
+  const [activeTab, setActiveTab] = useState(resolvedInitialTab);
   const [profile, setProfile] = useState<ProfileFormValues>(defaultProfile);
   const [notificationPrefs, setNotificationPrefs] =
     useState<NotificationPrefsState>(defaultNotificationPrefs);
   const [feedback, setFeedback] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [organizationName, setOrganizationName] = useState("Kişisel Çalışma Alanı");
+
+  useEffect(() => {
+    setActiveTab(resolvedInitialTab);
+  }, [resolvedInitialTab]);
 
   useEffect(() => {
     const load = async () => {

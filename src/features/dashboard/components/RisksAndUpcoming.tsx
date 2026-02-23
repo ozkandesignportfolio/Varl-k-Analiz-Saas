@@ -14,7 +14,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import type { DashboardSnapshot } from "@/lib/dashboard-queries";
+import type { DashboardSnapshot } from "@/features/dashboard/api/dashboard-queries";
 import { createClient } from "@/lib/supabase/client";
 
 type RisksAndUpcomingProps = {

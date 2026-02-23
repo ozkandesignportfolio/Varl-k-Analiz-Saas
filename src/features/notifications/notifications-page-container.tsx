@@ -25,6 +25,7 @@ import {
   type NotificationStatus,
   type NotificationType,
 } from "@/features/notifications/data/mock-notifications";
+import { isNotificationMockFallbackEnabled } from "@/features/notifications/utils/mock-fallback";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type LooseError = {
@@ -212,10 +213,17 @@ export function NotificationsPageContainer() {
 
       if (response.error) {
         if (isMissingAutomationEventsTableError(response.error.message)) {
-          setNotifications(mockNotifications);
-          setFeedback(
-            "Canlı bildirim tablosu bu ortamda bulunamadı. Önizleme için örnek bildirim akışı gösteriliyor.",
-          );
+          if (isNotificationMockFallbackEnabled()) {
+            setNotifications(mockNotifications);
+            setFeedback(
+              "Canl? bildirim tablosu bu ortamda bulunamad?. ?nizleme i?in ?rnek bildirim ak??? g?steriliyor.",
+            );
+          } else {
+            setNotifications([]);
+            setFeedback(
+              "Canl? bildirim tablosu bu ortamda bulunamad? ve mock fallback kapal?. NEXT_PUBLIC_ENABLE_NOTIFICATION_MOCK_FALLBACK=true ile a?abilirsiniz.",
+            );
+          }
         } else {
           setNotifications([]);
           setFeedback(response.error.message);

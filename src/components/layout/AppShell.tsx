@@ -136,7 +136,9 @@ export function AppShell({ title, subtitle, children, actions, badge }: AppShell
                   className="auth-shell-chip auth-focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs"
                 >
                   <span>{item.label}</span>
-                  <span className="auth-nav-short-badge">{item.shortLabel ?? item.label.slice(0, 2).toUpperCase()}</span>
+                  <span className="auth-nav-short-badge">
+                    {item.shortLabel ?? item.label.slice(0, 2).toLocaleUpperCase("tr-TR")}
+                  </span>
                 </Link>
               );
             })}
@@ -164,4 +166,3 @@ export function AppShell({ title, subtitle, children, actions, badge }: AppShell
     </div>
   );
 }
-

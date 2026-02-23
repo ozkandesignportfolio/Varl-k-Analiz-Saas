@@ -14,7 +14,7 @@ const getUserInitial = (email?: string | null) => {
     return "A";
   }
 
-  return email.charAt(0).toUpperCase();
+  return email.charAt(0).toLocaleUpperCase("tr-TR");
 };
 
 export function Topbar({ title, breadcrumb, userEmail }: TopbarProps) {
@@ -64,4 +64,3 @@ export function Topbar({ title, breadcrumb, userEmail }: TopbarProps) {
     </header>
   );
 }
-

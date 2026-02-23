@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { AuditHistoryPanel } from "@/components/audit-history-panel";
-import { GuidedEmptyState } from "@/components/guided-empty-state";
+import { GuidedEmptyState } from "@/components/shared/guided-empty-state";
 import { usePlanContext } from "@/contexts/PlanContext";
 import {
   ServiceLogForm,

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, FileText, Receipt, Sparkles, TimerReset, Wrench } from "lucide-react";
-import type { DashboardActivityItem } from "@/lib/dashboard-queries";
+import type { DashboardActivityItem } from "@/features/dashboard/api/dashboard-queries";
 
 type RecentActivityProps = {
   activities: DashboardActivityItem[];

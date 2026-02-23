@@ -17,7 +17,7 @@ import {
   type DashboardDateRangeDays,
   type DashboardSystemRiskType,
   type DashboardSystemStatus,
-} from "@/lib/dashboard-queries";
+} from "@/features/dashboard/api/dashboard-queries";
 import { createClient } from "@/lib/supabase/client";
 
 type ControlCenterHeaderProps = {

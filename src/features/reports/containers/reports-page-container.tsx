@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
-import { PageHeader } from "@/components/page-header";
-import { PanelSurface } from "@/components/panel-surface";
+import { PageHeader } from "@/components/shared/page-header";
+import { PanelSurface } from "@/components/shared/panel-surface";
 import {
   ReportsDataTable,
   type ReportsAssetSummaryRow,

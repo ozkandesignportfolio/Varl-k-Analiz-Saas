@@ -2,8 +2,8 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
-import { PageHeader } from "@/components/page-header";
-import { PanelSurface } from "@/components/panel-surface";
+import { PageHeader } from "@/components/shared/page-header";
+import { PanelSurface } from "@/components/shared/panel-surface";
 import { getPlanConfig, getUserPlanConfig, type PlanConfig } from "@/lib/plans/plan-config";
 import { listIdName } from "@/lib/repos/assets-repo";
 import { listForDocumentsPage } from "@/lib/repos/documents-repo";

@@ -9,7 +9,7 @@ import {
   Wrench,
   type LucideIcon,
 } from "lucide-react";
-import type { DashboardDateRangeDays, DashboardSnapshot, DashboardTrendDirection } from "@/lib/dashboard-queries";
+import type { DashboardDateRangeDays, DashboardSnapshot, DashboardTrendDirection } from "@/features/dashboard/api/dashboard-queries";
 
 const SPARKLINE_LENGTH = 6;
 
