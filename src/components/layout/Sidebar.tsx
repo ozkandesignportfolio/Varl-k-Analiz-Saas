@@ -48,8 +48,8 @@ const SIDEBAR_ORDER_CANDIDATES = [
 ] as const;
 
 const EXPENSES_LABEL = "Giderler";
-const SIDEBAR_ARIA_LABEL = `Ana men${String.fromCharCode(252)}`;
-const FREE_PLAN_LABEL = `Deneme Plan${String.fromCharCode(305)}`;
+const SIDEBAR_ARIA_LABEL = "Ana men\u00FC";
+const FREE_PLAN_LABEL = "Deneme Plan\u0131";
 
 const orderSidebarItems = (items: SidebarNavItem[]) => {
   const workingItems = [...items];
@@ -259,7 +259,9 @@ export function Sidebar({ items, collapsed = false, brand, footer, className, on
                       <span className="h-2 w-2 rounded-full bg-[var(--auth-primary)]" />
                       Sınırsız varlık aktif
                     </p>
-                    <p className="mt-2 text-xs text-[var(--auth-muted)]">Sonraki fatura: {nextBillingDate}</p>
+                    <p className="mt-2 text-xs text-[var(--auth-muted)]">
+                      Sonraki fatura: <span suppressHydrationWarning>{nextBillingDate}</span>
+                    </p>
                   </article>
                 )}
 

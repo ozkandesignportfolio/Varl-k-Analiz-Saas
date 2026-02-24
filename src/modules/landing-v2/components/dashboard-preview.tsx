@@ -19,7 +19,7 @@ const sidebarItems = [
   { icon: Settings, label: "Ayarlar", badge: "AY" },
 ]
 
-const RISK_RECORD_COUNT_LABEL = "0 kayit"
+const RISK_RECORD_COUNT_LABEL = "0 kay\u0131t"
 
 export function DashboardPreview() {
   const { ref, inView } = useInView(0.1)

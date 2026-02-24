@@ -39,15 +39,20 @@ Başarı metrikleri (hedef):
 - `d7_retention` >= %25
 
 ## 5) Deneme Planı (Free Plan) Limitleri
-Free plan sınırları net ve sabittir:
+Free plan sınırları açık, net ve sistem tarafından zorunlu olarak uygulanır:
+
 - En fazla 3 varlık
 - En fazla 5 belge
 - En fazla 3 abonelik
 - En fazla 5 fatura
 
-Not:
-- Bu limitler MVP deneme planında zorunlu olarak uygulanır.
-- Premium plana geçişte bu limitler kaldırılır veya artırılır (fiyatlandırma kararına bağlı).
+Kurallar:
+- Limitler backend seviyesinde enforce edilir.
+- Limit aşıldığında kullanıcıya anlamlı hata mesajı gösterilir.
+- Premium plana geçildiğinde limitler kaldırılır veya artırılır (fiyatlandırma politikasına bağlı).
+
+Türkçe karakterlerin tamamı UTF-8 standardına uygun olmalıdır.
+Bozuk karakter (mojibake) kesinlikle kabul edilmez.
 
 ## 6) Kapsam Dışı (MVP)
 MVP kapsamında olmayanlar:

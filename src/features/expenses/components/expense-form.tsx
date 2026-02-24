@@ -87,7 +87,7 @@ export function ExpenseForm({
 
         <label className="block sm:col-span-2">
           <span className="mb-1.5 block text-sm text-slate-300">Gider Tarihi</span>
-          <input name="expenseDate" type="date" required className={inputClassName} />
+          <input name="expenseDate" type="date" required className={inputClassName} placeholder="gg.aa.yyyy" />
         </label>
 
         <label className="block sm:col-span-2">
