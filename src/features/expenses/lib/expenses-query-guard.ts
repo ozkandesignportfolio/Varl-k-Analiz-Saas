@@ -35,7 +35,7 @@ const normalizeMessage = (message: string | null | undefined) => message?.toLowe
 
 const isMissingExpensesTableMessage = (message: string) =>
   message.includes("public.expenses") ||
-  message.includes("relation \"expenses\" does not exist") ||
+  message.includes('relation "expenses" does not exist') ||
   message.includes("table 'expenses'") ||
   (message.includes("expenses") && message.includes("schema cache")) ||
   message.includes("not found in schema cache");
@@ -46,15 +46,15 @@ const toSafeQueryError = (error: unknown): SafeQueryError => {
     const message = "message" in error && typeof error.message === "string" ? error.message : "";
     return {
       code,
-      message: message || "Beklenmeyen gider sorgu hatasi.",
+      message: message || "Beklenmeyen gider sorgu hatası.",
     };
   }
 
   if (error instanceof Error) {
-    return { code: null, message: error.message || "Beklenmeyen gider sorgu hatasi." };
+    return { code: null, message: error.message || "Beklenmeyen gider sorgu hatası." };
   }
 
-  return { code: null, message: "Beklenmeyen gider sorgu hatasi." };
+  return { code: null, message: "Beklenmeyen gider sorgu hatası." };
 };
 
 const toMissingExpensesWarning = (

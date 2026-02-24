@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { logApiError, logAuditEvent } from "@/lib/api/logging";
 import { countByUser as countAssetsByUser } from "@/lib/repos/assets-repo";
-import { canCreateAsset, getUserPlanConfig } from "@/lib/plans/plan-config";
+import { canCreateAsset } from "@/lib/plans/plan-config";
+import { getPlanConfigFromProfilePlan } from "@/lib/plans/profile-plan";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
 
 type CreateAssetPayload = {
@@ -174,27 +175,29 @@ export async function POST(request: Request) {
       );
     }
 
-    const userPlan = getUserPlanConfig(auth.user);
-    const { data: currentAssetCount, error: countError } = await countAssetsByUser(auth.supabase, {
-      userId: auth.user.id,
-    });
+    if (auth.profilePlan !== "premium") {
+      const userPlan = getPlanConfigFromProfilePlan(auth.profilePlan);
+      const { data: currentAssetCount, error: countError } = await countAssetsByUser(auth.supabase, {
+        userId: auth.user.id,
+      });
 
-    if (countError) {
-      return NextResponse.json({ error: countError.message }, { status: 400 });
-    }
+      if (countError) {
+        return NextResponse.json({ error: countError.message }, { status: 400 });
+      }
 
-    const assetLimitCheck = canCreateAsset({
-      planConfig: userPlan,
-      currentCount: currentAssetCount ?? 0,
-    });
+      const assetLimitCheck = canCreateAsset({
+        planConfig: userPlan,
+        currentCount: currentAssetCount ?? 0,
+      });
 
-    if (!assetLimitCheck.allowed) {
-      return NextResponse.json(
-        {
-          error: assetLimitCheck.errorMessage ?? "Plan limitine ulaştınız.",
-        },
-        { status: 403 },
-      );
+      if (!assetLimitCheck.allowed) {
+        return NextResponse.json(
+          {
+            error: assetLimitCheck.errorMessage ?? "Plan limitine ulaştınız.",
+          },
+          { status: 403 },
+        );
+      }
     }
 
     const { data, error } = await auth.supabase
@@ -471,5 +474,3 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Varlık silme isteği işlenemedi." }, { status: 500 });
   }
 }
-
-

@@ -18,6 +18,7 @@ import {
   safeExpensesWriteQuery,
   type ExpensesTableWarning,
 } from "@/features/expenses/lib/expenses-query-guard";
+import { EXPENSES_TEXT } from "@/constants/ui-text";
 import { listIdName } from "@/lib/repos/assets-repo";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -103,8 +104,8 @@ export function ExpensesPageContainer() {
         return {
           id: expense.id,
           asset_id: expense.asset_id ?? null,
-          title: category || "Gider",
-          category: category || "Diğer",
+          title: category || EXPENSES_TEXT.defaultTitle,
+          category: category || EXPENSES_TEXT.defaultCategory,
           amount: Number(expense.amount ?? 0),
           currency: "TRY",
           expense_date: expenseDate,
@@ -168,12 +169,12 @@ export function ExpensesPageContainer() {
     const notes = String(formData.get("notes") ?? "").trim();
 
     if (!title || !category || !expenseDate) {
-      setFeedback("Başlık, kategori ve tarih zorunludur.");
+      setFeedback(EXPENSES_TEXT.validationRequiredFields);
       return;
     }
 
     if (Number.isNaN(amount) || amount < 0) {
-      setFeedback("Tutar geçersiz.");
+      setFeedback(EXPENSES_TEXT.validationInvalidAmount);
       return;
     }
 
@@ -212,7 +213,7 @@ export function ExpensesPageContainer() {
     if (result.warning) {
       setTableWarning(result.warning);
       setExpenses([]);
-      setFeedback("Gider tablosu bulunamadı. Kayıt eklenemedi.");
+      setFeedback(EXPENSES_TEXT.missingTableOnWrite);
       setIsSaving(false);
       return;
     }
@@ -227,7 +228,7 @@ export function ExpensesPageContainer() {
 
     form.reset();
     setSelectedAssetId("");
-    setFeedback("Gider kaydı eklendi.");
+    setFeedback(EXPENSES_TEXT.createdSuccess);
     await fetchExpenses(userId);
     setIsSaving(false);
   };
@@ -250,17 +251,17 @@ export function ExpensesPageContainer() {
 
   return (
     <AppShell
-      badge="Gider Takibi"
-      title="Giderler"
-      subtitle="Giderlerinizi kaydedin ve varlık bazlı takip edin."
+      badge={EXPENSES_TEXT.pageBadge}
+      title={EXPENSES_TEXT.pageTitle}
+      subtitle={EXPENSES_TEXT.pageSubtitle}
     >
       <PanelSurface>
-        <PageHeader title="Giderler" subtitle="Gider girişleri, özet metrikler ve gider listesi." />
+        <PageHeader title={EXPENSES_TEXT.pageTitle} subtitle={EXPENSES_TEXT.pageHeaderSubtitle} />
 
         <section className="grid gap-3 sm:grid-cols-3">
-          <SummaryCard label="Toplam Kayıt" value={String(expenses.length)} />
-          <SummaryCard label="Varlık Bağlantılı" value={String(linkedAssetCount)} />
-          <SummaryCard label="Kategori" value={String(categoryCount)} />
+          <SummaryCard label={EXPENSES_TEXT.summaryTotalRecords} value={String(expenses.length)} />
+          <SummaryCard label={EXPENSES_TEXT.summaryLinkedAssets} value={String(linkedAssetCount)} />
+          <SummaryCard label={EXPENSES_TEXT.summaryCategory} value={String(categoryCount)} />
         </section>
 
         <ExpenseForm
@@ -280,7 +281,7 @@ export function ExpensesPageContainer() {
 
         {tableWarning ? (
           <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
-            Gider tablosu şu an erişilebilir değil. Boş liste gösteriliyor. ({tableWarning.code})
+            {EXPENSES_TEXT.tableWarningPrefix} ({tableWarning.code})
           </p>
         ) : null}
 
@@ -298,5 +299,3 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
-
-

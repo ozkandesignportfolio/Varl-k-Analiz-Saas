@@ -4,7 +4,8 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/shared/page-header";
 import { PanelSurface } from "@/components/shared/panel-surface";
-import { getPlanConfig, getUserPlanConfig, type PlanConfig } from "@/lib/plans/plan-config";
+import { usePlanContext } from "@/contexts/PlanContext";
+import { getPlanConfigFromProfilePlan } from "@/lib/plans/profile-plan";
 import { listIdName } from "@/lib/repos/assets-repo";
 import { listForDocumentsPage } from "@/lib/repos/documents-repo";
 import { createClient } from "@/lib/supabase/client";
@@ -31,7 +32,6 @@ type UploadApiResponse = {
 };
 
 const sizeFormatter = new Intl.NumberFormat("tr-TR");
-const DEFAULT_PLAN_CONFIG: PlanConfig = getPlanConfig("starter");
 const DEFAULT_DOCUMENT_TYPE = "garanti";
 
 const documentTypeOptions = [
@@ -51,6 +51,7 @@ type FeedbackTone = "info" | "error" | "success";
 
 export default function DocumentsPage() {
   const supabase = useMemo(() => createClient(), []);
+  const { plan } = usePlanContext();
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [assets, setAssets] = useState<AssetRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,7 +62,7 @@ export default function DocumentsPage() {
   const [selectedDocumentType, setSelectedDocumentType] = useState(DEFAULT_DOCUMENT_TYPE);
   const [feedback, setFeedback] = useState("");
   const [feedbackTone, setFeedbackTone] = useState<FeedbackTone>("info");
-  const [planConfig, setPlanConfig] = useState<PlanConfig>(DEFAULT_PLAN_CONFIG);
+  const planConfig = useMemo(() => getPlanConfigFromProfilePlan(plan), [plan]);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -79,8 +80,6 @@ export default function DocumentsPage() {
       setIsLoading(false);
       return;
     }
-
-    setPlanConfig(getUserPlanConfig(user));
 
     const [docsRes, assetsRes] = await Promise.all([
       listForDocumentsPage(supabase, { userId: user.id }),
@@ -420,4 +419,3 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
-

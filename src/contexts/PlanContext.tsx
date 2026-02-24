@@ -1,8 +1,8 @@
 "use client";
 
-import type { User } from "@supabase/supabase-js";
 import {
   createContext,
+  useRef,
   useCallback,
   useContext,
   useEffect,
@@ -14,12 +14,15 @@ import { countByUser as countAssetsByUser } from "@/lib/repos/assets-repo";
 import { countByUser as countBillingInvoicesByUser } from "@/lib/repos/billing-invoices-repo";
 import { countByUser as countBillingSubscriptionsByUser } from "@/lib/repos/billing-subscriptions-repo";
 import { countByUser as countDocumentsByUser } from "@/lib/repos/documents-repo";
-import { getPlanConfig, getUserPlanConfig } from "@/lib/plans/plan-config";
+import { getPlanConfig } from "@/lib/plans/plan-config";
+import { getOrCreateProfilePlan } from "@/lib/plans/profile-plan";
+import type { DbClient } from "@/lib/repos/_shared";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export type UserPlan = "free" | "premium";
 
 export type PlanContextValue = {
+  userId: string | null;
   plan: UserPlan;
   assetCount: number;
   assetLimit: number | null;
@@ -34,16 +37,14 @@ export type PlanContextValue = {
 };
 
 const STARTER_PLAN = getPlanConfig("starter");
+const PREMIUM_PLAN = getPlanConfig("pro");
 
 const PlanContext = createContext<PlanContextValue | undefined>(undefined);
 
-const getPlanFromUser = (user: Pick<User, "app_metadata" | "user_metadata"> | null | undefined): UserPlan => {
-  const planConfig = getUserPlanConfig(user);
-  return planConfig.code === "starter" ? "free" : "premium";
-};
-
 export function PlanProvider({ children }: { children: ReactNode }) {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
+  const hasLoggedProfilePlanLoadWarning = useRef(false);
+  const [userId, setUserId] = useState<string | null>(null);
   const [plan, setPlan] = useState<UserPlan>("free");
   const [assetCount, setAssetCount] = useState(0);
   const [assetLimit, setAssetLimit] = useState<number | null>(STARTER_PLAN.limits.assetsLimit);
@@ -54,26 +55,43 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   const [invoiceUploadCount, setInvoiceUploadCount] = useState(0);
   const [invoiceUploadLimit, setInvoiceUploadLimit] = useState<number | null>(STARTER_PLAN.limits.invoiceUploadsLimit);
 
+  const resetToFreePlan = useCallback(() => {
+    setUserId(null);
+    setPlan("free");
+    setAssetLimit(STARTER_PLAN.limits.assetsLimit);
+    setDocumentLimit(STARTER_PLAN.limits.documentsLimit);
+    setSubscriptionLimit(STARTER_PLAN.limits.subscriptionsLimit);
+    setInvoiceUploadLimit(STARTER_PLAN.limits.invoiceUploadsLimit);
+    setAssetCount(0);
+    setDocumentCount(0);
+    setSubscriptionCount(0);
+    setInvoiceUploadCount(0);
+  }, []);
+
   const refreshPlanState = useCallback(async () => {
     const {
       data: { user },
+      error: getUserError,
     } = await supabase.auth.getUser();
 
-    if (!user) {
-      setPlan("free");
-      setAssetLimit(STARTER_PLAN.limits.assetsLimit);
-      setDocumentLimit(STARTER_PLAN.limits.documentsLimit);
-      setSubscriptionLimit(STARTER_PLAN.limits.subscriptionsLimit);
-      setInvoiceUploadLimit(STARTER_PLAN.limits.invoiceUploadsLimit);
-      setAssetCount(0);
-      setDocumentCount(0);
-      setSubscriptionCount(0);
-      setInvoiceUploadCount(0);
+    if (getUserError || !user) {
+      resetToFreePlan();
       return;
     }
 
-    const resolvedPlanConfig = getUserPlanConfig(user);
-    setPlan(getPlanFromUser(user));
+    setUserId(user.id);
+
+    const profilePlanResult = await getOrCreateProfilePlan(supabase as unknown as DbClient, user.id);
+
+    if (profilePlanResult.error && !hasLoggedProfilePlanLoadWarning.current) {
+      // This is recoverable; we continue with free-plan defaults and avoid throwing a dev error overlay.
+      console.warn("Plan profile could not be loaded. Falling back to free plan.", profilePlanResult.error);
+      hasLoggedProfilePlanLoadWarning.current = true;
+    }
+
+    const resolvedPlan: UserPlan = profilePlanResult.plan === "premium" ? "premium" : "free";
+    const resolvedPlanConfig = resolvedPlan === "premium" ? PREMIUM_PLAN : STARTER_PLAN;
+    setPlan(resolvedPlan);
     setAssetLimit(resolvedPlanConfig.limits.assetsLimit);
     setDocumentLimit(resolvedPlanConfig.limits.documentsLimit);
     setSubscriptionLimit(resolvedPlanConfig.limits.subscriptionsLimit);
@@ -90,26 +108,38 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     setDocumentCount(documentCountRes.error ? 0 : (documentCountRes.data ?? 0));
     setSubscriptionCount(subscriptionCountRes.error ? 0 : (subscriptionCountRes.data ?? 0));
     setInvoiceUploadCount(invoiceCountRes.error ? 0 : (invoiceCountRes.data ?? 0));
-  }, [supabase]);
+  }, [resetToFreePlan, supabase]);
 
   useEffect(() => {
-    queueMicrotask(() => {
+    let isCancelled = false;
+
+    const runRefresh = () => {
+      if (isCancelled) {
+        return;
+      }
       void refreshPlanState();
-    });
+    };
+
+    // Defer initial refresh one macrotask to reduce hydration-time update races.
+    const initialRefreshTimer = window.setTimeout(runRefresh, 0);
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(() => {
-      void refreshPlanState();
+      // Keep auth-triggered refreshes async and outside the current call stack.
+      window.setTimeout(runRefresh, 0);
     });
 
     return () => {
+      isCancelled = true;
+      window.clearTimeout(initialRefreshTimer);
       subscription.unsubscribe();
     };
   }, [refreshPlanState, supabase]);
 
   const value = useMemo<PlanContextValue>(
     () => ({
+      userId,
       plan,
       assetCount,
       assetLimit,
@@ -123,6 +153,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       refreshPlanState,
     }),
     [
+      userId,
       plan,
       assetCount,
       assetLimit,
@@ -136,7 +167,11 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  return <PlanContext.Provider value={value}>{children}</PlanContext.Provider>;
+  return (
+    <PlanContext.Provider value={value}>
+      {children}
+    </PlanContext.Provider>
+  );
 }
 
 export const usePlanContext = () => {

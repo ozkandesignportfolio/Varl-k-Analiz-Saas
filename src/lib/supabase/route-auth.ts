@@ -2,6 +2,12 @@ import "server-only";
 
 import type { User } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import {
+  applyProfilePlanToUserMetadata,
+  getOrCreateProfilePlan,
+  type ProfilePlan,
+} from "@/lib/plans/profile-plan";
+import type { DbClient } from "@/lib/repos/_shared";
 import { isDevelopmentEnvironment, isEmailNotConfirmedError } from "@/lib/supabase/auth-errors";
 import { createClient } from "@/lib/supabase/server";
 
@@ -10,6 +16,7 @@ type RouteSupabaseClient = Awaited<ReturnType<typeof createClient>>;
 export type RouteAuthSuccess = {
   supabase: RouteSupabaseClient;
   user: User;
+  profilePlan: ProfilePlan;
 };
 
 export type RouteAuthFailure = {
@@ -41,6 +48,7 @@ export async function requireRouteUser(
   request: Request,
 ): Promise<RouteAuthSuccess | RouteAuthFailure> {
   const supabase = await createClient();
+  const dbClient = supabase as unknown as DbClient;
   const bearerToken = extractBearerToken(request);
 
   const {
@@ -69,8 +77,16 @@ export async function requireRouteUser(
     };
   }
 
+  const profilePlanResult = await getOrCreateProfilePlan(dbClient, authenticatedUser.id);
+  const resolvedProfilePlan: ProfilePlan = profilePlanResult.plan;
+  authenticatedUser = {
+    ...authenticatedUser,
+    ...applyProfilePlanToUserMetadata(authenticatedUser, resolvedProfilePlan),
+  } as User;
+
   return {
     supabase,
     user: authenticatedUser,
+    profilePlan: resolvedProfilePlan,
   };
 }

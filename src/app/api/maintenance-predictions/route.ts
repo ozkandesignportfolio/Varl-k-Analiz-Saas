@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getUserPlanConfig } from "@/lib/plans/plan-config";
+import { getPlanConfigFromProfilePlan } from "@/lib/plans/profile-plan";
 import { listForDashboard as listRulesForDashboard } from "@/lib/repos/maintenance-rules-repo";
 import { listForPrediction as listServiceLogsForPrediction } from "@/lib/repos/service-logs-repo";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
@@ -414,7 +414,7 @@ const buildPredictions = async (
     return auth.response;
   }
   const { supabase, user } = auth;
-  const userPlan = getUserPlanConfig(user);
+  const userPlan = getPlanConfigFromProfilePlan(auth.profilePlan);
 
   if (!userPlan.features.canUseAdvancedAnalytics) {
     return NextResponse.json(
@@ -505,7 +505,6 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   return handle(request);
 }
-
 
 
 

@@ -4,8 +4,27 @@ import { useEffect } from "react";
 
 export function PwaRegister() {
   useEffect(() => {
-    if (process.env.NODE_ENV !== "production") return;
     if (!("serviceWorker" in navigator)) return;
+
+    if (process.env.NODE_ENV !== "production") {
+      const cleanupDevServiceWorkers = async () => {
+        try {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map((registration) => registration.unregister()));
+
+          if ("caches" in window) {
+            const cacheKeys = await caches.keys();
+            const appCacheKeys = cacheKeys.filter((key) => key.startsWith("assetcare-shell-"));
+            await Promise.all(appCacheKeys.map((key) => caches.delete(key)));
+          }
+        } catch {
+          // Geliştirme ortamında cleanup başarısız olsa da uygulama normal çalışmaya devam eder.
+        }
+      };
+
+      void cleanupDevServiceWorkers();
+      return;
+    }
 
     const register = async () => {
       try {

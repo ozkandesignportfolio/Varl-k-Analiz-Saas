@@ -10,7 +10,7 @@ Durum legend:
 | Auth | Korumalı API oturumsuz kullanıcıya 401 döner | PASS | `docs/qa/smoke-test-2026-02-16.md` |
 | Varlık CRUD | Build/lint sonrası derleme ve tip kontrolü temiz | PASS | `npm run lint`, `npm run build` |
 | Bakım Motoru | Rule lifecycle ekranları build sonrası hatasız | PASS | `npm run build` |
-| Servis Kayıt | Servis ekranı ve API routeâ€™ları buildâ€™da derleniyor | PASS | `npm run build` |
+| Servis Kayıt | Servis ekranı ve API route'ları build'da derleniyor | PASS | `npm run build` |
 | Belge Kasası | Önizleme/indirme akışı kodda mevcut | PASS | `src/app/documents/page.tsx` |
 | Timeline | Event birleştirme + ters sıralama aktif | PASS | `src/app/timeline/page.tsx` |
 | Maliyet Paneli | Dönem filtresi + Chart.js bileşenleri aktif | PASS | `src/app/costs/page.tsx` |
@@ -19,4 +19,3 @@ Durum legend:
 
 Not:
 - Bu liste, 16 Şubat 2026 tarihinde yapılan smoke/regression turunun çıktısıdır.
-

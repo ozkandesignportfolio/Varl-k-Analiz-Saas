@@ -1,5 +1,3 @@
-"use client"
-
 import { ArrowRight, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getPlanConfig } from "@/lib/plans/plan-config"
@@ -60,4 +58,3 @@ export function CTASection() {
     </section>
   )
 }
-

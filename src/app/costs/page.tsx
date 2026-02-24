@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { CostTrendLineChart } from "@/components/costs/cost-trend-line-chart";
 import { YearlyCostBarChart } from "@/components/costs/yearly-cost-bar-chart";
+import { usePlanContext } from "@/contexts/PlanContext";
 import {
   type AssetCategory,
   buildCategoryCostSeries,
@@ -13,7 +14,7 @@ import {
   type PeriodFilter,
   type ServiceCostLog,
 } from "@/lib/charts";
-import { getPlanConfig, getUserPlanConfig, type PlanConfig } from "@/lib/plans/plan-config";
+import { getPlanConfigFromProfilePlan } from "@/lib/plans/profile-plan";
 import { getCostAggregate, listForCosts, type ServiceLogCostAggregate } from "@/lib/repos/service-logs-repo";
 import { calculateRatioScore } from "@/lib/scoring/ratio-score";
 import { createClient } from "@/lib/supabase/client";
@@ -72,8 +73,6 @@ const emptyCostAggregate: ServiceLogCostAggregate = {
   avg_cost: 0,
   cost_score: 0,
 };
-
-const DEFAULT_PLAN_CONFIG: PlanConfig = getPlanConfig("starter");
 
 const toDateInput = (date: Date) => {
   const year = date.getUTCFullYear();
@@ -136,6 +135,8 @@ const isExpensesTableMissing = (error: { code?: string | null; message?: string 
 
 export default function CostsPage() {
   const supabase = useMemo(() => createClient(), []);
+  const { plan } = usePlanContext();
+  const planConfig = useMemo(() => getPlanConfigFromProfilePlan(plan), [plan]);
   const now = useMemo(() => new Date(), []);
 
   const [activeUserId, setActiveUserId] = useState("");
@@ -149,7 +150,6 @@ export default function CostsPage() {
   const [trailingTwelveAggregate, setTrailingTwelveAggregate] = useState<ServiceLogCostAggregate>(emptyCostAggregate);
   const [isLoading, setIsLoading] = useState(true);
   const [feedback, setFeedback] = useState("");
-  const [planConfig, setPlanConfig] = useState<PlanConfig>(DEFAULT_PLAN_CONFIG);
 
   useEffect(() => {
     const load = async () => {
@@ -167,10 +167,7 @@ export default function CostsPage() {
         return;
       }
 
-      const userPlan = getUserPlanConfig(user);
-      setPlanConfig(userPlan);
-
-      if (!userPlan.features.canUseAdvancedAnalytics) {
+      if (!planConfig.features.canUseAdvancedAnalytics) {
         setLogs([]);
         setAssets([]);
         setMaintenanceRules([]);
@@ -212,7 +209,7 @@ export default function CostsPage() {
     };
 
     void load();
-  }, [now, supabase]);
+  }, [now, planConfig.features.canUseAdvancedAnalytics, supabase]);
 
   useEffect(() => {
     if (!activeUserId || !planConfig.features.canUseAdvancedAnalytics) return;

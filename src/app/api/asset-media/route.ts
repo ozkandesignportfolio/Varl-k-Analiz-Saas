@@ -15,7 +15,7 @@ import {
   type AssetMediaType,
 } from "@/lib/assets/media-limits";
 import { existsById } from "@/lib/repos/assets-repo";
-import { canUserUsePremiumMedia } from "@/lib/plans/premium-media";
+import { canPlanUsePremiumMedia } from "@/lib/plans/premium-media";
 import { requireRouteUser, type RouteAuthSuccess } from "@/lib/supabase/route-auth";
 
 export const runtime = "nodejs";
@@ -123,7 +123,7 @@ export async function POST(request: Request) {
     const { supabase, user } = auth;
     userId = user.id;
 
-    if (!canUserUsePremiumMedia(user)) {
+    if (!canPlanUsePremiumMedia(auth.profilePlan)) {
       return NextResponse.json({ error: PREMIUM_REQUIRED_MESSAGE }, { status: 403 });
     }
 

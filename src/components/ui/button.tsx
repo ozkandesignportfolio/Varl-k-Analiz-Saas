@@ -34,25 +34,39 @@ function Button({
   variant = "default",
   size = "default",
   asChild = false,
+  type,
   ...props
 }: React.ComponentProps<"button"> & {
   variant?: ButtonVariant
   size?: ButtonSize
   asChild?: boolean
 }) {
-  const Comp = asChild ? Slot.Root : "button"
+  const classNames = cn(
+    buttonBaseClasses,
+    buttonVariantClasses[variant],
+    buttonSizeClasses[size],
+    className
+  )
+
+  if (asChild) {
+    return (
+      <Slot.Root
+        data-slot="button"
+        data-variant={variant}
+        data-size={size}
+        className={classNames}
+        {...props}
+      />
+    )
+  }
 
   return (
-    <Comp
+    <button
       data-slot="button"
       data-variant={variant}
       data-size={size}
-      className={cn(
-        buttonBaseClasses,
-        buttonVariantClasses[variant],
-        buttonSizeClasses[size],
-        className
-      )}
+      type={type ?? "button"}
+      className={classNames}
       {...props}
     />
   )

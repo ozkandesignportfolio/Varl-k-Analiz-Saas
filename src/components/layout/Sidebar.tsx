@@ -1,11 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useMemo } from "react";
+import { useContext, useMemo, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Box, Shield, type LucideIcon } from "lucide-react";
-import { usePlanContext } from "@/contexts/PlanContext";
+import { PlanContext } from "@/contexts/PlanContext";
+import { NAV_TEXT, SIDEBAR_TEXT } from "@/constants/ui-text";
 import { cn } from "@/lib/utils";
 
 export type SidebarNavItem = {
@@ -26,7 +27,7 @@ type SidebarProps = {
 
 const ASSETS_NAV_ITEM: SidebarNavItem = {
   href: "/assets",
-  label: "Varlıklar",
+  label: NAV_TEXT.assets,
   shortLabel: "VR",
   icon: Box,
 };
@@ -47,9 +48,11 @@ const SIDEBAR_ORDER_CANDIDATES = [
   ["/settings"],
 ] as const;
 
-const EXPENSES_LABEL = "Giderler";
-const SIDEBAR_ARIA_LABEL = "Ana men\u00FC";
-const FREE_PLAN_LABEL = "Deneme Plan\u0131";
+const EXPENSES_LABEL = NAV_TEXT.expenses;
+const SIDEBAR_ARIA_LABEL = SIDEBAR_TEXT.ariaLabel;
+const FREE_PLAN_LABEL = SIDEBAR_TEXT.freePlanLabel;
+const INITIAL_ASSET_LIMIT = 3;
+const subscribeToHydration = () => () => {};
 
 const orderSidebarItems = (items: SidebarNavItem[]) => {
   const workingItems = [...items];
@@ -90,26 +93,30 @@ const getShortLabel = (item: SidebarNavItem, displayLabel: string) => {
 
 export function Sidebar({ items, collapsed = false, brand, footer, className, onNavigate }: SidebarProps) {
   const pathname = usePathname();
-  const {
-    plan,
-    assetCount,
-    assetLimit,
-    documentCount,
-    documentLimit,
-    subscriptionCount,
-    subscriptionLimit,
-    invoiceUploadCount,
-    invoiceUploadLimit,
-  } = usePlanContext();
+  const isHydrated = useSyncExternalStore(subscribeToHydration, () => true, () => false);
+  const showPlanDebug = process.env.NODE_ENV !== "production";
+  const planContext = useContext(PlanContext);
+  const plan = planContext?.plan ?? "free";
+  const userId = planContext?.userId ?? null;
+  const assetCount = planContext?.assetCount ?? 0;
+  const assetLimit = planContext?.assetLimit ?? INITIAL_ASSET_LIMIT;
+  const documentCount = planContext?.documentCount ?? 0;
+  const documentLimit = planContext?.documentLimit ?? INITIAL_ASSET_LIMIT;
+  const subscriptionCount = planContext?.subscriptionCount ?? 0;
+  const subscriptionLimit = planContext?.subscriptionLimit ?? INITIAL_ASSET_LIMIT;
+  const invoiceUploadCount = planContext?.invoiceUploadCount ?? 0;
+  const invoiceUploadLimit = planContext?.invoiceUploadLimit ?? INITIAL_ASSET_LIMIT;
   const isFreePlan = plan === "free";
+  const userIdShort =
+    userId && userId.length > 8 ? `${userId.slice(0, 8)}...` : (userId ?? "-");
   const normalizedItems = useMemo(() => {
     const hasAssetsItem = items.some((item) => item.href === ASSETS_NAV_ITEM.href);
     const withAssetsItem = hasAssetsItem ? items : [...items, ASSETS_NAV_ITEM];
     return orderSidebarItems(withAssetsItem);
   }, [items]);
 
-  const usageLimit = assetLimit ?? 3;
-  const formatUsage = (count: number, limit: number | null) => `${count}/${limit ?? "∞"}`;
+  const usageLimit = assetLimit ?? INITIAL_ASSET_LIMIT;
+  const formatUsage = (count: number, limit: number | null) => `${count}/${limit ?? SIDEBAR_TEXT.infiniteLimit}`;
   const usagePercent = useMemo(() => {
     if (!isFreePlan || usageLimit <= 0) {
       return 100;
@@ -117,24 +124,27 @@ export function Sidebar({ items, collapsed = false, brand, footer, className, on
     const ratios = [
       assetLimit && assetLimit > 0 ? assetCount / assetLimit : 0,
       documentLimit && documentLimit > 0 ? documentCount / documentLimit : 0,
-      subscriptionLimit && subscriptionLimit > 0 ? subscriptionCount / subscriptionLimit : 0,
-      invoiceUploadLimit && invoiceUploadLimit > 0 ? invoiceUploadCount / invoiceUploadLimit : 0,
+      subscriptionLimit && subscriptionLimit > 0
+        ? subscriptionCount / subscriptionLimit
+        : 0,
+      invoiceUploadLimit && invoiceUploadLimit > 0
+        ? invoiceUploadCount / invoiceUploadLimit
+        : 0,
     ];
     const highestRatio = Math.max(...ratios);
     return Math.max(0, Math.min(100, Math.round(highestRatio * 100)));
   }, [
+    isFreePlan,
     assetCount,
     assetLimit,
     documentCount,
     documentLimit,
     invoiceUploadCount,
     invoiceUploadLimit,
-    isFreePlan,
     subscriptionCount,
     subscriptionLimit,
     usageLimit,
   ]);
-
   const nextBillingDate = useMemo(() => {
     const date = new Date();
     date.setMonth(date.getMonth() + 1);
@@ -173,7 +183,7 @@ export function Sidebar({ items, collapsed = false, brand, footer, className, on
           <div className="flex min-h-full flex-col">
             <nav aria-label={SIDEBAR_ARIA_LABEL} className="auth-nav-list">
               {normalizedItems.map((item) => {
-                const active = isActivePath(pathname, item.href);
+                const active = isHydrated ? isActivePath(pathname ?? "", item.href) : false;
                 const displayLabel = getDisplayLabel(item);
                 const shortLabel = getShortLabel(item, displayLabel);
                 const Icon = item.icon;
@@ -223,18 +233,26 @@ export function Sidebar({ items, collapsed = false, brand, footer, className, on
 
             {!collapsed ? (
               <div className="auth-sidebar-footer mt-3 flex flex-col gap-3 pb-3">
+                {showPlanDebug ? (
+                  <p className="rounded-md border border-white/15 bg-white/5 px-2 py-1 text-[11px] text-slate-300">
+                    DEBUG Plan: {plan} | User: {userIdShort}
+                  </p>
+                ) : null}
                 {isFreePlan ? (
                   <article className="auth-plan-card auth-plan-card-free rounded-xl p-3">
                     <p className="text-xs uppercase tracking-[0.2em] text-amber-100">{FREE_PLAN_LABEL}</p>
                     <p className="mt-2 text-sm font-semibold text-[var(--auth-foreground)]">
-                      Varlıklar: {formatUsage(assetCount, assetLimit)}
-                    </p>
-                    <p className="mt-1 text-xs text-[var(--auth-muted)]">Belgeler: {formatUsage(documentCount, documentLimit)}</p>
-                    <p className="mt-1 text-xs text-[var(--auth-muted)]">
-                      Abonelikler: {formatUsage(subscriptionCount, subscriptionLimit)}
+                      {SIDEBAR_TEXT.usageAssets}: {formatUsage(assetCount, assetLimit)}
                     </p>
                     <p className="mt-1 text-xs text-[var(--auth-muted)]">
-                      Fatura Yükleme: {formatUsage(invoiceUploadCount, invoiceUploadLimit)}
+                      {SIDEBAR_TEXT.usageDocuments}: {formatUsage(documentCount, documentLimit)}
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--auth-muted)]">
+                      {SIDEBAR_TEXT.usageSubscriptions}: {formatUsage(subscriptionCount, subscriptionLimit)}
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--auth-muted)]">
+                      {SIDEBAR_TEXT.usageInvoiceUploads}:{" "}
+                      {formatUsage(invoiceUploadCount, invoiceUploadLimit)}
                     </p>
                     <div className="auth-plan-progress mt-2 h-2 rounded-full">
                       <div
@@ -247,20 +265,20 @@ export function Sidebar({ items, collapsed = false, brand, footer, className, on
                       onClick={onNavigate}
                       className="auth-focus-ring mt-3 inline-flex w-full items-center justify-center rounded-lg border border-amber-300/35 bg-amber-300/18 px-3 py-2 text-sm font-semibold text-amber-100 transition hover:bg-amber-300/28"
                     >
-                      Premium’a Geç
+                      {SIDEBAR_TEXT.upgradeCta}
                     </Link>
                   </article>
                 ) : (
                   <article className="auth-plan-card auth-plan-card-premium rounded-xl p-3">
                     <p className="inline-flex items-center rounded-full border border-[rgb(16_239_181_/_0.35)] bg-[rgb(16_239_181_/_0.15)] px-2 py-1 text-xs font-semibold text-[var(--auth-primary)]">
-                      Premium Üye
+                      {SIDEBAR_TEXT.premiumMemberBadge}
                     </p>
                     <p className="mt-2 flex items-center gap-2 text-sm text-[var(--auth-foreground)]">
                       <span className="h-2 w-2 rounded-full bg-[var(--auth-primary)]" />
-                      Sınırsız varlık aktif
+                      {SIDEBAR_TEXT.unlimitedAssetsStatus}
                     </p>
                     <p className="mt-2 text-xs text-[var(--auth-muted)]">
-                      Sonraki fatura: <span suppressHydrationWarning>{nextBillingDate}</span>
+                      {SIDEBAR_TEXT.nextInvoicePrefix}: <span suppressHydrationWarning>{nextBillingDate}</span>
                     </p>
                   </article>
                 )}

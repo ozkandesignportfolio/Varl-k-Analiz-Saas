@@ -1,11 +1,10 @@
-import type { User } from "@supabase/supabase-js";
 import { getById as getRuleById } from "@/lib/repos/maintenance-rules-repo";
 import type { DbClient } from "@/lib/repos/_shared";
 import {
   canCreateSubscription,
   canUploadInvoice,
-  getUserPlanConfig,
 } from "@/lib/plans/plan-config";
+import { getPlanConfigFromProfilePlan, type ProfilePlan } from "@/lib/plans/profile-plan";
 import {
   extractBillingMissingTables,
   isBillingMissingTableError,
@@ -279,7 +278,7 @@ export async function createBillingSubscription(
   client: DbClient,
   params: {
     userId: string;
-    user: Pick<User, "app_metadata" | "user_metadata">;
+    profilePlan: ProfilePlan;
     payload: CreateBillingSubscriptionPayload;
   },
 ): Promise<BillingServiceResponse> {
@@ -288,26 +287,28 @@ export async function createBillingSubscription(
     return schemaCheck;
   }
 
-  const { payload, user, userId } = params;
-  const userPlan = getUserPlanConfig(user);
-  const { data: currentSubscriptionCount, error: subscriptionCountError } = await countBillingSubscriptionsByUser(client, {
-    userId,
-  });
+  const { payload, profilePlan, userId } = params;
+  if (profilePlan !== "premium") {
+    const userPlan = getPlanConfigFromProfilePlan(profilePlan);
+    const { data: currentSubscriptionCount, error: subscriptionCountError } = await countBillingSubscriptionsByUser(client, {
+      userId,
+    });
 
-  if (subscriptionCountError) {
-    const mappedError = mapRepoError(subscriptionCountError, "Abonelik adedi dogrulanamadi.", [
-      "billing_subscriptions",
-    ]);
-    return mappedError ?? { status: 400, body: { error: subscriptionCountError.message } };
-  }
+    if (subscriptionCountError) {
+      const mappedError = mapRepoError(subscriptionCountError, "Abonelik adedi dogrulanamadi.", [
+        "billing_subscriptions",
+      ]);
+      return mappedError ?? { status: 400, body: { error: subscriptionCountError.message } };
+    }
 
-  const subscriptionLimitCheck = canCreateSubscription({
-    planConfig: userPlan,
-    currentCount: currentSubscriptionCount ?? 0,
-  });
+    const subscriptionLimitCheck = canCreateSubscription({
+      planConfig: userPlan,
+      currentCount: currentSubscriptionCount ?? 0,
+    });
 
-  if (!subscriptionLimitCheck.allowed) {
-    return { status: 403, body: { error: subscriptionLimitCheck.errorMessage ?? "Plan limitine ulaştınız." } };
+    if (!subscriptionLimitCheck.allowed) {
+      return { status: 403, body: { error: subscriptionLimitCheck.errorMessage ?? "Plan limitine ulaştınız." } };
+    }
   }
 
   const providerNameResult = readRequiredText(payload.providerName, MAX_PROVIDER_NAME_LENGTH);
@@ -433,7 +434,7 @@ export async function createBillingInvoice(
   client: DbClient,
   params: {
     userId: string;
-    user: Pick<User, "app_metadata" | "user_metadata">;
+    profilePlan: ProfilePlan;
     payload: CreateBillingInvoicePayload;
   },
 ): Promise<BillingServiceResponse> {
@@ -442,24 +443,26 @@ export async function createBillingInvoice(
     return schemaCheck;
   }
 
-  const { payload, user, userId } = params;
-  const userPlan = getUserPlanConfig(user);
-  const { data: currentInvoiceCount, error: invoiceCountError } = await countBillingInvoicesByUser(client, {
-    userId,
-  });
+  const { payload, profilePlan, userId } = params;
+  if (profilePlan !== "premium") {
+    const userPlan = getPlanConfigFromProfilePlan(profilePlan);
+    const { data: currentInvoiceCount, error: invoiceCountError } = await countBillingInvoicesByUser(client, {
+      userId,
+    });
 
-  if (invoiceCountError) {
-    const mappedError = mapRepoError(invoiceCountError, "Fatura adedi dogrulanamadi.", ["billing_invoices"]);
-    return mappedError ?? { status: 400, body: { error: invoiceCountError.message } };
-  }
+    if (invoiceCountError) {
+      const mappedError = mapRepoError(invoiceCountError, "Fatura adedi dogrulanamadi.", ["billing_invoices"]);
+      return mappedError ?? { status: 400, body: { error: invoiceCountError.message } };
+    }
 
-  const invoiceLimitCheck = canUploadInvoice({
-    planConfig: userPlan,
-    currentCount: currentInvoiceCount ?? 0,
-  });
+    const invoiceLimitCheck = canUploadInvoice({
+      planConfig: userPlan,
+      currentCount: currentInvoiceCount ?? 0,
+    });
 
-  if (!invoiceLimitCheck.allowed) {
-    return { status: 403, body: { error: invoiceLimitCheck.errorMessage ?? "Plan limitine ulaştınız." } };
+    if (!invoiceLimitCheck.allowed) {
+      return { status: 403, body: { error: invoiceLimitCheck.errorMessage ?? "Plan limitine ulaştınız." } };
+    }
   }
 
   const subscriptionIdResult = readRequiredText(payload.subscriptionId, 64);
@@ -623,6 +626,4 @@ export async function createBillingInvoice(
 
   return { status: 201, body: { ok: true, id: data.id } };
 }
-
-
 

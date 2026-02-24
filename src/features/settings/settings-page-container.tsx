@@ -254,20 +254,37 @@ export function SettingsPageContainer() {
     setIsStartingCheckout(true);
 
     try {
-      const response = await fetch("/api/stripe/checkout", {
+      const res = await fetch("/api/stripe/checkout", {
         method: "POST",
       });
-      const payload = (await response.json().catch(() => null)) as { url?: string; error?: string } | null;
 
-      if (!response.ok || !payload?.url) {
-        setFeedback(payload?.error ?? "Stripe checkout başlatılamadı.");
+      if (!res.ok) {
+        const responseText = await res.text();
+        const checkoutError = responseText || "Stripe checkout baslatilamadi.";
+        console.error("Stripe checkout failed:", res.status, checkoutError);
+        alert(checkoutError);
+        setFeedback(checkoutError);
         setIsStartingCheckout(false);
         return;
       }
 
-      window.location.assign(payload.url);
-    } catch {
-      setFeedback("Stripe checkout başlatılamadı.");
+      const data = (await res.json().catch(() => null)) as { url?: string } | null;
+
+      if (!data?.url) {
+        const missingUrlError = "Checkout URL donmedi.";
+        console.error("Stripe checkout failed:", missingUrlError);
+        alert(missingUrlError);
+        setFeedback(missingUrlError);
+        setIsStartingCheckout(false);
+        return;
+      }
+
+      window.location.href = data.url;
+    } catch (error) {
+      const networkError = "Stripe yaniti okunamadi.";
+      console.error("Stripe checkout request failed:", error);
+      alert(networkError);
+      setFeedback(networkError);
       setIsStartingCheckout(false);
     }
   }, []);

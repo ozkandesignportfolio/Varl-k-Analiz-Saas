@@ -31,7 +31,7 @@ export async function POST(request: Request) {
 
     const result = await createBillingInvoice(auth.supabase, {
       userId: auth.user.id,
-      user: auth.user,
+      profilePlan: auth.profilePlan,
       payload,
     });
 

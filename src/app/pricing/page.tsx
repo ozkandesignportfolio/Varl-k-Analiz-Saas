@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { getPlanConfig } from "@/lib/plans/plan-config";
 import { cn } from "@/lib/utils";
 
@@ -39,7 +39,41 @@ const toTl = (amount: number) => `${new Intl.NumberFormat("tr-TR").format(amount
 
 export default function PricingPage() {
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
+  const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const isAnnual = billingCycle === "annual";
+
+  const startPremiumCheckout = useCallback(async () => {
+    setIsStartingCheckout(true);
+
+    try {
+      const res = await fetch("/api/stripe/checkout", { method: "POST" });
+
+      if (!res.ok) {
+        const responseText = await res.text();
+        const errorMessage = responseText || "Stripe checkout baslatilamadi.";
+        console.error("Checkout error:", res.status, errorMessage);
+        alert(errorMessage);
+        setIsStartingCheckout(false);
+        return;
+      }
+
+      const data = (await res.json().catch(() => null)) as { url?: string } | null;
+      if (!data?.url) {
+        const missingUrlError = "Checkout URL donmedi.";
+        console.error("Checkout error:", missingUrlError);
+        alert(missingUrlError);
+        setIsStartingCheckout(false);
+        return;
+      }
+
+      window.location.href = data.url;
+    } catch (error) {
+      const networkError = "Stripe URL alinamadi.";
+      console.error("Checkout error:", error);
+      alert(networkError);
+      setIsStartingCheckout(false);
+    }
+  }, []);
 
   return (
     <main className="relative min-h-screen overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8">
@@ -134,12 +168,14 @@ export default function PricingPage() {
               <li>PDF rapor export + otomasyon</li>
             </ul>
 
-            <Link
-              href="/register?plan=premium"
-              className="mt-6 inline-flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-400 px-4 py-2.5 text-sm font-semibold text-white transition hover:shadow-[0_0_22px_rgba(99,102,241,0.5)]"
+            <button
+              type="button"
+              onClick={() => void startPremiumCheckout()}
+              disabled={isStartingCheckout}
+              className="mt-6 inline-flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-400 px-4 py-2.5 text-sm font-semibold text-white transition hover:shadow-[0_0_22px_rgba(99,102,241,0.5)] disabled:cursor-not-allowed disabled:opacity-70"
             >
-              Premium&apos;u Baslat
-            </Link>
+              {isStartingCheckout ? "Yonlendiriliyor..." : "Premium'u Baslat"}
+            </button>
           </article>
         </section>
 
@@ -173,4 +209,3 @@ export default function PricingPage() {
     </main>
   );
 }
-

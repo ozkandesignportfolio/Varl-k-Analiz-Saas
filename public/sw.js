@@ -1,4 +1,4 @@
-const CACHE_NAME = "assetcare-shell-v1";
+const CACHE_NAME = "assetcare-shell-v2";
 const OFFLINE_FALLBACK = "/offline";
 const APP_SHELL = ["/", "/offline", "/login", "/register"];
 
@@ -52,6 +52,23 @@ self.addEventListener("fetch", (event) => {
     ["style", "script", "font", "image"].includes(request.destination);
 
   if (!isStaticAsset) return;
+  const shouldUseNetworkFirst =
+    url.pathname.startsWith("/_next/") ||
+    request.destination === "script" ||
+    request.destination === "style";
+
+  if (shouldUseNetworkFirst) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+          return response;
+        })
+        .catch(() => caches.match(request).then((cached) => cached || Response.error())),
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(request).then((cached) => {

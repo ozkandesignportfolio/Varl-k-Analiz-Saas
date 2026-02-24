@@ -186,6 +186,34 @@ export type Database = {
           file_size?: number | null;
         };
       };
+      profiles: {
+        Row: {
+          id: string;
+          plan: string;
+          stripe_customer_id: string | null;
+          stripe_subscription_id: string | null;
+          stripe_current_period_end: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          plan?: string;
+          stripe_customer_id?: string | null;
+          stripe_subscription_id?: string | null;
+          stripe_current_period_end?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          plan?: string;
+          stripe_customer_id?: string | null;
+          stripe_subscription_id?: string | null;
+          stripe_current_period_end?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       asset_media: {
         Row: {
           id: string;

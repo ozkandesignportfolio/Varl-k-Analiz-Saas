@@ -39,6 +39,7 @@ Başarı metrikleri (hedef):
 - `d7_retention` >= %25
 
 ## 5) Deneme Planı (Free Plan) Limitleri
+
 Free plan sınırları açık, net ve sistem tarafından zorunlu olarak uygulanır:
 
 - En fazla 3 varlık
@@ -53,7 +54,6 @@ Kurallar:
 
 Türkçe karakterlerin tamamı UTF-8 standardına uygun olmalıdır.
 Bozuk karakter (mojibake) kesinlikle kabul edilmez.
-
 ## 6) Kapsam Dışı (MVP)
 MVP kapsamında olmayanlar:
 - WhatsApp bildirimleri: yok

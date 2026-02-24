@@ -7,7 +7,7 @@ import { QuickActions } from "@/features/dashboard/components/QuickActions";
 import { RecentActivity } from "@/features/dashboard/components/RecentActivity";
 import { RisksAndUpcoming } from "@/features/dashboard/components/RisksAndUpcoming";
 import { UsageLimitsCard, type UsageLimitItem } from "@/features/dashboard/components/UsageLimitsCard";
-import { getUserPlanConfig } from "@/lib/plans/plan-config";
+import { getOrCreateProfilePlan, getPlanConfigFromProfilePlan } from "@/lib/plans/profile-plan";
 import type { DbClient } from "@/lib/repos/_shared";
 import { createClient } from "@/lib/supabase/server";
 
@@ -46,8 +46,10 @@ export async function DashboardPageContainer({ searchParams }: DashboardPageCont
   }
 
   const selectedRange = await parseRangeParam(searchParams);
-  const snapshot = await getDashboardSnapshot(supabase as DbClient, user.id, { rangeDays: selectedRange });
-  const planConfig = getUserPlanConfig(user);
+  const dbClient = supabase as unknown as DbClient;
+  const snapshot = await getDashboardSnapshot(dbClient, user.id, { rangeDays: selectedRange });
+  const profilePlan = await getOrCreateProfilePlan(dbClient, user.id);
+  const planConfig = getPlanConfigFromProfilePlan(profilePlan.plan);
 
   const usageItems: UsageLimitItem[] = [
     {

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   Bell,
   Package,
@@ -18,6 +18,7 @@ import {
   HandCoins,
 } from "lucide-react";
 import { Sidebar, type SidebarNavItem } from "@/components/layout/Sidebar";
+import { NAV_TEXT } from "@/constants/ui-text";
 import { Topbar } from "@/components/layout/Topbar";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -30,37 +31,38 @@ export type AppShellProps = {
 };
 
 const NAV_ITEMS: SidebarNavItem[] = [
-  { href: "/dashboard", label: "Gösterge", shortLabel: "GS", icon: LayoutDashboard },
-  { href: "/assets", label: "Varlıklar", shortLabel: "VR", icon: Package },
-  { href: "/maintenance", label: "Bakım", shortLabel: "BK", icon: Wrench },
-  { href: "/services", label: "Servisler", shortLabel: "SR", icon: Wrench },
-  { href: "/documents", label: "Belgeler", shortLabel: "BG", icon: FolderOpen },
-  { href: "/timeline", label: "Zaman Akışı", shortLabel: "ZA", icon: Clock3 },
-  { href: "/expenses", label: "Giderler", shortLabel: "GD", icon: HandCoins },
-  { href: "/notifications", label: "Bildirimler", shortLabel: "BL", icon: Bell },
-  { href: "/billing", label: "Abonelikler", shortLabel: "AB", icon: CreditCard },
-  { href: "/invoices", label: "Fatura Takip", shortLabel: "FT", icon: Receipt },
-  { href: "/costs", label: "Skor Analizi", shortLabel: "SK", icon: TrendingUp },
-  { href: "/reports", label: "Raporlar", shortLabel: "RP", icon: FileText },
-  { href: "/settings", label: "Ayarlar", shortLabel: "AY", icon: Settings },
+  { href: "/dashboard", label: NAV_TEXT.dashboard, shortLabel: "GS", icon: LayoutDashboard },
+  { href: "/assets", label: NAV_TEXT.assets, shortLabel: "VR", icon: Package },
+  { href: "/maintenance", label: NAV_TEXT.maintenance, shortLabel: "BK", icon: Wrench },
+  { href: "/services", label: NAV_TEXT.services, shortLabel: "SR", icon: Wrench },
+  { href: "/documents", label: NAV_TEXT.documents, shortLabel: "BG", icon: FolderOpen },
+  { href: "/timeline", label: NAV_TEXT.timeline, shortLabel: "ZA", icon: Clock3 },
+  { href: "/expenses", label: NAV_TEXT.expenses, shortLabel: "GD", icon: HandCoins },
+  { href: "/notifications", label: NAV_TEXT.notifications, shortLabel: "BL", icon: Bell },
+  { href: "/billing", label: NAV_TEXT.billing, shortLabel: "AB", icon: CreditCard },
+  { href: "/invoices", label: NAV_TEXT.invoices, shortLabel: "FT", icon: Receipt },
+  { href: "/costs", label: NAV_TEXT.costs, shortLabel: "SK", icon: TrendingUp },
+  { href: "/reports", label: NAV_TEXT.reports, shortLabel: "RP", icon: FileText },
+  { href: "/settings", label: NAV_TEXT.settings, shortLabel: "AY", icon: Settings },
 ];
 
 const TITLE_MAP: Record<string, string> = {
-  dashboard: "Gösterge",
-  assets: "Varlıklar",
-  maintenance: "Bakım",
-  services: "Servisler",
-  documents: "Belgeler",
-  timeline: "Zaman Akışı",
-  expenses: "Giderler",
-  billing: "Abonelikler",
-  invoices: "Faturalar",
-  reports: "Raporlar",
-  notifications: "Bildirimler",
-  settings: "Ayarlar",
-  subscriptions: "Abonelikler",
-  costs: "Maliyetler",
+  dashboard: NAV_TEXT.dashboard,
+  assets: NAV_TEXT.assets,
+  maintenance: NAV_TEXT.maintenance,
+  services: NAV_TEXT.services,
+  documents: NAV_TEXT.documents,
+  timeline: NAV_TEXT.timeline,
+  expenses: NAV_TEXT.expenses,
+  billing: NAV_TEXT.billing,
+  invoices: NAV_TEXT.invoices,
+  reports: NAV_TEXT.reports,
+  notifications: NAV_TEXT.notifications,
+  settings: NAV_TEXT.settings,
+  subscriptions: NAV_TEXT.billing,
+  costs: NAV_TEXT.costs,
 };
+const subscribeToHydration = () => () => {};
 
 const isActivePath = (pathname: string, href: string) => {
   if (href === "/dashboard") return pathname === href;
@@ -70,43 +72,54 @@ const isActivePath = (pathname: string, href: string) => {
 const getFallbackTitle = (pathname: string) => {
   const [first] = pathname.split("/").filter(Boolean);
   if (!first) {
-    return "Panel";
+    return NAV_TEXT.panel;
   }
 
-  return TITLE_MAP[first] ?? "Panel";
+  return TITLE_MAP[first] ?? NAV_TEXT.panel;
 };
 
 const buildBreadcrumb = (pathname: string) => {
   const parts = pathname.split("/").filter(Boolean);
   if (parts.length === 0) {
-    return "Panel";
+    return NAV_TEXT.panel;
   }
 
   const readableParts = parts.map((part, index) => {
     if (index > 0 && parts[0] === "assets") {
-      return "Detay";
+      return NAV_TEXT.detail;
     }
 
     return TITLE_MAP[part] ?? part;
   });
 
-  return ["Panel", ...readableParts].join(" / ");
+  return [NAV_TEXT.panel, ...readableParts].join(" / ");
 };
 
 export function AppShell({ title, subtitle, children, actions, badge }: AppShellProps) {
   const pathname = usePathname();
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const isHydrated = useSyncExternalStore(subscribeToHydration, () => true, () => false);
 
   useEffect(() => {
+    let isCancelled = false;
+
     const loadSession = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+
+      if (isCancelled) {
+        return;
+      }
+
       setUserEmail(user?.email ?? null);
     };
 
     void loadSession();
+    return () => {
+      isCancelled = true;
+    };
   }, [supabase]);
 
   const resolvedTitle = title ?? getFallbackTitle(pathname);
@@ -125,7 +138,7 @@ export function AppShell({ title, subtitle, children, actions, badge }: AppShell
         <main className="auth-shell-main px-4 py-4 sm:px-6 lg:px-8">
           <nav aria-label="Mobil menü" className="auth-mobile-nav mb-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
             {NAV_ITEMS.map((item) => {
-              const active = isActivePath(pathname, item.href);
+              const active = isHydrated ? isActivePath(pathname ?? "", item.href) : false;
 
               return (
                 <Link

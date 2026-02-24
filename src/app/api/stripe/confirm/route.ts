@@ -54,22 +54,38 @@ export async function POST(request: Request) {
 
   const stripe = getStripeClient();
   if (!stripe) {
-    return NextResponse.json({ error: "Stripe yapılandırması eksik." }, { status: 500 });
+    return NextResponse.json({ error: "Stripe yapilandirmasi eksik." }, { status: 500 });
   }
 
   let session: Stripe.Checkout.Session;
   try {
     session = await stripe.checkout.sessions.retrieve(sessionId);
   } catch {
-    return NextResponse.json({ error: "Checkout oturumu doğrulanamadı." }, { status: 400 });
+    return NextResponse.json({ error: "Checkout oturumu dogrulanamadi." }, { status: 400 });
   }
 
   if (session.client_reference_id && session.client_reference_id !== user.id) {
-    return NextResponse.json({ error: "Bu checkout oturumu kullanıcıya ait değil." }, { status: 403 });
+    return NextResponse.json({ error: "Bu checkout oturumu kullaniciya ait degil." }, { status: 403 });
   }
 
   if (!isPremiumCheckoutCompleted(session)) {
-    return NextResponse.json({ error: "Checkout henüz tamamlanmadı." }, { status: 400 });
+    return NextResponse.json({ error: "Checkout henuz tamamlanmadi." }, { status: 400 });
+  }
+
+  const { error: profileUpdateError } = await supabase.from("profiles").upsert(
+    {
+      id: user.id,
+      plan: "premium",
+      stripe_customer_id: typeof session.customer === "string" ? session.customer : null,
+      stripe_subscription_id: typeof session.subscription === "string" ? session.subscription : null,
+    },
+    {
+      onConflict: "id",
+    },
+  );
+
+  if (profileUpdateError) {
+    return NextResponse.json({ error: "Profil plani premium olarak guncellenemedi." }, { status: 500 });
   }
 
   const nextUserMetadata = buildPremiumMetadata((user.user_metadata ?? {}) as Record<string, unknown>);
@@ -92,7 +108,7 @@ export async function POST(request: Request) {
     });
 
     if (error) {
-      return NextResponse.json({ error: "Premium planı aktifleştirilemedi." }, { status: 500 });
+      return NextResponse.json({ error: "Premium plani aktiflestirilemedi." }, { status: 500 });
     }
   } else {
     const { error } = await supabase.auth.updateUser({
@@ -100,7 +116,7 @@ export async function POST(request: Request) {
     });
 
     if (error) {
-      return NextResponse.json({ error: "Premium planı aktifleştirilemedi." }, { status: 500 });
+      return NextResponse.json({ error: "Premium plani aktiflestirilemedi." }, { status: 500 });
     }
   }
 

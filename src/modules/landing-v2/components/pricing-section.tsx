@@ -1,6 +1,7 @@
 "use client"
 
 import { Check, Sparkles, ArrowRight } from "lucide-react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { getPlanConfig } from "@/lib/plans/plan-config"
 import { useInView } from "@/modules/landing-v2/hooks/use-in-view"
@@ -50,6 +51,39 @@ const plans = [
 
 export function PricingSection() {
   const { ref, inView } = useInView()
+  const [isStartingCheckout, setIsStartingCheckout] = useState(false)
+
+  const handleStartPremiumCheckout = async () => {
+    setIsStartingCheckout(true)
+
+    try {
+      const res = await fetch("/api/stripe/checkout", { method: "POST" })
+
+      if (!res.ok) {
+        const responseText = await res.text()
+        const errorMessage = responseText || "Stripe checkout baslatilamadi."
+        console.error("Stripe checkout failed:", res.status, errorMessage)
+        alert(errorMessage)
+        setIsStartingCheckout(false)
+        return
+      }
+
+      const data = (await res.json().catch(() => null)) as { url?: string } | null
+      if (!data?.url) {
+        const missingUrlError = "Checkout URL donmedi."
+        console.error("Checkout error:", missingUrlError)
+        alert(missingUrlError)
+        setIsStartingCheckout(false)
+        return
+      }
+
+      window.location.href = data.url
+    } catch (error) {
+      console.error("Checkout error:", error)
+      alert("Odeme baslatilamadi: Stripe URL alinamadi.")
+      setIsStartingCheckout(false)
+    }
+  }
 
   return (
     <section id="fiyatlandirma" className="relative isolate py-32" ref={ref}>
@@ -110,13 +144,16 @@ export function PricingSection() {
               </div>
 
               <Button
+                type="button"
+                onClick={plan.popular ? handleStartPremiumCheckout : undefined}
+                disabled={plan.popular ? isStartingCheckout : false}
                 className={`w-full py-6 text-base group ${
                   plan.popular
                     ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25"
                     : "bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border"
                 }`}
               >
-                {plan.cta}
+                {plan.popular && isStartingCheckout ? "Yönlendiriliyor…" : plan.cta}
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Button>
             </div>

@@ -4,7 +4,8 @@ import { NextResponse } from "next/server";
 import { logApiError, logAuditEvent } from "@/lib/api/logging";
 import { existsById } from "@/lib/repos/assets-repo";
 import { countByUser as countDocumentsByUser } from "@/lib/repos/documents-repo";
-import { canUploadDocument, getUserPlanConfig } from "@/lib/plans/plan-config";
+import { canUploadDocument } from "@/lib/plans/plan-config";
+import { getPlanConfigFromProfilePlan } from "@/lib/plans/profile-plan";
 import { requireRouteUser, type RouteAuthSuccess } from "@/lib/supabase/route-auth";
 
 export const runtime = "nodejs";
@@ -684,26 +685,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, uploadedCount: 0, warnings: ["Yüklenecek medya bulunamadı."] });
     }
 
-    const userPlan = getUserPlanConfig(user);
-    const { data: currentDocumentCount, error: documentCountError } = await countDocumentsByUser(supabase, {
-      userId: user.id,
-    });
+    if (auth.profilePlan !== "premium") {
+      const userPlan = getPlanConfigFromProfilePlan(auth.profilePlan);
+      const { data: currentDocumentCount, error: documentCountError } = await countDocumentsByUser(supabase, {
+        userId: user.id,
+      });
 
-    if (documentCountError) {
-      return NextResponse.json({ error: documentCountError.message }, { status: 400 });
-    }
+      if (documentCountError) {
+        return NextResponse.json({ error: documentCountError.message }, { status: 400 });
+      }
 
-    const documentLimitCheck = canUploadDocument({
-      planConfig: userPlan,
-      currentCount: currentDocumentCount ?? 0,
-      requestedCount: mediaEntries.length,
-    });
+      const documentLimitCheck = canUploadDocument({
+        planConfig: userPlan,
+        currentCount: currentDocumentCount ?? 0,
+        requestedCount: mediaEntries.length,
+      });
 
-    if (!documentLimitCheck.allowed) {
-      return NextResponse.json(
-        { error: documentLimitCheck.errorMessage ?? "Plan limitine ulaştınız." },
-        { status: 403 },
-      );
+      if (!documentLimitCheck.allowed) {
+        return NextResponse.json(
+          { error: documentLimitCheck.errorMessage ?? "Plan limitine ulaştınız." },
+          { status: 403 },
+        );
+      }
     }
 
     const uploads: MediaUploadResult[] = [];
@@ -873,6 +876,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Medya isteği işlenemedi." }, { status: 500 });
   }
 }
-
-
 

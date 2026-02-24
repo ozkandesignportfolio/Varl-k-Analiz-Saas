@@ -7,7 +7,6 @@ const protectedRoutes = [
   "/assets",
   "/services",
   "/reports",
-  "/billing",
   "/expenses",
   "/maintenance",
   "/documents",
@@ -18,6 +17,8 @@ const protectedRoutes = [
 ];
 
 const authRoutes = ["/login", "/register"];
+const middlewareBypassPrefixes = ["/api/", "/billing/", "/_next/"] as const;
+const middlewareBypassExactPaths = new Set(["/api", "/billing", "/_next", "/favicon.ico"]);
 
 function isProtectedRoute(pathname: string) {
   return protectedRoutes.some(
@@ -27,6 +28,14 @@ function isProtectedRoute(pathname: string) {
 
 function isAuthRoute(pathname: string) {
   return authRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
+
+function isBypassPath(pathname: string) {
+  if (middlewareBypassExactPaths.has(pathname)) {
+    return true;
+  }
+
+  return middlewareBypassPrefixes.some((prefix) => pathname.startsWith(prefix));
 }
 
 function getSafeInternalPath(target: string | null) {
@@ -48,6 +57,22 @@ function copyAuthCookies(from: NextResponse, to: NextResponse) {
 }
 
 export async function middleware(request: NextRequest) {
+  const { pathname, search } = request.nextUrl;
+
+  if (
+    pathname.startsWith("/api/") ||
+    pathname.startsWith("/billing/") ||
+    pathname.startsWith("/_next/") ||
+    pathname === "/favicon.ico"
+  ) {
+    return NextResponse.next();
+  }
+
+  // Never run auth redirects for API/static/billing framework paths.
+  if (isBypassPath(pathname)) {
+    return NextResponse.next();
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -94,7 +119,6 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  const { pathname, search } = request.nextUrl;
   const isProtected = isProtectedRoute(pathname);
   const isAuth = isAuthRoute(pathname);
 
@@ -129,20 +153,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/dashboard/:path*",
-    "/assets/:path*",
-    "/services/:path*",
-    "/billing/:path*",
-    "/reports/:path*",
-    "/expenses/:path*",
-    "/maintenance/:path*",
-    "/documents/:path*",
-    "/timeline/:path*",
-    "/costs/:path*",
-    "/notifications/:path*",
-    "/settings/:path*",
-    "/login",
-    "/register",
-  ],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };

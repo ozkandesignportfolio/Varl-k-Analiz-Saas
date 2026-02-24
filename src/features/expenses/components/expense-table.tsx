@@ -1,5 +1,7 @@
 ﻿"use client";
 
+import { EXPENSES_TEXT } from "@/constants/ui-text";
+
 export type ExpenseTableRow = {
   id: string;
   asset_id: string | null;
@@ -21,23 +23,23 @@ type ExpenseTableProps = {
 export function ExpenseTable({ isLoading, expenses, assetNameById }: ExpenseTableProps) {
   return (
     <section className="premium-card p-5">
-      <h2 className="text-xl font-semibold text-white">Giderler</h2>
+      <h2 className="text-xl font-semibold text-white">{EXPENSES_TEXT.tableTitle}</h2>
 
       {isLoading ? (
-        <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
+        <p className="mt-4 text-sm text-slate-300">{EXPENSES_TEXT.tableLoading}</p>
       ) : expenses.length === 0 ? (
-        <p className="mt-4 text-sm text-slate-300">Henüz gider kaydı yok</p>
+        <p className="mt-4 text-sm text-slate-300">{EXPENSES_TEXT.tableEmpty}</p>
       ) : (
         <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
           <table className="min-w-full text-left text-sm">
             <thead>
               <tr className="border-b border-white/10 bg-white/5 text-slate-300">
-                <th className="px-3 py-2">Tarih</th>
-                <th className="px-3 py-2">Başlık</th>
-                <th className="px-3 py-2">Kategori</th>
-                <th className="px-3 py-2">Varlık</th>
-                <th className="px-3 py-2">Tutar</th>
-                <th className="px-3 py-2">Not</th>
+                <th className="px-3 py-2">{EXPENSES_TEXT.tableHeadDate}</th>
+                <th className="px-3 py-2">{EXPENSES_TEXT.tableHeadTitle}</th>
+                <th className="px-3 py-2">{EXPENSES_TEXT.tableHeadCategory}</th>
+                <th className="px-3 py-2">{EXPENSES_TEXT.tableHeadAsset}</th>
+                <th className="px-3 py-2">{EXPENSES_TEXT.tableHeadAmount}</th>
+                <th className="px-3 py-2">{EXPENSES_TEXT.tableHeadNote}</th>
               </tr>
             </thead>
             <tbody>

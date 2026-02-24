@@ -522,7 +522,7 @@ export function AssetsPageContainer() {
 
       if (!createResponse.ok || !createPayload?.id) {
         const trialAssetLimit = assetLimit ?? 3;
-        if (createResponse.status === 403 && plan === "free" && trialAssetLimit <= assets.length) {
+        if (createResponse.status === 403 && plan !== "premium" && trialAssetLimit <= assets.length) {
           setIsQuotaModalOpen(true);
         }
         setFeedback(createPayload?.error ?? "Varlık kaydı oluşturulamadı.");

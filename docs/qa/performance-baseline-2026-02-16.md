@@ -21,6 +21,5 @@
 | `/api/service-logs` | 401 | 7.5 | 2.5 | 26.7 |
 
 Değerlendirme:
-- Mobil/PWA için eklenen routeâ€™lar (`/offline`, `/manifest.webmanifest`) düşük gecikmeyle yanıt veriyor.
+- Mobil/PWA için eklenen route'lar (`/offline`, `/manifest.webmanifest`) düşük gecikmeyle yanıt veriyor.
 - Auth guard davranışı performans ölçümünde beklenen HTTP kodlarıyla tutarlı.
-

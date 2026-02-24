@@ -26,6 +26,5 @@ Sonuç özeti:
 | `/api/service-logs` | 401 (auth guard) | 401 | 66.2 |
 
 Değerlendirme:
-- Kritik routeâ€™larda beklenen HTTP davranışı doğrulandı.
+- Kritik route'larda beklenen HTTP davranışı doğrulandı.
 - Auth koruması ve API yetkisiz erişim engeli smoke seviyesinde çalışıyor.
-
