@@ -1,9 +1,11 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { getPlanConfig } from "@/lib/plans/plan-config";
 import { cn } from "@/lib/utils";
+import { PricingCard } from "@/modules/landing-v2/components/pricing/PricingCard";
+import { PAYMENT_TEXT } from "@/constants/ui-text";
 
 type BillingCycle = "monthly" | "annual";
 
@@ -27,12 +29,12 @@ const featureRows: FeatureRow[] = [
   { feature: "Belge sayısı", free: String(trialDocumentLimit), premium: "Sınırsız" },
   { feature: "Abonelik sayısı", free: String(trialSubscriptionLimit), premium: "Sınırsız" },
   { feature: "Fatura yükleme sayısı", free: String(trialInvoiceUploadLimit), premium: "Sınırsız" },
-  { feature: "Bakım kurali", free: "Evet", premium: "Evet" },
-  { feature: "Servis gecmisi", free: "Evet", premium: "Evet" },
-  { feature: "PDF rapor export", free: "Hayir", premium: "Evet" },
-  { feature: "Otomasyon (bildirim/email)", free: "Hayir", premium: "Evet" },
-  { feature: "QR kod erisimi", free: "Evet", premium: "Evet" },
-  { feature: "Oncelikli destek", free: "Hayir", premium: "Evet" },
+  { feature: "Bakım kuralı", free: "Evet", premium: "Evet" },
+  { feature: "Servis geçmişi", free: "Evet", premium: "Evet" },
+  { feature: "PDF rapor export", free: "Hayır", premium: "Evet" },
+  { feature: "Otomasyon (bildirim/email)", free: "Hayır", premium: "Evet" },
+  { feature: "QR kod erişimi", free: "Evet", premium: "Evet" },
+  { feature: "Öncelikli destek", free: "Hayır", premium: "Evet" },
 ];
 
 const toTl = (amount: number) => `${new Intl.NumberFormat("tr-TR").format(amount)} TL`;
@@ -41,6 +43,10 @@ export default function PricingPage() {
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const isAnnual = billingCycle === "annual";
+  const trialSummary = useMemo(
+    () => `${trialAssetLimit} varlık, ${trialDocumentLimit} belge, ${trialSubscriptionLimit} abonelik, ${trialInvoiceUploadLimit} fatura yükleme`,
+    [],
+  );
 
   const startPremiumCheckout = useCallback(async () => {
     setIsStartingCheckout(true);
@@ -50,7 +56,7 @@ export default function PricingPage() {
 
       if (!res.ok) {
         const responseText = await res.text();
-        const errorMessage = responseText || "Stripe checkout baslatilamadi.";
+        const errorMessage = responseText || "Stripe checkout başlatılamadı.";
         console.error("Checkout error:", res.status, errorMessage);
         alert(errorMessage);
         setIsStartingCheckout(false);
@@ -59,7 +65,7 @@ export default function PricingPage() {
 
       const data = (await res.json().catch(() => null)) as { url?: string } | null;
       if (!data?.url) {
-        const missingUrlError = "Checkout URL donmedi.";
+        const missingUrlError = "Checkout URL dönmedi.";
         console.error("Checkout error:", missingUrlError);
         alert(missingUrlError);
         setIsStartingCheckout(false);
@@ -68,7 +74,7 @@ export default function PricingPage() {
 
       window.location.href = data.url;
     } catch (error) {
-      const networkError = "Stripe URL alinamadi.";
+      const networkError = "Stripe URL alınamadı.";
       console.error("Checkout error:", error);
       alert(networkError);
       setIsStartingCheckout(false);
@@ -87,11 +93,8 @@ export default function PricingPage() {
           <p className="inline-flex rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">
             AssetCare Planları
           </p>
-          <h1 className="mt-4 text-3xl font-semibold text-white sm:text-4xl">Deneme ile basla, Premium ile olcekle</h1>
-          <p className="mt-2 text-sm text-slate-300">
-            Deneme: {trialAssetLimit} varlık, {trialDocumentLimit} belge, {trialSubscriptionLimit} abonelik,{" "}
-            {trialInvoiceUploadLimit} fatura yükleme.
-          </p>
+          <h1 className="mt-4 text-3xl font-semibold text-white sm:text-4xl">Deneme ile başla, Premium ile ölçekle</h1>
+          <p className="mt-2 text-sm text-slate-300">Deneme: {trialSummary}.</p>
 
           <div className="mt-5 inline-flex rounded-full border border-white/15 bg-white/5 p-1">
             <button
@@ -117,66 +120,59 @@ export default function PricingPage() {
           </div>
 
           {isAnnual ? (
-            <p className="mt-3 text-sm font-medium text-emerald-200">{`1.788 TL -> 1.490 TL yillik %17 indirim`}</p>
+            <p className="mt-3 text-sm font-medium text-emerald-200">{`${toTl(ANNUAL_REGULAR_PRICE)} -> ${toTl(ANNUAL_DISCOUNTED_PRICE)} yıllık %17 indirim`}</p>
           ) : null}
         </header>
 
         <section className="grid gap-4 lg:grid-cols-2">
-          <article className="premium-card p-6">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Deneme</p>
-            <p className="mt-3 text-4xl font-semibold text-white">0 TL</p>
-            <p className="mt-1 text-sm text-slate-300">
-              {trialAssetLimit} varlık, {trialDocumentLimit} belge, {trialSubscriptionLimit} abonelik,{" "}
-              {trialInvoiceUploadLimit} fatura yükleme
-            </p>
+          <PricingCard
+            planName="Deneme"
+            price="0 TL"
+            periodText="Aylık Ödeme"
+            description={trialSummary}
+            highlights={[
+              `${trialAssetLimit} varlık limiti`,
+              `${trialDocumentLimit} belge limiti`,
+              `${trialSubscriptionLimit} abonelik limiti`,
+              `${trialInvoiceUploadLimit} fatura yükleme limiti`,
+            ]}
+            action={
+              <Link
+                href="/register?plan=free"
+                className="inline-flex w-full items-center justify-center rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
+              >
+                Ücretsiz Başla
+              </Link>
+            }
+          />
 
-            <ul className="mt-5 space-y-2 text-sm text-slate-200">
-              <li>{`${trialAssetLimit} varlık limiti`}</li>
-              <li>{`${trialDocumentLimit} belge limiti`}</li>
-              <li>{`${trialSubscriptionLimit} abonelik limiti`}</li>
-              <li>{`${trialInvoiceUploadLimit} fatura yükleme limiti`}</li>
-            </ul>
-
-            <Link
-              href="/register?plan=free"
-              className="mt-6 inline-flex w-full items-center justify-center rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
-            >
-              Ücretsiz Başla
-            </Link>
-          </article>
-
-          <article
-            className="premium-card relative border border-indigo-400/55 p-6"
+          <PricingCard
+            planName="Premium"
+            topBadge="En Çok Tercih Edilen"
+            featured
             style={{ boxShadow: "0 0 30px rgba(99,102,241,0.3)" }}
-          >
-            <span className="absolute right-5 top-5 rounded-full border border-indigo-300/40 bg-indigo-500/25 px-3 py-1 text-xs font-semibold text-indigo-100">
-              En çok Tercih Edilen
-            </span>
-            <p className="text-xs uppercase tracking-[0.2em] text-indigo-200">Premium</p>
-            <p className="mt-3 text-4xl font-semibold text-white">
-              {isAnnual ? toTl(ANNUAL_DISCOUNTED_PRICE) : `${toTl(MONTHLY_PREMIUM_PRICE)}`}
-            </p>
-            <p className="mt-1 text-sm text-slate-200">{isAnnual ? "Yıllık Ödeme" : "Aylık Ödeme"}</p>
-            {isAnnual ? (
-              <p className="mt-2 text-xs text-emerald-200">{toTl(ANNUAL_REGULAR_PRICE)} yerine yillik avantajli fiyat</p>
-            ) : null}
-
-            <ul className="mt-5 space-y-2 text-sm text-slate-100">
-              <li>Sınırsız varlık</li>
-              <li>Sınırsız belge</li>
-              <li>Sınırsız abonelik/fatura</li>
-              <li>PDF rapor export + otomasyon</li>
-            </ul>
-
-            <button
-              type="button"
-              onClick={() => void startPremiumCheckout()}
-              disabled={isStartingCheckout}
-              className="mt-6 inline-flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-400 px-4 py-2.5 text-sm font-semibold text-white transition hover:shadow-[0_0_22px_rgba(99,102,241,0.5)] disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {isStartingCheckout ? "Yonlendiriliyor..." : "Premium'u Baslat"}
-            </button>
-          </article>
+            price={isAnnual ? toTl(ANNUAL_DISCOUNTED_PRICE) : toTl(MONTHLY_PREMIUM_PRICE)}
+            periodText={isAnnual ? "Yıllık Ödeme" : "Aylık Ödeme"}
+            description={
+              isAnnual ? (
+                <span className="text-xs text-emerald-200">{toTl(ANNUAL_REGULAR_PRICE)} yerine yıllık avantajlı fiyat</span>
+              ) : (
+                <span />
+              )
+            }
+            highlights={["Sınırsız varlık", "Sınırsız belge", "Sınırsız abonelik/fatura", "PDF rapor export + otomasyon"]}
+            action={
+              <button
+                type="button"
+                onClick={() => void startPremiumCheckout()}
+                disabled={isStartingCheckout}
+                className="inline-flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-400 px-4 py-2.5 text-sm font-semibold text-white transition hover:shadow-[0_0_22px_rgba(99,102,241,0.5)] disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isStartingCheckout ? "Yönlendiriliyor..." : "Premium'u Başlat"}
+              </button>
+            }
+            footnote={PAYMENT_TEXT.stripeCollectionNotice}
+          />
         </section>
 
         <section className="premium-panel overflow-hidden p-0">

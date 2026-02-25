@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { Shield } from "lucide-react";
+import { PAYMENT_TEXT } from "@/constants/ui-text";
 
 type FooterLink = {
   label: string;
@@ -56,7 +57,7 @@ export function Footer() {
               </div>
               <div>
                 <div className="text-sm font-bold tracking-tight text-foreground">ASSETCARE</div>
-                <div className="text-[9px] tracking-widest text-muted-foreground">Premium Panel</div>
+                <div className="text-[9px] tracking-widest text-muted-foreground">Premium Kontrol Paneli</div>
               </div>
             </div>
             <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
@@ -83,6 +84,7 @@ export function Footer() {
         </div>
 
         <div className="mt-16 border-t border-border/30 pt-8">
+          <p className="mt-3 text-xs leading-relaxed text-muted-foreground/70">{PAYMENT_TEXT.stripeCollectionNotice}</p>
           <p className="text-sm text-muted-foreground">2026 AssetCare. Tüm hakları saklıdır.</p>
         </div>
       </div>

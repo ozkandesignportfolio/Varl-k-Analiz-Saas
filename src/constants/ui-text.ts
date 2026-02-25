@@ -1,4 +1,4 @@
-export const NAV_TEXT = {
+﻿export const NAV_TEXT = {
   dashboard: "Gösterge",
   assets: "Varlıklar",
   maintenance: "Bakım",
@@ -8,8 +8,8 @@ export const NAV_TEXT = {
   expenses: "Giderler",
   notifications: "Bildirimler",
   billing: "Abonelikler",
-  invoices: "Faturalar",
-  costs: "Maliyetler",
+  invoices: "Fatura Takip",
+  costs: "Skor Analizi",
   reports: "Raporlar",
   settings: "Ayarlar",
   panel: "Panel",
@@ -28,6 +28,10 @@ export const SIDEBAR_TEXT = {
   unlimitedAssetsStatus: "Sınırsız varlık aktif",
   nextInvoicePrefix: "Sonraki fatura",
   infiniteLimit: "∞",
+} as const;
+
+export const PAYMENT_TEXT = {
+  stripeCollectionNotice: "Ödemeler Planicas LLC adına Stripe üzerinden güvenle tahsil edilir.",
 } as const;
 
 export const EXPENSES_TEXT = {

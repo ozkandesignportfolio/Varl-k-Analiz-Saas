@@ -1,25 +1,12 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
-import {
-  Bell,
-  Package,
-  Clock3,
-  CreditCard,
-  FileText,
-  LayoutDashboard,
-  Receipt,
-  Settings,
-  TrendingUp,
-  Wrench,
-  FolderOpen,
-  HandCoins,
-} from "lucide-react";
-import { Sidebar, type SidebarNavItem } from "@/components/layout/Sidebar";
+import { Sidebar } from "@/components/layout/Sidebar";
+import { AppHeader } from "@/components/layout/header/AppHeader";
+import { SIDEBAR_LABEL_BY_KEY, SIDEBAR_NAV_ITEMS } from "@/constants/sidebar-nav";
 import { NAV_TEXT } from "@/constants/ui-text";
-import { Topbar } from "@/components/layout/Topbar";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export type AppShellProps = {
@@ -30,37 +17,21 @@ export type AppShellProps = {
   badge?: string;
 };
 
-const NAV_ITEMS: SidebarNavItem[] = [
-  { href: "/dashboard", label: NAV_TEXT.dashboard, shortLabel: "GS", icon: LayoutDashboard },
-  { href: "/assets", label: NAV_TEXT.assets, shortLabel: "VR", icon: Package },
-  { href: "/maintenance", label: NAV_TEXT.maintenance, shortLabel: "BK", icon: Wrench },
-  { href: "/services", label: NAV_TEXT.services, shortLabel: "SR", icon: Wrench },
-  { href: "/documents", label: NAV_TEXT.documents, shortLabel: "BG", icon: FolderOpen },
-  { href: "/timeline", label: NAV_TEXT.timeline, shortLabel: "ZA", icon: Clock3 },
-  { href: "/expenses", label: NAV_TEXT.expenses, shortLabel: "GD", icon: HandCoins },
-  { href: "/notifications", label: NAV_TEXT.notifications, shortLabel: "BL", icon: Bell },
-  { href: "/billing", label: NAV_TEXT.billing, shortLabel: "AB", icon: CreditCard },
-  { href: "/invoices", label: NAV_TEXT.invoices, shortLabel: "FT", icon: Receipt },
-  { href: "/costs", label: NAV_TEXT.costs, shortLabel: "SK", icon: TrendingUp },
-  { href: "/reports", label: NAV_TEXT.reports, shortLabel: "RP", icon: FileText },
-  { href: "/settings", label: NAV_TEXT.settings, shortLabel: "AY", icon: Settings },
-];
-
 const TITLE_MAP: Record<string, string> = {
-  dashboard: NAV_TEXT.dashboard,
-  assets: NAV_TEXT.assets,
-  maintenance: NAV_TEXT.maintenance,
-  services: NAV_TEXT.services,
-  documents: NAV_TEXT.documents,
-  timeline: NAV_TEXT.timeline,
-  expenses: NAV_TEXT.expenses,
-  billing: NAV_TEXT.billing,
-  invoices: NAV_TEXT.invoices,
-  reports: NAV_TEXT.reports,
-  notifications: NAV_TEXT.notifications,
-  settings: NAV_TEXT.settings,
-  subscriptions: NAV_TEXT.billing,
-  costs: NAV_TEXT.costs,
+  dashboard: SIDEBAR_LABEL_BY_KEY.dashboard,
+  assets: SIDEBAR_LABEL_BY_KEY.assets,
+  maintenance: SIDEBAR_LABEL_BY_KEY.maintenance,
+  services: SIDEBAR_LABEL_BY_KEY.services,
+  documents: SIDEBAR_LABEL_BY_KEY.documents,
+  timeline: SIDEBAR_LABEL_BY_KEY.timeline,
+  expenses: SIDEBAR_LABEL_BY_KEY.expenses,
+  billing: SIDEBAR_LABEL_BY_KEY.billing,
+  invoices: SIDEBAR_LABEL_BY_KEY.invoices,
+  reports: SIDEBAR_LABEL_BY_KEY.reports,
+  notifications: SIDEBAR_LABEL_BY_KEY.notifications,
+  settings: SIDEBAR_LABEL_BY_KEY.settings,
+  subscriptions: SIDEBAR_LABEL_BY_KEY.billing,
+  costs: SIDEBAR_LABEL_BY_KEY.costs,
 };
 const subscribeToHydration = () => () => {};
 
@@ -98,6 +69,7 @@ const buildBreadcrumb = (pathname: string) => {
 export function AppShell({ title, subtitle, children, actions, badge }: AppShellProps) {
   const pathname = usePathname();
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
+  const mobileNavItems = useMemo(() => SIDEBAR_NAV_ITEMS, []);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const isHydrated = useSyncExternalStore(subscribeToHydration, () => true, () => false);
 
@@ -127,17 +99,14 @@ export function AppShell({ title, subtitle, children, actions, badge }: AppShell
 
   return (
     <div className="auth-shell-theme min-h-screen">
-      <Sidebar
-        items={NAV_ITEMS}
-        className="auth-shell-sidebar fixed left-0 top-0 z-50 hidden h-screen w-[var(--auth-sidebar-width)] lg:flex"
-      />
+      <Sidebar className="auth-shell-sidebar fixed left-0 top-0 z-50 hidden h-screen w-[var(--auth-sidebar-width)] lg:flex" />
 
       <div className="auth-shell-layout lg:pl-[var(--auth-sidebar-width)]">
-        <Topbar title={resolvedTitle} breadcrumb={breadcrumb} userEmail={userEmail} />
+        <AppHeader title={resolvedTitle} breadcrumb={breadcrumb} userEmail={userEmail} />
 
         <main className="auth-shell-main px-4 py-4 sm:px-6 lg:px-8">
           <nav aria-label="Mobil menü" className="auth-mobile-nav mb-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
-            {NAV_ITEMS.map((item) => {
+            {mobileNavItems.map((item) => {
               const active = isHydrated ? isActivePath(pathname ?? "", item.href) : false;
 
               return (
@@ -149,9 +118,7 @@ export function AppShell({ title, subtitle, children, actions, badge }: AppShell
                   className="auth-shell-chip auth-focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs"
                 >
                   <span>{item.label}</span>
-                  <span className="auth-nav-short-badge">
-                    {item.shortLabel ?? item.label.slice(0, 2).toLocaleUpperCase("tr-TR")}
-                  </span>
+                  <span className="auth-nav-short-badge">{item.shortCode}</span>
                 </Link>
               );
             })}
@@ -161,11 +128,7 @@ export function AppShell({ title, subtitle, children, actions, badge }: AppShell
             <section className="auth-shell-card auth-shell-intro mb-5 rounded-2xl p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="space-y-2">
-                  {badge ? (
-                    <p className="auth-section-chip">
-                      {badge}
-                    </p>
-                  ) : null}
+                  {badge ? <p className="auth-section-chip">{badge}</p> : null}
                   {subtitle ? <p className="auth-section-subtitle text-sm">{subtitle}</p> : null}
                 </div>
                 {actions ? <div className="auth-shell-actions flex items-center gap-2">{actions}</div> : null}
