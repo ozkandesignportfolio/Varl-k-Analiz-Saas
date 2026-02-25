@@ -1,6 +1,5 @@
 ﻿import { memo } from "react";
 import { AlertTriangle, FileText, Package, Plus, TrendingUp, Wrench } from "lucide-react";
-import type { PanelPreviewViewProps } from "@/modules/landing-v2/components/panel-preview/types";
 import { cn } from "@/lib/utils";
 
 const DASHBOARD_FILTERS = ["Son 7 gün", "Son 30 gün", "Son 90 gün"];
@@ -36,7 +35,7 @@ const RISK_ITEMS = [
   },
 ];
 
-function DashboardViewComponent(_: PanelPreviewViewProps) {
+function DashboardViewComponent() {
   return (
     <div className="space-y-4">
       <article className="rounded-2xl border border-[var(--auth-border-soft)] bg-[rgb(17_29_58_/_38%)] p-4 shadow-[0_12px_24px_rgb(5_10_24_/_28%)]">
