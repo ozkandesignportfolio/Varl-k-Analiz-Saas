@@ -31,10 +31,11 @@ const isActivePath = (pathname: string, href: string) => {
 export function Sidebar({ collapsed = false, brand, footer, className, onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const isHydrated = useSyncExternalStore(subscribeToHydration, () => true, () => false);
-  const showPlanDebug = process.env.NODE_ENV !== "production";
   const [planDebug, setPlanDebug] = useState<PlanDebugResponse | null>(null);
   const planContext = useContext(PlanContext);
   const plan = planContext?.plan ?? "free";
+  const showPlanDebug = process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_PLAN_DEBUG === "true";
+  const sidebarPlanLabel = plan === "premium" ? "Premium" : "Deneme";
   const assetCount = planContext?.assetCount ?? 0;
   const assetLimit = planContext?.assetLimit ?? INITIAL_ASSET_LIMIT;
   const documentCount = planContext?.documentCount ?? 0;
@@ -102,7 +103,7 @@ export function Sidebar({ collapsed = false, brand, footer, className, onNavigat
             {!collapsed ? (
               <div>
                 <p className="text-xs font-bold tracking-tight text-[var(--auth-foreground)]">ASSETCARE</p>
-                <p className="text-[9px] text-[var(--auth-muted)]">Premium Kontrol Paneli</p>
+                <p className="text-[9px] text-[var(--auth-muted)]">{sidebarPlanLabel}</p>
               </div>
             ) : null}
           </Link>

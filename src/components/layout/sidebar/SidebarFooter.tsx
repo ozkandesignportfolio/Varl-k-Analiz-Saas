@@ -103,7 +103,7 @@ export function SidebarFooter({
 
       {plan !== "premium" ? (
         <article className="auth-plan-card auth-plan-card-free rounded-xl p-3">
-          <p className="text-xs uppercase tracking-[0.2em] text-amber-100">{FREE_PLAN_LABEL}</p>
+          <p className="text-xs tracking-[0.2em] text-amber-100">{FREE_PLAN_LABEL}</p>
           <p className="mt-2 text-sm font-semibold text-[var(--auth-foreground)]">
             {SIDEBAR_TEXT.usageAssets}: {formatUsage(assetCount, assetLimit)}
           </p>

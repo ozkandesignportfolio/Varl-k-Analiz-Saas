@@ -26,10 +26,10 @@ export function UsageLimitsCard({ planLabel, isPremium, items }: UsageLimitsCard
       <div className="flex items-center justify-between gap-2">
         <div>
           <p className="text-xs uppercase tracking-[0.16em] text-[#90A6C4]">Kullanim</p>
-          <h2 className="mt-1 text-lg font-semibold text-[#F8FAFC]">{planLabel} Plani</h2>
+          <h2 className="mt-1 text-lg font-semibold text-[#F8FAFC]">{planLabel}</h2>
         </div>
         <span className="inline-flex rounded-full border border-[#3A5478] bg-[#132B4B] px-2.5 py-1 text-xs font-semibold text-[#D8E6FC]">
-          {isPremium ? "Sınırsız" : "Deneme"}
+          {isPremium ? "Premium" : "Deneme"}
         </span>
       </div>
 

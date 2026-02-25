@@ -18,7 +18,7 @@
 
 export const SIDEBAR_TEXT = {
   ariaLabel: "Ana menü",
-  freePlanLabel: "Deneme Planı",
+  freePlanLabel: "Deneme",
   usageAssets: "Varlıklar",
   usageDocuments: "Belgeler",
   usageSubscriptions: "Abonelikler",

@@ -14,7 +14,7 @@ const trialAssetLimit = trialPlan.limits.assetsLimit ?? 0;
 const trialDocumentLimit = trialPlan.limits.documentsLimit ?? 0;
 const trialSubscriptionLimit = trialPlan.limits.subscriptionsLimit ?? 0;
 const trialInvoiceUploadLimit = trialPlan.limits.invoiceUploadsLimit ?? 0;
-const enableOnboardingSeed = process.env.NEXT_PUBLIC_ENABLE_ONBOARDING_SEED === "true";
+const enableOnboardingSeed = false;
 const verificationMessage = "E-posta doğrulama bağlantısı gönderildi. Gelen kutusu + spam kontrol et.";
 
 export default function RegisterPage() {

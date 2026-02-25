@@ -44,6 +44,7 @@ const PlanContext = createContext<PlanContextValue | undefined>(undefined);
 
 export function PlanProvider({ children }: { children: ReactNode }) {
   const isDev = process.env.NODE_ENV !== "production";
+  const showPlanDebug = isDev && process.env.NEXT_PUBLIC_PLAN_DEBUG === "true";
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const hasLoggedProfilePlanLoadWarning = useRef(false);
   const [devPlanWarning, setDevPlanWarning] = useState<string | null>(null);
@@ -193,7 +194,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   return (
     <PlanContext.Provider value={value}>
       {children}
-      {isDev && devPlanWarning ? (
+      {showPlanDebug && devPlanWarning ? (
         <div className="pointer-events-none fixed bottom-3 right-3 z-[90] rounded-md border border-amber-300 bg-amber-100 px-2 py-1 text-xs text-amber-900 shadow-sm">
           Plan debug: {devPlanWarning}
         </div>
