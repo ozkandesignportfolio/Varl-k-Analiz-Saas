@@ -45,7 +45,7 @@ export function FaturaSection() {
                 { icon: Receipt, label: "Fatura Kaydı", desc: "Tutar, vergi, vade ve ödeme durumu" },
                 { icon: FileCheck, label: "Belge Ekleme", desc: "Fatura dosyalarını güvenle saklayın" },
                 { icon: Clock, label: "Vade Takibi", desc: "Otomatik gecikme uyarıları" },
-                { icon: Download, label: "PDF Export", desc: "Toplu rapor indirin" },
+                { icon: Download, label: "PDF Dışa Aktar", desc: "Toplu rapor indirin" },
               ].map((item, i) => (
                 <div key={i} className="flex items-start gap-3 rounded-xl border border-border/50 bg-secondary/30 p-4 transition-all hover:border-accent/20 hover:bg-secondary/50">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10">
@@ -69,10 +69,10 @@ export function FaturaSection() {
                   <div className="text-xs text-muted-foreground">Şubat 2026</div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary/50 text-muted-foreground hover:text-foreground transition-colors" aria-label="Filter">
+                  <button className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary/50 text-muted-foreground hover:text-foreground transition-colors" aria-label="Filtrele">
                     <Filter className="h-4 w-4" />
                   </button>
-                  <button className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary/50 text-muted-foreground hover:text-foreground transition-colors" aria-label="Download">
+                  <button className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary/50 text-muted-foreground hover:text-foreground transition-colors" aria-label="İndir">
                     <Download className="h-4 w-4" />
                   </button>
                 </div>

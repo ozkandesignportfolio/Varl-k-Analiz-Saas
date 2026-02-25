@@ -35,6 +35,10 @@ const defaultNotificationPrefs: NotificationPrefsState = {
   frequency: "Anında" as NotificationPrefsState["frequency"],
 };
 
+const ACCOUNT_DELETE_CONFIRM_KEYWORD = "SİL";
+const INPUT_CLASS_NAME =
+  "w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-400 focus:border-sky-300 disabled:opacity-70";
+
 const toBoolean = (value: unknown, fallback: boolean) =>
   typeof value === "boolean" ? value : fallback;
 
@@ -135,6 +139,9 @@ export function SettingsPageContainer() {
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [isConfirmingCheckout, setIsConfirmingCheckout] = useState(false);
   const [organizationName, setOrganizationName] = useState("Kişisel Çalışma Alanı");
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteFeedback, setDeleteFeedback] = useState("");
   const notificationSaveRequestIdRef = useRef(0);
 
   useEffect(() => {
@@ -327,6 +334,45 @@ export function SettingsPageContainer() {
     setIsConfirmingCheckout(false);
   }, [checkoutSessionId, refreshPlanState, router]);
 
+  const isDeleteConfirmationValid =
+    deleteConfirmationText.trim().toLocaleUpperCase("tr-TR") === ACCOUNT_DELETE_CONFIRM_KEYWORD;
+
+  const deleteAccount = useCallback(async () => {
+    if (!isDeleteConfirmationValid || isDeletingAccount) {
+      return;
+    }
+
+    setDeleteFeedback("");
+    setIsDeletingAccount(true);
+
+    try {
+      const response = await fetch("/api/account/delete", { method: "POST" });
+      const payload = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+
+      if (!response.ok || !payload?.ok) {
+        const message = payload?.error ?? "Hesap silinemedi. Lütfen tekrar deneyin.";
+        setDeleteFeedback(message);
+        alert(message);
+        setIsDeletingAccount(false);
+        return;
+      }
+
+      const { error: signOutError } = await supabase.auth.signOut();
+      if (signOutError) {
+        alert(signOutError.message || "Oturum kapatılırken bir sorun oluştu.");
+      }
+
+      router.replace("/login");
+      router.refresh();
+    } catch (error) {
+      console.error("Account delete failed:", error);
+      const message = "Hesap silme isteği başarısız oldu.";
+      setDeleteFeedback(message);
+      alert(message);
+      setIsDeletingAccount(false);
+    }
+  }, [isDeleteConfirmationValid, isDeletingAccount, router, supabase.auth]);
+
   return (
     <AppShell title="Ayarlar" badge="Hesap ve Tercihler">
       <section className="premium-card border-white/10 bg-white/[0.02] p-5">
@@ -386,7 +432,49 @@ export function SettingsPageContainer() {
           </TabsContent>
 
           <TabsContent value="security" className="outline-none">
-            <SecuritySection />
+            <section className="space-y-4">
+              <SecuritySection />
+
+              <article
+                aria-busy={isDeletingAccount}
+                className={`premium-card border border-rose-400/35 bg-rose-500/10 p-5 ${
+                  isDeletingAccount ? "opacity-80" : ""
+                }`}
+              >
+                <h3 className="text-lg font-semibold text-white">Hesabı Sil</h3>
+                <p className="mt-1 text-sm text-slate-200">
+                  Bu işlem geri alınamaz. Tüm verileriniz silinir.
+                </p>
+
+                <label className="mt-4 block space-y-1.5">
+                  <span className="text-xs uppercase tracking-[0.16em] text-rose-200/90">
+                    Onay için {ACCOUNT_DELETE_CONFIRM_KEYWORD} yazın
+                  </span>
+                  <input
+                    type="text"
+                    value={deleteConfirmationText}
+                    onChange={(event) => {
+                      setDeleteConfirmationText(event.target.value);
+                    }}
+                    disabled={isDeletingAccount}
+                    className={INPUT_CLASS_NAME}
+                    placeholder={ACCOUNT_DELETE_CONFIRM_KEYWORD}
+                  />
+                </label>
+
+                {deleteFeedback ? <p className="mt-3 text-sm text-rose-200">{deleteFeedback}</p> : null}
+
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={deleteAccount}
+                  disabled={!isDeleteConfirmationValid || isDeletingAccount}
+                  className="mt-4"
+                >
+                  {isDeletingAccount ? "Hesap siliniyor..." : "Hesabı Sil"}
+                </Button>
+              </article>
+            </section>
           </TabsContent>
 
           <TabsContent value="organization" className="outline-none">

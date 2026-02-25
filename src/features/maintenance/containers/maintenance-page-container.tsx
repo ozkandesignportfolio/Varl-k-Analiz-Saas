@@ -381,13 +381,13 @@ export function MaintenancePageContainer() {
           <TabsList className="w-full justify-start bg-slate-900/80 p-1">
             <TabsTrigger
               value="alerts"
-              className="text-slate-300 data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900"
+              className="text-slate-300 data-[state=active]:!bg-slate-700 data-[state=active]:!text-slate-100"
             >
               Yaklaşan & Geciken
             </TabsTrigger>
             <TabsTrigger
               value="rules"
-              className="text-slate-300 data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900"
+              className="text-slate-300 data-[state=active]:!bg-slate-700 data-[state=active]:!text-slate-100"
             >
               Kurallar
             </TabsTrigger>

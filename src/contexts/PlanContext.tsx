@@ -15,7 +15,7 @@ import { countByUser as countBillingInvoicesByUser } from "@/lib/repos/billing-i
 import { countByUser as countBillingSubscriptionsByUser } from "@/lib/repos/billing-subscriptions-repo";
 import { countByUser as countDocumentsByUser } from "@/lib/repos/documents-repo";
 import { getPlanConfig } from "@/lib/plans/plan-config";
-import { getOrCreateProfilePlan } from "@/lib/plans/profile-plan";
+import { ensureProfile } from "@/lib/plans/profile-plan";
 import type { DbClient } from "@/lib/repos/_shared";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -24,6 +24,7 @@ export type UserPlan = "free" | "premium";
 export type PlanContextValue = {
   userId: string | null;
   plan: UserPlan;
+  isLoading: boolean;
   assetCount: number;
   assetLimit: number | null;
   documentCount: number;
@@ -42,10 +43,13 @@ const PREMIUM_PLAN = getPlanConfig("pro");
 const PlanContext = createContext<PlanContextValue | undefined>(undefined);
 
 export function PlanProvider({ children }: { children: ReactNode }) {
+  const isDev = process.env.NODE_ENV !== "production";
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const hasLoggedProfilePlanLoadWarning = useRef(false);
+  const [devPlanWarning, setDevPlanWarning] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [plan, setPlan] = useState<UserPlan>("free");
+  const [isLoading, setIsLoading] = useState(true);
   const [assetCount, setAssetCount] = useState(0);
   const [assetLimit, setAssetLimit] = useState<number | null>(STARTER_PLAN.limits.assetsLimit);
   const [documentCount, setDocumentCount] = useState(0);
@@ -69,46 +73,63 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshPlanState = useCallback(async () => {
-    const {
-      data: { user },
-      error: getUserError,
-    } = await supabase.auth.getUser();
+    setIsLoading(true);
+    try {
+      const {
+        data: { user },
+        error: getUserError,
+      } = await supabase.auth.getUser();
 
-    if (getUserError || !user) {
+      if (getUserError || !user) {
+        if (isDev) {
+          setDevPlanWarning(null);
+        }
+        resetToFreePlan();
+        return;
+      }
+
+      setUserId(user.id);
+
+      const dbClient = supabase as unknown as DbClient;
+      const profilePlanResult = await ensureProfile(dbClient, user.id);
+
+      if (profilePlanResult.error && !hasLoggedProfilePlanLoadWarning.current) {
+        console.warn("Plan profile could not be loaded. Falling back to free plan.", profilePlanResult.error);
+        hasLoggedProfilePlanLoadWarning.current = true;
+      }
+      if (isDev) {
+        setDevPlanWarning(profilePlanResult.error);
+      }
+
+      const resolvedPlan: UserPlan = profilePlanResult.plan === "premium" ? "premium" : "free";
+      const resolvedPlanConfig = resolvedPlan === "premium" ? PREMIUM_PLAN : STARTER_PLAN;
+      setPlan(resolvedPlan);
+      setAssetLimit(resolvedPlanConfig.limits.assetsLimit);
+      setDocumentLimit(resolvedPlanConfig.limits.documentsLimit);
+      setSubscriptionLimit(resolvedPlanConfig.limits.subscriptionsLimit);
+      setInvoiceUploadLimit(resolvedPlanConfig.limits.invoiceUploadsLimit);
+
+      const [assetCountRes, documentCountRes, subscriptionCountRes, invoiceCountRes] = await Promise.all([
+        countAssetsByUser(supabase, { userId: user.id }),
+        countDocumentsByUser(supabase, { userId: user.id }),
+        countBillingSubscriptionsByUser(supabase, { userId: user.id }),
+        countBillingInvoicesByUser(supabase, { userId: user.id }),
+      ]);
+
+      setAssetCount(assetCountRes.error ? 0 : (assetCountRes.data ?? 0));
+      setDocumentCount(documentCountRes.error ? 0 : (documentCountRes.data ?? 0));
+      setSubscriptionCount(subscriptionCountRes.error ? 0 : (subscriptionCountRes.data ?? 0));
+      setInvoiceUploadCount(invoiceCountRes.error ? 0 : (invoiceCountRes.data ?? 0));
+    } catch (error) {
+      if (isDev) {
+        const message = error instanceof Error ? error.message : "unknown plan error";
+        setDevPlanWarning(`plan state error: ${message}`);
+      }
       resetToFreePlan();
-      return;
+    } finally {
+      setIsLoading(false);
     }
-
-    setUserId(user.id);
-
-    const profilePlanResult = await getOrCreateProfilePlan(supabase as unknown as DbClient, user.id);
-
-    if (profilePlanResult.error && !hasLoggedProfilePlanLoadWarning.current) {
-      // This is recoverable; we continue with free-plan defaults and avoid throwing a dev error overlay.
-      console.warn("Plan profile could not be loaded. Falling back to free plan.", profilePlanResult.error);
-      hasLoggedProfilePlanLoadWarning.current = true;
-    }
-
-    const resolvedPlan: UserPlan = profilePlanResult.plan === "premium" ? "premium" : "free";
-    const resolvedPlanConfig = resolvedPlan === "premium" ? PREMIUM_PLAN : STARTER_PLAN;
-    setPlan(resolvedPlan);
-    setAssetLimit(resolvedPlanConfig.limits.assetsLimit);
-    setDocumentLimit(resolvedPlanConfig.limits.documentsLimit);
-    setSubscriptionLimit(resolvedPlanConfig.limits.subscriptionsLimit);
-    setInvoiceUploadLimit(resolvedPlanConfig.limits.invoiceUploadsLimit);
-
-    const [assetCountRes, documentCountRes, subscriptionCountRes, invoiceCountRes] = await Promise.all([
-      countAssetsByUser(supabase, { userId: user.id }),
-      countDocumentsByUser(supabase, { userId: user.id }),
-      countBillingSubscriptionsByUser(supabase, { userId: user.id }),
-      countBillingInvoicesByUser(supabase, { userId: user.id }),
-    ]);
-
-    setAssetCount(assetCountRes.error ? 0 : (assetCountRes.data ?? 0));
-    setDocumentCount(documentCountRes.error ? 0 : (documentCountRes.data ?? 0));
-    setSubscriptionCount(subscriptionCountRes.error ? 0 : (subscriptionCountRes.data ?? 0));
-    setInvoiceUploadCount(invoiceCountRes.error ? 0 : (invoiceCountRes.data ?? 0));
-  }, [resetToFreePlan, supabase]);
+  }, [isDev, resetToFreePlan, supabase]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -141,6 +162,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     () => ({
       userId,
       plan,
+      isLoading,
       assetCount,
       assetLimit,
       documentCount,
@@ -155,6 +177,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     [
       userId,
       plan,
+      isLoading,
       assetCount,
       assetLimit,
       documentCount,
@@ -170,6 +193,11 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   return (
     <PlanContext.Provider value={value}>
       {children}
+      {isDev && devPlanWarning ? (
+        <div className="pointer-events-none fixed bottom-3 right-3 z-[90] rounded-md border border-amber-300 bg-amber-100 px-2 py-1 text-xs text-amber-900 shadow-sm">
+          Plan debug: {devPlanWarning}
+        </div>
+      ) : null}
     </PlanContext.Provider>
   );
 }

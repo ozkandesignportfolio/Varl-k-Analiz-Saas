@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { getPlanConfig } from "@/lib/plans/plan-config";
 import { isEmailNotConfirmedError, isEmailRateLimitError } from "@/lib/supabase/auth-errors";
@@ -13,9 +14,12 @@ const trialAssetLimit = trialPlan.limits.assetsLimit ?? 0;
 const trialDocumentLimit = trialPlan.limits.documentsLimit ?? 0;
 const trialSubscriptionLimit = trialPlan.limits.subscriptionsLimit ?? 0;
 const trialInvoiceUploadLimit = trialPlan.limits.invoiceUploadsLimit ?? 0;
+const enableOnboardingSeed = process.env.NEXT_PUBLIC_ENABLE_ONBOARDING_SEED === "true";
+const verificationMessage = "E-posta doğrulama bağlantısı gönderildi. Gelen kutusu + spam kontrol et.";
 
 export default function RegisterPage() {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
+  const router = useRouter();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
@@ -49,7 +53,16 @@ export default function RegisterPage() {
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase.auth.signUp({ email, password });
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+            enable_onboarding_seed: enableOnboardingSeed,
+          },
+        },
+      });
 
       if (error) {
         if (isEmailRateLimitError(error)) {
@@ -66,7 +79,22 @@ export default function RegisterPage() {
         return;
       }
 
-      setMessage("Kayıt alındı. E-posta onayı gerekiyorsa kutunuzu kontrol edin, aksi halde giriş yapabilirsiniz.");
+      await supabase.auth.signOut();
+
+      if (data.session) {
+        setMessage(verificationMessage);
+        router.push("/login?email_verification_required=1");
+        return;
+      }
+
+      if (data.user) {
+        setMessage(verificationMessage);
+        router.push("/login?email_verification_required=1");
+        return;
+      }
+
+      setMessage("E-postanı doğrula, sonra giriş yap.");
+      router.push("/login?email_verification_required=1");
     } catch {
       setMessage("Kayıt sırasında beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.");
     } finally {
@@ -158,4 +186,3 @@ export default function RegisterPage() {
     </main>
   );
 }
-

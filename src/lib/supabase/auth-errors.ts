@@ -4,9 +4,17 @@ type SupabaseAuthErrorLike = {
   status?: number | null;
 };
 
+type SupabaseUserLike = {
+  email_confirmed_at?: string | null;
+  confirmed_at?: string | null;
+};
+
 const normalize = (value?: string | null) => value?.trim().toLowerCase() ?? "";
 
 export const isDevelopmentEnvironment = () => process.env.NODE_ENV === "development";
+
+export const isSupabaseUserEmailConfirmed = (user?: SupabaseUserLike | null) =>
+  Boolean(user?.email_confirmed_at ?? user?.confirmed_at);
 
 export const isEmailNotConfirmedError = (error?: SupabaseAuthErrorLike | null) => {
   if (!error) return false;

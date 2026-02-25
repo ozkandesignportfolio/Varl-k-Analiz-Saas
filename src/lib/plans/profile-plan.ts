@@ -39,12 +39,7 @@ const PROFILE_PLAN_METADATA_FIELDS_BY_PLAN: Record<
 };
 
 export const normalizeProfilePlan = (rawPlan: unknown): ProfilePlan => {
-  if (typeof rawPlan !== "string") {
-    return "free";
-  }
-
-  const normalized = rawPlan.trim().toLowerCase();
-  return normalized === "premium" ? "premium" : "free";
+  return rawPlan === "premium" ? "premium" : "free";
 };
 
 export const getPlanConfigFromProfilePlan = (plan: ProfilePlan): PlanConfig =>
@@ -77,34 +72,63 @@ const createDefaultProfile = async (client: DbClient, userId: string) => {
   return profilesTable.upsert({ id: userId, plan: "free" }, { onConflict: "id", ignoreDuplicates: true });
 };
 
+export async function getProfilePlan(
+  client: DbClient,
+  userId: string,
+): Promise<{ plan: ProfilePlan | null; error: string | null }> {
+  const profile = await fetchProfilePlan(client, userId);
+
+  if (profile.error) {
+    return { plan: null, error: profile.error.message };
+  }
+
+  if (!profile.data?.plan) {
+    return { plan: null, error: null };
+  }
+
+  return { plan: normalizeProfilePlan(profile.data.plan), error: null };
+}
+
+export async function createProfileIfMissing(
+  client: DbClient,
+  userId: string,
+): Promise<{ error: string | null }> {
+  const insertedProfile = await createDefaultProfile(client, userId);
+
+  if (insertedProfile.error) {
+    return { error: insertedProfile.error.message };
+  }
+
+  return { error: null };
+}
+
 export async function getOrCreateProfilePlan(
   client: DbClient,
   userId: string,
 ): Promise<{ plan: ProfilePlan; error: string | null }> {
-  const existingProfile = await fetchProfilePlan(client, userId);
-
-  if (existingProfile.error) {
-    return { plan: "free", error: existingProfile.error.message };
+  const ensuredProfile = await ensureProfile(client, userId);
+  if (ensuredProfile.error) {
+    return { plan: "free", error: ensuredProfile.error };
   }
 
-  if (existingProfile.data?.plan) {
-    return { plan: normalizeProfilePlan(existingProfile.data.plan), error: null };
+  return { plan: ensuredProfile.plan, error: null };
+}
+
+export async function ensureProfile(
+  client: DbClient,
+  userId: string,
+): Promise<{ plan: ProfilePlan; error: string | null }> {
+  const insertResult = await createDefaultProfile(client, userId);
+  if (insertResult.error) {
+    return { plan: "free", error: `profiles upsert error: ${insertResult.error.message}` };
   }
 
-  const insertedProfile = await createDefaultProfile(client, userId);
-  if (insertedProfile.error) {
-    return { plan: "free", error: insertedProfile.error.message };
+  const profile = await fetchProfilePlan(client, userId);
+  if (profile.error) {
+    return { plan: "free", error: `profiles read error: ${profile.error.message}` };
   }
 
-  const retriedProfile = await fetchProfilePlan(client, userId);
-  if (retriedProfile.error) {
-    return { plan: "free", error: retriedProfile.error.message };
-  }
-
-  return {
-    plan: normalizeProfilePlan(retriedProfile.data?.plan),
-    error: null,
-  };
+  return { plan: normalizeProfilePlan(profile.data?.plan), error: null };
 }
 
 export const applyProfilePlanToUserMetadata = (

@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { isDevelopmentEnvironment, isEmailNotConfirmedError } from "./src/lib/supabase/auth-errors";
+import { isSupabaseUserEmailConfirmed } from "./src/lib/supabase/auth-errors";
 
 const protectedRoutes = [
   "/dashboard",
@@ -106,17 +106,11 @@ export async function middleware(request: NextRequest) {
     error: userError,
   } = await supabase.auth.getUser();
   let authenticatedUser = user;
-  let authenticatedUserError = userError;
+  const authenticatedUserError = userError;
 
-  if (!authenticatedUser && userError && isDevelopmentEnvironment() && isEmailNotConfirmedError(userError)) {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (session?.user) {
-      authenticatedUser = session.user;
-      authenticatedUserError = null;
-    }
+  if (authenticatedUser && !isSupabaseUserEmailConfirmed(authenticatedUser)) {
+    await supabase.auth.signOut();
+    authenticatedUser = null;
   }
 
   const isProtected = isProtectedRoute(pathname);

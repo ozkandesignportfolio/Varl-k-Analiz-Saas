@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import {
-  isDevelopmentEnvironment,
   isEmailNotConfirmedError,
   isEmailRateLimitError,
 } from "@/lib/supabase/auth-errors";
@@ -12,6 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 
 const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
+const verificationMessage = "E-posta doğrulama bağlantısı gönderildi. Gelen kutusu + spam kontrol et.";
 
 const getSafeNextPath = (candidate: string | null) => {
   if (!candidate) {
@@ -25,11 +25,18 @@ const getSafeNextPath = (candidate: string | null) => {
   return candidate;
 };
 
+const isEmailConfirmed = (user: { email_confirmed_at?: string | null; confirmed_at?: string | null } | null | undefined) =>
+  Boolean(user?.email_confirmed_at ?? user?.confirmed_at);
+
 export default function LoginPage() {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const verificationRequired = new URLSearchParams(window.location.search).get("email_verification_required");
+    return verificationRequired === "1" ? verificationMessage : "";
+  });
   const [nextPath] = useState(() => {
     if (typeof window === "undefined") return "/dashboard";
     return getSafeNextPath(new URLSearchParams(window.location.search).get("next"));
@@ -60,23 +67,22 @@ export default function LoginPage() {
         }
 
         if (isEmailNotConfirmedError(error)) {
-          if (isDevelopmentEnvironment()) {
-            const {
-              data: { session },
-            } = await supabase.auth.getSession();
-
-            if (data.session || session) {
-              router.push(nextPath);
-              router.refresh();
-              return;
-            }
-          }
-
-          setMessage("E-posta adresiniz henüz onaylanmamis. Lütfen e-postanizi onaylayip tekrar deneyin.");
+          setMessage("E-postanı doğrulamadan giriş yapamazsın.");
           return;
         }
 
         setMessage(error.message || "Giriş yapilamadi. Lütfen tekrar deneyin.");
+        return;
+      }
+
+      if (!data.session || !data.user) {
+        setMessage("Giris tamamlanamadi. Lutfen tekrar deneyin.");
+        return;
+      }
+
+      if (!isEmailConfirmed(data.user)) {
+        await supabase.auth.signOut();
+        setMessage("E-postanı doğrulamadan giriş yapamazsın.");
         return;
       }
 
@@ -156,5 +162,3 @@ export default function LoginPage() {
     </main>
   );
 }
-
-

@@ -173,7 +173,7 @@ export default function DocumentsPage() {
     const selectedFile = formData.get("file");
 
     if (!(selectedFile instanceof File) || selectedFile.size <= 0) {
-      setFeedback("Lütfen yuklenecek bir dosya seçin.");
+      setFeedback("Lütfen yüklenecek bir dosya seçin.");
       setFeedbackTone("error");
       return;
     }
@@ -235,7 +235,7 @@ export default function DocumentsPage() {
     <AppShell
       badge="Belge Kasası"
       title="Belgeler"
-      subtitle="Resmi upload akışı bu sayfadan ilerler. Belge Özeti ve liste gerçek kayıtları gösterir."
+      subtitle="Resmi belge yükleme akışı bu sayfadan ilerler. Belge özeti ve liste gerçek kayıtları gösterir."
     >
       <PanelSurface>
         <PageHeader title="Belge Kasası" subtitle="Belge yükleme, depolama özetleri ve belge listesi." />
@@ -243,11 +243,11 @@ export default function DocumentsPage() {
         {feedback ? <p className={feedbackClassName}>{feedback}</p> : null}
 
         <p className="rounded-xl border border-sky-300/25 bg-sky-300/10 px-4 py-3 text-sm text-sky-100">
-          Plan: {planConfig.label}. Belge limiti kullanım: {documentUsageText}
+          Paket: {planConfig.label}. Belge limiti kullanımı: {documentUsageText}
         </p>
 
         <section className="premium-card p-5">
-          <h2 className="text-xl font-semibold text-white">Upload Documents</h2>
+          <h2 className="text-xl font-semibold text-white">Belge Yükleme</h2>
           <p className="mt-2 text-sm text-slate-300">
             Resmi belge yükleme akışı bu ekranda standartlaştırıldı.
           </p>
@@ -363,7 +363,7 @@ export default function DocumentsPage() {
               <table className="min-w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-white/10 bg-white/5 text-slate-300">
-                    <th className="px-3 py-2">Dosya Adi</th>
+                    <th className="px-3 py-2">Dosya Adı</th>
                     <th className="px-3 py-2">Tür</th>
                     <th className="px-3 py-2">Varlık</th>
                     <th className="px-3 py-2">Boyut</th>

@@ -173,7 +173,7 @@ export function Navbar() {
           </div>
           <div className="flex flex-col">
             <span className="text-lg font-bold tracking-tight text-foreground">ASSETCARE</span>
-            <span className="text-[10px] tracking-[0.2em] text-muted-foreground">Premium Panel</span>
+            <span className="text-[10px] tracking-[0.2em] text-muted-foreground">Premium Kontrol Paneli</span>
           </div>
         </a>
 
@@ -216,7 +216,7 @@ export function Navbar() {
           ref={mobileToggleRef}
           onClick={() => setMobileOpen((prev) => !prev)}
           className="rounded-lg p-2 text-muted-foreground hover:text-foreground lg:hidden"
-          aria-label="Toggle menu"
+          aria-label="Menüyü aç/kapat"
           aria-expanded={mobileOpen}
           aria-controls="landing-v2-mobile-menu"
         >
