@@ -1,127 +1,125 @@
-"use client"
+﻿"use client";
 
-import { useInView } from "@/modules/landing-v2/hooks/use-in-view"
-import { Shield, Wrench, TrendingUp, FileText, Bell, CreditCard, BarChart3, Receipt, Clock, Settings, LayoutDashboard, Box, Folder, DollarSign } from "lucide-react"
-
-const sidebarItems = [
-  { icon: LayoutDashboard, label: "Gösterge", badge: "GS", active: true },
-  { icon: Box, label: "Varlıklar", badge: "VR" },
-  { icon: Wrench, label: "Bakım", badge: "BK" },
-  { icon: Settings, label: "Servisler", badge: "SR" },
-  { icon: Folder, label: "Belgeler", badge: "BG" },
-  { icon: Clock, label: "Zaman Akışı", badge: "ZA" },
-  { icon: DollarSign, label: "Giderler", badge: "GD" },
-  { icon: Bell, label: "Bildirimler", badge: "BL" },
-  { icon: CreditCard, label: "Abonelikler", badge: "AB" },
-  { icon: Receipt, label: "Fatura Takip", badge: "FT" },
-  { icon: BarChart3, label: "Skor Analizi", badge: "SK" },
-  { icon: FileText, label: "Raporlar", badge: "RP" },
-  { icon: Settings, label: "Ayarlar", badge: "AY" },
-]
-
-const RISK_RECORD_COUNT_LABEL = "0 kayıt"
+import { useMemo, useState } from "react";
+import { Shield } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useInView } from "@/modules/landing-v2/hooks/use-in-view";
+import {
+  previewMenuItems,
+  previewThemeVars,
+  rowDataByMenu,
+} from "@/modules/landing-v2/components/panel-preview/constants";
+import type { PreviewMenuKey } from "@/modules/landing-v2/components/panel-preview/types";
+import { panelPreviewViews } from "@/modules/landing-v2/components/panel-preview/views";
 
 export function DashboardPreview() {
-  const { ref, inView } = useInView(0.1)
+  const { ref, inView } = useInView(0.1);
+  const [activeMenu, setActiveMenu] = useState<PreviewMenuKey>("dashboard");
+  const menuItems = useMemo(() => previewMenuItems, []);
+  const viewByMenu = useMemo(() => panelPreviewViews, []);
+
+  const activeItem = useMemo(
+    () => menuItems.find((item) => item.key === activeMenu) ?? menuItems[0],
+    [activeMenu, menuItems],
+  );
+
+  const ActiveView = viewByMenu[activeMenu];
+  const rows = activeMenu === "dashboard" ? [] : rowDataByMenu[activeMenu];
 
   return (
     <section id="panel" className="relative isolate py-32" ref={ref}>
-      <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+      <div className="pointer-events-none absolute left-0 right-0 top-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
       <div className="mx-auto max-w-7xl px-6">
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 mb-6">
-            <span className="text-xs tracking-widest text-primary">Premium Panel</span>
+        <div className="mb-16 text-center">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5">
+            <span className="text-xs tracking-widest text-primary">Premium Kontrol Paneli</span>
           </div>
-          <h2 className="text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl text-balance">
-            Güçlü kontrol paneli,{" "}
-            <span className="text-gradient">tek bakışta</span>
+          <h2 className="text-balance text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl">
+            Güçlü kontrol paneli, <span className="text-gradient">tek bakışta</span>
           </h2>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
-            Bildirim, Abonelik, Fatura Takip ve Skor Analizi dahil tüm modüller tek panelde
+            Bildirimler, Abonelikler, Fatura Takip ve Skor Analizi dahil tüm modüller tek panelde
           </p>
         </div>
 
-        <div className={`${inView ? "animate-slide-up" : "opacity-0"}`}>
-          {/* Dashboard Mockup */}
-          <div className="glass-card rounded-3xl overflow-hidden border border-border/30 animate-pulse-glow">
-            <div className="flex">
-              {/* Sidebar */}
-              <div className="hidden w-56 shrink-0 border-r border-border/30 bg-[#070e20] p-4 md:block">
-                <div className="flex items-center gap-3 mb-8 px-2">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 border border-primary/20">
-                    <Shield className="h-4.5 w-4.5 text-primary" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold tracking-tight text-foreground">ASSETCARE</div>
-                    <div className="text-[9px] text-muted-foreground">Premium Panel</div>
+        <div className={cn(inView ? "animate-slide-up" : "opacity-0")}>
+          <div className="overflow-hidden rounded-[28px] bg-[rgb(7_14_32_/_66%)] shadow-[0_24px_70px_rgb(5_10_24_/_56%),inset_0_1px_0_rgb(255_255_255_/_0.05),inset_0_0_42px_rgb(16_239_181_/_0.04)]">
+            <div
+              className="flex h-[560px] max-h-[72vh] min-h-[500px] flex-col md:h-[640px] md:min-h-[560px] md:flex-row"
+              style={previewThemeVars}
+            >
+              <aside className="auth-shell-sidebar hidden w-[var(--auth-sidebar-width)] shrink-0 border-r border-[var(--auth-border)] p-4 md:flex md:flex-col">
+                <div className="mb-6 flex-none">
+                  <div className="auth-shell-brand flex items-center gap-3 rounded-xl px-2 py-2">
+                    <span className="auth-brand-mark flex h-9 w-9 items-center justify-center rounded-xl">
+                      <Shield className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <p className="text-xs font-bold tracking-tight text-[var(--auth-foreground)]">ASSETCARE</p>
+                      <p className="text-[9px] text-[var(--auth-muted)]">Premium Kontrol Paneli</p>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-1">
-                  {sidebarItems.map((item, i) => (
-                    <div
-                      key={i}
-                      className={`group flex items-center justify-between rounded-lg px-3 py-2 text-xs transition-all ${
-                        item.active
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                      }`}
+                <nav aria-label="Ana menü" className="auth-nav-list min-h-0 flex-1 overflow-y-auto pr-1 hide-scrollbar">
+                  {menuItems.map((item) => {
+                    const isActive = activeMenu === item.key;
+                    const Icon = item.icon;
+
+                    return (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => setActiveMenu(item.key)}
+                        aria-current={isActive ? "page" : undefined}
+                        data-state={isActive ? "active" : "inactive"}
+                        className="auth-nav-item auth-focus-ring flex w-full items-center justify-between gap-3 rounded-lg px-3.5 py-2 text-sm"
+                      >
+                        <span className="relative z-10 flex min-w-0 flex-1 items-center gap-3">
+                          <Icon className="auth-nav-icon h-4 w-4" />
+                          <span className="truncate font-medium">{item.label}</span>
+                        </span>
+                        <span className="auth-nav-short-badge relative z-10">{item.badge}</span>
+                      </button>
+                    );
+                  })}
+                </nav>
+              </aside>
+
+              <div className="auth-shell-sidebar flex items-center gap-2 overflow-x-auto border-b border-[var(--auth-border)] px-4 py-3 md:hidden hide-scrollbar">
+                {menuItems.map((item) => {
+                  const isActive = activeMenu === item.key;
+
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => setActiveMenu(item.key)}
+                      aria-current={isActive ? "page" : undefined}
+                      data-state={isActive ? "active" : "inactive"}
+                      className="auth-shell-chip auth-focus-ring inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs"
                     >
-                      <div className="flex items-center gap-2.5">
-                        <item.icon className="h-3.5 w-3.5" />
-                        <span>{item.label}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] text-muted-foreground/50">{item.badge}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                      <span>{item.label}</span>
+                      <span className="auth-nav-short-badge">{item.badge}</span>
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* Main Content */}
-              <div className="flex-1 p-6">
-                <div className="mb-6">
-                  <div className="inline-flex items-center rounded-lg bg-secondary/50 px-3 py-1.5 text-[10px] tracking-widest text-primary mb-2">
-                    Kontrol Merkezi
-                  </div>
-                  <div className="text-xs text-muted-foreground">19 Şubat 2026, Perşembe</div>
-                </div>
-
-                {/* Stats Grid */}
-                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 mb-6">
-                  {[
-                    { label: "TOPLAM VARLIK", value: "8", sub: "Stabil", icon: Box },
-                    { label: "AKTİF BAKIM KURALI", value: "12", sub: "+2 bu ay", icon: Wrench },
-                    { label: "TOPLAM SERVİS MALİYETİ", value: "4.850 TL", sub: "-15% geçen aya göre", icon: TrendingUp, subColor: "text-primary" },
-                    { label: "SAĞLIK SKORU", value: "87/100", sub: "+5 puan", icon: BarChart3, subColor: "text-primary" },
-                  ].map((stat, i) => (
-                    <div key={i} className="rounded-xl bg-secondary/30 border border-border/30 p-4 transition-all hover:border-primary/20">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-[9px] tracking-widest text-muted-foreground">{stat.label}</span>
-                        <stat.icon className="h-4 w-4 text-muted-foreground/50" />
-                      </div>
-                      <div className="text-xl font-bold text-foreground">{stat.value}</div>
-                      <div className={`text-[10px] mt-1 ${stat.subColor || "text-muted-foreground"}`}>{stat.sub}</div>
+              <div className="flex min-h-0 flex-1 flex-col bg-[rgb(10_17_40_/_58%)]">
+                {activeMenu === "dashboard" ? null : (
+                  <header className="border-b border-[var(--auth-border-soft)] px-5 py-4">
+                    <div className="mb-1 inline-flex items-center rounded-lg border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] tracking-[0.16em] text-primary">
+                      {activeItem.label}
                     </div>
-                  ))}
-                </div>
+                    <h3 className="text-base font-semibold text-[var(--auth-foreground)]">{activeItem.title}</h3>
+                    <p className="text-xs text-[var(--auth-muted)]">{activeItem.subtitle}</p>
+                  </header>
+                )}
 
-                {/* Risk Panel */}
-                <div className="rounded-xl bg-secondary/20 border border-border/30 p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-chart-4">{"!"}</span>
-                      <span className="text-sm font-semibold text-foreground">Risk Paneli</span>
-                    </div>
-                    <span suppressHydrationWarning className="text-[10px] text-muted-foreground">
-                      {RISK_RECORD_COUNT_LABEL}
-                    </span>
-                  </div>
-                  <div className="rounded-lg bg-primary/5 border border-primary/10 p-3 text-xs text-primary flex items-center gap-2">
-                    <span>{"Tüm varlıklar kontrol altında"}</span>
-                  </div>
+                <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 hide-scrollbar">
+                  <ActiveView rows={rows} />
                 </div>
               </div>
             </div>
@@ -129,5 +127,5 @@ export function DashboardPreview() {
         </div>
       </div>
     </section>
-  )
+  );
 }
