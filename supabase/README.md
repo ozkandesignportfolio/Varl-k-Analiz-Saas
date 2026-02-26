@@ -20,7 +20,6 @@
   `supabase/migrations/20260215193000_subscription_requests.sql` dosyasini calistirin.
 - Sonra audit log tablosu + triggerlar icin
   `supabase/migrations/20260216124500_audit_logs.sql` dosyasini calistirin.
-- Opsiyonel test verisi icin `supabase/seed.sql` kullanin.
 - Otomasyon trigger/action motoru icin
   `supabase/migrations/20260216130000_automation_events.sql`
   dosyasini da calistirin.

@@ -431,7 +431,7 @@ export function ServicesPageContainer() {
               assets.length === 0 ? (
                 <GuidedEmptyState
                   title="Servis kaydı için önce varlık gerekli"
-                  description="Yeni kullanıcılar demo veri ile gelir. Eğer liste boşsa önce varlık oluşturup sonra servis kaydı ekleyebilirsin."
+                  description="Liste boşsa önce varlık oluşturup sonra servis kaydı ekleyebilirsin."
                   primaryAction={{ label: "Varlıklara git", href: "/assets" }}
                   secondaryAction={{ label: "Dashboard aç", href: "/dashboard" }}
                 />
@@ -466,5 +466,4 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
-
 
