@@ -43,6 +43,10 @@ export default function PricingPage() {
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const isAnnual = billingCycle === "annual";
+  const redirectToLogin = () => {
+    const nextPath = `${window.location.pathname}${window.location.search}`;
+    window.location.href = `/login?next=${encodeURIComponent(nextPath)}`;
+  };
   const trialSummary = useMemo(
     () => `${trialAssetLimit} varlık, ${trialDocumentLimit} belge, ${trialSubscriptionLimit} abonelik, ${trialInvoiceUploadLimit} fatura yükleme`,
     [],
@@ -53,6 +57,12 @@ export default function PricingPage() {
 
     try {
       const res = await fetch("/api/stripe/checkout", { method: "POST" });
+
+      if (res.status === 401) {
+        redirectToLogin();
+        setIsStartingCheckout(false);
+        return;
+      }
 
       if (!res.ok) {
         const responseText = await res.text();

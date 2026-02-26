@@ -53,12 +53,22 @@ const plans = [
 export function PricingSection() {
   const { ref, inView } = useInView();
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
+  const redirectToLogin = () => {
+    const nextPath = `${window.location.pathname}${window.location.search}`;
+    window.location.href = `/login?next=${encodeURIComponent(nextPath)}`;
+  };
 
   const handleStartPremiumCheckout = async () => {
     setIsStartingCheckout(true);
 
     try {
       const res = await fetch("/api/stripe/checkout", { method: "POST" });
+
+      if (res.status === 401) {
+        redirectToLogin();
+        setIsStartingCheckout(false);
+        return;
+      }
 
       if (!res.ok) {
         const responseText = await res.text();

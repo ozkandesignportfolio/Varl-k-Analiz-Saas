@@ -265,6 +265,12 @@ export function SettingsPageContainer() {
         method: "POST",
       });
 
+      if (res.status === 401) {
+        router.replace("/login?next=/settings");
+        setIsStartingCheckout(false);
+        return;
+      }
+
       if (!res.ok) {
         const responseText = await res.text();
         const checkoutError = responseText || "Stripe checkout baslatilamadi.";
@@ -294,7 +300,7 @@ export function SettingsPageContainer() {
       setFeedback(networkError);
       setIsStartingCheckout(false);
     }
-  }, []);
+  }, [router]);
 
   const confirmCheckout = useCallback(async () => {
     if (!checkoutSessionId) {
