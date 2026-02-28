@@ -1,9 +1,27 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { confirmUserEmail } from "./helpers/supabase-admin";
 
 const PASSWORD = "E2E!Pass1234";
+const NAV_TIMEOUT_MS = 45_000;
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function waitForDashboardOrLoginMarker(page: Page) {
+  await Promise.race([
+    page.getByTestId("dashboard-root").waitFor({ state: "visible", timeout: NAV_TIMEOUT_MS }),
+    page.getByTestId("login-form").waitFor({ state: "visible", timeout: NAV_TIMEOUT_MS }),
+  ]);
+}
+
+async function failOnVisibleFormMessage(messageLocator: Locator, context: string) {
+  if (!(await messageLocator.isVisible())) {
+    return;
+  }
+
+  const message = (await messageLocator.textContent())?.trim() || "(empty form message)";
+  console.error(`[critical-flow] ${context} form message: ${message}`);
+  throw new Error(`${context} form submission failed: ${message}`);
+}
 
 async function confirmUserEmailWithRetry(email: string) {
   let lastError: unknown;
@@ -36,9 +54,12 @@ test("critical flow: register, login, create asset, and see it in list", async (
   await page.locator("input[name='passwordConfirm']").fill(PASSWORD);
   await page.locator("form button[type='submit']").click();
 
-  await page.waitForURL((url) => url.pathname === "/login" || url.pathname === "/dashboard", {
-    timeout: 30_000,
-  });
+  try {
+    await waitForDashboardOrLoginMarker(page);
+  } catch (error) {
+    await failOnVisibleFormMessage(page.locator("form p.text-sm").first(), "register");
+    throw error;
+  }
 
   if (page.url().includes("/login")) {
     await confirmUserEmailWithRetry(email);
@@ -48,7 +69,15 @@ test("critical flow: register, login, create asset, and see it in list", async (
     await page.getByTestId("login-password-input").fill(PASSWORD);
     await page.getByTestId("login-submit-button").click();
 
-    await page.waitForURL("**/dashboard", { timeout: 30_000 });
+    const dashboardRoot = page.getByTestId("dashboard-root");
+    const loginMessage = page.getByTestId("login-message");
+
+    await Promise.race([
+      dashboardRoot.waitFor({ state: "visible", timeout: NAV_TIMEOUT_MS }),
+      loginMessage.waitFor({ state: "visible", timeout: NAV_TIMEOUT_MS }),
+    ]);
+
+    await failOnVisibleFormMessage(loginMessage, "login");
   }
 
   await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/);
