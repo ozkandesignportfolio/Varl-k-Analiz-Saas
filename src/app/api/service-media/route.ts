@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "crypto";
+import { randomUUID } from "crypto";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { logApiError, logAuditEvent } from "@/lib/api/logging";
@@ -6,6 +6,11 @@ import { existsById } from "@/lib/repos/assets-repo";
 import { countByUser as countDocumentsByUser } from "@/lib/repos/documents-repo";
 import { canUploadDocument } from "@/lib/plans/plan-config";
 import { getPlanConfigFromProfilePlan } from "@/lib/plans/profile-plan";
+import {
+  buildMediaEnrichmentIdempotencyKey,
+  queueMediaEnrichmentJob,
+  type MediaEnrichmentJobStatus,
+} from "@/lib/service-media/enrichment-jobs";
 import { requireRouteUser, type RouteAuthSuccess } from "@/lib/supabase/route-auth";
 
 export const runtime = "nodejs";
@@ -16,8 +21,8 @@ const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_SERVICE_TYPE_LENGTH = 120;
 const MAX_PROVIDER_LENGTH = 120;
 const MAX_NOTES_LENGTH = 4000;
-const MAX_IDEMPOTENCY_KEY_LENGTH = 128;
 const MAX_QUEUE_JOBS_PER_MINUTE = 20;
+const UPLOAD_CONCURRENCY = 3;
 
 type MediaKind = "photo" | "video" | "audio";
 
@@ -32,7 +37,7 @@ type MediaUploadResult = {
 
 type QueueRow = {
   id: string;
-  status: string;
+  status: MediaEnrichmentJobStatus;
 };
 
 type UploadAttempt =
@@ -47,6 +52,30 @@ type UploadAttempt =
       error: string;
       orphanedStoragePath?: string;
     };
+
+export function buildQueuedServiceMediaResponse(params: {
+  uploadedCount: number;
+  queuedJob: QueueRow | null;
+  uploads: MediaUploadResult[];
+}) {
+  return NextResponse.json(
+    {
+      ok: true,
+      uploadedCount: params.uploadedCount,
+      enrichment: params.queuedJob?.status ?? "queued",
+      jobId: params.queuedJob?.id ?? null,
+      media: params.uploads.map((item) => ({
+        kind: item.kind,
+        fileName: item.fileName,
+        mimeType: item.mimeType,
+        size: item.size,
+        storagePath: item.storagePath,
+        metadata: item.metadata,
+      })),
+    },
+    { status: 202 },
+  );
+}
 
 const allowedMimeTypes: Record<MediaKind, string[]> = {
   photo: ["image/jpeg", "image/png", "image/webp", "image/heic"],
@@ -274,39 +303,29 @@ async function rollbackUploadBatch(params: {
   }
 }
 
-function normalizeIdempotencyKey(raw: string | null) {
-  if (!raw) {
-    return null;
+async function mapWithConcurrency<TInput, TResult>(
+  items: TInput[],
+  concurrency: number,
+  worker: (item: TInput, index: number) => Promise<TResult>,
+) {
+  if (items.length === 0) {
+    return [] as TResult[];
   }
 
-  const trimmed = raw.trim();
-  if (!trimmed) {
-    return null;
-  }
+  const safeConcurrency = Math.max(1, Math.min(concurrency, items.length));
+  const results = new Array<TResult>(items.length);
+  let cursor = 0;
 
-  return trimmed.slice(0, MAX_IDEMPOTENCY_KEY_LENGTH);
-}
+  const run = async () => {
+    while (cursor < items.length) {
+      const current = cursor;
+      cursor += 1;
+      results[current] = await worker(items[current], current);
+    }
+  };
 
-function buildDefaultIdempotencyKey(params: {
-  userId: string;
-  assetId: string;
-  serviceLogId: string;
-  serviceDate: string;
-  serviceType: string;
-  uploads: MediaUploadResult[];
-}) {
-  const base = [
-    params.userId,
-    params.assetId,
-    params.serviceLogId,
-    params.serviceDate,
-    params.serviceType,
-    ...params.uploads
-      .map((item) => `${item.kind}:${item.fileName}:${item.size}:${item.mimeType}`)
-      .sort((left, right) => left.localeCompare(right)),
-  ].join("|");
-
-  return createHash("sha256").update(base).digest("hex");
+  await Promise.all(Array.from({ length: safeConcurrency }, () => run()));
+  return results;
 }
 
 async function uploadSingleMedia(params: {
@@ -383,8 +402,6 @@ async function uploadSingleMedia(params: {
   };
 }
 
-const isUniqueViolation = (error: { code?: string | null } | null | undefined) => error?.code === "23505";
-
 export async function POST(request: Request) {
   let userId: string | null = null;
 
@@ -441,9 +458,6 @@ export async function POST(request: Request) {
     const serviceLogId = normalizeUuid(serviceLogIdField.value);
     const serviceType = serviceTypeField.value;
     const serviceDate = serviceDateField.value;
-    const provider = providerField.value || null;
-    const userNotes = userNotesField.value || null;
-
     if (!assetId || !serviceLogId) {
       return NextResponse.json({ error: "Varlik veya servis kaydi kimligi gecersiz." }, { status: 400 });
     }
@@ -456,37 +470,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Servis tarihi gecersiz." }, { status: 400 });
     }
 
-    const rawIdempotencyKey = normalizeIdempotencyKey(request.headers.get("x-idempotency-key"));
-    if (rawIdempotencyKey) {
-      const { data: existingJob } = await supabase
-        .from("media_enrichment_jobs")
-        .select("id,status")
-        .eq("user_id", user.id)
-        .eq("service_log_id", serviceLogId)
-        .eq("idempotency_key", rawIdempotencyKey)
-        .maybeSingle();
-
-      if (existingJob) {
-        const reusedJob = existingJob as QueueRow;
-        return NextResponse.json(
-          {
-            ok: true,
-            uploadedCount: 0,
-            enrichment: reusedJob.status,
-            idempotencyReused: true,
-            jobId: reusedJob.id,
-            warnings: [],
-          },
-          { status: 202 },
-        );
-      }
-    }
-
     const oneMinuteAgoIso = new Date(Date.now() - 60_000).toISOString();
     const { count: recentJobCount } = await supabase
       .from("media_enrichment_jobs")
       .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
       .gte("created_at", oneMinuteAgoIso);
 
     if ((recentJobCount ?? 0) >= MAX_QUEUE_JOBS_PER_MINUTE) {
@@ -511,7 +498,7 @@ export async function POST(request: Request) {
 
     const { data: serviceLog, error: serviceLogError } = await supabase
       .from("service_logs")
-      .select("id,asset_id,user_id,notes")
+      .select("id,asset_id,user_id")
       .eq("id", serviceLogId)
       .eq("user_id", user.id)
       .maybeSingle();
@@ -580,18 +567,15 @@ export async function POST(request: Request) {
       }
     }
 
-    const attempts: UploadAttempt[] = [];
-    for (const entry of mediaEntries) {
-      attempts.push(
-        await uploadSingleMedia({
-          supabase,
-          userId: user.id,
-          assetId,
-          serviceLogId,
-          entry,
-        }),
-      );
-    }
+    const attempts = await mapWithConcurrency(mediaEntries, UPLOAD_CONCURRENCY, async (entry) =>
+      uploadSingleMedia({
+        supabase,
+        userId: user.id,
+        assetId,
+        serviceLogId,
+        entry,
+      }),
+    );
 
     const failedAttempts = attempts.filter((item): item is Extract<UploadAttempt, { ok: false }> => !item.ok);
     const successfulAttempts = attempts.filter((item): item is Extract<UploadAttempt, { ok: true }> => item.ok);
@@ -609,79 +593,31 @@ export async function POST(request: Request) {
     }
 
     const uploads = successfulAttempts.map((item) => item.upload);
-    const warnings: string[] = [];
-
-    const queuePayload = {
-      serviceType,
-      serviceDate,
-      provider,
-      userNotes,
-      existingNotes: typeof serviceLog.notes === "string" ? serviceLog.notes : null,
-      uploads,
-    };
-
-    const idempotencyKey =
-      rawIdempotencyKey ??
-      buildDefaultIdempotencyKey({
-        userId: user.id,
-        assetId,
-        serviceLogId,
-        serviceDate,
-        serviceType,
-        uploads,
-      });
+    const sortedDocumentIds = successfulAttempts.map((item) => item.documentId).sort();
+    const idempotencyKey = buildMediaEnrichmentIdempotencyKey({
+      userId: user.id,
+      serviceLogId,
+      documentIds: sortedDocumentIds,
+      nowMs: Date.now(),
+    });
 
     let queuedJob: QueueRow | null = null;
-
-    const queueInsert = await supabase
-      .from("media_enrichment_jobs")
-      .insert({
+    try {
+      queuedJob = (await queueMediaEnrichmentJob(supabase, {
         user_id: user.id,
-        asset_id: assetId,
         service_log_id: serviceLogId,
+        document_ids: sortedDocumentIds,
         idempotency_key: idempotencyKey,
-        status: "queued",
-        payload: queuePayload,
-      })
-      .select("id,status")
-      .single();
-
-    if (queueInsert.error) {
-      if (isUniqueViolation(queueInsert.error)) {
-        const existingJobRes = await supabase
-          .from("media_enrichment_jobs")
-          .select("id,status")
-          .eq("idempotency_key", idempotencyKey)
-          .eq("user_id", user.id)
-          .eq("service_log_id", serviceLogId)
-          .maybeSingle();
-        queuedJob = (existingJobRes.data as QueueRow | null) ?? null;
-        warnings.push("Ayni idempotency key ile daha once kuyruklanan bir is bulundu.");
-      } else {
-        warnings.push("AI enrichment kuyruga alinamadi.");
-      }
-    } else {
-      queuedJob = (queueInsert.data as QueueRow | null) ?? null;
+      })) as QueueRow | null;
+    } catch {
+      queuedJob = null;
     }
 
-    return NextResponse.json(
-      {
-        ok: true,
-        uploadedCount: uploads.length,
-        enrichment: queuedJob?.status ?? "not_queued",
-        jobId: queuedJob?.id ?? null,
-        media: uploads.map((item) => ({
-          kind: item.kind,
-          fileName: item.fileName,
-          mimeType: item.mimeType,
-          size: item.size,
-          storagePath: item.storagePath,
-          metadata: item.metadata,
-        })),
-        warnings,
-      },
-      { status: 202 },
-    );
+    return buildQueuedServiceMediaResponse({
+      uploadedCount: uploads.length,
+      queuedJob,
+      uploads,
+    });
   } catch (error) {
     logApiError({
       route: "/api/service-media",

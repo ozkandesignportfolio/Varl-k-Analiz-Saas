@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { Download, Plus, QrCode } from "lucide-react";
+import { Plus, QrCode } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AuditHistoryPanel } from "@/components/audit-history-panel";
 import { QrScannerModal } from "@/components/qr-scanner-modal";
@@ -192,6 +192,8 @@ export function AssetsPageContainer() {
   const [createFormKey, setCreateFormKey] = useState(0);
   const [mediaDraft, setMediaDraft] = useState<AssetMediaDraft>(EMPTY_MEDIA_DRAFT);
   const [mediaErrorMessage, setMediaErrorMessage] = useState("");
+  const [editMediaDraft, setEditMediaDraft] = useState<AssetMediaDraft>(EMPTY_MEDIA_DRAFT);
+  const [editMediaErrorMessage, setEditMediaErrorMessage] = useState("");
 
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -586,11 +588,15 @@ export function AssetsPageContainer() {
     });
     setSelectedPreviewAssetId(null);
     setQrPreviewAssetId(null);
+    setEditMediaDraft(EMPTY_MEDIA_DRAFT);
+    setEditMediaErrorMessage("");
     setFeedback("");
   };
 
   const onCancelEdit = () => {
     setEditingAsset(null);
+    setEditMediaDraft(EMPTY_MEDIA_DRAFT);
+    setEditMediaErrorMessage("");
   };
 
   useEffect(() => {
@@ -626,6 +632,14 @@ export function AssetsPageContainer() {
       return;
     }
 
+    const mediaValidationError = validateMediaDraft(editMediaDraft);
+    if (mediaValidationError) {
+      setEditMediaErrorMessage(mediaValidationError);
+      setFeedback(mediaValidationError);
+      return;
+    }
+
+    setEditMediaErrorMessage("");
     setFeedback("");
     setIsUpdating(true);
 
@@ -652,8 +666,19 @@ export function AssetsPageContainer() {
         return;
       }
 
-      setFeedback("Varlık güncellendi.");
+      const mediaUploadResult = await uploadAssetMedia(editingAsset.id, editMediaDraft);
+
+      if (!mediaUploadResult.ok) {
+        setFeedback(`Varlık güncellendi, ancak medya yüklenemedi: ${mediaUploadResult.error}`);
+      } else if (mediaUploadResult.uploaded) {
+        setFeedback("Varlık ve medya güncellendi.");
+      } else {
+        setFeedback("Varlık güncellendi.");
+      }
+
       setEditingAsset(null);
+      setEditMediaDraft(EMPTY_MEDIA_DRAFT);
+      setEditMediaErrorMessage("");
       await fetchAssets(userId);
       setAuditRefreshKey((prev) => prev + 1);
     } catch (error) {
@@ -791,6 +816,59 @@ export function AssetsPageContainer() {
     setMediaDraft(nextDraft);
   };
 
+  const onEditMediaSelection = (type: AssetMediaType, files: FileList | null, input: HTMLInputElement) => {
+    if (!isPremiumMediaEnabled) {
+      input.value = "";
+      setEditMediaErrorMessage(PREMIUM_MEDIA_REQUIRED_MESSAGE);
+      setFeedback(PREMIUM_MEDIA_REQUIRED_MESSAGE);
+      return;
+    }
+
+    const selectedFiles = [...(files ?? [])];
+    const nextDraft: AssetMediaDraft = {
+      images: editMediaDraft.images,
+      video: editMediaDraft.video,
+      audio: editMediaDraft.audio,
+    };
+
+    if (type === "image") {
+      if (selectedFiles.length > ASSET_MEDIA_LIMITS.image.maxFiles) {
+        input.value = "";
+        setEditMediaErrorMessage(getAssetMediaCountError("image"));
+        return;
+      }
+      nextDraft.images = selectedFiles;
+    }
+
+    if (type === "video") {
+      if (selectedFiles.length > ASSET_MEDIA_LIMITS.video.maxFiles) {
+        input.value = "";
+        setEditMediaErrorMessage(getAssetMediaCountError("video"));
+        return;
+      }
+      nextDraft.video = selectedFiles[0] ?? null;
+    }
+
+    if (type === "audio") {
+      if (selectedFiles.length > ASSET_MEDIA_LIMITS.audio.maxFiles) {
+        input.value = "";
+        setEditMediaErrorMessage(getAssetMediaCountError("audio"));
+        return;
+      }
+      nextDraft.audio = selectedFiles[0] ?? null;
+    }
+
+    const validationError = validateMediaDraft(nextDraft);
+    if (validationError) {
+      input.value = "";
+      setEditMediaErrorMessage(validationError);
+      return;
+    }
+
+    setEditMediaErrorMessage("");
+    setEditMediaDraft(nextDraft);
+  };
+
   const dashboardRows = useMemo<AssetDashboardRow[]>(() => {
     return assets.map((asset) => {
       const serviceLogs = serviceLogsByAsset[asset.id] ?? [];
@@ -891,6 +969,16 @@ export function AssetsPageContainer() {
     [mediaDraft],
   );
 
+  const editMediaSummary = useMemo(
+    () => ({
+      imageCount: editMediaDraft.images.length,
+      videoFileName: editMediaDraft.video?.name ?? null,
+      audioFileName: editMediaDraft.audio?.name ?? null,
+      totalSizeLabel: toMegabytesLabel(getMediaDraftSize(editMediaDraft)),
+    }),
+    [editMediaDraft],
+  );
+
   const focusCreateAssetForm = useCallback(() => {
     const createForm = document.getElementById("asset-create-form");
     if (!createForm) return;
@@ -936,14 +1024,6 @@ export function AssetsPageContainer() {
           >
             <QrCode className="h-4 w-4" />
             QR ile Ekle
-          </button>
-          <button
-            type="button"
-            disabled
-            className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-300 opacity-70"
-          >
-            <Download className="h-4 w-4" />
-            Dışa Aktar
           </button>
         </div>
       }
@@ -1068,6 +1148,10 @@ export function AssetsPageContainer() {
           isSubmitting={isUpdating}
           categoryOptions={categoryOptions}
           inputClassName={inputClassName}
+          isPremiumMediaEnabled={isPremiumMediaEnabled}
+          mediaErrorMessage={editMediaErrorMessage}
+          mediaSummary={editMediaSummary}
+          onMediaSelection={onEditMediaSelection}
         />
       ) : null}
 

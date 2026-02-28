@@ -33,16 +33,7 @@ type CreateAssetMediaSummary = {
   totalSizeLabel: string;
 };
 
-type AssetFormBaseProps = {
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
-  isSubmitting: boolean;
-  categoryOptions: string[];
-  inputClassName: string;
-};
-
-type CreateAssetFormProps = AssetFormBaseProps & {
-  mode: "create";
-  defaults?: CreateAssetFormDefaults;
+type AssetFormMediaProps = {
   isPremiumMediaEnabled: boolean;
   mediaErrorMessage: string;
   mediaSummary: CreateAssetMediaSummary;
@@ -53,7 +44,21 @@ type CreateAssetFormProps = AssetFormBaseProps & {
   ) => void;
 };
 
-type EditAssetFormProps = AssetFormBaseProps & {
+type AssetFormBaseProps = {
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  isSubmitting: boolean;
+  categoryOptions: string[];
+  inputClassName: string;
+};
+
+type CreateAssetFormProps = AssetFormBaseProps &
+  AssetFormMediaProps & {
+  mode: "create";
+  defaults?: CreateAssetFormDefaults;
+};
+
+type EditAssetFormProps = AssetFormBaseProps &
+  AssetFormMediaProps & {
   mode: "edit";
   asset: AssetFormAsset;
   onCancel: () => void;
@@ -299,7 +304,18 @@ export function AssetForm(props: AssetFormProps) {
     );
   }
 
-  const { onSubmit, isSubmitting, categoryOptions, inputClassName, asset, onCancel } = props;
+  const {
+    onSubmit,
+    isSubmitting,
+    categoryOptions,
+    inputClassName,
+    asset,
+    onCancel,
+    isPremiumMediaEnabled,
+    mediaErrorMessage,
+    mediaSummary,
+    onMediaSelection,
+  } = props;
 
   return (
     <section className="premium-card p-5" data-testid="asset-edit-card">
@@ -374,6 +390,95 @@ export function AssetForm(props: AssetFormProps) {
             className={inputClassName}
           />
         </label>
+
+        <section
+          className={`md:col-span-2 mt-1 rounded-xl border p-4 ${
+            isPremiumMediaEnabled ? "border-white/15 bg-white/[0.04]" : "border-amber-300/30 bg-amber-300/5"
+          }`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-white">Ek Medya (Premium)</p>
+              <p className="mt-1 text-xs text-slate-300">
+                Düzenleme sırasında fotoğraf, video ve ses ekleyebilirsiniz.
+              </p>
+            </div>
+            {!isPremiumMediaEnabled ? (
+              <Badge className="border-amber-300/40 bg-amber-300/15 text-amber-100">Premium&apos;da aktif</Badge>
+            ) : null}
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <label className="block md:col-span-2">
+              <span className="mb-1.5 block text-sm text-slate-300">Fotoğraf Ekle (çoklu)</span>
+              <input
+                type="file"
+                name="edit-images"
+                multiple
+                accept="image/jpeg,image/png,image/webp,image/heic"
+                disabled={!isPremiumMediaEnabled}
+                onChange={(event) => onMediaSelection("image", event.target.files, event.target)}
+                className="block w-full text-sm text-slate-200 file:mr-3 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-white/20 disabled:opacity-60"
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-1.5 block text-sm text-slate-300">Video Ekle (max 1)</span>
+              <input
+                type="file"
+                name="edit-video"
+                accept="video/mp4,video/quicktime,video/webm,video/x-matroska"
+                disabled={!isPremiumMediaEnabled}
+                onChange={(event) => onMediaSelection("video", event.target.files, event.target)}
+                className="block w-full text-sm text-slate-200 file:mr-3 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-white/20 disabled:opacity-60"
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-1.5 block text-sm text-slate-300">Ses Kaydı / Ses Dosyası (max 1)</span>
+              <input
+                type="file"
+                name="edit-audio"
+                accept="audio/*"
+                capture
+                disabled={!isPremiumMediaEnabled}
+                onChange={(event) => onMediaSelection("audio", event.target.files, event.target)}
+                className="block w-full text-sm text-slate-200 file:mr-3 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-white/20 disabled:opacity-60"
+              />
+            </label>
+          </div>
+
+          <div className="mt-4 rounded-lg border border-white/10 bg-slate-950/40 p-3 text-xs text-slate-300">
+            <p>Seçilen fotoğraf: {mediaSummary.imageCount}</p>
+            <p>Seçilen video: {mediaSummary.videoFileName ?? "-"}</p>
+            <p>Seçilen ses: {mediaSummary.audioFileName ?? "-"}</p>
+            <p>Toplam seçili boyut: {mediaSummary.totalSizeLabel}</p>
+          </div>
+
+          {mediaErrorMessage ? (
+            <p className="mt-3 rounded-lg border border-rose-300/40 bg-rose-300/10 px-3 py-2 text-sm text-rose-100">
+              {mediaErrorMessage}
+            </p>
+          ) : null}
+
+          {!isPremiumMediaEnabled ? (
+            <div className="mt-4 rounded-lg border border-amber-300/35 bg-slate-900/60 p-3">
+              <p className="flex items-center gap-2 text-sm font-semibold text-amber-100">
+                <Lock className="h-4 w-4" />
+                Premium Özellik
+              </p>
+              <p className="mt-1 text-xs text-amber-100/90">
+                Düzenleme sırasında medya ekleme özelliği yalnızca Premium planda aktif.
+              </p>
+              <Link
+                href="/pricing"
+                className="mt-3 inline-flex rounded-full bg-gradient-to-r from-amber-400 to-orange-400 px-4 py-2 text-xs font-semibold text-slate-950"
+              >
+                Premium&apos;a Geç
+              </Link>
+            </div>
+          ) : null}
+        </section>
 
         <div className="md:col-span-2 pt-1">
           <button

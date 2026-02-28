@@ -555,8 +555,8 @@ export function ServicesPageContainer() {
       ) : null}
 
       <AuditHistoryPanel
-        title="Servis ve Kural Audit Geçmişi"
-        subtitle="Servis kayıtları ve tetiklenen bakım kural değişikliklerini alan bazında inceleyin."
+        title="Servis ve Kural Geçmişi"
+        subtitle="Eklenen, güncellenen ve silinen servis/kural işlemlerini sade şekilde görün."
         entityTypes={["service_logs", "maintenance_rules"]}
         limit={15}
         refreshKey={auditRefreshKey}
