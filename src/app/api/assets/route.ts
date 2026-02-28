@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { logApiError, logAuditEvent } from "@/lib/api/logging";
-import { countByUser as countAssetsByUser } from "@/lib/repos/assets-repo";
-import { canCreateAsset } from "@/lib/plans/plan-config";
-import { getPlanConfigFromProfilePlan } from "@/lib/plans/profile-plan";
+import { enforceLimit, isPlanLimitError, toPlanLimitErrorBody } from "@/lib/plans/limit-enforcer";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
 
 type CreateAssetPayload = {
@@ -175,30 +173,13 @@ export async function POST(request: Request) {
       );
     }
 
-    if (auth.profilePlan !== "premium") {
-      const userPlan = getPlanConfigFromProfilePlan(auth.profilePlan);
-      const { data: currentAssetCount, error: countError } = await countAssetsByUser(auth.supabase, {
-        userId: auth.user.id,
-      });
-
-      if (countError) {
-        return NextResponse.json({ error: countError.message }, { status: 400 });
-      }
-
-      const assetLimitCheck = canCreateAsset({
-        planConfig: userPlan,
-        currentCount: currentAssetCount ?? 0,
-      });
-
-      if (!assetLimitCheck.allowed) {
-        return NextResponse.json(
-          {
-            error: assetLimitCheck.errorMessage ?? "Plan limitine ulaştınız.",
-          },
-          { status: 403 },
-        );
-      }
-    }
+    await enforceLimit({
+      client: auth.supabase,
+      userId: auth.user.id,
+      profilePlan: auth.profilePlan,
+      resource: "assets",
+      delta: 1,
+    });
 
     const { data, error } = await auth.supabase
       .from("assets")
@@ -229,6 +210,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, id: data.id }, { status: 201 });
   } catch (error) {
+    if (isPlanLimitError(error)) {
+      return NextResponse.json(toPlanLimitErrorBody(error), { status: 403 });
+    }
+
     logApiError({
       route: "/api/assets",
       method: "POST",

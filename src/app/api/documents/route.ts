@@ -3,9 +3,7 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 import { logApiError, logAuditEvent } from "@/lib/api/logging";
 import { existsById } from "@/lib/repos/assets-repo";
-import { countByUser as countDocumentsByUser } from "@/lib/repos/documents-repo";
-import { canUploadDocument } from "@/lib/plans/plan-config";
-import { getPlanConfigFromProfilePlan } from "@/lib/plans/profile-plan";
+import { enforceLimit, isPlanLimitError, toPlanLimitErrorBody } from "@/lib/plans/limit-enforcer";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
 
 export const runtime = "nodejs";
@@ -54,6 +52,10 @@ const ALLOWED_EXTENSIONS = [
   "ogg",
 ] as const;
 
+type DeleteDocumentPayload = {
+  id?: unknown;
+};
+
 const COMPATIBLE_EXTENSIONS_BY_MIME_TYPE: Record<string, string[]> = {
   "application/pdf": ["pdf"],
   "image/jpeg": ["jpg", "jpeg"],
@@ -82,8 +84,8 @@ const getFileEntry = (formData: FormData, key: string) => {
   return entry.size > 0 ? entry : null;
 };
 
-const normalizeUuid = (value: string) => {
-  const normalized = value.trim().toLowerCase();
+const normalizeUuid = (value: unknown) => {
+  const normalized = String(value ?? "").trim().toLowerCase();
   if (!UUID_PATTERN.test(normalized)) {
     return null;
   }
@@ -135,11 +137,11 @@ const buildStoragePath = (params: {
 
 const validateUploadFile = (file: File) => {
   if (file.size <= 0) {
-    return { error: "Boş dosya yüklenemez." };
+    return { error: "Bos dosya yuklenemez." };
   }
 
   if (file.size > MAX_FILE_SIZE_BYTES) {
-    return { error: "Dosya boyutu 50 MB sınırını aşıyor." };
+    return { error: "Dosya boyutu 50 MB sinirini asiyor." };
   }
 
   const mimeType = file.type.trim().toLowerCase();
@@ -157,11 +159,11 @@ const validateUploadFile = (file: File) => {
     return { error: `Dosya uzantisi ve MIME tipi uyusmuyor: ${mimeType} / .${extension}.` };
   }
 
-  return {
-    mimeType,
-    extension,
-  };
+  return { mimeType, extension };
 };
+
+const readDeleteBody = async (request: Request) =>
+  (await request.json().catch(() => null)) as DeleteDocumentPayload | null;
 
 export async function POST(request: Request) {
   let userId: string | null = null;
@@ -176,7 +178,7 @@ export async function POST(request: Request) {
 
     const formData = await request.formData().catch(() => null);
     if (!formData) {
-      return NextResponse.json({ error: "Geçersiz form verisi." }, { status: 400 });
+      return NextResponse.json({ error: "Gecersiz form verisi." }, { status: 400 });
     }
 
     const rawAssetId = String(formData.get("assetId") ?? "").trim();
@@ -185,17 +187,17 @@ export async function POST(request: Request) {
 
     const assetId = normalizeUuid(rawAssetId);
     if (!assetId) {
-      return NextResponse.json({ error: "Varlık kimliği geçersiz." }, { status: 400 });
+      return NextResponse.json({ error: "Varlik kimligi gecersiz." }, { status: 400 });
     }
 
     if (!ALLOWED_DOCUMENT_TYPES.includes(rawDocumentType as (typeof ALLOWED_DOCUMENT_TYPES)[number])) {
-      return NextResponse.json({ error: "Belge tipi geçersiz." }, { status: 400 });
+      return NextResponse.json({ error: "Belge tipi gecersiz." }, { status: 400 });
     }
 
     const documentType = rawDocumentType as (typeof ALLOWED_DOCUMENT_TYPES)[number];
 
     if (!file) {
-      return NextResponse.json({ error: "Yüklenecek dosya bulunamadı." }, { status: 400 });
+      return NextResponse.json({ error: "Yuklenecek dosya bulunamadi." }, { status: 400 });
     }
 
     const fileValidation = validateUploadFile(file);
@@ -213,32 +215,16 @@ export async function POST(request: Request) {
     }
 
     if (!assetExists) {
-      return NextResponse.json({ error: "Seçilen varlığa erişim izniniz yok." }, { status: 403 });
+      return NextResponse.json({ error: "Secilen varliga erisim izniniz yok." }, { status: 403 });
     }
 
-    if (auth.profilePlan !== "premium") {
-      const userPlan = getPlanConfigFromProfilePlan(auth.profilePlan);
-      const { data: currentDocumentCount, error: documentCountError } = await countDocumentsByUser(supabase, {
-        userId: user.id,
-      });
-
-      if (documentCountError) {
-        return NextResponse.json({ error: documentCountError.message }, { status: 400 });
-      }
-
-      const documentLimitCheck = canUploadDocument({
-        planConfig: userPlan,
-        currentCount: currentDocumentCount ?? 0,
-        requestedCount: 1,
-      });
-
-      if (!documentLimitCheck.allowed) {
-        return NextResponse.json(
-          { error: documentLimitCheck.errorMessage ?? "Plan limitine ulaştınız." },
-          { status: 403 },
-        );
-      }
-    }
+    await enforceLimit({
+      client: supabase,
+      userId: user.id,
+      profilePlan: auth.profilePlan,
+      resource: "documents",
+      delta: 1,
+    });
 
     const storagePath = buildStoragePath({
       userId: user.id,
@@ -253,7 +239,7 @@ export async function POST(request: Request) {
       .upload(storagePath, file, { contentType: fileValidation.mimeType, upsert: false });
 
     if (uploadError) {
-      return NextResponse.json({ error: "Dosya yüklenemedi." }, { status: 500 });
+      return NextResponse.json({ error: "Dosya yuklenemedi." }, { status: 500 });
     }
 
     const { data: insertedDocument, error: insertError } = await supabase
@@ -272,7 +258,7 @@ export async function POST(request: Request) {
 
     if (insertError || !insertedDocument?.id) {
       await supabase.storage.from(STORAGE_BUCKET).remove([storagePath]);
-      return NextResponse.json({ error: insertError?.message ?? "Belge kaydı oluşturulamadı." }, { status: 500 });
+      return NextResponse.json({ error: insertError?.message ?? "Belge kaydi olusturulamadi." }, { status: 500 });
     }
 
     logAuditEvent({
@@ -292,6 +278,10 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
+    if (isPlanLimitError(error)) {
+      return NextResponse.json(toPlanLimitErrorBody(error), { status: 403 });
+    }
+
     logApiError({
       route: "/api/documents",
       method: "POST",
@@ -299,6 +289,100 @@ export async function POST(request: Request) {
       error,
       message: "Document upload request failed unexpectedly",
     });
-    return NextResponse.json({ error: "Belge yükleme isteği işlenemedi." }, { status: 500 });
+    return NextResponse.json({ error: "Belge yukleme istegi islenemedi." }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  let userId: string | null = null;
+  try {
+    const auth = await requireRouteUser(request);
+    if ("response" in auth) {
+      return auth.response;
+    }
+
+    const { supabase, user } = auth;
+    userId = user.id;
+
+    const payload = await readDeleteBody(request);
+    const documentId = normalizeUuid(payload?.id ?? new URL(request.url).searchParams.get("id"));
+    if (!documentId) {
+      return NextResponse.json({ error: "Belge kimligi gecersiz." }, { status: 400 });
+    }
+
+    const { data: existingDocument, error: existingDocumentError } = await supabase
+      .from("documents")
+      .select("id,storage_path")
+      .eq("id", documentId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (existingDocumentError) {
+      return NextResponse.json({ error: existingDocumentError.message }, { status: 400 });
+    }
+
+    if (!existingDocument?.id) {
+      return NextResponse.json({ error: "Belge bulunamadi." }, { status: 404 });
+    }
+
+    const { data: deletedDocument, error: deleteError } = await supabase
+      .from("documents")
+      .delete()
+      .eq("id", documentId)
+      .eq("user_id", user.id)
+      .select("id")
+      .maybeSingle();
+
+    if (deleteError) {
+      return NextResponse.json({ error: deleteError.message }, { status: 400 });
+    }
+
+    if (!deletedDocument?.id) {
+      return NextResponse.json({ error: "Belge bulunamadi." }, { status: 404 });
+    }
+
+    let warning: string | null = null;
+    const storagePath = String(existingDocument.storage_path ?? "").trim();
+    if (storagePath) {
+      const { error: storageDeleteError } = await supabase.storage.from(STORAGE_BUCKET).remove([storagePath]);
+      if (storageDeleteError) {
+        warning = "Belge kaydi silindi fakat depolama dosyasi temizlenemedi.";
+        logApiError({
+          route: "/api/documents",
+          method: "DELETE",
+          userId: user.id,
+          status: 200,
+          error: storageDeleteError,
+          message: "Document record deleted but storage cleanup failed",
+          meta: { documentId, storagePath },
+        });
+      }
+    }
+
+    logAuditEvent({
+      route: "/api/documents",
+      userId: user.id,
+      entityType: "documents",
+      entityId: deletedDocument.id,
+      action: "delete",
+    });
+
+    return NextResponse.json(
+      {
+        ok: true,
+        id: deletedDocument.id,
+        warning,
+      },
+      { status: 200 },
+    );
+  } catch (error) {
+    logApiError({
+      route: "/api/documents",
+      method: "DELETE",
+      userId,
+      error,
+      message: "Document delete request failed unexpectedly",
+    });
+    return NextResponse.json({ error: "Belge silme istegi islenemedi." }, { status: 500 });
   }
 }

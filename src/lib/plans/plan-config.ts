@@ -153,7 +153,7 @@ const planLimitMessageByResource = (resource: PlanLimitResource, limit: number) 
     case "subscription":
       return `Deneme planında en fazla ${limit} abonelik ekleyebilirsiniz.`;
     case "invoiceUpload":
-      return `Deneme planında en fazla ${limit} fatura yükleme yapabilirsiniz.`;
+      return `Deneme planında en fazla ${limit} fatura oluşturabilirsiniz.`;
     default:
       return "Plan limitine ulaştınız.";
   }
@@ -206,4 +206,3 @@ export const canCreateSubscription = (params: Omit<PlanLimitGuardParams, "resour
 
 export const canUploadInvoice = (params: Omit<PlanLimitGuardParams, "resource">) =>
   applyPlanLimitGuard({ ...params, resource: "invoiceUpload" });
-

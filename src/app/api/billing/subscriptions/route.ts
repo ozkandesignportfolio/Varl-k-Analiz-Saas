@@ -6,6 +6,7 @@ import {
   markBillingTablesMissing,
   toBillingFeatureDisabledErrorBody,
 } from "@/lib/billing/schema-guard";
+import { enforceLimit, isPlanLimitError, toPlanLimitErrorBody } from "@/lib/plans/limit-enforcer";
 import {
   createBillingSubscription,
   type CreateBillingSubscriptionPayload,
@@ -29,14 +30,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Geçersiz istek gövdesi." }, { status: 400 });
     }
 
-    const result = await createBillingSubscription(auth.supabase, {
+    await enforceLimit({
+      client: auth.supabase,
       userId: auth.user.id,
       profilePlan: auth.profilePlan,
+      resource: "subscriptions",
+      delta: 1,
+    });
+
+    const result = await createBillingSubscription(auth.supabase, {
+      userId: auth.user.id,
       payload,
     });
 
     return NextResponse.json(result.body, { status: result.status });
   } catch (error) {
+    if (isPlanLimitError(error)) {
+      return NextResponse.json(toPlanLimitErrorBody(error), { status: 403 });
+    }
+
     if (isBillingMissingTableError(error, ["billing_subscriptions"])) {
       const missingTables = extractBillingMissingTables(error, ["billing_subscriptions"]);
       markBillingTablesMissing(missingTables);
@@ -53,5 +65,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Abonelik isteği işlenemedi." }, { status: 500 });
   }
 }
-
-

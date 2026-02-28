@@ -10,6 +10,28 @@ export type ListServiceLogsForServicesPageParams = {
   offset?: number;
 };
 
+export type ServiceLogsCursor = {
+  createdAt: string;
+  id: string;
+};
+
+export type ListServicesParams = {
+  userId: string;
+  cursor?: ServiceLogsCursor | null;
+  pageSize?: number;
+  filters?: {
+    assetId?: string;
+    startDate?: string;
+    endDate?: string;
+  };
+};
+
+export type ListServicesResult = {
+  rows: ListServiceLogsForServicesPageRow[];
+  nextCursor: ServiceLogsCursor | null;
+  hasMore: boolean;
+};
+
 export type ListServiceLogsForServicesPageRow = Pick<
   Row<"service_logs">,
   | "id"
@@ -62,6 +84,25 @@ export type ListServiceLogsForReportsParams = {
   endDate?: string;
   limit?: number;
   offset?: number;
+};
+
+export type ReportsServiceLogsCursor = {
+  createdAt: string;
+  id: string;
+};
+
+export type ListServiceLogsForReportsPaginatedParams = {
+  userId: string;
+  cursor?: ReportsServiceLogsCursor | null;
+  pageSize?: number;
+  startDate?: string;
+  endDate?: string;
+};
+
+export type ListServiceLogsForReportsPaginatedResult = {
+  rows: ListServiceLogsForReportsRow[];
+  nextCursor: ReportsServiceLogsCursor | null;
+  hasMore: boolean;
 };
 
 export type ListServiceLogsForReportsRow = Pick<
@@ -117,6 +158,17 @@ export type ListServiceLogsForPredictionParams = {
 export type ListServiceLogsForPredictionRow = Pick<
   Row<"service_logs">,
   "asset_id" | "service_date" | "service_type" | "cost"
+>;
+
+export type ListAssetActivityPreviewParams = {
+  userId: string;
+  assetIds: string[];
+  perAssetLimit?: number;
+};
+
+export type ListAssetActivityPreviewRow = Pick<
+  Row<"service_logs">,
+  "asset_id" | "id" | "service_type" | "service_date" | "cost"
 >;
 
 export type CountServiceLogsByAssetParams = {
@@ -223,6 +275,55 @@ export function listForServicesPage(
   }));
 }
 
+export function listServices(
+  client: DbClient,
+  params: ListServicesParams,
+): RepoResult<ListServicesResult> {
+  const pageSize = normalizePageSize(params.pageSize, 50, 100);
+  const cursor = params.cursor ?? null;
+
+  let query = client
+    .from("service_logs")
+    .select("id,asset_id,rule_id,service_type,service_date,cost,provider,notes,created_at")
+    .eq("user_id", params.userId)
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false });
+
+  if (params.filters?.assetId) {
+    query = query.eq("asset_id", params.filters.assetId);
+  }
+  if (params.filters?.startDate) {
+    query = query.gte("service_date", params.filters.startDate);
+  }
+  if (params.filters?.endDate) {
+    query = query.lte("service_date", params.filters.endDate);
+  }
+
+  if (cursor?.createdAt && cursor.id) {
+    query = query.or(
+      `created_at.lt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.lt.${cursor.id})`,
+    );
+  }
+
+  query = query.limit(pageSize + 1);
+
+  return Promise.resolve(query).then((r) => {
+    const rows = (r.data as ListServiceLogsForServicesPageRow[] | null) ?? [];
+    const hasMore = rows.length > pageSize;
+    const pageRows = hasMore ? rows.slice(0, pageSize) : rows;
+    const lastRow = pageRows[pageRows.length - 1] ?? null;
+
+    return {
+      data: {
+        rows: pageRows,
+        hasMore,
+        nextCursor: hasMore && lastRow ? { createdAt: lastRow.created_at, id: lastRow.id } : null,
+      },
+      error: r.error,
+    };
+  });
+}
+
 export function listForCosts(
   client: DbClient,
   params: ListServiceLogsForCostsParams,
@@ -326,6 +427,69 @@ export function listForReports(
   }));
 }
 
+export function listForReportsPaginated(
+  client: DbClient,
+  params: ListServiceLogsForReportsPaginatedParams,
+): RepoResult<ListServiceLogsForReportsPaginatedResult> {
+  const pageSize = normalizePageSize(params.pageSize, 100, 200);
+  const cursor = params.cursor ?? null;
+
+  let query = client
+    .from("service_logs")
+    .select("id,asset_id,service_date,service_type,cost,created_at,asset:assets(name)")
+    .eq("user_id", params.userId)
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false });
+
+  if (params.startDate) {
+    query = query.gte("service_date", params.startDate);
+  }
+  if (params.endDate) {
+    query = query.lte("service_date", params.endDate);
+  }
+  if (cursor?.createdAt && cursor.id) {
+    query = query.or(
+      `created_at.lt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.lt.${cursor.id})`,
+    );
+  }
+
+  query = query.limit(pageSize + 1);
+
+  type PaginatedRawRow = ListServiceLogsForReportsRawRow & Pick<Row<"service_logs">, "created_at">;
+
+  return Promise.resolve(query).then((r) => {
+    const rows = ((r.data as PaginatedRawRow[] | null) ?? []).map((row) => ({
+      id: row.id,
+      asset_id: row.asset_id,
+      service_date: row.service_date,
+      service_type: row.service_type,
+      cost: Number.isFinite(Number(row.cost)) ? Number(row.cost) : 0,
+      asset_name: getReportAssetName(row.asset),
+      created_at: row.created_at,
+    }));
+
+    const hasMore = rows.length > pageSize;
+    const pageRows = hasMore ? rows.slice(0, pageSize) : rows;
+    const lastRow = pageRows[pageRows.length - 1] ?? null;
+
+    return {
+      data: {
+        rows: pageRows.map((row) => ({
+          id: row.id,
+          asset_id: row.asset_id,
+          service_date: row.service_date,
+          service_type: row.service_type,
+          cost: row.cost,
+          asset_name: row.asset_name,
+        })),
+        hasMore,
+        nextCursor: hasMore && lastRow ? { createdAt: lastRow.created_at, id: lastRow.id } : null,
+      },
+      error: r.error,
+    };
+  });
+}
+
 export function listForTimeline(
   client: DbClient,
   params: ListServiceLogsForTimelineParams,
@@ -359,6 +523,33 @@ export function listForPrediction(
       .limit(Math.max(1, limit)),
   ).then((r) => ({
     data: (r.data as ListServiceLogsForPredictionRow[] | null) ?? [],
+    error: r.error,
+  }));
+}
+
+export function listAssetActivityPreview(
+  client: DbClient,
+  params: ListAssetActivityPreviewParams,
+): RepoResult<ListAssetActivityPreviewRow[]> {
+  const assetIds = [...new Set(params.assetIds.filter((assetId) => assetId.trim().length > 0))];
+  if (assetIds.length === 0) {
+    return Promise.resolve({ data: [], error: null });
+  }
+
+  return Promise.resolve(
+    client.rpc("list_asset_activity_preview", {
+      p_user_id: params.userId,
+      p_asset_ids: assetIds,
+      p_per_asset_limit: Math.max(1, Math.min(10, Math.floor(params.perAssetLimit ?? 3))),
+    }),
+  ).then((r) => ({
+    data: (((r.data as Array<Record<string, unknown>> | null) ?? []).map((row) => ({
+      asset_id: String(row.asset_id ?? ""),
+      id: String(row.id ?? ""),
+      service_type: String(row.service_type ?? ""),
+      service_date: String(row.service_date ?? ""),
+      cost: Number(row.cost ?? 0),
+    })) ?? []) as ListAssetActivityPreviewRow[],
     error: r.error,
   }));
 }

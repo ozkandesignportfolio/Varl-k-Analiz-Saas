@@ -1,49 +1,83 @@
 import { NextResponse } from "next/server";
 import { enforceRateLimit, getRequestIp } from "@/lib/api/rate-limit";
 import { createEmptyPanelHealthPayload, type PanelHealthPayload } from "@/lib/panel-health";
-import { computeHealthScore } from "@/lib/scoring/computeHealthScore";
 import { createClient } from "@/lib/supabase/server";
 
 type QueryError = {
   message?: string | null;
 };
 
-type PanelHealthAggregateRow = {
-  asset_price: number | string | null;
-  maintenance_cost: number | string | null;
-  expense_cost: number | string | null;
-  total_assets: number | string | null;
-  warranty_active: number | string | null;
-  warranty_expiring: number | string | null;
-  warranty_expired: number | string | null;
-  warranty_unknown: number | string | null;
-  maintenance_planned: number | string | null;
-  maintenance_completed: number | string | null;
-  maintenance_on_track: number | string | null;
-  uploaded_assets: number | string | null;
-  paid_count: number | string | null;
-  pending_count: number | string | null;
-  overdue_count: number | string | null;
-  expenses_table_missing: boolean | null;
-  invoices_table_missing: boolean | null;
+const PANEL_HEALTH_RPC_MISSING_FN_PATTERN = /Could not find the function public\.compute_panel_health/i;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const asRecord = (value: unknown) => (isRecord(value) ? value : null);
+const toNumber = (value: unknown, fallback: number) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+const toString = (value: unknown, fallback: string) => (typeof value === "string" ? value : fallback);
+const toNullableString = (value: unknown) => (typeof value === "string" ? value : null);
+const toScope = (value: unknown): PanelHealthPayload["scope"] => (value === "public_fallback" ? "public_fallback" : "user");
+
+const normalizePanelHealthPayload = (value: unknown): PanelHealthPayload => {
+  const fallback = createEmptyPanelHealthPayload("user");
+  const root = asRecord(value);
+  if (!root) {
+    return fallback;
+  }
+
+  const warranty = asRecord(root.warranty);
+  const maintenance = asRecord(root.maintenance);
+  const documents = asRecord(root.documents);
+  const payments = asRecord(root.payments);
+
+  return {
+    score: toNumber(root.score, fallback.score),
+    ratio: toNumber(root.ratio, fallback.ratio),
+    hasNoCost: root.hasNoCost === true,
+    assetPrice: toNumber(root.assetPrice, fallback.assetPrice),
+    totalCost: toNumber(root.totalCost, fallback.totalCost),
+    maintenanceCost: toNumber(root.maintenanceCost, fallback.maintenanceCost),
+    expenseCost: toNumber(root.expenseCost, fallback.expenseCost),
+    warranty: {
+      score: toNumber(warranty?.score, fallback.warranty.score),
+      active: toNumber(warranty?.active, fallback.warranty.active),
+      expiring: toNumber(warranty?.expiring, fallback.warranty.expiring),
+      expired: toNumber(warranty?.expired, fallback.warranty.expired),
+      unknown: toNumber(warranty?.unknown, fallback.warranty.unknown),
+    },
+    maintenance: {
+      score: toNumber(maintenance?.score, fallback.maintenance.score),
+      planned: toNumber(maintenance?.planned, fallback.maintenance.planned),
+      completed: toNumber(maintenance?.completed, fallback.maintenance.completed),
+      onTrack: toNumber(maintenance?.onTrack, fallback.maintenance.onTrack),
+      overdue: toNumber(maintenance?.overdue, fallback.maintenance.overdue),
+    },
+    documents: {
+      score: toNumber(documents?.score, fallback.documents.score),
+      required: toNumber(documents?.required, fallback.documents.required),
+      uploaded: toNumber(documents?.uploaded, fallback.documents.uploaded),
+      missing: toNumber(documents?.missing, fallback.documents.missing),
+    },
+    payments: {
+      score: toNumber(payments?.score, fallback.payments.score),
+      paid: toNumber(payments?.paid, fallback.payments.paid),
+      pending: toNumber(payments?.pending, fallback.payments.pending),
+      overdue: toNumber(payments?.overdue, fallback.payments.overdue),
+      total: toNumber(payments?.total, fallback.payments.total),
+    },
+    scope: toScope(root.scope),
+    warning: toNullableString(root.warning),
+    generatedAt: toString(root.generatedAt, new Date().toISOString()),
+  };
 };
 
-const clampScore = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
-
-const toNumber = (value: number | string | null | undefined) => {
-  const parsed = Number(value ?? 0);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const toInteger = (value: number | string | null | undefined) => {
-  const parsed = Math.round(toNumber(value));
-  return parsed > 0 ? parsed : 0;
-};
-
-const buildSuccessPayload = (payload: Omit<PanelHealthPayload, "generatedAt">): PanelHealthPayload => ({
-  ...payload,
-  generatedAt: new Date().toISOString(),
-});
+const toPanelHealthWarning = (errorMessage: string) =>
+  PANEL_HEALTH_RPC_MISSING_FN_PATTERN.test(errorMessage)
+    ? "Panel health RPC fonksiyonu bulunamadi. Supabase migration dosyasini calistirin: 20260228170000_compute_panel_health_rpc.sql."
+    : errorMessage;
 
 export const dynamic = "force-dynamic";
 
@@ -80,109 +114,20 @@ export async function GET(request: Request) {
   try {
     const rpcClient = supabase as unknown as {
       rpc: (
-        fn: "get_panel_health_aggregates",
+        fn: "compute_panel_health",
         args: { p_user_id: string },
       ) => Promise<{ data: unknown; error: QueryError | null }>;
     };
 
-    const { data, error } = await rpcClient.rpc("get_panel_health_aggregates", {
+    const { data, error } = await rpcClient.rpc("compute_panel_health", {
       p_user_id: user.id,
     });
 
     if (error) {
-      throw new Error(error.message ?? "Panel saglik aggregate RPC cagri hatasi.");
+      throw new Error(toPanelHealthWarning(error.message ?? "Panel saglik RPC cagri hatasi."));
     }
 
-    const rows = Array.isArray(data) ? (data as PanelHealthAggregateRow[]) : [];
-    const row = rows[0];
-
-    if (!row) {
-      return NextResponse.json(createEmptyPanelHealthPayload("user"), { status: 200 });
-    }
-
-    const assetPrice = Math.max(0, toNumber(row.asset_price));
-    const maintenanceCost = Math.max(0, toNumber(row.maintenance_cost));
-    const expenseCost = Math.max(0, toNumber(row.expense_cost));
-    const totalCost = maintenanceCost + expenseCost;
-
-    const healthScore = computeHealthScore({
-      assetPrice,
-      totalCost,
-    });
-
-    const totalAssets = toInteger(row.total_assets);
-    const warrantyActive = toInteger(row.warranty_active);
-    const warrantyExpiring = toInteger(row.warranty_expiring);
-    const warrantyExpired = toInteger(row.warranty_expired);
-    const warrantyUnknown = toInteger(row.warranty_unknown);
-    const warrantyScoreRaw =
-      totalAssets <= 0
-        ? 100
-        : (warrantyActive * 100 + warrantyExpiring * 60 + warrantyExpired * 20 + warrantyUnknown * 40) / totalAssets;
-    const warrantyScore = clampScore(warrantyScoreRaw);
-
-    const maintenancePlanned = toInteger(row.maintenance_planned);
-    const maintenanceCompleted = toInteger(row.maintenance_completed);
-    const maintenanceOnTrack = toInteger(row.maintenance_on_track);
-    const maintenanceOverdue = Math.max(0, maintenancePlanned - maintenanceOnTrack);
-    const completedRate = maintenancePlanned > 0 ? (maintenanceCompleted / maintenancePlanned) * 100 : 100;
-    const onTrackRate = maintenancePlanned > 0 ? (maintenanceOnTrack / maintenancePlanned) * 100 : 100;
-    const maintenanceScore = clampScore(completedRate * 0.6 + onTrackRate * 0.4);
-
-    const requiredDocuments = totalAssets;
-    const uploadedDocuments = toInteger(row.uploaded_assets);
-    const missingDocuments = Math.max(0, requiredDocuments - uploadedDocuments);
-    const documentScore = clampScore(requiredDocuments > 0 ? (uploadedDocuments / requiredDocuments) * 100 : 100);
-
-    const paidCount = toInteger(row.paid_count);
-    const pendingCount = toInteger(row.pending_count);
-    const overdueCount = toInteger(row.overdue_count);
-    const paymentTotal = paidCount + pendingCount + overdueCount;
-    const paymentScore = clampScore(paymentTotal > 0 ? (paidCount * 100 + pendingCount * 50) / paymentTotal : 100);
-
-    const warning =
-      row.expenses_table_missing || row.invoices_table_missing
-        ? "Bazi opsiyonel tablolar bulunamadi, skor sinirli veriyle hesaplandi."
-        : null;
-
-    const payload = buildSuccessPayload({
-      score: healthScore.score,
-      ratio: healthScore.ratio,
-      hasNoCost: healthScore.hasNoCost,
-      assetPrice,
-      totalCost,
-      maintenanceCost,
-      expenseCost,
-      warranty: {
-        score: warrantyScore,
-        active: clampScore(totalAssets > 0 ? (warrantyActive / totalAssets) * 100 : 100),
-        expiring: clampScore(totalAssets > 0 ? (warrantyExpiring / totalAssets) * 100 : 0),
-        expired: clampScore(totalAssets > 0 ? (warrantyExpired / totalAssets) * 100 : 0),
-        unknown: clampScore(totalAssets > 0 ? (warrantyUnknown / totalAssets) * 100 : 0),
-      },
-      maintenance: {
-        score: maintenanceScore,
-        planned: maintenancePlanned,
-        completed: maintenanceCompleted,
-        onTrack: maintenanceOnTrack,
-        overdue: maintenanceOverdue,
-      },
-      documents: {
-        score: documentScore,
-        required: requiredDocuments,
-        uploaded: uploadedDocuments,
-        missing: missingDocuments,
-      },
-      payments: {
-        score: paymentScore,
-        paid: paidCount,
-        pending: pendingCount,
-        overdue: overdueCount,
-        total: paymentTotal,
-      },
-      scope: "user",
-      warning,
-    });
+    const payload = normalizePanelHealthPayload(Array.isArray(data) ? data[0] : data);
 
     return NextResponse.json(payload, { status: 200 });
   } catch (error) {

@@ -18,6 +18,25 @@ export type ListDocumentsForReportsParams = {
   offset?: number;
 };
 
+export type ReportsDocumentsCursor = {
+  uploadedAt: string;
+  id: string;
+};
+
+export type ListDocumentsForReportsPaginatedParams = {
+  userId: string;
+  startDate?: string;
+  endDate?: string;
+  pageSize?: number;
+  cursor?: ReportsDocumentsCursor | null;
+};
+
+export type ListDocumentsForReportsPaginatedResult = {
+  rows: ListDocumentsForReportsWithAssetRow[];
+  nextCursor: ReportsDocumentsCursor | null;
+  hasMore: boolean;
+};
+
 export type ListDocumentsForReportsRow = Pick<Row<"documents">, "id" | "asset_id" | "file_name" | "uploaded_at">;
 export type ListDocumentsForReportsWithAssetRow = ListDocumentsForReportsRow & {
   asset_name: string | null;
@@ -134,6 +153,58 @@ export function listForReports(
       })) ?? [],
     error: r.error,
   }));
+}
+
+export function listForReportsPaginated(
+  client: DbClient,
+  params: ListDocumentsForReportsPaginatedParams,
+): RepoResult<ListDocumentsForReportsPaginatedResult> {
+  const pageSize = normalizePageSize(params.pageSize, 100, 200);
+  const cursor = params.cursor ?? null;
+
+  let query = client
+    .from("documents")
+    .select("id,asset_id,file_name,uploaded_at,asset:assets(name)")
+    .eq("user_id", params.userId)
+    .order("uploaded_at", { ascending: false })
+    .order("id", { ascending: false });
+
+  if (params.startDate) {
+    query = query.gte("uploaded_at", `${params.startDate}T00:00:00`);
+  }
+  if (params.endDate) {
+    query = query.lte("uploaded_at", `${params.endDate}T23:59:59.999`);
+  }
+  if (cursor?.uploadedAt && cursor.id) {
+    query = query.or(
+      `uploaded_at.lt.${cursor.uploadedAt},and(uploaded_at.eq.${cursor.uploadedAt},id.lt.${cursor.id})`,
+    );
+  }
+
+  query = query.limit(pageSize + 1);
+
+  return Promise.resolve(query).then((r) => {
+    const rows = ((r.data as ListDocumentsForReportsRawRow[] | null) ?? []).map((row) => ({
+      id: row.id,
+      asset_id: row.asset_id,
+      file_name: row.file_name,
+      uploaded_at: row.uploaded_at,
+      asset_name: getReportAssetName(row.asset),
+    }));
+
+    const hasMore = rows.length > pageSize;
+    const pageRows = hasMore ? rows.slice(0, pageSize) : rows;
+    const lastRow = pageRows[pageRows.length - 1] ?? null;
+
+    return {
+      data: {
+        rows: pageRows,
+        hasMore,
+        nextCursor: hasMore && lastRow ? { uploadedAt: lastRow.uploaded_at, id: lastRow.id } : null,
+      },
+      error: r.error,
+    };
+  });
 }
 
 export function listForTimeline(

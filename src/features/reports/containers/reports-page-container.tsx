@@ -17,8 +17,7 @@ import { ReportsSummaryCards } from "@/features/reports/components/reports-summa
 import { ensurePdfUnicodeFont } from "@/features/reports/lib/pdf-font";
 import { REPORTS_TURKISH_SMOKE_TEXT, assertNoMojibakeText } from "@/features/reports/lib/text-integrity";
 import { countByUser as countAssetsByUser } from "@/lib/repos/assets-repo";
-import { listForReports as listDocumentsForReports } from "@/lib/repos/documents-repo";
-import { listForReports as listServiceLogsForReports } from "@/lib/repos/service-logs-repo";
+import { listReports, type ReportsCursor } from "@/lib/repos/reports-repo";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type ServiceRow = ReportsServiceRow & {
@@ -89,8 +88,10 @@ export function ReportsPageContainer() {
   const [userId, setUserId] = useState("");
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
-  const [reportPage, setReportPage] = useState(1);
+  const [reportCursor, setReportCursor] = useState<ReportsCursor>({ services: null, documents: null });
   const [hasMoreRows, setHasMoreRows] = useState(false);
+  const [hasMoreServices, setHasMoreServices] = useState(false);
+  const [hasMoreDocuments, setHasMoreDocuments] = useState(false);
   const [isLoadingMoreRows, setIsLoadingMoreRows] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [startDate, setStartDate] = useState(dateInputValue(initialStart));
@@ -103,42 +104,56 @@ export function ReportsPageContainer() {
   const fetchReportRows = useCallback(
     async (
       currentUserId: string,
-      options: { page: number; append: boolean; startDateValue: string; endDateValue: string },
+      options: {
+        append: boolean;
+        cursor: ReportsCursor | null;
+        startDateValue: string;
+        endDateValue: string;
+        includeServices?: boolean;
+        includeDocuments?: boolean;
+      },
     ) => {
-      const safePage = Math.max(1, options.page);
-      const offset = (safePage - 1) * REPORTS_PAGE_SIZE;
-
       if (options.append) {
         setIsLoadingMoreRows(true);
       } else {
         setIsLoading(true);
       }
 
-      const [servicesRes, docsRes] = await Promise.all([
-        listServiceLogsForReports(supabase, {
-          userId: currentUserId,
-          startDate: options.startDateValue,
-          endDate: options.endDateValue,
-          limit: REPORTS_PAGE_SIZE,
-          offset,
-        }),
-        listDocumentsForReports(supabase, {
-          userId: currentUserId,
-          startDate: options.startDateValue,
-          endDate: options.endDateValue,
-          limit: REPORTS_PAGE_SIZE,
-          offset,
-        }),
-      ]);
+      const { data, error } = await listReports(supabase, {
+        userId: currentUserId,
+        from: options.startDateValue,
+        to: options.endDateValue,
+        pageSize: REPORTS_PAGE_SIZE,
+        cursor: options.cursor,
+        includeServices: options.includeServices ?? true,
+        includeDocuments: options.includeDocuments ?? true,
+      });
 
-      if (servicesRes.error) setFeedback(servicesRes.error.message);
-      if (docsRes.error) setFeedback(docsRes.error.message);
+      if (error) {
+        setFeedback(error.message);
+        if (options.append) {
+          setIsLoadingMoreRows(false);
+        } else {
+          setIsLoading(false);
+        }
+        return;
+      }
 
-      const nextServices = (servicesRes.data ?? []) as ServiceRow[];
-      const nextDocuments = (docsRes.data ?? []) as DocumentRow[];
+      const pageData = data ?? {
+        services: [] as ServiceRow[],
+        documents: [] as DocumentRow[],
+        nextCursor: { services: null, documents: null },
+        hasMore: false,
+        hasMoreServices: false,
+        hasMoreDocuments: false,
+      };
+      const nextServices = pageData.services as ServiceRow[];
+      const nextDocuments = pageData.documents as DocumentRow[];
 
-      setHasMoreRows(nextServices.length === REPORTS_PAGE_SIZE || nextDocuments.length === REPORTS_PAGE_SIZE);
-      setReportPage(safePage);
+      setHasMoreRows(pageData.hasMore);
+      setHasMoreServices(pageData.hasMoreServices);
+      setHasMoreDocuments(pageData.hasMoreDocuments);
+      setReportCursor(pageData.nextCursor);
 
       if (options.append) {
         setServices((prev) => [...prev, ...nextServices]);
@@ -202,13 +217,15 @@ export function ReportsPageContainer() {
       setServices([]);
       setDocuments([]);
       setHasMoreRows(false);
-      setReportPage(1);
+      setHasMoreServices(false);
+      setHasMoreDocuments(false);
+      setReportCursor({ services: null, documents: null });
       return;
     }
 
     void fetchReportRows(userId, {
-      page: 1,
       append: false,
+      cursor: null,
       startDateValue: startDate,
       endDateValue: endDate,
     });
@@ -230,25 +247,8 @@ export function ReportsPageContainer() {
     return map;
   }, [documents, services]);
 
-  const servicesInRange = useMemo(
-    () =>
-      services.filter((service) => {
-        const time = getTime(service.service_date);
-        if (time === null) return false;
-        return time >= rangeStart.getTime() && time <= rangeEnd.getTime();
-      }),
-    [services, rangeStart, rangeEnd],
-  );
-
-  const documentsInRange = useMemo(
-    () =>
-      documents.filter((doc) => {
-        const time = getTime(doc.uploaded_at);
-        if (time === null) return false;
-        return time >= rangeStart.getTime() && time <= rangeEnd.getTime();
-      }),
-    [documents, rangeStart, rangeEnd],
-  );
+  const servicesInRange = services;
+  const documentsInRange = documents;
 
   const totalCost = useMemo(
     () =>
@@ -321,10 +321,15 @@ export function ReportsPageContainer() {
     }
 
     await fetchReportRows(userId, {
-      page: reportPage + 1,
       append: true,
+      cursor: {
+        services: hasMoreServices ? reportCursor.services : null,
+        documents: hasMoreDocuments ? reportCursor.documents : null,
+      },
       startDateValue: startDate,
       endDateValue: endDate,
+      includeServices: hasMoreServices,
+      includeDocuments: hasMoreDocuments,
     });
   }, [
     endDate,
@@ -332,9 +337,12 @@ export function ReportsPageContainer() {
     hasMoreRows,
     hasValidRange,
     isLoadingMoreRows,
-    reportPage,
+    reportCursor.documents,
+    reportCursor.services,
     startDate,
     userId,
+    hasMoreServices,
+    hasMoreDocuments,
   ]);
 
   if (!hasValidSession) {
@@ -577,6 +585,21 @@ export function ReportsPageContainer() {
           toTrDate={toTrDate}
           formatCurrency={(value) => currencyFormatter.format(value)}
         />
+
+        {hasValidRange && hasMoreRows ? (
+          <div className="mt-4 flex justify-center">
+            <button
+              type="button"
+              onClick={() => {
+                void loadMoreRows();
+              }}
+              disabled={isLoadingMoreRows}
+              className="rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isLoadingMoreRows ? "Yukleniyor..." : "Daha Fazla Kayit"}
+            </button>
+          </div>
+        ) : null}
       </PanelSurface>
     </AppShell>
   );

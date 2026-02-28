@@ -1,11 +1,6 @@
 import { getById as getRuleById } from "@/lib/repos/maintenance-rules-repo";
 import type { DbClient } from "@/lib/repos/_shared";
 import {
-  canCreateSubscription,
-  canUploadInvoice,
-} from "@/lib/plans/plan-config";
-import { getPlanConfigFromProfilePlan, type ProfilePlan } from "@/lib/plans/profile-plan";
-import {
   extractBillingMissingTables,
   isBillingMissingTableError,
   markBillingTablesMissing,
@@ -14,11 +9,9 @@ import {
 } from "@/lib/billing/schema-guard";
 import { getBillingSchemaState } from "@/lib/billing/schema-guard.server";
 import {
-  countByUser as countBillingInvoicesByUser,
   create as createBillingInvoiceRecord,
 } from "@/lib/repos/billing-invoices-repo";
 import {
-  countByUser as countBillingSubscriptionsByUser,
   create as createBillingSubscriptionRecord,
   getById as getBillingSubscriptionById,
   updateById as updateBillingSubscriptionById,
@@ -278,7 +271,6 @@ export async function createBillingSubscription(
   client: DbClient,
   params: {
     userId: string;
-    profilePlan: ProfilePlan;
     payload: CreateBillingSubscriptionPayload;
   },
 ): Promise<BillingServiceResponse> {
@@ -287,30 +279,7 @@ export async function createBillingSubscription(
     return schemaCheck;
   }
 
-  const { payload, profilePlan, userId } = params;
-  if (profilePlan !== "premium") {
-    const userPlan = getPlanConfigFromProfilePlan(profilePlan);
-    const { data: currentSubscriptionCount, error: subscriptionCountError } = await countBillingSubscriptionsByUser(client, {
-      userId,
-    });
-
-    if (subscriptionCountError) {
-      const mappedError = mapRepoError(subscriptionCountError, "Abonelik adedi dogrulanamadi.", [
-        "billing_subscriptions",
-      ]);
-      return mappedError ?? { status: 400, body: { error: subscriptionCountError.message } };
-    }
-
-    const subscriptionLimitCheck = canCreateSubscription({
-      planConfig: userPlan,
-      currentCount: currentSubscriptionCount ?? 0,
-    });
-
-    if (!subscriptionLimitCheck.allowed) {
-      return { status: 403, body: { error: subscriptionLimitCheck.errorMessage ?? "Plan limitine ulaştınız." } };
-    }
-  }
-
+  const { payload, userId } = params;
   const providerNameResult = readRequiredText(payload.providerName, MAX_PROVIDER_NAME_LENGTH);
   const subscriptionNameResult = readRequiredText(payload.subscriptionName, MAX_SUBSCRIPTION_NAME_LENGTH);
   const planNameResult = readOptionalText(payload.planName, MAX_PLAN_NAME_LENGTH);
@@ -334,7 +303,7 @@ export async function createBillingSubscription(
     (payload.billingCycle !== undefined && typeof payload.billingCycle !== "string") ||
     (payload.status !== undefined && typeof payload.status !== "string")
   ) {
-    return { status: 400, body: { error: "İstek alanı tipleri geçersiz." } };
+    return { status: 400, body: { error: "Ä°stek alanÄ± tipleri geÃ§ersiz." } };
   }
 
   if (
@@ -343,7 +312,7 @@ export async function createBillingSubscription(
     planNameResult.tooLong ||
     notesResult.tooLong
   ) {
-    return { status: 400, body: { error: "Metin alanlarından biri çok uzun." } };
+    return { status: 400, body: { error: "Metin alanlarÄ±ndan biri Ã§ok uzun." } };
   }
 
   const providerName = providerNameResult.value;
@@ -357,24 +326,24 @@ export async function createBillingSubscription(
   const notes = notesResult.value;
 
   if (!providerName || !subscriptionName) {
-    return { status: 400, body: { error: "Sağlayıcı ve abonelik adı zorunludur." } };
+    return { status: 400, body: { error: "SaÄŸlayÄ±cÄ± ve abonelik adÄ± zorunludur." } };
   }
 
   if (!billingCycles.includes(billingCycle)) {
-    return { status: 400, body: { error: "Geçersiz faturalama döngüsü." } };
+    return { status: 400, body: { error: "GeÃ§ersiz faturalama dÃ¶ngÃ¼sÃ¼." } };
   }
 
   if (!subscriptionStatuses.includes(status)) {
-    return { status: 400, body: { error: "Geçersiz abonelik durumu." } };
+    return { status: 400, body: { error: "GeÃ§ersiz abonelik durumu." } };
   }
 
   if (!Number.isFinite(amount) || Number.isNaN(amount) || amount < 0) {
-    return { status: 400, body: { error: "Abonelik tutarı geçersiz." } };
+    return { status: 400, body: { error: "Abonelik tutarÄ± geÃ§ersiz." } };
   }
 
   const maintenanceRuleId = maintenanceRuleIdRaw ? normalizeUuid(maintenanceRuleIdRaw) : null;
   if (maintenanceRuleIdRaw && !maintenanceRuleId) {
-    return { status: 400, body: { error: "Bakım kuralı kimliği geçersiz." } };
+    return { status: 400, body: { error: "BakÄ±m kuralÄ± kimliÄŸi geÃ§ersiz." } };
   }
 
   if (maintenanceRuleId) {
@@ -384,14 +353,14 @@ export async function createBillingSubscription(
     });
 
     if (ruleError) {
-      const mappedError = mapRepoError(ruleError, "Bakım kuralı kontrolü başarısız.", [
+      const mappedError = mapRepoError(ruleError, "BakÄ±m kuralÄ± kontrolÃ¼ baÅŸarÄ±sÄ±z.", [
         "billing_subscriptions",
       ]);
       return mappedError ?? { status: 400, body: { error: ruleError.message } };
     }
 
     if (!rule) {
-      return { status: 403, body: { error: "Seçilen bakım kuralına erişim izniniz yok." } };
+      return { status: 403, body: { error: "SeÃ§ilen bakÄ±m kuralÄ±na eriÅŸim izniniz yok." } };
     }
   }
 
@@ -399,7 +368,7 @@ export async function createBillingSubscription(
 
   if (nextBillingDate) {
     if (!parseDateOnly(nextBillingDate)) {
-      return { status: 400, body: { error: "Sonraki tahsilat tarihi geçersiz." } };
+      return { status: 400, body: { error: "Sonraki tahsilat tarihi geÃ§ersiz." } };
     }
   } else if (status === "active" && autoRenew) {
     nextBillingDate = formatDateOnly(addBillingCycle(getTodayDateOnly(), billingCycle));
@@ -423,8 +392,8 @@ export async function createBillingSubscription(
   });
 
   if (error || !data) {
-    const mappedError = mapRepoError(error, "Abonelik oluşturulamadı.", ["billing_subscriptions"]);
-    return mappedError ?? { status: 400, body: { error: "Abonelik oluşturulamadı." } };
+    const mappedError = mapRepoError(error, "Abonelik oluÅŸturulamadÄ±.", ["billing_subscriptions"]);
+    return mappedError ?? { status: 400, body: { error: "Abonelik oluÅŸturulamadÄ±." } };
   }
 
   return { status: 201, body: { ok: true, id: data.id } };
@@ -434,7 +403,6 @@ export async function createBillingInvoice(
   client: DbClient,
   params: {
     userId: string;
-    profilePlan: ProfilePlan;
     payload: CreateBillingInvoicePayload;
   },
 ): Promise<BillingServiceResponse> {
@@ -443,28 +411,7 @@ export async function createBillingInvoice(
     return schemaCheck;
   }
 
-  const { payload, profilePlan, userId } = params;
-  if (profilePlan !== "premium") {
-    const userPlan = getPlanConfigFromProfilePlan(profilePlan);
-    const { data: currentInvoiceCount, error: invoiceCountError } = await countBillingInvoicesByUser(client, {
-      userId,
-    });
-
-    if (invoiceCountError) {
-      const mappedError = mapRepoError(invoiceCountError, "Fatura adedi dogrulanamadi.", ["billing_invoices"]);
-      return mappedError ?? { status: 400, body: { error: invoiceCountError.message } };
-    }
-
-    const invoiceLimitCheck = canUploadInvoice({
-      planConfig: userPlan,
-      currentCount: currentInvoiceCount ?? 0,
-    });
-
-    if (!invoiceLimitCheck.allowed) {
-      return { status: 403, body: { error: invoiceLimitCheck.errorMessage ?? "Plan limitine ulaştınız." } };
-    }
-  }
-
+  const { payload, userId } = params;
   const subscriptionIdResult = readRequiredText(payload.subscriptionId, 64);
   const invoiceNoResult = readOptionalText(payload.invoiceNo, MAX_INVOICE_NO_LENGTH);
   const issuedAtResult = readDateText(payload.issuedAt);
@@ -483,11 +430,11 @@ export async function createBillingInvoice(
     paidAtRawResult.invalidType ||
     (payload.status !== undefined && typeof payload.status !== "string")
   ) {
-    return { status: 400, body: { error: "İstek alanı tipleri geçersiz." } };
+    return { status: 400, body: { error: "Ä°stek alanÄ± tipleri geÃ§ersiz." } };
   }
 
   if (subscriptionIdResult.tooLong || invoiceNoResult.tooLong) {
-    return { status: 400, body: { error: "Metin alanlarından biri çok uzun." } };
+    return { status: 400, body: { error: "Metin alanlarÄ±ndan biri Ã§ok uzun." } };
   }
 
   const subscriptionIdRaw = subscriptionIdResult.value;
@@ -498,27 +445,27 @@ export async function createBillingInvoice(
   const paidAtRaw = paidAtRawResult.value;
 
   if (!subscriptionIdRaw) {
-    return { status: 400, body: { error: "Fatura için abonelik seçimi zorunludur." } };
+    return { status: 400, body: { error: "Fatura iÃ§in abonelik seÃ§imi zorunludur." } };
   }
 
   if (!subscriptionId) {
-    return { status: 400, body: { error: "Abonelik kimliği geçersiz." } };
+    return { status: 400, body: { error: "Abonelik kimliÄŸi geÃ§ersiz." } };
   }
 
   if (!invoiceStatuses.includes(status)) {
-    return { status: 400, body: { error: "Geçersiz fatura durumu." } };
+    return { status: 400, body: { error: "GeÃ§ersiz fatura durumu." } };
   }
 
   if (!parseDateOnly(issuedAt)) {
-    return { status: 400, body: { error: "Fatura tarihi geçersiz." } };
+    return { status: 400, body: { error: "Fatura tarihi geÃ§ersiz." } };
   }
 
   if (dueDate && !parseDateOnly(dueDate)) {
-    return { status: 400, body: { error: "Vade tarihi geçersiz." } };
+    return { status: 400, body: { error: "Vade tarihi geÃ§ersiz." } };
   }
 
   if (paidAtRaw && !parseDateOnly(paidAtRaw)) {
-    return { status: 400, body: { error: "Ödeme tarihi geçersiz." } };
+    return { status: 400, body: { error: "Ã–deme tarihi geÃ§ersiz." } };
   }
 
   const issuedDate = parseDateOnly(issuedAt);
@@ -526,23 +473,23 @@ export async function createBillingInvoice(
   const paidDateParsed = paidAtRaw ? parseDateOnly(paidAtRaw) : null;
 
   if (!issuedDate) {
-    return { status: 400, body: { error: "Fatura tarihi geçersiz." } };
+    return { status: 400, body: { error: "Fatura tarihi geÃ§ersiz." } };
   }
 
   if (dueDateParsed && dueDateParsed.getTime() < issuedDate.getTime()) {
-    return { status: 400, body: { error: "Vade tarihi fatura tarihinden önce olamaz." } };
+    return { status: 400, body: { error: "Vade tarihi fatura tarihinden Ã¶nce olamaz." } };
   }
 
   if (paidDateParsed && paidDateParsed.getTime() < issuedDate.getTime()) {
-    return { status: 400, body: { error: "Ödeme tarihi fatura tarihinden önce olamaz." } };
+    return { status: 400, body: { error: "Ã–deme tarihi fatura tarihinden Ã¶nce olamaz." } };
   }
 
   if (!Number.isFinite(amount) || Number.isNaN(amount) || amount < 0) {
-    return { status: 400, body: { error: "Fatura tutarı geçersiz." } };
+    return { status: 400, body: { error: "Fatura tutarÄ± geÃ§ersiz." } };
   }
 
   if (!Number.isFinite(taxAmount) || Number.isNaN(taxAmount) || taxAmount < 0) {
-    return { status: 400, body: { error: "Vergi tutarı geçersiz." } };
+    return { status: 400, body: { error: "Vergi tutarÄ± geÃ§ersiz." } };
   }
 
   const { data: subscription, error: subscriptionError } = await getBillingSubscriptionById(client, {
@@ -558,7 +505,7 @@ export async function createBillingInvoice(
   }
 
   if (!subscription) {
-    return { status: 403, body: { error: "Seçilen abonelige erişim izniniz yok." } };
+    return { status: 403, body: { error: "SeÃ§ilen abonelige eriÅŸim izniniz yok." } };
   }
 
   const paidAt = status === "paid" ? paidAtRaw ?? issuedAt : null;
@@ -580,8 +527,8 @@ export async function createBillingInvoice(
   });
 
   if (error || !data) {
-    const mappedError = mapRepoError(error, "Fatura oluşturulamadı.", ["billing_invoices"]);
-    return mappedError ?? { status: 400, body: { error: "Fatura oluşturulamadı." } };
+    const mappedError = mapRepoError(error, "Fatura oluÅŸturulamadÄ±.", ["billing_invoices"]);
+    return mappedError ?? { status: 400, body: { error: "Fatura oluÅŸturulamadÄ±." } };
   }
 
   const hasValidBillingCycle = billingCycles.includes(subscription.billing_cycle as BillingCycle);
@@ -617,7 +564,7 @@ export async function createBillingInvoice(
           body: {
             ok: true,
             id: data.id,
-            warning: `Yenileme tarihi güncellenemedi: ${subscriptionUpdateError.message}`,
+            warning: `Yenileme tarihi gÃ¼ncellenemedi: ${subscriptionUpdateError.message}`,
           },
         };
       }
