@@ -38,6 +38,7 @@ type AssetMediaWithUrl = AssetMediaRow & {
 };
 
 const LEGACY_PHOTO_BUCKET = "documents-private";
+const PHOTO_BUCKET_FALLBACK_ORDER = [ASSET_MEDIA_BUCKET, LEGACY_PHOTO_BUCKET] as const;
 
 const isMissingQrCodeError = (message: string | undefined) => {
   const normalized = (message ?? "").toLowerCase();
@@ -185,10 +186,16 @@ export default function AssetDetailPage() {
       const validMedia = signedMediaEntries.filter((item): item is AssetMediaWithUrl => Boolean(item));
 
       if (validMedia.every((item) => item.type !== "image") && assetRes.data?.photo_path) {
-        const legacySigned = await supabase.storage
-          .from(LEGACY_PHOTO_BUCKET)
-          .createSignedUrl(assetRes.data.photo_path, 60 * 5);
-        if (legacySigned.data?.signedUrl) {
+        let fallbackSignedUrl: string | null = null;
+        for (const bucket of PHOTO_BUCKET_FALLBACK_ORDER) {
+          const signed = await supabase.storage.from(bucket).createSignedUrl(assetRes.data.photo_path, 60 * 5);
+          if (!signed.error && signed.data?.signedUrl) {
+            fallbackSignedUrl = signed.data.signedUrl;
+            break;
+          }
+        }
+
+        if (fallbackSignedUrl) {
           validMedia.unshift({
             id: `legacy-${assetRes.data.id}`,
             type: "image",
@@ -196,7 +203,7 @@ export default function AssetDetailPage() {
             mime_type: "image/jpeg",
             size_bytes: 0,
             created_at: assetRes.data.created_at,
-            signed_url: legacySigned.data.signedUrl,
+            signed_url: fallbackSignedUrl,
           });
         }
       }

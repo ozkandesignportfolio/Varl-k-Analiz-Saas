@@ -357,7 +357,7 @@ export function MaintenancePageContainer() {
 
   return (
     <AppShell title="Bakım Planı">
-      <div className="space-y-4">
+      <div className="space-y-4" data-testid="maintenance-page">
         <MaintenanceHeader onCreateRule={openCreateModal} />
 
         <MaintenanceSummaryCards
@@ -368,7 +368,10 @@ export function MaintenancePageContainer() {
         />
 
         {feedback ? (
-          <p className="rounded-xl border border-sky-400/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
+          <p
+            className="rounded-xl border border-sky-400/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-100"
+            data-testid="maintenance-feedback"
+          >
             {feedback}
           </p>
         ) : null}
@@ -377,6 +380,7 @@ export function MaintenancePageContainer() {
           value={activeTab}
           onValueChange={(value) => setActiveTab(value as MaintenanceTab)}
           className="rounded-2xl border border-slate-700/70 bg-slate-950/45 p-3 shadow-[0_10px_22px_rgba(2,6,23,0.32)]"
+          data-testid="maintenance-tabs"
         >
           <TabsList className="w-full justify-start bg-slate-900/80 p-1">
             <TabsTrigger

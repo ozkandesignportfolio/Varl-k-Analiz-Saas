@@ -35,6 +35,7 @@ const serviceTypes = ["Periyodik Bakım", "Arıza Onarım", "Temizlik", "Parça 
 
 const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
+const SERVICES_PAGE_SIZE = 50;
 
 export function ServicesPageContainer() {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
@@ -46,6 +47,9 @@ export function ServicesPageContainer() {
   const [assets, setAssets] = useState<AssetOption[]>([]);
   const [rules, setRules] = useState<RuleOption[]>([]);
   const [logs, setLogs] = useState<ServiceRow[]>([]);
+  const [logsPage, setLogsPage] = useState(1);
+  const [hasMoreLogs, setHasMoreLogs] = useState(false);
+  const [isLoadingMoreLogs, setIsLoadingMoreLogs] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -86,15 +90,54 @@ export function ServicesPageContainer() {
   );
 
   const fetchLogs = useCallback(
-    async (currentUserId: string) => {
-      const { data, error } = await listServiceLogsForServicesPage(supabase, { userId: currentUserId });
+    async (
+      currentUserId: string,
+      options?: {
+        page?: number;
+        assetId?: string;
+        startDate?: string;
+        endDate?: string;
+      },
+    ) => {
+      const page = Math.max(1, options?.page ?? 1);
+      const offset = (page - 1) * SERVICES_PAGE_SIZE;
+      const isInitialPage = page === 1;
+
+      if (isInitialPage) {
+        setIsLoading(true);
+      } else {
+        setIsLoadingMoreLogs(true);
+      }
+
+      const { data, error } = await listServiceLogsForServicesPage(supabase, {
+        userId: currentUserId,
+        assetId: options?.assetId,
+        startDate: options?.startDate,
+        endDate: options?.endDate,
+        limit: SERVICES_PAGE_SIZE,
+        offset,
+      });
 
       if (error) {
         setFeedback(error.message);
+        if (isInitialPage) {
+          setIsLoading(false);
+        } else {
+          setIsLoadingMoreLogs(false);
+        }
         return;
       }
 
-      setLogs((data ?? []) as ServiceRow[]);
+      const rows = (data ?? []) as ServiceRow[];
+      setHasMoreLogs(rows.length === SERVICES_PAGE_SIZE);
+      setLogsPage(page);
+      if (isInitialPage) {
+        setLogs(rows);
+        setIsLoading(false);
+      } else {
+        setLogs((prev) => [...prev, ...rows]);
+        setIsLoadingMoreLogs(false);
+      }
     },
     [supabase],
   );
@@ -116,12 +159,12 @@ export function ServicesPageContainer() {
 
       setHasValidSession(true);
       setUserId(user.id);
-      await Promise.all([fetchAssets(user.id), fetchRules(user.id), fetchLogs(user.id)]);
+      await Promise.all([fetchAssets(user.id), fetchRules(user.id)]);
       setIsLoading(false);
     };
 
     void load();
-  }, [fetchAssets, fetchLogs, fetchRules, router, supabase]);
+  }, [fetchAssets, fetchRules, router, supabase]);
 
   useEffect(() => {
     if (assets.length === 0 || selectedAssetId) {
@@ -218,7 +261,15 @@ export function ServicesPageContainer() {
         } Belge yüklemek için /documents ekranını kullanın.`,
       );
 
-      await Promise.all([fetchLogs(userId), fetchRules(userId)]);
+      await Promise.all([
+        fetchLogs(userId, {
+          page: 1,
+          assetId: filterAssetId || undefined,
+          startDate: filterStartDate || undefined,
+          endDate: filterEndDate || undefined,
+        }),
+        fetchRules(userId),
+      ]);
       await refreshPlanState();
       setAuditRefreshKey((prev) => prev + 1);
     } catch {
@@ -236,18 +287,33 @@ export function ServicesPageContainer() {
 
   const isDateRangeInvalid = Boolean(filterStartDate && filterEndDate && filterStartDate > filterEndDate);
 
+  useEffect(() => {
+    if (!userId) {
+      return;
+    }
+
+    if (isDateRangeInvalid) {
+      setLogs([]);
+      setHasMoreLogs(false);
+      setLogsPage(1);
+      return;
+    }
+
+    void fetchLogs(userId, {
+      page: 1,
+      assetId: filterAssetId || undefined,
+      startDate: filterStartDate || undefined,
+      endDate: filterEndDate || undefined,
+    });
+  }, [fetchLogs, filterAssetId, filterEndDate, filterStartDate, isDateRangeInvalid, userId]);
+
   const filteredLogs = useMemo(() => {
     if (isDateRangeInvalid) {
       return [];
     }
 
-    return logs.filter((log) => {
-      if (filterAssetId && log.asset_id !== filterAssetId) return false;
-      if (filterStartDate && log.service_date < filterStartDate) return false;
-      if (filterEndDate && log.service_date > filterEndDate) return false;
-      return true;
-    });
-  }, [filterAssetId, filterEndDate, filterStartDate, isDateRangeInvalid, logs]);
+    return logs;
+  }, [isDateRangeInvalid, logs]);
 
   const totalCost = useMemo(
     () => filteredLogs.reduce((sum, log) => sum + Number(log.cost ?? 0), 0),
@@ -275,6 +341,29 @@ export function ServicesPageContainer() {
     createForm.querySelector<HTMLSelectElement>("select")?.focus();
   }, []);
 
+  const loadMoreLogs = useCallback(async () => {
+    if (!userId || isDateRangeInvalid || !hasMoreLogs || isLoadingMoreLogs) {
+      return;
+    }
+
+    await fetchLogs(userId, {
+      page: logsPage + 1,
+      assetId: filterAssetId || undefined,
+      startDate: filterStartDate || undefined,
+      endDate: filterEndDate || undefined,
+    });
+  }, [
+    fetchLogs,
+    filterAssetId,
+    filterEndDate,
+    filterStartDate,
+    hasMoreLogs,
+    isDateRangeInvalid,
+    isLoadingMoreLogs,
+    logsPage,
+    userId,
+  ]);
+
   if (!hasValidSession) {
     return null;
   }
@@ -285,8 +374,8 @@ export function ServicesPageContainer() {
       title="Servis Kayıtları"
       subtitle="Servis kayıtlarını varlık bazında yönetin, kurallarla ilişkilendirin ve tarih resetini otomatik çalıştırın."
     >
-      <section className="grid gap-3 xl:grid-cols-[1.05fr_0.95fr]">
-        <div id="service-log-form">
+      <section className="grid gap-3 xl:grid-cols-[1.05fr_0.95fr]" data-testid="services-form-section">
+        <div id="service-log-form" data-testid="services-form-anchor">
           <ServiceLogForm
             mode="create"
             assets={assets}
@@ -348,7 +437,7 @@ export function ServicesPageContainer() {
         </article>
       </section>
 
-      <section className="premium-card p-5">
+      <section className="premium-card p-5" data-testid="services-filter-section">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-white">Listeleme Filtreleri</h2>
@@ -405,13 +494,16 @@ export function ServicesPageContainer() {
           <p className="mt-3 text-sm text-amber-300">Başlang?? tarihi, bitiş tarihinden sonra olamaz.</p>
         ) : (
           <p className="mt-3 text-sm text-slate-300">
-            {filteredLogs.length} kayıt listeleniyor{hasActiveFilters ? ` / ${logs.length} toplam kayıt` : "."}
+            {filteredLogs.length} kayıt listeleniyor.
           </p>
         )}
       </section>
 
       {feedback ? (
-        <p className="rounded-xl border border-sky-300/25 bg-sky-300/10 px-4 py-3 text-sm text-sky-100">
+        <p
+          className="rounded-xl border border-sky-300/25 bg-sky-300/10 px-4 py-3 text-sm text-sky-100"
+          data-testid="services-feedback"
+        >
           {feedback}
         </p>
       ) : null}
@@ -447,6 +539,21 @@ export function ServicesPageContainer() {
         }
       />
 
+      {!isDateRangeInvalid && hasMoreLogs ? (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => {
+              void loadMoreLogs();
+            }}
+            disabled={isLoadingMoreLogs}
+            className="rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isLoadingMoreLogs ? "Yükleniyor..." : "Daha Fazla Kayıt"}
+          </button>
+        </div>
+      ) : null}
+
       <AuditHistoryPanel
         title="Servis ve Kural Audit Geçmişi"
         subtitle="Servis kayıtları ve tetiklenen bakım kural değişikliklerini alan bazında inceleyin."
@@ -466,4 +573,3 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
-

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/shared/page-header";
@@ -73,6 +73,7 @@ const truncate = (value: string | null | undefined, length: number) => {
 
 const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
+const REPORTS_PAGE_SIZE = 100;
 
 const reportsSubtitle = `${REPORTS_TURKISH_SMOKE_TEXT} özet, tablo ve toplamlar ile indirilebilir PDF raporu üretin.`;
 assertNoMojibakeText(REPORTS_TURKISH_SMOKE_TEXT, "Raporlar duman testi");
@@ -85,8 +86,12 @@ export function ReportsPageContainer() {
   const initialStart = useMemo(() => new Date(today.getFullYear(), today.getMonth(), 1), [today]);
 
   const [totalAssetCount, setTotalAssetCount] = useState(0);
+  const [userId, setUserId] = useState("");
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
+  const [reportPage, setReportPage] = useState(1);
+  const [hasMoreRows, setHasMoreRows] = useState(false);
+  const [isLoadingMoreRows, setIsLoadingMoreRows] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [startDate, setStartDate] = useState(dateInputValue(initialStart));
   const [endDate, setEndDate] = useState(dateInputValue(today));
@@ -94,6 +99,59 @@ export function ReportsPageContainer() {
   const [isExporting, setIsExporting] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [hasValidSession, setHasValidSession] = useState(true);
+
+  const fetchReportRows = useCallback(
+    async (
+      currentUserId: string,
+      options: { page: number; append: boolean; startDateValue: string; endDateValue: string },
+    ) => {
+      const safePage = Math.max(1, options.page);
+      const offset = (safePage - 1) * REPORTS_PAGE_SIZE;
+
+      if (options.append) {
+        setIsLoadingMoreRows(true);
+      } else {
+        setIsLoading(true);
+      }
+
+      const [servicesRes, docsRes] = await Promise.all([
+        listServiceLogsForReports(supabase, {
+          userId: currentUserId,
+          startDate: options.startDateValue,
+          endDate: options.endDateValue,
+          limit: REPORTS_PAGE_SIZE,
+          offset,
+        }),
+        listDocumentsForReports(supabase, {
+          userId: currentUserId,
+          startDate: options.startDateValue,
+          endDate: options.endDateValue,
+          limit: REPORTS_PAGE_SIZE,
+          offset,
+        }),
+      ]);
+
+      if (servicesRes.error) setFeedback(servicesRes.error.message);
+      if (docsRes.error) setFeedback(docsRes.error.message);
+
+      const nextServices = (servicesRes.data ?? []) as ServiceRow[];
+      const nextDocuments = (docsRes.data ?? []) as DocumentRow[];
+
+      setHasMoreRows(nextServices.length === REPORTS_PAGE_SIZE || nextDocuments.length === REPORTS_PAGE_SIZE);
+      setReportPage(safePage);
+
+      if (options.append) {
+        setServices((prev) => [...prev, ...nextServices]);
+        setDocuments((prev) => [...prev, ...nextDocuments]);
+        setIsLoadingMoreRows(false);
+      } else {
+        setServices(nextServices);
+        setDocuments(nextDocuments);
+        setIsLoading(false);
+      }
+    },
+    [supabase],
+  );
 
   useEffect(() => {
     const load = async () => {
@@ -114,19 +172,13 @@ export function ReportsPageContainer() {
       setHasValidSession(true);
       setUserEmail(user.email ?? "bilinmiyor");
 
-      const [assetCountRes, servicesRes, docsRes] = await Promise.all([
-        countAssetsByUser(supabase, { userId: user.id }),
-        listServiceLogsForReports(supabase, { userId: user.id }),
-        listDocumentsForReports(supabase, { userId: user.id }),
-      ]);
+      setUserId(user.id);
+
+      const assetCountRes = await countAssetsByUser(supabase, { userId: user.id });
 
       if (assetCountRes.error) setFeedback(assetCountRes.error.message);
-      if (servicesRes.error) setFeedback(servicesRes.error.message);
-      if (docsRes.error) setFeedback(docsRes.error.message);
 
       setTotalAssetCount(assetCountRes.data ?? 0);
-      setServices((servicesRes.data ?? []) as ServiceRow[]);
-      setDocuments((docsRes.data ?? []) as DocumentRow[]);
       setIsLoading(false);
     };
 
@@ -140,6 +192,27 @@ export function ReportsPageContainer() {
     const end = rangeEnd.getTime();
     return !Number.isNaN(start) && !Number.isNaN(end) && start <= end;
   }, [rangeEnd, rangeStart]);
+
+  useEffect(() => {
+    if (!userId) {
+      return;
+    }
+
+    if (!hasValidRange) {
+      setServices([]);
+      setDocuments([]);
+      setHasMoreRows(false);
+      setReportPage(1);
+      return;
+    }
+
+    void fetchReportRows(userId, {
+      page: 1,
+      append: false,
+      startDateValue: startDate,
+      endDateValue: endDate,
+    });
+  }, [endDate, fetchReportRows, hasValidRange, startDate, userId]);
 
   const assetNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -241,6 +314,28 @@ export function ReportsPageContainer() {
       })
       .sort((a, b) => b.totalCost - a.totalCost || b.serviceCount - a.serviceCount);
   }, [assetNameById, documentsInRange, servicesInRange]);
+
+  const loadMoreRows = useCallback(async () => {
+    if (!userId || !hasValidRange || !hasMoreRows || isLoadingMoreRows) {
+      return;
+    }
+
+    await fetchReportRows(userId, {
+      page: reportPage + 1,
+      append: true,
+      startDateValue: startDate,
+      endDateValue: endDate,
+    });
+  }, [
+    endDate,
+    fetchReportRows,
+    hasMoreRows,
+    hasValidRange,
+    isLoadingMoreRows,
+    reportPage,
+    startDate,
+    userId,
+  ]);
 
   if (!hasValidSession) {
     return null;
@@ -486,4 +581,3 @@ export function ReportsPageContainer() {
     </AppShell>
   );
 }
-

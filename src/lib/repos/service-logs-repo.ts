@@ -3,6 +3,11 @@ import type { DbClient, Insert, RepoResult, Row, Update } from "./_shared";
 
 export type ListServiceLogsForServicesPageParams = {
   userId: string;
+  assetId?: string;
+  startDate?: string;
+  endDate?: string;
+  limit?: number;
+  offset?: number;
 };
 
 export type ListServiceLogsForServicesPageRow = Pick<
@@ -53,6 +58,10 @@ export type ListServiceLogsForDashboardRow = Pick<
 
 export type ListServiceLogsForReportsParams = {
   userId: string;
+  startDate?: string;
+  endDate?: string;
+  limit?: number;
+  offset?: number;
 };
 
 export type ListServiceLogsForReportsRow = Pick<
@@ -76,6 +85,19 @@ const getReportAssetName = (relation: ReportAssetRelation): string | null => {
     return relation[0]?.name ?? null;
   }
   return relation.name ?? null;
+};
+
+const normalizePageSize = (value: number | undefined, fallback: number, max = 200) => {
+  if (!Number.isFinite(value)) return fallback;
+  const parsed = Math.floor(value as number);
+  if (parsed <= 0) return fallback;
+  return Math.min(max, parsed);
+};
+
+const normalizeOffset = (value: number | undefined) => {
+  if (!Number.isFinite(value)) return 0;
+  const parsed = Math.floor(value as number);
+  return parsed > 0 ? parsed : 0;
 };
 
 export type ListServiceLogsForTimelineParams = {
@@ -174,14 +196,28 @@ export function listForServicesPage(
   params: ListServiceLogsForServicesPageParams,
 ): RepoResult<ListServiceLogsForServicesPageRow[]> {
   const { userId } = params;
+  const limit = normalizePageSize(params.limit, 50);
+  const offset = normalizeOffset(params.offset);
 
-  return Promise.resolve(
-    client
-      .from("service_logs")
-      .select("id,asset_id,rule_id,service_type,service_date,cost,provider,notes,created_at")
-      .eq("user_id", userId)
-      .order("service_date", { ascending: false }),
-  ).then((r) => ({
+  let query = client
+    .from("service_logs")
+    .select("id,asset_id,rule_id,service_type,service_date,cost,provider,notes,created_at")
+    .eq("user_id", userId)
+    .order("service_date", { ascending: false });
+
+  if (params.assetId) {
+    query = query.eq("asset_id", params.assetId);
+  }
+  if (params.startDate) {
+    query = query.gte("service_date", params.startDate);
+  }
+  if (params.endDate) {
+    query = query.lte("service_date", params.endDate);
+  }
+
+  query = query.range(offset, offset + limit - 1);
+
+  return Promise.resolve(query).then((r) => ({
     data: (r.data as ListServiceLogsForServicesPageRow[] | null) ?? [],
     error: r.error,
   }));
@@ -258,14 +294,25 @@ export function listForReports(
   params: ListServiceLogsForReportsParams,
 ): RepoResult<ListServiceLogsForReportsRow[]> {
   const { userId } = params;
+  const limit = normalizePageSize(params.limit, 100);
+  const offset = normalizeOffset(params.offset);
 
-  return Promise.resolve(
-    client
-      .from("service_logs")
-      .select("id,asset_id,service_date,service_type,cost,asset:assets(name)")
-      .eq("user_id", userId)
-      .order("service_date", { ascending: false }),
-  ).then((r) => ({
+  let query = client
+    .from("service_logs")
+    .select("id,asset_id,service_date,service_type,cost,asset:assets(name)")
+    .eq("user_id", userId)
+    .order("service_date", { ascending: false });
+
+  if (params.startDate) {
+    query = query.gte("service_date", params.startDate);
+  }
+  if (params.endDate) {
+    query = query.lte("service_date", params.endDate);
+  }
+
+  query = query.range(offset, offset + limit - 1);
+
+  return Promise.resolve(query).then((r) => ({
     data:
       ((r.data as ListServiceLogsForReportsRawRow[] | null) ?? []).map((row) => ({
         id: row.id,

@@ -2,13 +2,18 @@ name: CI
 
 on:
   push:
-    branches: [main]
   pull_request:
-    branches: [main]
 
 jobs:
-  lint-and-build:
+  lint-and-stable-test:
     runs-on: ubuntu-latest
+    env:
+      TEST_BASE_URL: http://localhost:3100
+      API_KEY: ${{ secrets.API_KEY }}
+      TRIAL_EMAIL: ${{ secrets.TRIAL_EMAIL }}
+      TRIAL_PASSWORD: ${{ secrets.TRIAL_PASSWORD }}
+      PREMIUM_EMAIL: ${{ secrets.PREMIUM_EMAIL }}
+      PREMIUM_PASSWORD: ${{ secrets.PREMIUM_PASSWORD }}
 
     steps:
       - name: Checkout
@@ -17,7 +22,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -29,3 +34,29 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Check debug plan (prod)
+        run: npm run check:debug-plan-prod
+
+      - name: Start app on port 3100
+        run: |
+          npm run start -- -p 3100 > /tmp/next-start.log 2>&1 &
+          echo "APP_PID=$!" >> "$GITHUB_ENV"
+          for i in {1..90}; do
+            if curl -fsS http://127.0.0.1:3100/login > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Application did not start in time."
+          cat /tmp/next-start.log || true
+          exit 1
+
+      - name: Stable tests
+        run: npm run test:stable
+
+      - name: Stop app
+        if: always()
+        run: |
+          if [ -n "${APP_PID:-}" ]; then
+            kill -9 "$APP_PID" || true
+          fi

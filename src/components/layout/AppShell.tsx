@@ -96,15 +96,18 @@ export function AppShell({ title, subtitle, children, actions, badge }: AppShell
 
   const resolvedTitle = title ?? getFallbackTitle(pathname);
   const breadcrumb = buildBreadcrumb(pathname);
+  const primarySegment = pathname.split("/").filter(Boolean)[0] ?? "home";
+  const pageRootTestId = `${primarySegment}-root`;
+  const pageContentTestId = `${primarySegment}-content`;
 
   return (
-    <div className="auth-shell-theme min-h-screen">
+    <div className="auth-shell-theme min-h-screen" data-testid="app-shell-root">
       <Sidebar className="auth-shell-sidebar fixed left-0 top-0 z-50 hidden h-screen w-[var(--auth-sidebar-width)] lg:flex" />
 
       <div className="auth-shell-layout lg:pl-[var(--auth-sidebar-width)]">
         <AppHeader title={resolvedTitle} breadcrumb={breadcrumb} userEmail={userEmail} />
 
-        <main className="auth-shell-main px-4 py-4 sm:px-6 lg:px-8">
+        <main className="auth-shell-main px-4 py-4 sm:px-6 lg:px-8" data-testid={pageRootTestId}>
           <nav aria-label="Mobil menü" className="auth-mobile-nav mb-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
             {mobileNavItems.map((item) => {
               const active = isHydrated ? isActivePath(pathname ?? "", item.href) : false;
@@ -136,7 +139,9 @@ export function AppShell({ title, subtitle, children, actions, badge }: AppShell
             </section>
           ) : null}
 
-          <div className="auth-shell-content">{children}</div>
+          <div className="auth-shell-content" data-testid={pageContentTestId}>
+            {children}
+          </div>
         </main>
       </div>
     </div>

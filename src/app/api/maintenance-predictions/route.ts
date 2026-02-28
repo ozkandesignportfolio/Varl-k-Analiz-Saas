@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { enforceRateLimit, getRequestIp } from "@/lib/api/rate-limit";
+import { fetchWithRetry } from "@/lib/net/fetch-with-timeout";
 import { getPlanConfigFromProfilePlan } from "@/lib/plans/profile-plan";
 import { listForDashboard as listRulesForDashboard } from "@/lib/repos/maintenance-rules-repo";
 import { listForPrediction as listServiceLogsForPrediction } from "@/lib/repos/service-logs-repo";
@@ -51,6 +53,8 @@ const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const DEFAULT_OPENAI_MODEL = "gpt-4.1-mini";
 const OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions";
 const MAX_LOG_ROWS = 800;
+const OPENAI_TIMEOUT_MS = 12_000;
+const OPENAI_RETRIES = 1;
 
 export const dynamic = "force-dynamic";
 
@@ -371,22 +375,31 @@ const runAiScoring = async ({
     assets: aiInput,
   };
 
-  const response = await fetch(OPENAI_CHAT_COMPLETIONS_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${openAiKey}`,
+  const response = await fetchWithRetry(
+    OPENAI_CHAT_COMPLETIONS_URL,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${openAiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.2,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: systemInstruction },
+          { role: "user", content: JSON.stringify(userPrompt) },
+        ],
+      }),
     },
-    body: JSON.stringify({
-      model,
-      temperature: 0.2,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: systemInstruction },
-        { role: "user", content: JSON.stringify(userPrompt) },
-      ],
-    }),
-  });
+    {
+      timeoutMs: OPENAI_TIMEOUT_MS,
+      retries: OPENAI_RETRIES,
+      baseDelayMs: 350,
+      maxDelayMs: 1_200,
+    },
+  );
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -414,6 +427,26 @@ const buildPredictions = async (
     return auth.response;
   }
   const { supabase, user } = auth;
+
+  const rateLimit = enforceRateLimit({
+    scope: "api_maintenance_predictions",
+    key: `${user.id}:${getRequestIp(request)}`,
+    limit: 12,
+    windowMs: 60_000,
+  });
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Cok fazla tahmin istegi gonderildi. Lutfen kisa bir sure sonra tekrar deneyin." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.max(1, Math.ceil(rateLimit.retryAfterMs / 1_000))),
+        },
+      },
+    );
+  }
+
   const userPlan = getPlanConfigFromProfilePlan(auth.profilePlan);
 
   if (!userPlan.features.canUseAdvancedAnalytics) {
@@ -505,7 +538,6 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   return handle(request);
 }
-
 
 
 

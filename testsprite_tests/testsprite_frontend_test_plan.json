@@ -1,0 +1,1467 @@
+[
+  {
+    "id": "TC001",
+    "title": "Login with valid credentials redirects to Dashboard",
+    "description": "Verifies that an existing user can sign in with email/password and is redirected to the protected dashboard.",
+    "category": "Authentication",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/login\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Dashboard\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "Login with invalid credentials shows authentication error",
+    "description": "Verifies that wrong email/password prevents login and shows a visible authentication error message.",
+    "category": "Authentication",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/login\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"$TEST_ALT_LOGIN_EMAIL\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Wrong$TEST_LOGIN_PASSWORD!\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Invalid\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/login\""
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Login requires email field validation when empty",
+    "description": "Verifies the login form blocks submission and shows a visible validation message when email is missing.",
+    "category": "Authentication",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Email\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"required\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/login\""
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Login requires password field validation when empty",
+    "description": "Verifies the login form blocks submission and shows a visible validation message when password is missing.",
+    "category": "Authentication",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Password\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"required\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/login\""
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Register requires validation when email is invalid format",
+    "description": "Verifies registration blocks invalid email format and shows a visible error/validation message.",
+    "category": "Authentication",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /register"
+      },
+      {
+        "type": "action",
+        "description": "Type \"not-an-email\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"ValidPass!234\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Register\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"email\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"valid\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/register\""
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Forgot password page loads and accepts email submission",
+    "description": "Verifies the password reset request page is accessible and displays a visible confirmation after submitting an email.",
+    "category": "Authentication",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /forgot-password"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/forgot-password\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Send reset link\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Check your email\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"reset\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "After login, user can access a protected route via in-app navigation",
+    "description": "Verifies an authenticated session allows navigation to a protected page without being sent back to login.",
+    "category": "Authentication",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Assets\" in the main navigation"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/assets\""
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Save a new asset and verify it is listed on /assets",
+    "description": "Verifies saving a newly created asset returns to the assets list and shows the new asset entry.",
+    "category": "Asset Management",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Assets\" in the main navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Create asset\" button"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Test Asset - List Verify\" into the asset name field"
+      },
+      {
+        "type": "action",
+        "description": "Select \"Equipment\" from the category dropdown"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Save\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Test Asset - List Verify\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Cancel asset creation and verify the asset is not created",
+    "description": "Verifies that exiting the create asset form without saving does not add the asset to the assets list.",
+    "category": "Asset Management",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Assets\" in the main navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Create asset\" button"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Test Asset - Cancel\" into the asset name field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Cancel\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Test Asset - Cancel\" is not visible"
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Create a maintenance rule for an asset and verify it appears in the list",
+    "description": "Verifies a user can add a maintenance rule for a selected asset and sees it listed with a next due date.",
+    "category": "Maintenance Rules",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Maintenance\" in the main navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Add maintenance rule\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Add maintenance rule\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Create a maintenance rule with interval and next due date and verify calculated next maintenance date is shown",
+    "description": "Verifies saving a new rule with interval and next due date shows a calculated next maintenance date in the rules list.",
+    "category": "Maintenance Rules",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Maintenance\" in the main navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Add maintenance rule\""
+      },
+      {
+        "type": "action",
+        "description": "Select an option from the \"Asset\" dropdown"
+      },
+      {
+        "type": "action",
+        "description": "Type \"30\" into the \"Interval\" field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"2026-03-01\" into the \"Next due date\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Save\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Next\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Validate required interval when creating a maintenance rule (empty interval)",
+    "description": "Verifies an empty interval is rejected and a validation error is shown when saving.",
+    "category": "Maintenance Rules",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Maintenance\" in the main navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Add maintenance rule\""
+      },
+      {
+        "type": "action",
+        "description": "Select an option from the \"Asset\" dropdown"
+      },
+      {
+        "type": "action",
+        "description": "Type \"\" into the \"Interval\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Save\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Interval\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Validate interval cannot be negative when creating a maintenance rule",
+    "description": "Verifies a negative interval is rejected and a validation error is shown when saving.",
+    "category": "Maintenance Rules",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Maintenance\" in the main navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Add maintenance rule\""
+      },
+      {
+        "type": "action",
+        "description": "Select an option from the \"Asset\" dropdown"
+      },
+      {
+        "type": "action",
+        "description": "Type \"-5\" into the \"Interval\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Save\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"must\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Maintenance rules page loads and displays existing rules list",
+    "description": "Verifies the maintenance page loads successfully for an authenticated user and shows the rules section.",
+    "category": "Maintenance Rules",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Maintenance\" in the main navigation"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify page title contains \"Maintenance\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Add maintenance rule\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Create a service log with asset, notes, and cost (without upload)",
+    "description": "Verifies a user can create a new service entry tied to an asset with notes and a cost and see it appear in the Services list.",
+    "category": "Service Logs",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Services\" in the main navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Create service entry\""
+      },
+      {
+        "type": "action",
+        "description": "Select an asset from the asset dropdown"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Oil change - synthetic\" into the notes field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"79.99\" into the cost field"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Save\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Oil change - synthetic\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Cancel out of service entry creation without saving",
+    "description": "Verifies a user can start creating a service entry and exit without saving, returning to the list without a new entry being created.",
+    "category": "Service Logs",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Services\" in the main navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Create service entry\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Do not save entry\" into the notes field"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Cancel\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/services\""
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Validation: attempt to save a service entry without selecting an asset",
+    "description": "Verifies the UI prevents saving a service entry when required fields (asset) are missing and shows a visible validation message.",
+    "category": "Service Logs",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Services\" in the main navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Create service entry\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Missing asset validation\" into the notes field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"10\" into the cost field"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Save\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Asset\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "Validation: attempt to save with invalid cost format",
+    "description": "Verifies the UI flags an invalid cost value and does not save the service entry.",
+    "category": "Service Logs",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Services\" in the main navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Create service entry\""
+      },
+      {
+        "type": "action",
+        "description": "Select an asset from the asset dropdown"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Invalid cost\" into the notes field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"abc\" into the cost field"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Save\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"cost\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC019",
+    "title": "Filter documents list by Warranty type",
+    "description": "Verifies the type filter can be used to filter the documents list to warranty documents.",
+    "category": "Document Management",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Sign in\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Documents\" in the main navigation"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/documents\""
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Type\" filter control"
+      },
+      {
+        "type": "action",
+        "description": "Select \"Warranty\" from the type dropdown"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Warranty\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC020",
+    "title": "Delete an existing document from the list",
+    "description": "Verifies a user can delete a document and it is removed from the documents list.",
+    "category": "Document Management",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Sign in\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Documents\" in the main navigation"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/documents\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Delete\" for the first document in the list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Delete\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC021",
+    "title": "Clear the type filter to return to the unfiltered documents list",
+    "description": "Verifies the user can clear the type filter and see the full (unfiltered) documents list again.",
+    "category": "Document Management",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Sign in\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Documents\" in the main navigation"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/documents\""
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Type\" filter control"
+      },
+      {
+        "type": "action",
+        "description": "Select \"Warranty\" from the type dropdown"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Clear filters\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"All\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC022",
+    "title": "Dashboard loads and shows KPI widgets for an authenticated user",
+    "description": "Verifies that an authenticated user can reach the dashboard and see KPI widgets/summary cards rendered.",
+    "category": "Dashboard and Analytics",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Sign in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Dashboard\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"KPI\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Timeline\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC023",
+    "title": "Change dashboard date range updates visible metrics",
+    "description": "Verifies that changing the date range control results in an updated dashboard view.",
+    "category": "Dashboard and Analytics",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Sign in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click on the date range control on the dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Select \"Last 30 days\" from the date range options"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Last 30 days\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Cost\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC024",
+    "title": "Dashboard date range can be switched back to a different range",
+    "description": "Verifies that the user can change the date range multiple times and the selected range is reflected on screen.",
+    "category": "Dashboard and Analytics",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Sign in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click on the date range control on the dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Select \"Last 7 days\" from the date range options"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Last 7 days\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the date range control on the dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Select \"This month\" from the date range options"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"This month\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC025",
+    "title": "Timeline section is visible and can be inspected by scrolling",
+    "description": "Verifies that the timeline section is accessible on the dashboard and renders content or a visible placeholder.",
+    "category": "Dashboard and Analytics",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Sign in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the \"Timeline\" section"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Timeline\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Timeline\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Activity\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC026",
+    "title": "Cost trends section is visible and can be inspected by scrolling",
+    "description": "Verifies that the cost/spend trends section is present on the dashboard and has visible chart/summary content.",
+    "category": "Dashboard and Analytics",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Sign in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the cost trends section"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Cost\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Cost trends\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Chart\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC027",
+    "title": "Dashboard shows an empty state when there is no asset/service data",
+    "description": "Verifies that the dashboard provides an empty state with guidance when the account has no data.",
+    "category": "Dashboard and Analytics",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Sign in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"No data\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Add your first asset\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Log a service\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC028",
+    "title": "Empty state guidance links allow navigation to create data (assets and services)",
+    "description": "Verifies that empty state calls-to-action navigate the user to relevant pages to add data.",
+    "category": "Dashboard and Analytics",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Sign in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Add your first asset\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/assets\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Dashboard\" in the main navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Log a service\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/services\""
+      }
+    ]
+  },
+  {
+    "id": "TC029",
+    "title": "Dashboard remains usable when date range is changed while empty state is shown",
+    "description": "Verifies that the date range control still works and remains visible even if the dashboard is in an empty state.",
+    "category": "Dashboard and Analytics",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Sign in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click on the date range control on the dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Select \"Last 90 days\" from the date range options"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Last 90 days\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC030",
+    "title": "No-data message shown when generating report for a date range with no matching data",
+    "description": "Verifies the UI communicates that there is no data when the selected date range has no matching records.",
+    "category": "Reporting",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Reports\" item in the main navigation"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/reports\""
+      },
+      {
+        "type": "action",
+        "description": "Select \"Assets\" as the report scope"
+      },
+      {
+        "type": "action",
+        "description": "Fill a start date into the start date field that is expected to have no data"
+      },
+      {
+        "type": "action",
+        "description": "Fill an end date into the end date field that is expected to have no data"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Generate report\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"no data available for selected range\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC031",
+    "title": "Prevent report generation when date range is incomplete (missing end date)",
+    "description": "Verifies the user is blocked or prompted when trying to generate a report without an end date.",
+    "category": "Reporting",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Reports\" item in the main navigation"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/reports\""
+      },
+      {
+        "type": "action",
+        "description": "Select \"Assets\" as the report scope"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid start date into the start date field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Generate report\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"End date\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC032",
+    "title": "Prevent report generation when date range is invalid (end date earlier than start date)",
+    "description": "Verifies the UI rejects an invalid date range where the end date is before the start date.",
+    "category": "Reporting",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Sign in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Reports\" item in the main navigation"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/reports\""
+      },
+      {
+        "type": "action",
+        "description": "Select \"Maintenance\" as the report scope"
+      },
+      {
+        "type": "action",
+        "description": "Fill a later date into the start date field"
+      },
+      {
+        "type": "action",
+        "description": "Fill an earlier date into the end date field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Generate report\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Invalid date range\" is visible"
+      }
+    ]
+  }
+]
+

@@ -84,6 +84,7 @@ type AssetMediaDraft = {
 };
 
 const LEGACY_PHOTO_BUCKET = "documents-private";
+const THUMBNAIL_BUCKET_FALLBACK_ORDER = [ASSET_MEDIA_BUCKET, LEGACY_PHOTO_BUCKET] as const;
 const PREMIUM_MEDIA_REQUIRED_MESSAGE = "Ek medya özelliği Premium planında aktif.";
 const categoryOptions = ["Beyaz Eşya", "Isıtma", "Soğutma", "Elektronik", "Mutfak", "Diğer"];
 const inputClassName =
@@ -399,24 +400,42 @@ export function AssetsPageContainer() {
         setFeedback(mediaError.message);
       }
 
-      const thumbnailSource = new Map<string, { path: string; bucket: string }>();
+      const resolveSignedUrl = async (path: string, preferredBucket?: string) => {
+        const candidateBuckets = preferredBucket
+          ? [
+              preferredBucket,
+              ...THUMBNAIL_BUCKET_FALLBACK_ORDER.filter((bucket) => bucket !== preferredBucket),
+            ]
+          : [...THUMBNAIL_BUCKET_FALLBACK_ORDER];
+
+        for (const bucket of candidateBuckets) {
+          const signed = await supabase.storage.from(bucket).createSignedUrl(path, 60 * 5);
+          if (!signed.error && signed.data?.signedUrl) {
+            return signed.data.signedUrl;
+          }
+        }
+
+        return null;
+      };
+
+      const thumbnailSource = new Map<string, { path: string; preferredBucket?: string }>();
       for (const row of (mediaRows ?? []) as AssetMediaListRow[]) {
         if (!thumbnailSource.has(row.asset_id)) {
-          thumbnailSource.set(row.asset_id, { path: row.storage_path, bucket: ASSET_MEDIA_BUCKET });
+          thumbnailSource.set(row.asset_id, { path: row.storage_path, preferredBucket: ASSET_MEDIA_BUCKET });
         }
       }
 
       for (const asset of assets) {
         if (!thumbnailSource.has(asset.id) && asset.photo_path) {
-          thumbnailSource.set(asset.id, { path: asset.photo_path, bucket: LEGACY_PHOTO_BUCKET });
+          thumbnailSource.set(asset.id, { path: asset.photo_path });
         }
       }
 
       const signedEntries = await Promise.all(
         [...thumbnailSource.entries()].map(async ([assetId, source]) => {
-          const signed = await supabase.storage.from(source.bucket).createSignedUrl(source.path, 60 * 5);
-          if (signed.error || !signed.data?.signedUrl) return null;
-          return [assetId, signed.data.signedUrl] as const;
+          const signedUrl = await resolveSignedUrl(source.path, source.preferredBucket);
+          if (!signedUrl) return null;
+          return [assetId, signedUrl] as const;
         }),
       );
 
@@ -565,12 +584,25 @@ export function AssetsPageContainer() {
       created_at: asset.created_at,
       updated_at: asset.updated_at,
     });
+    setSelectedPreviewAssetId(null);
+    setQrPreviewAssetId(null);
     setFeedback("");
   };
 
   const onCancelEdit = () => {
     setEditingAsset(null);
   };
+
+  useEffect(() => {
+    if (!editingAsset) return;
+
+    queueMicrotask(() => {
+      const editCard = document.querySelector<HTMLElement>("[data-testid='asset-edit-card']");
+      if (!editCard) return;
+      editCard.scrollIntoView({ behavior: "smooth", block: "start" });
+      editCard.querySelector<HTMLInputElement>("input[name='name']")?.focus();
+    });
+  }, [editingAsset]);
 
   const onUpdateAsset = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -662,7 +694,10 @@ export function AssetsPageContainer() {
       await supabase.storage.from(ASSET_MEDIA_BUCKET).remove(mediaStoragePaths);
     }
     if (asset.photo_path) {
-      await supabase.storage.from(LEGACY_PHOTO_BUCKET).remove([asset.photo_path]);
+      await Promise.all([
+        supabase.storage.from(ASSET_MEDIA_BUCKET).remove([asset.photo_path]),
+        supabase.storage.from(LEGACY_PHOTO_BUCKET).remove([asset.photo_path]),
+      ]);
     }
 
     setAssets((prev) => prev.filter((item) => item.id !== asset.id));
@@ -883,11 +918,12 @@ export function AssetsPageContainer() {
       title="Varlıklar"
       subtitle="Tüm varlıklarınızı tek yerden yönetin."
       actions={
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2" data-testid="assets-actions">
           <button
             type="button"
             onClick={focusCreateAssetForm}
             className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-sky-500 to-cyan-500 px-4 py-2 text-sm font-semibold text-white"
+            data-testid="assets-add-button"
           >
             <Plus className="h-4 w-4" />
             Varlık Ekle
@@ -896,6 +932,7 @@ export function AssetsPageContainer() {
             type="button"
             onClick={() => setIsScannerOpen(true)}
             className="inline-flex items-center gap-2 rounded-full border border-fuchsia-300/35 bg-fuchsia-300/10 px-4 py-2 text-sm font-semibold text-fuchsia-100 hover:bg-fuchsia-300/20"
+            data-testid="assets-qr-add-button"
           >
             <QrCode className="h-4 w-4" />
             QR ile Ekle
@@ -938,7 +975,7 @@ export function AssetsPageContainer() {
         assets={assets.slice(0, assetLimit ?? 3).map((asset) => ({ id: asset.id, name: asset.name, category: asset.category }))}
       />
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="assets-summary">
         <SummaryItem label="Toplam Varlık" value={String(dashboardRows.length)} />
         <SummaryItem label="Yaklaşan Bakım" value={String(summary.upcomingCount)} />
         <SummaryItem label="Riskli Garanti" value={String(summary.expiringWarrantyCount)} />
@@ -975,7 +1012,7 @@ export function AssetsPageContainer() {
         onFocusCreateAsset={focusCreateAssetForm}
       />
 
-      <section id="asset-create-form" className="grid gap-3 xl:grid-cols-[1.05fr_0.95fr]">
+      <section id="asset-create-form" className="grid gap-3 xl:grid-cols-[1.05fr_0.95fr]" data-testid="assets-create-section">
         <AssetForm
           key={createFormKey}
           mode="create"
@@ -1023,6 +1060,7 @@ export function AssetsPageContainer() {
 
       {editingAsset ? (
         <AssetForm
+          key={editingAsset.id}
           mode="edit"
           asset={editingAsset}
           onCancel={onCancelEdit}
@@ -1034,7 +1072,10 @@ export function AssetsPageContainer() {
       ) : null}
 
       {feedback ? (
-        <p className="rounded-xl border border-sky-300/25 bg-sky-300/10 px-4 py-3 text-sm text-sky-100">
+        <p
+          className="rounded-xl border border-sky-300/25 bg-sky-300/10 px-4 py-3 text-sm text-sky-100"
+          data-testid="assets-feedback"
+        >
           {feedback}
         </p>
       ) : null}

@@ -18,6 +18,7 @@ export function ReportsExportButtons({
       disabled={isExporting || !hasValidRange || !canExportPdfReports}
       title={!canExportPdfReports ? "PDF rapor export bu plan için kapalı." : undefined}
       className="rounded-full bg-gradient-to-r from-sky-400 to-fuchsia-500 px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+      data-testid="reports-export-pdf-button"
     >
       {isExporting ? "PDF hazırlanıyor..." : "PDF indir"}
     </button>

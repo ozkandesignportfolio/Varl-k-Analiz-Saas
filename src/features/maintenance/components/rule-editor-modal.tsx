@@ -86,6 +86,7 @@ export function RuleEditorModal({
       <DialogContent
         showCloseButton={false}
         className="max-w-2xl border border-slate-700 bg-slate-950 text-slate-100 shadow-[0_22px_52px_rgba(2,6,23,0.6)]"
+        data-testid="rule-editor-modal"
       >
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-slate-100">{title}</DialogTitle>
@@ -108,6 +109,7 @@ export function RuleEditorModal({
                   value={form.assetId}
                   onChange={(event) => setForm((prev) => ({ ...prev, assetId: event.target.value }))}
                   className="h-10 w-full rounded-lg border border-slate-600/90 bg-slate-900 px-3 text-sm text-slate-100 outline-none transition focus:border-sky-400"
+                  data-testid="rule-asset-select"
                 >
                   <option value="">Varlık seçin</option>
                   {assets.map((asset) => (
@@ -125,6 +127,7 @@ export function RuleEditorModal({
                   onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
                   placeholder="Örn: Filtre Değişimi"
                   className="h-10 w-full rounded-lg border border-slate-600/90 bg-slate-900 px-3 text-sm text-slate-100 outline-none transition focus:border-sky-400"
+                  data-testid="rule-title-input"
                 />
               </label>
 
@@ -164,6 +167,7 @@ export function RuleEditorModal({
                     }))
                   }
                   className="h-10 rounded-lg border border-slate-600/90 bg-slate-900 px-3 text-sm text-slate-100 outline-none transition focus:border-sky-400"
+                  data-testid="rule-interval-value-input"
                 />
                 <select
                   value={form.intervalUnit}
@@ -174,6 +178,7 @@ export function RuleEditorModal({
                     }))
                   }
                   className="h-10 rounded-lg border border-slate-600/90 bg-slate-900 px-3 text-sm text-slate-100 outline-none transition focus:border-sky-400"
+                  data-testid="rule-interval-unit-select"
                 >
                   {intervalUnitOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -195,6 +200,7 @@ export function RuleEditorModal({
                     }))
                   }
                   className="h-10 w-full rounded-lg border border-slate-600/90 bg-slate-900 px-3 text-sm text-slate-100 outline-none transition focus:border-sky-400"
+                  data-testid="rule-start-date-input"
                 />
               </label>
 
@@ -247,6 +253,7 @@ export function RuleEditorModal({
               disabled={!canGoStepTwo}
               onClick={() => setStep(2)}
               className="h-9 rounded-lg bg-slate-100 px-4 text-sm font-semibold text-slate-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+              data-testid="rule-next-step-button"
             >
               Devam Et
             </button>
@@ -262,6 +269,7 @@ export function RuleEditorModal({
                 });
               }}
               className="h-9 rounded-lg bg-slate-100 px-4 text-sm font-semibold text-slate-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+              data-testid="rule-save-button"
             >
               {isSubmitting ? "Kaydediliyor..." : submitText}
             </button>

@@ -246,13 +246,13 @@ export default function DocumentsPage() {
           Paket: {planConfig.label}. Belge limiti kullanımı: {documentUsageText}
         </p>
 
-        <section className="premium-card p-5">
+        <section className="premium-card p-5" data-testid="documents-upload-section">
           <h2 className="text-xl font-semibold text-white">Belge Yükleme</h2>
           <p className="mt-2 text-sm text-slate-300">
             Resmi belge yükleme akışı bu ekranda standartlaştırıldı.
           </p>
 
-          <form onSubmit={onUpload} className="mt-4 grid gap-3 md:grid-cols-2">
+          <form onSubmit={onUpload} className="mt-4 grid gap-3 md:grid-cols-2" data-testid="documents-upload-form">
             <label className="block">
               <span className="mb-1.5 block text-sm text-slate-300">Varlık</span>
               <select
@@ -261,6 +261,7 @@ export default function DocumentsPage() {
                 onChange={(event) => setSelectedAssetId(event.target.value)}
                 className={inputClassName}
                 disabled={assets.length === 0}
+                data-testid="documents-asset-select"
               >
                 <option value="" disabled className="bg-slate-900">
                   Varlık seçin
@@ -280,6 +281,7 @@ export default function DocumentsPage() {
                 value={selectedDocumentType}
                 onChange={(event) => setSelectedDocumentType(event.target.value)}
                 className={inputClassName}
+                data-testid="documents-type-select"
               >
                 {documentTypeOptions.map((item) => (
                   <option key={item.value} value={item.value} className="bg-slate-900">
@@ -297,6 +299,7 @@ export default function DocumentsPage() {
                 required
                 accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,video/mp4,video/quicktime,video/webm,video/x-matroska,audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/mp4,audio/m4a,audio/webm,audio/ogg"
                 className={fileInputClassName}
+                data-testid="documents-file-input"
               />
             </label>
 
@@ -305,6 +308,7 @@ export default function DocumentsPage() {
                 type="submit"
                 disabled={isUploading || assets.length === 0}
                 className="rounded-full bg-gradient-to-r from-sky-400 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+                data-testid="documents-upload-button"
               >
                 {isUploading ? "Yükleniyor..." : "Belge Yükle"}
               </button>
@@ -322,7 +326,7 @@ export default function DocumentsPage() {
           <SummaryCard label="Toplam Boyut" value={`${sizeFormatter.format(totalSize)} bayt`} />
         </section>
 
-        <section className="premium-card p-5">
+        <section className="premium-card p-5" data-testid="documents-list-section">
           <h2 className="text-xl font-semibold text-white">Belge Türü Dağılımı</h2>
           {isLoading ? (
             <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
@@ -360,7 +364,7 @@ export default function DocumentsPage() {
             <p className="mt-4 text-sm text-slate-300">Henüz belge bulunmuyor.</p>
           ) : (
             <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
-              <table className="min-w-full text-left text-sm">
+              <table className="min-w-full text-left text-sm" data-testid="documents-table">
                 <thead>
                   <tr className="border-b border-white/10 bg-white/5 text-slate-300">
                     <th className="px-3 py-2">Dosya Adı</th>

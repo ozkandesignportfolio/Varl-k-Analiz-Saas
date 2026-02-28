@@ -53,9 +53,9 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
     } = props;
 
     return (
-      <article className="premium-card p-5">
+      <article className="premium-card p-5" data-testid="service-create-card">
         <h2 className="text-xl font-semibold text-white">Yeni Servis Kaydı</h2>
-        <form onSubmit={onSubmit} className="mt-4 grid gap-3 md:grid-cols-2">
+        <form onSubmit={onSubmit} className="mt-4 grid gap-3 md:grid-cols-2" data-testid="service-create-form">
           <label className="block">
             <span className="mb-1.5 block text-sm text-slate-300">Varlık</span>
             <select
@@ -63,6 +63,7 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
               value={selectedAssetId}
               onChange={(event) => onSelectedAssetIdChange(event.target.value)}
               className={inputClassName}
+              data-testid="service-asset-select"
             >
               <option value="" disabled className="bg-slate-900">
                 Varlık seçin
@@ -82,6 +83,7 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
               onChange={(event) => onSelectedRuleIdChange(event.target.value)}
               className={inputClassName}
               disabled={!selectedAssetId}
+              data-testid="service-rule-select"
             >
               <option value="" className="bg-slate-900">
                 Kural seçmeden devam et
@@ -96,7 +98,7 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
 
           <label className="block">
             <span className="mb-1.5 block text-sm text-slate-300">Servis Türü</span>
-            <select name="serviceType" required defaultValue="" className={inputClassName}>
+            <select name="serviceType" required defaultValue="" className={inputClassName} data-testid="service-type-select">
               <option value="" disabled className="bg-slate-900">
                 Tür seçin
               </option>
@@ -110,7 +112,7 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
 
           <label className="block">
             <span className="mb-1.5 block text-sm text-slate-300">Servis Tarihi</span>
-            <input name="serviceDate" type="date" required className={inputClassName} />
+            <input name="serviceDate" type="date" required className={inputClassName} data-testid="service-date-input" />
           </label>
 
           <label className="block">
@@ -122,17 +124,29 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
               step="0.01"
               defaultValue="0"
               className={inputClassName}
+              data-testid="service-cost-input"
             />
           </label>
 
           <label className="block">
             <span className="mb-1.5 block text-sm text-slate-300">Servis Sağlayıcı</span>
-            <input name="provider" className={inputClassName} placeholder="Örnek: Yetkili Servis" />
+            <input
+              name="provider"
+              className={inputClassName}
+              placeholder="Örnek: Yetkili Servis"
+              data-testid="service-provider-input"
+            />
           </label>
 
           <label className="block md:col-span-2">
             <span className="mb-1.5 block text-sm text-slate-300">Not</span>
-            <textarea name="notes" rows={3} className={inputClassName} placeholder="Ek notlar" />
+            <textarea
+              name="notes"
+              rows={3}
+              className={inputClassName}
+              placeholder="Ek notlar"
+              data-testid="service-notes-input"
+            />
           </label>
 
           <p className="md:col-span-2 text-xs text-slate-400">
@@ -144,6 +158,7 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
               type="submit"
               disabled={isSubmitting || isSubmitDisabled}
               className="rounded-full bg-gradient-to-r from-sky-400 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+              data-testid="service-save-button"
             >
               {isSubmitting ? "Kaydediliyor..." : "Servis Kaydını Ekle"}
             </button>
@@ -169,7 +184,7 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
   } = props;
 
   return (
-    <section className="premium-card p-5">
+    <section className="premium-card p-5" data-testid="service-edit-card">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-xl font-semibold text-white">Servis Kaydını Güncelle</h2>
         <button
@@ -181,7 +196,7 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
         </button>
       </div>
 
-      <form onSubmit={onSubmit} className="mt-4 grid gap-3 md:grid-cols-2">
+      <form onSubmit={onSubmit} className="mt-4 grid gap-3 md:grid-cols-2" data-testid="service-edit-form">
         <label className="block">
           <span className="mb-1.5 block text-sm text-slate-300">Varlık</span>
           <select

@@ -71,7 +71,7 @@ export function AssetListTable({
   onFocusCreateAsset,
 }: AssetListTableProps) {
   return (
-    <section className="premium-card p-5">
+    <section className="premium-card p-5" data-testid="assets-list-section">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-xl font-semibold text-white">Varlık Listesi</h2>
         <p className="text-xs text-slate-400">{assets.length} kayıt</p>
@@ -93,7 +93,7 @@ export function AssetListTable({
         </div>
       ) : viewMode === "table" ? (
         <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
-          <table className="min-w-full text-left text-sm">
+          <table className="min-w-full text-left text-sm" data-testid="assets-table">
             <thead>
               <tr className="border-b border-white/10 bg-white/5 text-slate-300">
                 <th className="px-3 py-2">Varlık</th>
@@ -111,6 +111,7 @@ export function AssetListTable({
                   key={asset.id}
                   className="cursor-pointer border-b border-white/10 text-slate-100 transition hover:bg-white/[0.03]"
                   onClick={() => onSelectAsset(asset)}
+                  data-testid={`asset-row-${asset.id}`}
                 >
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-3">

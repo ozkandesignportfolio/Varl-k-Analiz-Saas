@@ -246,6 +246,7 @@ export async function POST(request: Request) {
       mime_type: string;
       size_bytes: number;
     }> = [];
+    let firstUploadedImagePath: string | null = null;
 
     for (const task of uploadTasks) {
       const extension = getFileExtension(task.file.name);
@@ -308,6 +309,10 @@ export async function POST(request: Request) {
         size_bytes: insertedRow.size_bytes,
       });
 
+      if (!firstUploadedImagePath && task.type === "image") {
+        firstUploadedImagePath = insertedRow.storage_path;
+      }
+
       logAuditEvent({
         route: "/api/asset-media",
         userId: user.id,
@@ -316,6 +321,14 @@ export async function POST(request: Request) {
         action: "create",
         meta: { assetId, mediaType: task.type },
       });
+    }
+
+    if (firstUploadedImagePath) {
+      await supabase
+        .from("assets")
+        .update({ photo_path: firstUploadedImagePath })
+        .eq("id", assetId)
+        .eq("user_id", user.id);
     }
 
     return NextResponse.json(

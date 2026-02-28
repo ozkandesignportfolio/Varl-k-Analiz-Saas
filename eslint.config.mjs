@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Ignore generated or external test harness files.
+    "testsprite_tests/**",
   ]),
 ]);
 

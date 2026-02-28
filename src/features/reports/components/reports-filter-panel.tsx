@@ -15,7 +15,7 @@ export function ReportsFilterPanel({
 }: ReportsFilterPanelProps) {
   return (
     <>
-      <section className="premium-card p-5">
+      <section className="premium-card p-5" data-testid="reports-schema-section">
         <h2 className="text-lg font-semibold text-white">Rapor İçerik Şeması</h2>
         <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           <SchemaItem index="01" title="Rapor Başlığı" description="Tarih aralığı ve kullanıcı bilgisi." />
@@ -25,7 +25,7 @@ export function ReportsFilterPanel({
         </div>
       </section>
 
-      <section className="premium-card p-5">
+      <section className="premium-card p-5" data-testid="reports-date-range-section">
         <h2 className="text-lg font-semibold text-white">Tarih Aralığı</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <label className="block">
@@ -35,6 +35,7 @@ export function ReportsFilterPanel({
               value={startDate}
               onChange={(event) => onStartDateChange(event.target.value)}
               className={inputClassName}
+              data-testid="reports-start-date-input"
             />
           </label>
           <label className="block">
@@ -44,6 +45,7 @@ export function ReportsFilterPanel({
               value={endDate}
               onChange={(event) => onEndDateChange(event.target.value)}
               className={inputClassName}
+              data-testid="reports-end-date-input"
             />
           </label>
         </div>

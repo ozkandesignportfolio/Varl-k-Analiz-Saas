@@ -1,93 +1,43 @@
 import { NextResponse } from "next/server";
+import { enforceRateLimit, getRequestIp } from "@/lib/api/rate-limit";
 import { createEmptyPanelHealthPayload, type PanelHealthPayload } from "@/lib/panel-health";
 import { computeHealthScore } from "@/lib/scoring/computeHealthScore";
 import { createClient } from "@/lib/supabase/server";
 
-type AssetRow = {
-  id: string;
-  warranty_end_date: string | null;
-  created_at: string;
-  [key: string]: unknown;
-};
-
-type MaintenanceRuleRow = {
-  id: string;
-  asset_id: string;
-  is_active: boolean;
-  next_due_date: string;
-  last_service_date: string | null;
-};
-
-type ServiceLogRow = {
-  asset_id: string;
-  rule_id: string | null;
-  cost: number | null;
-};
-
-type ExpenseRow = {
-  asset_id: string | null;
-  amount: number | null;
-  category: string | null;
-  note: string | null;
-};
-
-type DocumentRow = {
-  id: string;
-  asset_id: string;
-};
-
-type InvoiceRow = {
-  status: "pending" | "paid" | "overdue" | "cancelled";
-  due_date: string | null;
-};
-
 type QueryError = {
-  code?: string | null;
   message?: string | null;
 };
 
-const MISSING_TABLE_CODES = new Set(["42P01", "PGRST205"]);
-const PRICE_KEYS = ["price", "purchase_price", "asset_price", "current_value", "value"] as const;
-const PURCHASE_HINTS = ["satın alma", "satın alma", "purchase", "urun", "ürün", "cihaz", "fiyat", "bedel"];
-
-export const dynamic = "force-dynamic";
+type PanelHealthAggregateRow = {
+  asset_price: number | string | null;
+  maintenance_cost: number | string | null;
+  expense_cost: number | string | null;
+  total_assets: number | string | null;
+  warranty_active: number | string | null;
+  warranty_expiring: number | string | null;
+  warranty_expired: number | string | null;
+  warranty_unknown: number | string | null;
+  maintenance_planned: number | string | null;
+  maintenance_completed: number | string | null;
+  maintenance_on_track: number | string | null;
+  uploaded_assets: number | string | null;
+  paid_count: number | string | null;
+  pending_count: number | string | null;
+  overdue_count: number | string | null;
+  expenses_table_missing: boolean | null;
+  invoices_table_missing: boolean | null;
+};
 
 const clampScore = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 
-const toPositiveNumber = (value: unknown) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+const toNumber = (value: number | string | null | undefined) => {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const parseDateOnly = (value: string | null | undefined) => {
-  if (!value) return null;
-  const [yearRaw, monthRaw, dayRaw] = value.split("-");
-  const year = Number(yearRaw);
-  const month = Number(monthRaw);
-  const day = Number(dayRaw);
-  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null;
-  return new Date(year, month - 1, day);
-};
-
-const isMissingTableError = (error: QueryError | null) => {
-  if (!error) return false;
-  if (MISSING_TABLE_CODES.has(error.code ?? "")) return true;
-  const normalized = (error.message ?? "").toLowerCase();
-  return normalized.includes("does not exist") && normalized.includes("table");
-};
-
-const hasPurchaseHint = (category: string | null, note: string | null) => {
-  const normalized = `${category ?? ""} ${note ?? ""}`.toLocaleLowerCase("tr-TR");
-  return PURCHASE_HINTS.some((hint) => normalized.includes(hint));
-};
-
-const toAssetPrice = (asset: AssetRow, inferredPrice: number) => {
-  for (const key of PRICE_KEYS) {
-    const value = toPositiveNumber(asset[key]);
-    if (value > 0) return value;
-  }
-
-  return inferredPrice;
+const toInteger = (value: number | string | null | undefined) => {
+  const parsed = Math.round(toNumber(value));
+  return parsed > 0 ? parsed : 0;
 };
 
 const buildSuccessPayload = (payload: Omit<PanelHealthPayload, "generatedAt">): PanelHealthPayload => ({
@@ -95,7 +45,9 @@ const buildSuccessPayload = (payload: Omit<PanelHealthPayload, "generatedAt">): 
   generatedAt: new Date().toISOString(),
 });
 
-export async function GET() {
+export const dynamic = "force-dynamic";
+
+export async function GET(request: Request) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -106,134 +58,92 @@ export async function GET() {
     return NextResponse.json(createEmptyPanelHealthPayload("public_fallback"), { status: 200 });
   }
 
+  const rateLimit = enforceRateLimit({
+    scope: "api_panel_health",
+    key: `${user.id}:${getRequestIp(request)}`,
+    limit: 45,
+    windowMs: 60_000,
+  });
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Panel saglik istegi limiti asildi. Lutfen kisa bir sure sonra tekrar deneyin." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.max(1, Math.ceil(rateLimit.retryAfterMs / 1_000))),
+        },
+      },
+    );
+  }
+
   try {
-    const [assetsRes, rulesRes, logsRes, docsRes, expensesRes, invoicesRes] = await Promise.all([
-      supabase.from("assets").select("*").eq("user_id", user.id),
-      supabase.from("maintenance_rules").select("id,asset_id,is_active,next_due_date,last_service_date").eq("user_id", user.id),
-      supabase.from("service_logs").select("asset_id,rule_id,cost").eq("user_id", user.id),
-      supabase.from("documents").select("id,asset_id").eq("user_id", user.id),
-      supabase.from("expenses").select("asset_id,amount,category,note").eq("user_id", user.id),
-      supabase.from("billing_invoices").select("status,due_date").eq("user_id", user.id),
-    ]);
+    const rpcClient = supabase as unknown as {
+      rpc: (
+        fn: "get_panel_health_aggregates",
+        args: { p_user_id: string },
+      ) => Promise<{ data: unknown; error: QueryError | null }>;
+    };
 
-    if (assetsRes.error) throw assetsRes.error;
-    if (rulesRes.error) throw rulesRes.error;
-    if (logsRes.error) throw logsRes.error;
-    if (docsRes.error) throw docsRes.error;
-    if (expensesRes.error && !isMissingTableError(expensesRes.error)) throw expensesRes.error;
-    if (invoicesRes.error && !isMissingTableError(invoicesRes.error)) throw invoicesRes.error;
+    const { data, error } = await rpcClient.rpc("get_panel_health_aggregates", {
+      p_user_id: user.id,
+    });
 
-    const assets = (assetsRes.data ?? []) as AssetRow[];
-    const rules = ((rulesRes.data ?? []) as MaintenanceRuleRow[]).filter((rule) => rule.is_active);
-    const logs = (logsRes.data ?? []) as ServiceLogRow[];
-    const documents = (docsRes.data ?? []) as DocumentRow[];
-    const expenses = isMissingTableError(expensesRes.error) ? [] : ((expensesRes.data ?? []) as ExpenseRow[]);
-    const invoices = isMissingTableError(invoicesRes.error) ? [] : ((invoicesRes.data ?? []) as InvoiceRow[]);
-
-    const maintenanceCost = logs.reduce((sum, log) => sum + toPositiveNumber(log.cost), 0);
-    const expenseCost = expenses.reduce((sum, expense) => sum + toPositiveNumber(expense.amount), 0);
-    const totalCost = maintenanceCost + expenseCost;
-
-    const inferredPriceByAsset = new Map<string, number>();
-    for (const expense of expenses) {
-      if (!expense.asset_id) continue;
-      const amount = toPositiveNumber(expense.amount);
-      if (amount <= 0) continue;
-
-      const current = inferredPriceByAsset.get(expense.asset_id) ?? 0;
-      const candidate = hasPurchaseHint(expense.category, expense.note) ? Math.max(current, amount) : current;
-      inferredPriceByAsset.set(expense.asset_id, candidate > 0 ? candidate : Math.max(current, amount));
+    if (error) {
+      throw new Error(error.message ?? "Panel saglik aggregate RPC cagri hatasi.");
     }
 
-    const assetPrice = assets.reduce((sum, asset) => {
-      const inferred = inferredPriceByAsset.get(asset.id) ?? 0;
-      return sum + toAssetPrice(asset, inferred);
-    }, 0);
+    const rows = Array.isArray(data) ? (data as PanelHealthAggregateRow[]) : [];
+    const row = rows[0];
+
+    if (!row) {
+      return NextResponse.json(createEmptyPanelHealthPayload("user"), { status: 200 });
+    }
+
+    const assetPrice = Math.max(0, toNumber(row.asset_price));
+    const maintenanceCost = Math.max(0, toNumber(row.maintenance_cost));
+    const expenseCost = Math.max(0, toNumber(row.expense_cost));
+    const totalCost = maintenanceCost + expenseCost;
 
     const healthScore = computeHealthScore({
       assetPrice,
       totalCost,
     });
 
-    const today = new Date();
-    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const inThirtyDays = new Date(startOfToday);
-    inThirtyDays.setDate(startOfToday.getDate() + 30);
-
-    let warrantyActive = 0;
-    let warrantyExpiring = 0;
-    let warrantyExpired = 0;
-    let warrantyUnknown = 0;
-
-    for (const asset of assets) {
-      const warrantyEnd = parseDateOnly(asset.warranty_end_date);
-      if (!warrantyEnd) {
-        warrantyUnknown += 1;
-        continue;
-      }
-
-      if (warrantyEnd < startOfToday) {
-        warrantyExpired += 1;
-      } else if (warrantyEnd <= inThirtyDays) {
-        warrantyExpiring += 1;
-      } else {
-        warrantyActive += 1;
-      }
-    }
-
-    const totalAssets = assets.length;
+    const totalAssets = toInteger(row.total_assets);
+    const warrantyActive = toInteger(row.warranty_active);
+    const warrantyExpiring = toInteger(row.warranty_expiring);
+    const warrantyExpired = toInteger(row.warranty_expired);
+    const warrantyUnknown = toInteger(row.warranty_unknown);
     const warrantyScoreRaw =
       totalAssets <= 0
         ? 100
         : (warrantyActive * 100 + warrantyExpiring * 60 + warrantyExpired * 20 + warrantyUnknown * 40) / totalAssets;
     const warrantyScore = clampScore(warrantyScoreRaw);
 
-    const completedRuleIds = new Set(logs.map((log) => log.rule_id).filter(Boolean));
-    const maintenancePlanned = rules.length;
-    const maintenanceCompleted = rules.filter(
-      (rule) => completedRuleIds.has(rule.id) || parseDateOnly(rule.last_service_date) !== null,
-    ).length;
-    const maintenanceOnTrack = rules.filter((rule) => {
-      const dueDate = parseDateOnly(rule.next_due_date);
-      if (!dueDate) return false;
-      return dueDate >= startOfToday;
-    }).length;
+    const maintenancePlanned = toInteger(row.maintenance_planned);
+    const maintenanceCompleted = toInteger(row.maintenance_completed);
+    const maintenanceOnTrack = toInteger(row.maintenance_on_track);
     const maintenanceOverdue = Math.max(0, maintenancePlanned - maintenanceOnTrack);
     const completedRate = maintenancePlanned > 0 ? (maintenanceCompleted / maintenancePlanned) * 100 : 100;
     const onTrackRate = maintenancePlanned > 0 ? (maintenanceOnTrack / maintenancePlanned) * 100 : 100;
     const maintenanceScore = clampScore(completedRate * 0.6 + onTrackRate * 0.4);
 
     const requiredDocuments = totalAssets;
-    const uploadedAssetIds = new Set(documents.map((document) => document.asset_id).filter(Boolean));
-    const uploadedDocuments = uploadedAssetIds.size;
+    const uploadedDocuments = toInteger(row.uploaded_assets);
     const missingDocuments = Math.max(0, requiredDocuments - uploadedDocuments);
     const documentScore = clampScore(requiredDocuments > 0 ? (uploadedDocuments / requiredDocuments) * 100 : 100);
 
-    let paidCount = 0;
-    let pendingCount = 0;
-    let overdueCount = 0;
-    for (const invoice of invoices) {
-      if (invoice.status === "cancelled") continue;
-      if (invoice.status === "paid") {
-        paidCount += 1;
-        continue;
-      }
-
-      if (invoice.status === "overdue") {
-        overdueCount += 1;
-        continue;
-      }
-
-      const dueDate = parseDateOnly(invoice.due_date);
-      if (dueDate && dueDate < startOfToday) {
-        overdueCount += 1;
-      } else {
-        pendingCount += 1;
-      }
-    }
-
+    const paidCount = toInteger(row.paid_count);
+    const pendingCount = toInteger(row.pending_count);
+    const overdueCount = toInteger(row.overdue_count);
     const paymentTotal = paidCount + pendingCount + overdueCount;
     const paymentScore = clampScore(paymentTotal > 0 ? (paidCount * 100 + pendingCount * 50) / paymentTotal : 100);
+
+    const warning =
+      row.expenses_table_missing || row.invoices_table_missing
+        ? "Bazi opsiyonel tablolar bulunamadi, skor sinirli veriyle hesaplandi."
+        : null;
 
     const payload = buildSuccessPayload({
       score: healthScore.score,
@@ -271,17 +181,13 @@ export async function GET() {
         total: paymentTotal,
       },
       scope: "user",
-      warning:
-        isMissingTableError(expensesRes.error) || isMissingTableError(invoicesRes.error)
-          ? "Bazı opsiyonel tablolar bulunamadı, skor sınırlı veriyle hesaplandı."
-          : null,
+      warning,
     });
 
     return NextResponse.json(payload, { status: 200 });
   } catch (error) {
     const fallback = createEmptyPanelHealthPayload("user");
-    fallback.warning = error instanceof Error ? error.message : "Panel sağlık verisi hesaplanamadı.";
+    fallback.warning = error instanceof Error ? error.message : "Panel saglik verisi hesaplanamadi.";
     return NextResponse.json(fallback, { status: 200 });
   }
 }
-

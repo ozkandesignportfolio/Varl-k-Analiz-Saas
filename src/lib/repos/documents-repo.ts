@@ -12,6 +12,10 @@ export type ListDocumentsForDocumentsPageRow = Pick<
 
 export type ListDocumentsForReportsParams = {
   userId: string;
+  startDate?: string;
+  endDate?: string;
+  limit?: number;
+  offset?: number;
 };
 
 export type ListDocumentsForReportsRow = Pick<Row<"documents">, "id" | "asset_id" | "file_name" | "uploaded_at">;
@@ -30,6 +34,19 @@ const getReportAssetName = (relation: ReportAssetRelation): string | null => {
     return relation[0]?.name ?? null;
   }
   return relation.name ?? null;
+};
+
+const normalizePageSize = (value: number | undefined, fallback: number, max = 200) => {
+  if (!Number.isFinite(value)) return fallback;
+  const parsed = Math.floor(value as number);
+  if (parsed <= 0) return fallback;
+  return Math.min(max, parsed);
+};
+
+const normalizeOffset = (value: number | undefined) => {
+  if (!Number.isFinite(value)) return 0;
+  const parsed = Math.floor(value as number);
+  return parsed > 0 ? parsed : 0;
 };
 
 export type ListDocumentsForTimelineParams = {
@@ -88,14 +105,25 @@ export function listForReports(
   params: ListDocumentsForReportsParams,
 ): RepoResult<ListDocumentsForReportsWithAssetRow[]> {
   const { userId } = params;
+  const limit = normalizePageSize(params.limit, 100);
+  const offset = normalizeOffset(params.offset);
 
-  return Promise.resolve(
-    client
-      .from("documents")
-      .select("id,asset_id,file_name,uploaded_at,asset:assets(name)")
-      .eq("user_id", userId)
-      .order("uploaded_at", { ascending: false }),
-  ).then((r) => ({
+  let query = client
+    .from("documents")
+    .select("id,asset_id,file_name,uploaded_at,asset:assets(name)")
+    .eq("user_id", userId)
+    .order("uploaded_at", { ascending: false });
+
+  if (params.startDate) {
+    query = query.gte("uploaded_at", `${params.startDate}T00:00:00`);
+  }
+  if (params.endDate) {
+    query = query.lte("uploaded_at", `${params.endDate}T23:59:59.999`);
+  }
+
+  query = query.range(offset, offset + limit - 1);
+
+  return Promise.resolve(query).then((r) => ({
     data:
       ((r.data as ListDocumentsForReportsRawRow[] | null) ?? []).map((row) => ({
         id: row.id,

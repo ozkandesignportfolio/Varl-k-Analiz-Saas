@@ -96,7 +96,7 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="relative min-h-screen px-4 py-6 sm:px-6 lg:px-8">
+    <main className="relative min-h-screen px-4 py-6 sm:px-6 lg:px-8" data-testid="login-root">
       <div className="pointer-events-none absolute inset-0 opacity-30">
         <div className="ambient-orb ambient-orb-a" />
       </div>
@@ -123,15 +123,29 @@ export default function LoginPage() {
           <h2 className="text-2xl font-semibold text-white">Giriş Yap</h2>
           <p className="mt-2 text-sm text-slate-300">Devam etmek için hesabınıza giriş yapın.</p>
 
-          <form onSubmit={onSubmit} className="mt-6 space-y-4">
+          <form onSubmit={onSubmit} className="mt-6 space-y-4" data-testid="login-form">
             <label className="block">
               <span className="mb-1.5 block text-sm text-slate-300">E-posta</span>
-              <input name="email" type="email" required className={inputClassName} placeholder="örnek@mail.com" />
+              <input
+                name="email"
+                type="email"
+                required
+                className={inputClassName}
+                placeholder="örnek@mail.com"
+                data-testid="login-email-input"
+              />
             </label>
 
             <label className="block">
               <span className="mb-1.5 block text-sm text-slate-300">Şifre</span>
-              <input name="password" type="password" required className={inputClassName} placeholder="********" />
+              <input
+                name="password"
+                type="password"
+                required
+                className={inputClassName}
+                placeholder="********"
+                data-testid="login-password-input"
+              />
             </label>
 
             <div className="text-right">
@@ -144,11 +158,16 @@ export default function LoginPage() {
               type="submit"
               disabled={isSubmitting}
               className="w-full rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+              data-testid="login-submit-button"
             >
               {isSubmitting ? "Giriş yapılıyor..." : "Giriş Yap"}
             </button>
 
-            {message ? <p className="text-sm text-rose-200">{message}</p> : null}
+            {message ? (
+              <p className="text-sm text-rose-200" data-testid="login-message">
+                {message}
+              </p>
+            ) : null}
           </form>
 
           <p className="mt-5 text-sm text-slate-300">

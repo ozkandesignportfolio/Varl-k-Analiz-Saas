@@ -48,7 +48,10 @@ export function RulesTable({
   onDeleteRule,
 }: RulesTableProps) {
   return (
-    <section className="rounded-2xl border border-slate-700/70 bg-slate-950/45 p-4 shadow-[0_10px_22px_rgba(2,6,23,0.32)]">
+    <section
+      className="rounded-2xl border border-slate-700/70 bg-slate-950/45 p-4 shadow-[0_10px_22px_rgba(2,6,23,0.32)]"
+      data-testid="maintenance-rules-table-section"
+    >
       <div className="flex flex-col gap-3">
         <h3 className="text-base font-semibold text-slate-100">Kurallar</h3>
         <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[1.4fr_1fr_1fr_1fr_auto]">
@@ -114,7 +117,7 @@ export function RulesTable({
         </p>
       ) : (
         <div className="mt-4 overflow-x-auto rounded-xl border border-slate-700/80">
-          <table className="min-w-full text-left text-sm">
+          <table className="min-w-full text-left text-sm" data-testid="maintenance-rules-table">
             <thead className="bg-slate-900/90 text-slate-300">
               <tr className="border-b border-slate-700/70">
                 <th className="px-3 py-2">Varlık</th>

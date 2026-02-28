@@ -76,7 +76,7 @@ export function AssetForm(props: AssetFormProps) {
     } = props;
 
     return (
-      <article className="premium-card p-5">
+      <article className="premium-card p-5" data-testid="asset-create-card">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-xl font-semibold text-white">Yeni Varlık Ekle</h2>
           <Badge variant="outline" className="border-sky-300/40 bg-sky-300/10 text-sky-100">
@@ -84,7 +84,7 @@ export function AssetForm(props: AssetFormProps) {
           </Badge>
         </div>
 
-        <form onSubmit={onSubmit} className="mt-4 space-y-4">
+        <form onSubmit={onSubmit} className="mt-4 space-y-4" data-testid="asset-create-form">
           <Tabs defaultValue="basic">
             <TabsList
               variant="line"
@@ -108,6 +108,7 @@ export function AssetForm(props: AssetFormProps) {
                     defaultValue={defaults?.name ?? ""}
                     className={inputClassName}
                     placeholder="Örnek: Kombi"
+                    data-testid="asset-name-input"
                   />
                 </label>
 
@@ -118,6 +119,7 @@ export function AssetForm(props: AssetFormProps) {
                     required
                     className={inputClassName}
                     defaultValue={defaults?.category ?? ""}
+                    data-testid="asset-category-select"
                   >
                     <option value="" disabled className="bg-slate-900">
                       Kategori seçin
@@ -137,6 +139,7 @@ export function AssetForm(props: AssetFormProps) {
                     defaultValue={defaults?.serialNumber ?? ""}
                     className={inputClassName}
                     placeholder="Örnek: SN-2026-00123"
+                    data-testid="asset-serial-input"
                   />
                 </label>
 
@@ -147,6 +150,7 @@ export function AssetForm(props: AssetFormProps) {
                     defaultValue={defaults?.brand ?? ""}
                     className={inputClassName}
                     placeholder="Örnek: Bosch"
+                    data-testid="asset-brand-input"
                   />
                 </label>
 
@@ -157,6 +161,7 @@ export function AssetForm(props: AssetFormProps) {
                     defaultValue={defaults?.model ?? ""}
                     className={inputClassName}
                     placeholder="Örnek: X200"
+                    data-testid="asset-model-input"
                   />
                 </label>
 
@@ -167,6 +172,7 @@ export function AssetForm(props: AssetFormProps) {
                     type="date"
                     defaultValue={defaults?.purchaseDate ?? ""}
                     className={inputClassName}
+                    data-testid="asset-purchase-date-input"
                   />
                 </label>
 
@@ -177,6 +183,7 @@ export function AssetForm(props: AssetFormProps) {
                     type="date"
                     defaultValue={defaults?.warrantyEndDate ?? ""}
                     className={inputClassName}
+                    data-testid="asset-warranty-date-input"
                   />
                 </label>
               </div>
@@ -282,6 +289,7 @@ export function AssetForm(props: AssetFormProps) {
               type="submit"
               disabled={isSubmitting}
               className="rounded-full bg-gradient-to-r from-sky-400 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+              data-testid="asset-save-button"
             >
               {isSubmitting ? "Kaydediliyor..." : "Varlığı Kaydet"}
             </button>
@@ -294,7 +302,7 @@ export function AssetForm(props: AssetFormProps) {
   const { onSubmit, isSubmitting, categoryOptions, inputClassName, asset, onCancel } = props;
 
   return (
-    <section className="premium-card p-5">
+    <section className="premium-card p-5" data-testid="asset-edit-card">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-xl font-semibold text-white">Varlık Güncelle</h2>
         <button
@@ -306,7 +314,7 @@ export function AssetForm(props: AssetFormProps) {
         </button>
       </div>
 
-      <form onSubmit={onSubmit} className="mt-4 grid gap-3 md:grid-cols-2">
+      <form onSubmit={onSubmit} className="mt-4 grid gap-3 md:grid-cols-2" data-testid="asset-edit-form">
         <label className="block">
           <span className="mb-1.5 block text-sm text-slate-300">Varlık Adı</span>
           <input name="name" defaultValue={asset.name} required className={inputClassName} />

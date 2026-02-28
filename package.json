@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check:debug-plan-access": "node scripts/check-debug-plan-access.mjs",
+    "check:debug-plan-prod": "node scripts/check-debug-plan-prod.cjs",
+    "test:stable": "node testsprite_tests/generated/run_stable_full_suite.cjs",
+    "test:stable:trial": "node testsprite_tests/generated/run_stable_trial_suite.cjs",
+    "test:stable:premium": "node testsprite_tests/generated/run_stable_premium_suite.cjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",
@@ -29,6 +34,7 @@
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
