@@ -13,20 +13,22 @@ export type EnforceLimitParams = {
 
 export type PlanLimitErrorPayload = {
   code: "PLAN_LIMIT";
-  message_tr: string;
+  message: string;
   resource: LimitResource;
   limit: number;
   current: number;
   delta: number;
 };
 
-const TABLE_BY_RESOURCE: Record<LimitResource, "assets" | "documents" | "billing_subscriptions" | "billing_invoices"> =
-  {
-    assets: "assets",
-    documents: "documents",
-    subscriptions: "billing_subscriptions",
-    invoices: "billing_invoices",
-  };
+const TABLE_BY_RESOURCE: Record<
+  LimitResource,
+  "assets" | "documents" | "billing_subscriptions" | "billing_invoices"
+> = {
+  assets: "assets",
+  documents: "documents",
+  subscriptions: "billing_subscriptions",
+  invoices: "billing_invoices",
+};
 
 const FREE_LIMIT_BY_RESOURCE: Record<LimitResource, number> = {
   assets: 3,
@@ -35,34 +37,32 @@ const FREE_LIMIT_BY_RESOURCE: Record<LimitResource, number> = {
   invoices: 5,
 };
 
-const buildLimitMessageTr = (resource: LimitResource, limit: number) => {
+const buildLimitMessage = (resource: LimitResource, limit: number) => {
   switch (resource) {
     case "assets":
-      return `Free planda en fazla ${limit} varlık oluşturabilirsiniz.`;
+      return `Free planda en fazla ${limit} varlik olusturabilirsiniz.`;
     case "documents":
-      return `Free planda en fazla ${limit} belge yükleyebilirsiniz.`;
+      return `Free planda en fazla ${limit} belge yukleyebilirsiniz.`;
     case "subscriptions":
-      return `Free planda en fazla ${limit} abonelik oluşturabilirsiniz.`;
+      return `Free planda en fazla ${limit} abonelik olusturabilirsiniz.`;
     case "invoices":
-      return `Free planda en fazla ${limit} fatura oluşturabilirsiniz.`;
+      return `Free planda en fazla ${limit} fatura olusturabilirsiniz.`;
     default:
-      return "Plan limitine ulaştınız.";
+      return "Plan limitine ulastiniz.";
   }
 };
 
 export class PlanLimitError extends Error {
   code: "PLAN_LIMIT";
-  message_tr: string;
   resource: LimitResource;
   limit: number;
   current: number;
   delta: number;
 
   constructor(payload: PlanLimitErrorPayload) {
-    super(payload.message_tr);
+    super(payload.message);
     this.name = "PlanLimitError";
     this.code = payload.code;
-    this.message_tr = payload.message_tr;
     this.resource = payload.resource;
     this.limit = payload.limit;
     this.current = payload.current;
@@ -75,12 +75,15 @@ export const isPlanLimitError = (error: unknown): error is PlanLimitError =>
   (typeof error === "object" &&
     error !== null &&
     (error as { code?: unknown }).code === "PLAN_LIMIT" &&
-    typeof (error as { message_tr?: unknown }).message_tr === "string");
+    typeof (error as { message?: unknown }).message === "string" &&
+    typeof (error as { resource?: unknown }).resource === "string" &&
+    typeof (error as { limit?: unknown }).limit === "number");
 
 export const toPlanLimitErrorBody = (error: PlanLimitError | PlanLimitErrorPayload) => ({
-  error: error.message_tr,
   code: "PLAN_LIMIT" as const,
-  message_tr: error.message_tr,
+  message: error.message,
+  limit: error.limit,
+  resource: error.resource,
 });
 
 const normalizeDelta = (delta: number | undefined) => {
@@ -103,7 +106,7 @@ const readProfilePlan = async (client: DbClient, userId: string) => {
 
   const response = await query.select("plan").eq("id", userId).maybeSingle();
   if (response.error) {
-    throw new Error(`Plan bilgisi okunamadı: ${response.error.message}`);
+    throw new Error(`Plan bilgisi okunamadi: ${response.error.message}`);
   }
 
   return normalizeProfilePlan(response.data?.plan);
@@ -122,7 +125,7 @@ const countByResource = async (client: DbClient, userId: string, resource: Limit
 
   const response = await query.select("id", { count: "exact", head: true }).eq("user_id", userId);
   if (response.error) {
-    throw new Error(`Limit sayımı başarısız: ${response.error.message}`);
+    throw new Error(`Limit sayimi basarisiz: ${response.error.message}`);
   }
 
   return response.count ?? 0;
@@ -146,7 +149,7 @@ export async function enforceLimit(params: EnforceLimitParams): Promise<void> {
 
   throw new PlanLimitError({
     code: "PLAN_LIMIT",
-    message_tr: buildLimitMessageTr(params.resource, limit),
+    message: buildLimitMessage(params.resource, limit),
     resource: params.resource,
     limit,
     current,

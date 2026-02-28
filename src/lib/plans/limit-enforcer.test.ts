@@ -1,11 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { DbClient } from "@/lib/repos/_shared";
-import {
-  enforceLimit,
-  isPlanLimitError,
-  toPlanLimitErrorBody,
-} from "./limit-enforcer";
+import { enforceLimit, isPlanLimitError, toPlanLimitErrorBody } from "./limit-enforcer";
 
 type CountTable = "assets" | "documents" | "billing_subscriptions" | "billing_invoices";
 
@@ -46,7 +42,7 @@ function createMockClient(params: {
   } as unknown as DbClient;
 }
 
-test("enforceLimit blocks when free assets limit is reached", async () => {
+test("enforceLimit blocks assets creation when free limit is reached", async () => {
   const client = createMockClient({ counts: { assets: 3 } });
 
   await assert.rejects(
@@ -61,31 +57,73 @@ test("enforceLimit blocks when free assets limit is reached", async () => {
     (error: unknown) => {
       assert.equal(isPlanLimitError(error), true);
       if (!isPlanLimitError(error)) return false;
-      assert.equal(error.code, "PLAN_LIMIT");
-      assert.equal(error.message_tr, "Free planda en fazla 3 varlık oluşturabilirsiniz.");
-
       const body = toPlanLimitErrorBody(error);
-      assert.equal(body.code, "PLAN_LIMIT");
-      assert.equal(body.error, "Free planda en fazla 3 varlık oluşturabilirsiniz.");
-      assert.equal(body.message_tr, "Free planda en fazla 3 varlık oluşturabilirsiniz.");
+      assert.deepEqual(body, {
+        code: "PLAN_LIMIT",
+        message: "Free planda en fazla 3 varlik olusturabilirsiniz.",
+        limit: 3,
+        resource: "assets",
+      });
       return true;
     },
   );
 });
 
-test("enforceLimit allows invoices up to 5 on free plan", async () => {
-  const client = createMockClient({ counts: { billing_invoices: 4 } });
+test("enforceLimit blocks documents creation when free limit is reached", async () => {
+  const client = createMockClient({ counts: { documents: 5 } });
 
-  await enforceLimit({
-    client,
-    userId: "user-1",
-    profilePlan: "free",
-    resource: "invoices",
-    delta: 1,
-  });
+  await assert.rejects(
+    () =>
+      enforceLimit({
+        client,
+        userId: "user-1",
+        profilePlan: "free",
+        resource: "documents",
+        delta: 1,
+      }),
+    (error: unknown) => {
+      assert.equal(isPlanLimitError(error), true);
+      if (!isPlanLimitError(error)) return false;
+      const body = toPlanLimitErrorBody(error);
+      assert.deepEqual(body, {
+        code: "PLAN_LIMIT",
+        message: "Free planda en fazla 5 belge yukleyebilirsiniz.",
+        limit: 5,
+        resource: "documents",
+      });
+      return true;
+    },
+  );
 });
 
-test("enforceLimit blocks invoice creation at 6th record", async () => {
+test("enforceLimit blocks subscriptions creation when free limit is reached", async () => {
+  const client = createMockClient({ counts: { billing_subscriptions: 3 } });
+
+  await assert.rejects(
+    () =>
+      enforceLimit({
+        client,
+        userId: "user-1",
+        profilePlan: "free",
+        resource: "subscriptions",
+        delta: 1,
+      }),
+    (error: unknown) => {
+      assert.equal(isPlanLimitError(error), true);
+      if (!isPlanLimitError(error)) return false;
+      const body = toPlanLimitErrorBody(error);
+      assert.deepEqual(body, {
+        code: "PLAN_LIMIT",
+        message: "Free planda en fazla 3 abonelik olusturabilirsiniz.",
+        limit: 3,
+        resource: "subscriptions",
+      });
+      return true;
+    },
+  );
+});
+
+test("enforceLimit blocks invoices creation when free limit is reached", async () => {
   const client = createMockClient({ counts: { billing_invoices: 5 } });
 
   await assert.rejects(
@@ -100,7 +138,13 @@ test("enforceLimit blocks invoice creation at 6th record", async () => {
     (error: unknown) => {
       assert.equal(isPlanLimitError(error), true);
       if (!isPlanLimitError(error)) return false;
-      assert.equal(error.message_tr, "Free planda en fazla 5 fatura oluşturabilirsiniz.");
+      const body = toPlanLimitErrorBody(error);
+      assert.deepEqual(body, {
+        code: "PLAN_LIMIT",
+        message: "Free planda en fazla 5 fatura olusturabilirsiniz.",
+        limit: 5,
+        resource: "invoices",
+      });
       return true;
     },
   );

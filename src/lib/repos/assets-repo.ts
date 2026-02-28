@@ -133,8 +133,13 @@ export function listCategories(
   client: DbClient,
   params: ListAssetCategoriesParams,
 ): RepoResult<string[]> {
+  const rpc = client.rpc.bind(client) as unknown as (
+    fn: string,
+    args?: Record<string, unknown>,
+  ) => PromiseLike<{ data: unknown; error: any }>;
+
   return Promise.resolve(
-    client.rpc("list_asset_categories", {
+    rpc("list_asset_categories", {
       p_user_id: params.userId,
     }),
   ).then((r) => ({
@@ -149,12 +154,17 @@ export function listAssets(
   client: DbClient,
   params: ListAssetsParams,
 ): RepoResult<ListAssetsResult> {
+  const rpc = client.rpc.bind(client) as unknown as (
+    fn: string,
+    args?: Record<string, unknown>,
+  ) => PromiseLike<{ data: unknown; error: any }>;
+
   const pageSize = normalizePageSize(params.pageSize, 30, 100);
   const sort = params.sort ?? "updated";
   const cursor = params.cursor && params.cursor.sort === sort ? params.cursor : null;
 
   return Promise.resolve(
-    client.rpc("list_assets_page", {
+    rpc("list_assets_page", {
       p_user_id: params.userId,
       p_cursor_value: cursor?.value ?? null,
       p_cursor_id: cursor?.id ?? null,

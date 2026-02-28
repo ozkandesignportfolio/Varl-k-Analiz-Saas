@@ -5,12 +5,12 @@ import { logApiError, logAuditEvent } from "@/lib/api/logging";
 import { existsById } from "@/lib/repos/assets-repo";
 import { enforceLimit, isPlanLimitError, toPlanLimitErrorBody } from "@/lib/plans/limit-enforcer";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
+import { fileConstraints, uuid } from "@/lib/validation";
 
 export const runtime = "nodejs";
 
 const STORAGE_BUCKET = "documents-private";
 const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ALLOWED_DOCUMENT_TYPES = ["garanti", "fatura", "servis_formu", "diğer"] as const;
 
 const ALLOWED_MIME_TYPES = [
@@ -84,22 +84,6 @@ const getFileEntry = (formData: FormData, key: string) => {
   return entry.size > 0 ? entry : null;
 };
 
-const normalizeUuid = (value: unknown) => {
-  const normalized = String(value ?? "").trim().toLowerCase();
-  if (!UUID_PATTERN.test(normalized)) {
-    return null;
-  }
-  return normalized;
-};
-
-const getExtension = (fileName: string) => {
-  const parts = fileName.split(".");
-  if (parts.length < 2) {
-    return null;
-  }
-  return parts[parts.length - 1]?.toLowerCase().trim() ?? null;
-};
-
 const normalizeDisplayFileName = (fileName: string) => {
   const leafName = fileName.split(/[\\/]/).pop() ?? fileName;
   const trimmed = leafName.trim();
@@ -135,32 +119,8 @@ const buildStoragePath = (params: {
   return path.posix.join(params.userId, params.assetId, "documents", objectName);
 };
 
-const validateUploadFile = (file: File) => {
-  if (file.size <= 0) {
-    return { error: "Bos dosya yuklenemez." };
-  }
-
-  if (file.size > MAX_FILE_SIZE_BYTES) {
-    return { error: "Dosya boyutu 50 MB sinirini asiyor." };
-  }
-
-  const mimeType = file.type.trim().toLowerCase();
-  if (!mimeType || !ALLOWED_MIME_TYPES.includes(mimeType as (typeof ALLOWED_MIME_TYPES)[number])) {
-    return { error: `Desteklenmeyen dosya tipi: ${mimeType || "unknown"}.` };
-  }
-
-  const extension = getExtension(file.name);
-  if (!extension || !ALLOWED_EXTENSIONS.includes(extension as (typeof ALLOWED_EXTENSIONS)[number])) {
-    return { error: `Dosya uzantisi desteklenmiyor: ${extension || "unknown"}.` };
-  }
-
-  const compatibleExtensions = COMPATIBLE_EXTENSIONS_BY_MIME_TYPE[mimeType];
-  if (compatibleExtensions && !compatibleExtensions.includes(extension)) {
-    return { error: `Dosya uzantisi ve MIME tipi uyusmuyor: ${mimeType} / .${extension}.` };
-  }
-
-  return { mimeType, extension };
-};
+const parseUuid = uuid();
+const validateUploadFile = fileConstraints("dosya", MAX_FILE_SIZE_BYTES);
 
 const readDeleteBody = async (request: Request) =>
   (await request.json().catch(() => null)) as DeleteDocumentPayload | null;
@@ -185,7 +145,7 @@ export async function POST(request: Request) {
     const rawDocumentType = String(formData.get("documentType") ?? "").trim().toLowerCase();
     const file = getFileEntry(formData, "file");
 
-    const assetId = normalizeUuid(rawAssetId);
+    const assetId = parseUuid(rawAssetId);
     if (!assetId) {
       return NextResponse.json({ error: "Varlik kimligi gecersiz." }, { status: 400 });
     }
@@ -200,7 +160,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Yuklenecek dosya bulunamadi." }, { status: 400 });
     }
 
-    const fileValidation = validateUploadFile(file);
+    const fileValidation = validateUploadFile(file, {
+      allowedMimeTypes: ALLOWED_MIME_TYPES,
+      allowedExtensions: ALLOWED_EXTENSIONS,
+      compatibleExtensionsByMimeType: COMPATIBLE_EXTENSIONS_BY_MIME_TYPE,
+    });
     if ("error" in fileValidation) {
       return NextResponse.json({ error: fileValidation.error }, { status: 400 });
     }
@@ -305,7 +269,7 @@ export async function DELETE(request: Request) {
     userId = user.id;
 
     const payload = await readDeleteBody(request);
-    const documentId = normalizeUuid(payload?.id ?? new URL(request.url).searchParams.get("id"));
+    const documentId = parseUuid(payload?.id ?? new URL(request.url).searchParams.get("id"));
     if (!documentId) {
       return NextResponse.json({ error: "Belge kimligi gecersiz." }, { status: 400 });
     }

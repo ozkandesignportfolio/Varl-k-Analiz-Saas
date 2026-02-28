@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { getPlanConfig } from "@/lib/plans/plan-config";
+import { getAuthRedirectUrl } from "@/lib/supabase/auth-redirect";
 import { isEmailNotConfirmedError, isEmailRateLimitError } from "@/lib/supabase/auth-errors";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -52,10 +53,13 @@ export default function RegisterPage() {
     setIsSubmitting(true);
 
     try {
+      const emailRedirectTo = getAuthRedirectUrl("/login?email_verified=1");
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
+          ...(emailRedirectTo ? { emailRedirectTo } : {}),
           data: {
             full_name: fullName,
           },
@@ -81,18 +85,18 @@ export default function RegisterPage() {
 
       if (data.session) {
         setMessage(verificationMessage);
-        router.push("/login?email_verification_required=1");
+        router.push(`/login?email_verification_required=1&email=${encodeURIComponent(email)}`);
         return;
       }
 
       if (data.user) {
         setMessage(verificationMessage);
-        router.push("/login?email_verification_required=1");
+        router.push(`/login?email_verification_required=1&email=${encodeURIComponent(email)}`);
         return;
       }
 
       setMessage("E-postanı doğrula, sonra giriş yap.");
-      router.push("/login?email_verification_required=1");
+      router.push(`/login?email_verification_required=1&email=${encodeURIComponent(email)}`);
     } catch {
       setMessage("Kayıt sırasında beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.");
     } finally {

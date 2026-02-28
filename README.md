@@ -84,6 +84,29 @@ npm run test:stable:trial
 npm run test:stable:premium
 ```
 
+## MVP v1.1 Release Gate (Playwright + RLS)
+Prod build modunda tum release gate testlerini calistirmak icin:
+```bash
+npm run test:e2e
+```
+
+Bu komut sirasiyla sunlari yapar:
+1. `next build` (prod build)
+2. Playwright Chromium kurulumu
+3. `next start` ile uygulamayi ayaga kaldirma
+4. DB seed (`npm run test:seed`)
+5. Playwright E2E release gate akislari
+6. RLS negatif testleri (`npm run test:rls`)
+
+Gerekli env degiskenleri:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+Opsiyonel RLS seed kullanıcı bilgileri:
+- `E2E_RLS_USER_A_EMAIL`, `E2E_RLS_USER_A_PASSWORD`
+- `E2E_RLS_USER_B_EMAIL`, `E2E_RLS_USER_B_PASSWORD`
+
 Raporlar:
 - `testsprite_tests/generated/stable_full_suite_report.trial.json`
 - `testsprite_tests/generated/stable_full_suite_report.premium.json`

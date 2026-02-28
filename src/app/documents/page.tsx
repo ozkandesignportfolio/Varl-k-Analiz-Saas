@@ -31,6 +31,13 @@ type UploadApiResponse = {
   error?: string;
 };
 
+type DeleteApiResponse = {
+  ok?: boolean;
+  id?: string;
+  warning?: string | null;
+  error?: string;
+};
+
 const sizeFormatter = new Intl.NumberFormat("tr-TR");
 const DEFAULT_DOCUMENT_TYPE = "garanti";
 
@@ -51,12 +58,13 @@ type FeedbackTone = "info" | "error" | "success";
 
 export default function DocumentsPage() {
   const supabase = useMemo(() => createClient(), []);
-  const { plan } = usePlanContext();
+  const { plan, refreshPlanState } = usePlanContext();
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [assets, setAssets] = useState<AssetRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [previewingId, setPreviewingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedAssetId, setSelectedAssetId] = useState("");
   const [selectedDocumentType, setSelectedDocumentType] = useState(DEFAULT_DOCUMENT_TYPE);
@@ -75,7 +83,7 @@ export default function DocumentsPage() {
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      setFeedback(userError?.message ?? "Oturum bulunamadı. Lütfen tekrar giriş yapın.");
+      setFeedback(userError?.message ?? "Oturum bulunamadi. Lutfen tekrar giris yapin.");
       setFeedbackTone("error");
       setIsLoading(false);
       return;
@@ -115,7 +123,7 @@ export default function DocumentsPage() {
 
   const onPreview = async (doc: DocumentRow) => {
     if (!canPreview(doc)) {
-      setFeedback("Bu dosya türü için önizleme desteklenmiyor.");
+      setFeedback("Bu dosya turu icin onizleme desteklenmiyor.");
       setFeedbackTone("error");
       return;
     }
@@ -124,7 +132,7 @@ export default function DocumentsPage() {
     const { data, error } = await supabase.storage.from("documents-private").createSignedUrl(doc.storage_path, 60 * 5);
 
     if (error || !data?.signedUrl) {
-      setFeedback(error?.message ?? "önizleme bağlantısı oluşturulamadı.");
+      setFeedback(error?.message ?? "Onizleme baglantisi olusturulamadi.");
       setFeedbackTone("error");
       setPreviewingId(null);
       return;
@@ -163,7 +171,7 @@ export default function DocumentsPage() {
     setFeedbackTone("info");
 
     if (!selectedAssetId) {
-      setFeedback("Belge yüklemek için önce bir varlık seçin.");
+      setFeedback("Belge yuklemek icin once bir varlik secin.");
       setFeedbackTone("error");
       return;
     }
@@ -173,7 +181,7 @@ export default function DocumentsPage() {
     const selectedFile = formData.get("file");
 
     if (!(selectedFile instanceof File) || selectedFile.size <= 0) {
-      setFeedback("Lütfen yüklenecek bir dosya seçin.");
+      setFeedback("Lutfen yuklenecek bir dosya secin.");
       setFeedbackTone("error");
       return;
     }
@@ -191,22 +199,59 @@ export default function DocumentsPage() {
 
       const payload = (await response.json().catch(() => null)) as UploadApiResponse | null;
       if (!response.ok || !payload?.ok) {
-        setFeedback(payload?.error ?? "Belge yüklenemedi.");
+        setFeedback(payload?.error ?? "Belge yuklenemedi.");
         setFeedbackTone("error");
         return;
       }
 
-      setFeedback("Belge yüklendi.");
+      setFeedback("Belge yuklendi.");
       setFeedbackTone("success");
       form.reset();
       setSelectedAssetId("");
       setSelectedDocumentType(DEFAULT_DOCUMENT_TYPE);
       await loadData();
+      await refreshPlanState();
     } catch {
-      setFeedback("Belge yükleme sırasında beklenmeyen bir hata oluştu.");
+      setFeedback("Belge yukleme sirasinda beklenmeyen bir hata olustu.");
       setFeedbackTone("error");
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const onDelete = async (doc: DocumentRow) => {
+    const ok = window.confirm(`"${doc.file_name}" kaydini silmek istiyor musunuz?`);
+    if (!ok) {
+      return;
+    }
+
+    setDeletingId(doc.id);
+    setFeedback("");
+    setFeedbackTone("info");
+
+    try {
+      const response = await fetch("/api/documents", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: doc.id }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as DeleteApiResponse | null;
+      if (!response.ok || !payload?.ok) {
+        setFeedback(payload?.error ?? "Belge silinemedi.");
+        setFeedbackTone("error");
+        return;
+      }
+
+      setFeedback(payload.warning ? `Belge silindi. ${payload.warning}` : "Belge silindi.");
+      setFeedbackTone("success");
+      await loadData();
+      await refreshPlanState();
+    } catch {
+      setFeedback("Belge silinirken beklenmeyen bir hata olustu.");
+      setFeedbackTone("error");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -229,32 +274,30 @@ export default function DocumentsPage() {
 
   const totalSize = useMemo(() => documents.reduce((sum, doc) => sum + Number(doc.file_size ?? 0), 0), [documents]);
   const documentsLimit = planConfig.limits.documentsLimit;
-  const documentUsageText = documentsLimit === null ? `${documents.length}/sınırsız` : `${documents.length}/${documentsLimit}`;
+  const documentUsageText = documentsLimit === null ? `${documents.length}/sinirsiz` : `${documents.length}/${documentsLimit}`;
 
   return (
     <AppShell
-      badge="Belge Kasası"
+      badge="Belge Kasasi"
       title="Belgeler"
-      subtitle="Resmi belge yükleme akışı bu sayfadan ilerler. Belge özeti ve liste gerçek kayıtları gösterir."
+      subtitle="Resmi belge yukleme akisi bu sayfadan ilerler. Belge ozeti ve liste gercek kayitlari gosterir."
     >
       <PanelSurface>
-        <PageHeader title="Belge Kasası" subtitle="Belge yükleme, depolama özetleri ve belge listesi." />
+        <PageHeader title="Belge Kasasi" subtitle="Belge yukleme, depolama ozetleri ve belge listesi." />
 
         {feedback ? <p className={feedbackClassName}>{feedback}</p> : null}
 
         <p className="rounded-xl border border-sky-300/25 bg-sky-300/10 px-4 py-3 text-sm text-sky-100">
-          Paket: {planConfig.label}. Belge limiti kullanımı: {documentUsageText}
+          Paket: {planConfig.label}. Belge limiti kullanimi: {documentUsageText}
         </p>
 
         <section className="premium-card p-5" data-testid="documents-upload-section">
-          <h2 className="text-xl font-semibold text-white">Belge Yükleme</h2>
-          <p className="mt-2 text-sm text-slate-300">
-            Resmi belge yükleme akışı bu ekranda standartlaştırıldı.
-          </p>
+          <h2 className="text-xl font-semibold text-white">Belge Yukleme</h2>
+          <p className="mt-2 text-sm text-slate-300">Resmi belge yukleme akisi bu ekranda standartlastirildi.</p>
 
           <form onSubmit={onUpload} className="mt-4 grid gap-3 md:grid-cols-2" data-testid="documents-upload-form">
             <label className="block">
-              <span className="mb-1.5 block text-sm text-slate-300">Varlık</span>
+              <span className="mb-1.5 block text-sm text-slate-300">Varlik</span>
               <select
                 required
                 value={selectedAssetId}
@@ -264,7 +307,7 @@ export default function DocumentsPage() {
                 data-testid="documents-asset-select"
               >
                 <option value="" disabled className="bg-slate-900">
-                  Varlık seçin
+                  Varlik secin
                 </option>
                 {assets.map((asset) => (
                   <option key={asset.id} value={asset.id} className="bg-slate-900">
@@ -310,28 +353,28 @@ export default function DocumentsPage() {
                 className="rounded-full bg-gradient-to-r from-sky-400 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
                 data-testid="documents-upload-button"
               >
-                {isUploading ? "Yükleniyor..." : "Belge Yükle"}
+                {isUploading ? "Yukleniyor..." : "Belge Yukle"}
               </button>
             </div>
           </form>
 
           {assets.length === 0 ? (
-            <p className="mt-3 text-sm text-amber-200">Belge yüklemek için önce bir varlık oluşturmalısınız.</p>
+            <p className="mt-3 text-sm text-amber-200">Belge yuklemek icin once bir varlik olusturmalisiniz.</p>
           ) : null}
         </section>
 
         <section className="grid gap-3 md:grid-cols-3">
           <SummaryCard label="Toplam Belge" value={String(documents.length)} />
-          <SummaryCard label="Belge Türü" value={String(documentTypeCounts.length)} />
+          <SummaryCard label="Belge Turu" value={String(documentTypeCounts.length)} />
           <SummaryCard label="Toplam Boyut" value={`${sizeFormatter.format(totalSize)} bayt`} />
         </section>
 
         <section className="premium-card p-5" data-testid="documents-list-section">
-          <h2 className="text-xl font-semibold text-white">Belge Türü Dağılımı</h2>
+          <h2 className="text-xl font-semibold text-white">Belge Turu Dagilimi</h2>
           {isLoading ? (
-            <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
+            <p className="mt-4 text-sm text-slate-300">Yukleniyor...</p>
           ) : documentTypeCounts.length === 0 ? (
-            <p className="mt-4 text-sm text-slate-300">Henüz belge kaydı yok.</p>
+            <p className="mt-4 text-sm text-slate-300">Henuz belge kaydi yok.</p>
           ) : (
             <div className="mt-4 space-y-3">
               {documentTypeCounts.map((item) => {
@@ -359,19 +402,19 @@ export default function DocumentsPage() {
         <section className="premium-card p-5">
           <h2 className="text-xl font-semibold text-white">Belge Listesi</h2>
           {isLoading ? (
-            <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
+            <p className="mt-4 text-sm text-slate-300">Yukleniyor...</p>
           ) : documents.length === 0 ? (
-            <p className="mt-4 text-sm text-slate-300">Henüz belge bulunmuyor.</p>
+            <p className="mt-4 text-sm text-slate-300">Henuz belge bulunmuyor.</p>
           ) : (
             <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
               <table className="min-w-full text-left text-sm" data-testid="documents-table">
                 <thead>
                   <tr className="border-b border-white/10 bg-white/5 text-slate-300">
-                    <th className="px-3 py-2">Dosya Adı</th>
-                    <th className="px-3 py-2">Tür</th>
-                    <th className="px-3 py-2">Varlık</th>
+                    <th className="px-3 py-2">Dosya Adi</th>
+                    <th className="px-3 py-2">Tur</th>
+                    <th className="px-3 py-2">Varlik</th>
                     <th className="px-3 py-2">Boyut</th>
-                    <th className="px-3 py-2">Yükleme Tarihi</th>
+                    <th className="px-3 py-2">Yukleme Tarihi</th>
                     <th className="px-3 py-2">Aksiyon</th>
                   </tr>
                 </thead>
@@ -388,18 +431,27 @@ export default function DocumentsPage() {
                           <button
                             type="button"
                             onClick={() => void onPreview(doc)}
-                            disabled={previewingId === doc.id}
+                            disabled={previewingId === doc.id || deletingId === doc.id}
                             className="rounded-full border border-sky-300/35 bg-sky-300/10 px-3 py-1 text-xs font-semibold text-sky-100 transition hover:bg-sky-300/20 disabled:cursor-not-allowed disabled:opacity-70"
                           >
-                            {previewingId === doc.id ? "Hazırlanıyor..." : "Önizle"}
+                            {previewingId === doc.id ? "Hazirlaniyor..." : "Onizle"}
                           </button>
                           <button
                             type="button"
                             onClick={() => void onDownload(doc)}
-                            disabled={downloadingId === doc.id}
+                            disabled={downloadingId === doc.id || deletingId === doc.id}
                             className="rounded-full border border-emerald-300/35 bg-emerald-300/10 px-3 py-1 text-xs font-semibold text-emerald-100 transition hover:bg-emerald-300/20 disabled:cursor-not-allowed disabled:opacity-70"
                           >
-                            {downloadingId === doc.id ? "İndiriliyor..." : "İndir"}
+                            {downloadingId === doc.id ? "Indiriliyor..." : "Indir"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void onDelete(doc)}
+                            disabled={deletingId === doc.id}
+                            className="rounded-full border border-rose-300/35 bg-rose-300/10 px-3 py-1 text-xs font-semibold text-rose-100 transition hover:bg-rose-300/20 disabled:cursor-not-allowed disabled:opacity-70"
+                            data-testid={`documents-delete-${doc.id}`}
+                          >
+                            {deletingId === doc.id ? "Siliniyor..." : "Sil"}
                           </button>
                         </div>
                       </td>

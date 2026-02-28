@@ -16,7 +16,6 @@ import {
 } from "@/features/services/components/service-log-table";
 import { listIdName } from "@/lib/repos/assets-repo";
 import { listForServicesPage as listRulesForServicesPage } from "@/lib/repos/maintenance-rules-repo";
-import { listForServicesPage as listServiceLogsForServicesPage } from "@/lib/repos/service-logs-repo";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type AssetOption = ServiceLogFormAssetOption;
@@ -30,6 +29,15 @@ type RuleOption = {
 };
 
 type ServiceRow = ServiceLogTableRow;
+type ServiceLogsCursor = {
+  createdAt: string;
+  id: string;
+};
+type ServiceLogsPageResponse = {
+  rows: ServiceRow[];
+  nextCursor: ServiceLogsCursor | null;
+  hasMore: boolean;
+};
 
 const serviceTypes = ["Periyodik Bakım", "Arıza Onarım", "Temizlik", "Parça Değişimi", "Diğer"];
 
@@ -47,7 +55,7 @@ export function ServicesPageContainer() {
   const [assets, setAssets] = useState<AssetOption[]>([]);
   const [rules, setRules] = useState<RuleOption[]>([]);
   const [logs, setLogs] = useState<ServiceRow[]>([]);
-  const [logsPage, setLogsPage] = useState(1);
+  const [logsCursor, setLogsCursor] = useState<ServiceLogsCursor | null>(null);
   const [hasMoreLogs, setHasMoreLogs] = useState(false);
   const [isLoadingMoreLogs, setIsLoadingMoreLogs] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -91,36 +99,43 @@ export function ServicesPageContainer() {
 
   const fetchLogs = useCallback(
     async (
-      currentUserId: string,
+      _currentUserId: string,
       options?: {
-        page?: number;
+        append?: boolean;
+        cursor?: ServiceLogsCursor | null;
         assetId?: string;
         startDate?: string;
         endDate?: string;
       },
     ) => {
-      const page = Math.max(1, options?.page ?? 1);
-      const offset = (page - 1) * SERVICES_PAGE_SIZE;
-      const isInitialPage = page === 1;
+      const isAppend = options?.append === true;
 
-      if (isInitialPage) {
+      if (!isAppend) {
         setIsLoading(true);
       } else {
         setIsLoadingMoreLogs(true);
       }
 
-      const { data, error } = await listServiceLogsForServicesPage(supabase, {
-        userId: currentUserId,
-        assetId: options?.assetId,
-        startDate: options?.startDate,
-        endDate: options?.endDate,
-        limit: SERVICES_PAGE_SIZE,
-        offset,
-      });
+      const query = new URLSearchParams();
+      query.set("pageSize", String(SERVICES_PAGE_SIZE));
+      if (options?.assetId) query.set("assetId", options.assetId);
+      if (options?.startDate) query.set("startDate", options.startDate);
+      if (options?.endDate) query.set("endDate", options.endDate);
+      if (options?.cursor?.createdAt) query.set("cursorCreatedAt", options.cursor.createdAt);
+      if (options?.cursor?.id) query.set("cursorId", options.cursor.id);
 
-      if (error) {
-        setFeedback(error.message);
-        if (isInitialPage) {
+      const response = await fetch(`/api/service-logs?${query.toString()}`, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | (ServiceLogsPageResponse & { error?: never })
+        | { error?: string }
+        | null;
+
+      if (!response.ok) {
+        setFeedback(payload?.error ?? "Servis kayitlari yuklenemedi.");
+        if (!isAppend) {
           setIsLoading(false);
         } else {
           setIsLoadingMoreLogs(false);
@@ -128,10 +143,16 @@ export function ServicesPageContainer() {
         return;
       }
 
-      const rows = (data ?? []) as ServiceRow[];
-      setHasMoreLogs(rows.length === SERVICES_PAGE_SIZE);
-      setLogsPage(page);
-      if (isInitialPage) {
+      const pageData: ServiceLogsPageResponse = {
+        rows: payload && "rows" in payload && Array.isArray(payload.rows) ? payload.rows : [],
+        nextCursor:
+          payload && "nextCursor" in payload && payload.nextCursor ? payload.nextCursor : null,
+        hasMore: Boolean(payload && "hasMore" in payload && payload.hasMore),
+      };
+      const rows = (pageData.rows ?? []) as ServiceRow[];
+      setHasMoreLogs(pageData.hasMore);
+      setLogsCursor(pageData.nextCursor);
+      if (!isAppend) {
         setLogs(rows);
         setIsLoading(false);
       } else {
@@ -139,7 +160,7 @@ export function ServicesPageContainer() {
         setIsLoadingMoreLogs(false);
       }
     },
-    [supabase],
+    [],
   );
 
   useEffect(() => {
@@ -263,7 +284,6 @@ export function ServicesPageContainer() {
 
       await Promise.all([
         fetchLogs(userId, {
-          page: 1,
           assetId: filterAssetId || undefined,
           startDate: filterStartDate || undefined,
           endDate: filterEndDate || undefined,
@@ -295,12 +315,11 @@ export function ServicesPageContainer() {
     if (isDateRangeInvalid) {
       setLogs([]);
       setHasMoreLogs(false);
-      setLogsPage(1);
+      setLogsCursor(null);
       return;
     }
 
     void fetchLogs(userId, {
-      page: 1,
       assetId: filterAssetId || undefined,
       startDate: filterStartDate || undefined,
       endDate: filterEndDate || undefined,
@@ -342,12 +361,13 @@ export function ServicesPageContainer() {
   }, []);
 
   const loadMoreLogs = useCallback(async () => {
-    if (!userId || isDateRangeInvalid || !hasMoreLogs || isLoadingMoreLogs) {
+    if (!userId || isDateRangeInvalid || !hasMoreLogs || isLoadingMoreLogs || !logsCursor) {
       return;
     }
 
     await fetchLogs(userId, {
-      page: logsPage + 1,
+      append: true,
+      cursor: logsCursor,
       assetId: filterAssetId || undefined,
       startDate: filterStartDate || undefined,
       endDate: filterEndDate || undefined,
@@ -360,7 +380,7 @@ export function ServicesPageContainer() {
     hasMoreLogs,
     isDateRangeInvalid,
     isLoadingMoreLogs,
-    logsPage,
+    logsCursor,
     userId,
   ]);
 

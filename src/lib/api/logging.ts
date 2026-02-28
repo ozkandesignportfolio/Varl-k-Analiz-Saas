@@ -5,8 +5,24 @@ type ApiErrorLogParams = {
   method: string;
   error: unknown;
   userId?: string | null;
+  requestId?: string | null;
   status?: number;
+  durationMs?: number | null;
+  dbTimeMs?: number | null;
+  openAiTimeMs?: number | null;
   message?: string;
+  meta?: Record<string, unknown>;
+};
+
+type ApiRequestLogParams = {
+  route: string;
+  method: string;
+  status: number;
+  durationMs: number;
+  userId?: string | null;
+  requestId?: string | null;
+  dbTimeMs?: number | null;
+  openAiTimeMs?: number | null;
   meta?: Record<string, unknown>;
 };
 
@@ -56,16 +72,38 @@ const writeStructuredLog = (level: LogLevel, payload: Record<string, unknown>) =
 };
 
 export function logApiError(params: ApiErrorLogParams) {
-  const { error, message, method, meta, route, status, userId } = params;
+  const { error, message, method, meta, route, status, userId, requestId, durationMs, dbTimeMs, openAiTimeMs } =
+    params;
   writeStructuredLog("error", {
     event: "api:error",
     ts: new Date().toISOString(),
+    requestId: requestId ?? null,
     route,
     method,
     userId: userId ?? null,
     status: status ?? 500,
+    duration_ms: durationMs ?? null,
+    db_time_ms: dbTimeMs ?? null,
+    openai_time_ms: openAiTimeMs ?? null,
     summary: message ?? "Unhandled API error",
     error: getErrorPayload(error),
+    meta: meta ?? {},
+  });
+}
+
+export function logApiRequest(params: ApiRequestLogParams) {
+  const { route, method, status, durationMs, userId, requestId, dbTimeMs, openAiTimeMs, meta } = params;
+  writeStructuredLog("info", {
+    event: "api:request",
+    ts: new Date().toISOString(),
+    requestId: requestId ?? null,
+    route,
+    method,
+    userId: userId ?? null,
+    status,
+    duration_ms: Math.max(0, Math.round(durationMs)),
+    db_time_ms: dbTimeMs ?? null,
+    openai_time_ms: openAiTimeMs ?? null,
     meta: meta ?? {},
   });
 }

@@ -55,21 +55,77 @@ type ProfilePlanRow = {
   plan: string | null;
 };
 
+const PROFILE_CREATE_RETRY_GUARD_MS = 60_000;
+const profileCreateAttemptByUser = new Map<string, number>();
+
 const fetchProfilePlan = async (client: DbClient, userId: string) =>
   (client.from("profiles").select("plan").eq("id", userId).maybeSingle() as unknown as Promise<{
     data: ProfilePlanRow | null;
-    error: { message: string } | null;
+    error: { message: string; code?: string | null } | null;
   }>);
 
 const createDefaultProfile = async (client: DbClient, userId: string) => {
   const profilesTable = client.from("profiles") as unknown as {
-    upsert: (
-      values: { id: string; plan: ProfilePlan },
-      options?: { onConflict?: string; ignoreDuplicates?: boolean },
-    ) => Promise<{ error: { message: string } | null }>;
+    insert: (values: { id: string; plan: ProfilePlan }) => Promise<{ error: { message: string; code?: string | null } | null }>;
   };
 
-  return profilesTable.upsert({ id: userId, plan: "free" }, { onConflict: "id", ignoreDuplicates: true });
+  return profilesTable.insert({ id: userId, plan: "free" });
+};
+
+const isDuplicateProfileError = (error: { message: string; code?: string | null } | null) =>
+  Boolean(error && (error.code === "23505" || /duplicate key/i.test(error.message)));
+
+const shouldAttemptProfileCreate = (userId: string) => {
+  const now = Date.now();
+  const lastAttemptAt = profileCreateAttemptByUser.get(userId);
+
+  if (typeof lastAttemptAt === "number" && now - lastAttemptAt < PROFILE_CREATE_RETRY_GUARD_MS) {
+    return false;
+  }
+
+  profileCreateAttemptByUser.set(userId, now);
+  return true;
+};
+
+const normalizePlanToken = (rawValue: unknown): ProfilePlan | null => {
+  if (typeof rawValue !== "string") {
+    return null;
+  }
+
+  const normalized = rawValue.trim().toLowerCase();
+
+  if (normalized === "premium" || normalized === "pro") {
+    return "premium";
+  }
+
+  if (normalized === "free" || normalized === "starter") {
+    return "free";
+  }
+
+  return null;
+};
+
+export const getProfilePlanFromUserMetadata = (
+  user: Pick<User, "app_metadata" | "user_metadata"> | null | undefined,
+): ProfilePlan | null => {
+  const metadataSources = [user?.app_metadata ?? null, user?.user_metadata ?? null];
+  const metadataKeys = ["plan", "tier", "subscription_plan", "subscriptionPlan", "plan_code", "planCode"] as const;
+
+  for (const source of metadataSources) {
+    if (!source || typeof source !== "object") {
+      continue;
+    }
+
+    for (const key of metadataKeys) {
+      const value = (source as Record<string, unknown>)[key];
+      const planFromToken = normalizePlanToken(value);
+      if (planFromToken) {
+        return planFromToken;
+      }
+    }
+  }
+
+  return null;
 };
 
 export async function getProfilePlan(
@@ -95,7 +151,7 @@ export async function createProfileIfMissing(
 ): Promise<{ error: string | null }> {
   const insertedProfile = await createDefaultProfile(client, userId);
 
-  if (insertedProfile.error) {
+  if (insertedProfile.error && !isDuplicateProfileError(insertedProfile.error)) {
     return { error: insertedProfile.error.message };
   }
 
@@ -106,29 +162,46 @@ export async function getOrCreateProfilePlan(
   client: DbClient,
   userId: string,
 ): Promise<{ plan: ProfilePlan; error: string | null }> {
-  const ensuredProfile = await ensureProfile(client, userId);
-  if (ensuredProfile.error) {
-    return { plan: "free", error: ensuredProfile.error };
+  const profile = await getProfilePlan(client, userId);
+  if (profile.error) {
+    return { plan: "free", error: profile.error };
   }
 
-  return { plan: ensuredProfile.plan, error: null };
+  return { plan: profile.plan ?? "free", error: null };
 }
 
 export async function ensureProfile(
   client: DbClient,
   userId: string,
 ): Promise<{ plan: ProfilePlan; error: string | null }> {
-  const insertResult = await createDefaultProfile(client, userId);
+  const initialProfile = await getProfilePlan(client, userId);
+  if (initialProfile.error) {
+    return { plan: "free", error: `profiles read error: ${initialProfile.error}` };
+  }
+
+  if (initialProfile.plan) {
+    return { plan: initialProfile.plan, error: null };
+  }
+
+  if (!shouldAttemptProfileCreate(userId)) {
+    return { plan: "free", error: null };
+  }
+
+  const insertResult = await createProfileIfMissing(client, userId);
   if (insertResult.error) {
-    return { plan: "free", error: `profiles upsert error: ${insertResult.error.message}` };
+    return { plan: "free", error: `profiles insert error: ${insertResult.error}` };
   }
 
-  const profile = await fetchProfilePlan(client, userId);
+  const profile = await getProfilePlan(client, userId);
   if (profile.error) {
-    return { plan: "free", error: `profiles read error: ${profile.error.message}` };
+    return { plan: "free", error: `profiles read-after-insert error: ${profile.error}` };
   }
 
-  return { plan: normalizeProfilePlan(profile.data?.plan), error: null };
+  if (!profile.plan) {
+    return { plan: "free", error: null };
+  }
+
+  return { plan: profile.plan, error: null };
 }
 
 export const applyProfilePlanToUserMetadata = (

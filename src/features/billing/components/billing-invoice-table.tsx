@@ -21,6 +21,8 @@ type BillingInvoiceTableProps = {
   invoices: BillingInvoiceTableRow[];
   subscriptionLabelById: Map<string, string>;
   formatCurrency: (value: number) => string;
+  deletingInvoiceId?: string | null;
+  onDeleteInvoice?: (invoice: BillingInvoiceTableRow) => void;
   emptyState?: ReactNode;
 };
 
@@ -37,6 +39,8 @@ export function BillingInvoiceTable({
   invoices,
   subscriptionLabelById,
   formatCurrency,
+  deletingInvoiceId,
+  onDeleteInvoice,
   emptyState,
 }: BillingInvoiceTableProps) {
   return (
@@ -57,6 +61,7 @@ export function BillingInvoiceTable({
                 <th className="px-3 py-2">Abonelik</th>
                 <th className="px-3 py-2">Toplam</th>
                 <th className="px-3 py-2">Durum</th>
+                <th className="px-3 py-2">Aksiyon</th>
               </tr>
             </thead>
             <tbody>
@@ -69,6 +74,18 @@ export function BillingInvoiceTable({
                   <td className="px-3 py-3">{formatCurrency(Number(invoice.total_amount ?? 0))}</td>
                   <td className="px-3 py-3">
                     <InvoiceStatusBadge status={invoice.status} />
+                  </td>
+                  <td className="px-3 py-3">
+                    {onDeleteInvoice ? (
+                      <button
+                        type="button"
+                        onClick={() => onDeleteInvoice(invoice)}
+                        disabled={deletingInvoiceId === invoice.id}
+                        className="rounded-full border border-rose-300/35 bg-rose-300/10 px-2.5 py-1 text-xs font-semibold text-rose-100 transition hover:bg-rose-300/20 disabled:cursor-not-allowed disabled:opacity-70"
+                      >
+                        {deletingInvoiceId === invoice.id ? "Siliniyor..." : "Sil"}
+                      </button>
+                    ) : null}
                   </td>
                 </tr>
               ))}

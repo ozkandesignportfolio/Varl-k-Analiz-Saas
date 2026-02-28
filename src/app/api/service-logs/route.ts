@@ -11,11 +11,13 @@ import {
 import {
   create as createServiceLog,
   getById as getServiceLogById,
+  listServices,
   listLatestServiceDatesByRules,
   updateById as updateServiceLogById,
   type UpdateServiceLogByIdParams,
 } from "@/lib/repos/service-logs-repo";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
+import { dateRange, optionalText, paginationSchema, parseDateOnly, uuid } from "@/lib/validation";
 
 type CreateServiceLogPayload = {
   assetId?: unknown;
@@ -38,8 +40,6 @@ type UpdateServiceLogPayload = {
   notes?: unknown;
 };
 
-const datePattern = /^\d{4}-\d{2}-\d{2}$/;
-const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MAX_SERVICE_TYPE_LENGTH = 120;
 const MAX_PROVIDER_LENGTH = 120;
 const MAX_NOTES_LENGTH = 4000;
@@ -50,61 +50,79 @@ const readBody = async (request: Request) =>
 const readUpdateBody = async (request: Request) =>
   (await request.json().catch(() => null)) as UpdateServiceLogPayload | null;
 
-const parseDateOnly = (value: string): string | null => {
-  const trimmed = value.trim();
-  if (!datePattern.test(trimmed)) {
-    return null;
+const parseUuid = uuid();
+const parseProviderText = optionalText(MAX_PROVIDER_LENGTH);
+const parseNotesText = optionalText(MAX_NOTES_LENGTH);
+const parseServiceLogsPagination = paginationSchema(
+  (params) => {
+    const cursorCreatedAt = params.get("cursorCreatedAt");
+    const cursorIdRaw = params.get("cursorId");
+    const cursorId = cursorIdRaw ? parseUuid(cursorIdRaw) : null;
+    const cursorTimestamp =
+      cursorCreatedAt && !Number.isNaN(new Date(cursorCreatedAt).getTime()) ? cursorCreatedAt : null;
+
+    return cursorTimestamp && cursorId ? { createdAt: cursorTimestamp, id: cursorId } : null;
+  },
+  { fallback: 50, max: 100 },
+);
+const parseLogsDateRange = dateRange();
+
+export async function GET(request: Request) {
+  let userId: string | null = null;
+  try {
+    const auth = await requireRouteUser(request);
+    if ("response" in auth) {
+      return auth.response;
+    }
+    userId = auth.user.id;
+
+    const params = new URL(request.url).searchParams;
+    const { pageSize, cursor } = parseServiceLogsPagination(params);
+    const assetIdRaw = params.get("assetId");
+    const startDateRaw = params.get("startDate");
+    const endDateRaw = params.get("endDate");
+
+    const assetId = assetIdRaw ? parseUuid(assetIdRaw) : null;
+    if (assetIdRaw && !assetId) {
+      return NextResponse.json({ error: "Varlik filtresi gecersiz." }, { status: 400 });
+    }
+
+    const parsedDateRange = parseLogsDateRange(startDateRaw, endDateRaw);
+    if (parsedDateRange.invalidStart) {
+      return NextResponse.json({ error: "Baslangic tarihi gecersiz." }, { status: 400 });
+    }
+
+    if (parsedDateRange.invalidEnd) {
+      return NextResponse.json({ error: "Bitis tarihi gecersiz." }, { status: 400 });
+    }
+
+    const { data, error } = await listServices(auth.supabase, {
+      userId: auth.user.id,
+      pageSize,
+      cursor,
+      filters: {
+        assetId: assetId ?? undefined,
+        startDate: parsedDateRange.startDate ?? undefined,
+        endDate: parsedDateRange.endDate ?? undefined,
+      },
+    });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    return NextResponse.json(data ?? { rows: [], nextCursor: null, hasMore: false }, { status: 200 });
+  } catch (error) {
+    logApiError({
+      route: "/api/service-logs",
+      method: "GET",
+      userId,
+      error,
+      message: "Service logs list request failed unexpectedly",
+    });
+    return NextResponse.json({ error: "Servis kayitlari listelenemedi." }, { status: 500 });
   }
-
-  const [yearRaw, monthRaw, dayRaw] = trimmed.split("-");
-  const year = Number(yearRaw);
-  const month = Number(monthRaw);
-  const day = Number(dayRaw);
-  const parsed = new Date(Date.UTC(year, month - 1, day));
-
-  if (
-    Number.isNaN(parsed.getTime()) ||
-    parsed.getUTCFullYear() !== year ||
-    parsed.getUTCMonth() !== month - 1 ||
-    parsed.getUTCDate() !== day
-  ) {
-    return null;
-  }
-
-  return trimmed;
-};
-
-const normalizeUuid = (value: unknown) => {
-  const normalized = String(value ?? "").trim().toLowerCase();
-  if (!uuidPattern.test(normalized)) {
-    return null;
-  }
-  return normalized;
-};
-
-const readOptionalText = (
-  value: unknown,
-  maxLength: number,
-): { value: string | null; invalidType?: boolean; tooLong?: boolean } => {
-  if (value === null || value === undefined) {
-    return { value: null };
-  }
-
-  if (typeof value !== "string") {
-    return { value: null, invalidType: true };
-  }
-
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return { value: null };
-  }
-
-  if (trimmed.length > maxLength) {
-    return { value: null, tooLong: true };
-  }
-
-  return { value: trimmed };
-};
+}
 
 const syncRuleSchedulesFromLatestLogs = async (params: {
   userId: string;
@@ -214,14 +232,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Geçersiz istek gövdesi." }, { status: 400 });
     }
 
-    const assetId = normalizeUuid(payload.assetId);
+    const assetId = parseUuid(payload.assetId);
     const rawRuleId = String(payload.ruleId ?? "").trim();
-    const ruleId = rawRuleId ? normalizeUuid(rawRuleId) : null;
+    const ruleId = rawRuleId ? parseUuid(rawRuleId) : null;
     const serviceType = String(payload.serviceType ?? "").trim();
     const serviceDate = String(payload.serviceDate ?? "").trim();
     const cost = Number(payload.cost ?? 0);
-    const providerResult = readOptionalText(payload.provider, MAX_PROVIDER_LENGTH);
-    const notesResult = readOptionalText(payload.notes, MAX_NOTES_LENGTH);
+    const providerResult = parseProviderText(payload.provider);
+    const notesResult = parseNotesText(payload.notes);
 
     if (!assetId || !serviceType || !serviceDate) {
       return NextResponse.json(
@@ -360,7 +378,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Geçersiz istek gövdesi." }, { status: 400 });
     }
 
-    const serviceLogId = normalizeUuid(payload.id);
+    const serviceLogId = parseUuid(payload.id);
     if (!serviceLogId) {
       return NextResponse.json({ error: "Servis kaydı kimliği zorunludur." }, { status: 400 });
     }
@@ -397,7 +415,7 @@ export async function PATCH(request: Request) {
     const patch: UpdateServiceLogByIdParams["patch"] = {};
 
     if (hasAssetId) {
-      const nextAssetId = normalizeUuid(payload.assetId);
+      const nextAssetId = parseUuid(payload.assetId);
       if (!nextAssetId) {
         return NextResponse.json({ error: "Varlık seçimi zorunludur." }, { status: 400 });
       }
@@ -421,7 +439,7 @@ export async function PATCH(request: Request) {
     if (hasRuleId) {
       const rawRuleId = String(payload.ruleId ?? "").trim();
       if (rawRuleId) {
-        const nextRuleId = normalizeUuid(rawRuleId);
+        const nextRuleId = parseUuid(rawRuleId);
         if (!nextRuleId) {
           return NextResponse.json({ error: "Bakım kuralı kimliği geçersiz." }, { status: 400 });
         }
@@ -459,7 +477,7 @@ export async function PATCH(request: Request) {
     }
 
     if (hasProvider) {
-      const nextProvider = readOptionalText(payload.provider, MAX_PROVIDER_LENGTH);
+      const nextProvider = parseProviderText(payload.provider);
       if (nextProvider.invalidType) {
         return NextResponse.json({ error: "Sağlayıcı alanı geçersiz." }, { status: 400 });
       }
@@ -470,7 +488,7 @@ export async function PATCH(request: Request) {
     }
 
     if (hasNotes) {
-      const nextNotes = readOptionalText(payload.notes, MAX_NOTES_LENGTH);
+      const nextNotes = parseNotesText(payload.notes);
       if (nextNotes.invalidType) {
         return NextResponse.json({ error: "Not alanı geçersiz." }, { status: 400 });
       }
@@ -554,6 +572,3 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Servis kaydı güncelleme isteği işlenemedi." }, { status: 500 });
   }
 }
-
-
-

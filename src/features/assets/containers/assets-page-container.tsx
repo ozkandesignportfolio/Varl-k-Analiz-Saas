@@ -20,9 +20,7 @@ import type {
   AssetSortMode,
   AssetViewMode,
   MaintenanceFilterMode,
-  MaintenanceState,
   WarrantyFilterMode,
-  WarrantyState,
 } from "@/features/assets/components/assets-view-types";
 import {
   ASSET_MEDIA_BUCKET,
@@ -34,6 +32,13 @@ import {
   validateAssetMediaFile,
   type AssetMediaType,
 } from "@/lib/assets/media-limits";
+import {
+  countByUser as countAssetsByUser,
+  listCategories as listAssetCategories,
+  type AssetsCursor,
+  type ListAssetsRow,
+} from "@/lib/repos/assets-repo";
+import { listAssetActivityPreview } from "@/lib/repos/service-logs-repo";
 import { parseAssetQrPayload } from "@/lib/assets/qr-payload";
 import { canPlanUsePremiumMedia } from "@/lib/plans/premium-media";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -53,24 +58,6 @@ type AssetRow = {
   updated_at: string;
 };
 
-type ServiceLogSummaryRow = {
-  id: string;
-  asset_id: string;
-  service_type: string;
-  service_date: string;
-  cost: number | null;
-};
-
-type MaintenanceRuleSummaryRow = {
-  asset_id: string;
-  next_due_date: string;
-  is_active: boolean;
-};
-
-type DocumentSummaryRow = {
-  asset_id: string;
-};
-
 type AssetMediaListRow = {
   asset_id: string;
   type: string;
@@ -82,6 +69,11 @@ type AssetMediaDraft = {
   video: File | null;
   audio: File | null;
 };
+type ListAssetsPageResponse = {
+  rows: ListAssetsRow[];
+  nextCursor: AssetsCursor | null;
+  hasMore: boolean;
+};
 
 const LEGACY_PHOTO_BUCKET = "documents-private";
 const THUMBNAIL_BUCKET_FALLBACK_ORDER = [ASSET_MEDIA_BUCKET, LEGACY_PHOTO_BUCKET] as const;
@@ -90,56 +82,7 @@ const categoryOptions = ["Beyaz Eşya", "Isıtma", "Soğutma", "Elektronik", "Mu
 const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
 const EMPTY_MEDIA_DRAFT: AssetMediaDraft = { images: [], video: null, audio: null };
-const MS_IN_DAY = 1000 * 60 * 60 * 24;
-
-const getDayStart = (value: string | null) => {
-  if (!value) return null;
-  const parsed = new Date(value.includes("T") ? value : `${value}T00:00:00`);
-  if (Number.isNaN(parsed.getTime())) return null;
-  parsed.setHours(0, 0, 0, 0);
-  return parsed;
-};
-
-const getDateDistanceInDays = (target: string | null) => {
-  const targetStart = getDayStart(target);
-  if (!targetStart) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return Math.round((targetStart.getTime() - today.getTime()) / MS_IN_DAY);
-};
-
-const resolveWarrantyState = (warrantyEndDate: string | null): WarrantyState => {
-  const distance = getDateDistanceInDays(warrantyEndDate);
-  if (distance === null) return "active";
-  if (distance < 0) return "expired";
-  if (distance <= 45) return "expiring";
-  return "active";
-};
-
-const resolveMaintenanceState = (nextMaintenanceDate: string | null): MaintenanceState => {
-  const distance = getDateDistanceInDays(nextMaintenanceDate);
-  if (distance === null) return "none";
-  if (distance < 0) return "overdue";
-  if (distance <= 14) return "upcoming";
-  return "scheduled";
-};
-
-const resolveAssetState = (maintenanceState: MaintenanceState) =>
-  maintenanceState === "overdue" ? "passive" : "active";
-
-const calculateHealthScore = (
-  warrantyState: WarrantyState,
-  maintenanceState: MaintenanceState,
-  documentCount: number,
-) => {
-  let score = 100;
-  if (warrantyState === "expired") score -= 35;
-  if (warrantyState === "expiring") score -= 15;
-  if (maintenanceState === "overdue") score -= 35;
-  if (maintenanceState === "upcoming") score -= 15;
-  if (documentCount === 0) score -= 10;
-  return Math.max(0, Math.min(100, score));
-};
+const ASSETS_PAGE_SIZE = 30;
 
 const toOptionalString = (value: FormDataEntryValue | null) => {
   const text = String(value ?? "").trim();
@@ -173,11 +116,16 @@ export function AssetsPageContainer() {
   const { plan, assetLimit, setAssetCount } = usePlanContext();
   const isPremiumMediaEnabled = canPlanUsePremiumMedia(plan);
 
-  const [assets, setAssets] = useState<AssetRow[]>([]);
+  const [assets, setAssets] = useState<ListAssetsRow[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [totalAssetCount, setTotalAssetCount] = useState(0);
+  const [assetsCursor, setAssetsCursor] = useState<AssetsCursor | null>(null);
+  const [hasMoreAssets, setHasMoreAssets] = useState(false);
+  const [isLoadingMoreAssets, setIsLoadingMoreAssets] = useState(false);
   const [thumbnailUrls, setThumbnailUrls] = useState<Record<string, string>>({});
-  const [maintenanceDateByAsset, setMaintenanceDateByAsset] = useState<Record<string, string | null>>({});
-  const [documentCountByAsset, setDocumentCountByAsset] = useState<Record<string, number>>({});
-  const [serviceLogsByAsset, setServiceLogsByAsset] = useState<Record<string, AssetActivityItem[]>>({});
+  const [serviceActivityPreviewByAsset, setServiceActivityPreviewByAsset] = useState<
+    Record<string, AssetActivityItem[]>
+  >({});
   const [userId, setUserId] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -204,6 +152,18 @@ export function AssetsPageContainer() {
   const [viewMode, setViewMode] = useState<AssetViewMode>("table");
   const [selectedPreviewAssetId, setSelectedPreviewAssetId] = useState<string | null>(null);
   const [qrPreviewAssetId, setQrPreviewAssetId] = useState<string | null>(null);
+
+  const listQueryOptions = useMemo(
+    () => ({
+      search: searchTerm.trim() ? searchTerm : undefined,
+      category: categoryFilter === "all" ? undefined : categoryFilter,
+      sort: sortMode,
+      assetFilter: assetFilter === "all" ? undefined : assetFilter,
+      warrantyFilter: warrantyFilter === "all" ? undefined : warrantyFilter,
+      maintenanceFilter: maintenanceFilter === "all" ? undefined : maintenanceFilter,
+    }),
+    [assetFilter, categoryFilter, maintenanceFilter, searchTerm, sortMode, warrantyFilter],
+  );
 
   const validateMediaDraft = useCallback((draft: AssetMediaDraft) => {
     if (draft.images.length > ASSET_MEDIA_LIMITS.image.maxFiles) {
@@ -232,169 +192,87 @@ export function AssetsPageContainer() {
     return null;
   }, []);
 
-  const fetchAssets = useCallback(
+  const refreshAssetCount = useCallback(
     async (currentUserId: string) => {
-      const { data, error } = await supabase
-        .from("assets")
-        .select(
-          "id,name,category,serial_number,brand,model,purchase_date,warranty_end_date,photo_path,qr_code,created_at,updated_at",
-        )
-        .eq("user_id", currentUserId)
-        .order("updated_at", { ascending: false });
-
-      if (error && isMissingQrCodeError(error.message)) {
-        const fallbackRes = await supabase
-          .from("assets")
-          .select("id,name,category,serial_number,brand,model,purchase_date,warranty_end_date,photo_path,created_at,updated_at")
-          .eq("user_id", currentUserId)
-          .order("updated_at", { ascending: false });
-
-        if (fallbackRes.error) {
-          setFeedback(fallbackRes.error.message);
-          return;
-        }
-
-        setAssets(
-          ((fallbackRes.data ?? []) as Omit<AssetRow, "qr_code">[]).map((item) => ({
-            ...item,
-            qr_code: null,
-          })),
-        );
+      const { data, error } = await countAssetsByUser(supabase, { userId: currentUserId });
+      if (error) {
+        setFeedback(error.message);
         return;
       }
+      const count = data ?? 0;
+      setTotalAssetCount(count);
+      setAssetCount(count);
+    },
+    [setAssetCount, supabase],
+  );
+
+  const fetchCategoryOptions = useCallback(
+    async (currentUserId: string) => {
+      const { data, error } = await listAssetCategories(supabase, { userId: currentUserId });
+      if (error) {
+        setFeedback(error.message);
+        return;
+      }
+      setCategories(data ?? []);
+    },
+    [supabase],
+  );
+
+  const fetchAssetActivityPreview = useCallback(
+    async (currentUserId: string, assetRows: ListAssetsRow[], options?: { append?: boolean }) => {
+      const append = options?.append === true;
+      if (assetRows.length === 0) {
+        if (!append) setServiceActivityPreviewByAsset({});
+        return;
+      }
+
+      const assetIds = assetRows.map((asset) => asset.id);
+      const { data, error } = await listAssetActivityPreview(supabase, {
+        userId: currentUserId,
+        assetIds,
+        perAssetLimit: 3,
+      });
 
       if (error) {
         setFeedback(error.message);
         return;
       }
 
-      setAssets((data ?? []) as AssetRow[]);
+      const grouped = new Map<string, AssetActivityItem[]>();
+      for (const row of data ?? []) {
+        const list = grouped.get(row.asset_id) ?? [];
+        list.push({
+          id: row.id,
+          serviceType: row.service_type,
+          serviceDate: row.service_date,
+          cost: Number(row.cost ?? 0),
+        });
+        grouped.set(row.asset_id, list);
+      }
+
+      const nextMap: Record<string, AssetActivityItem[]> = {};
+      for (const [key, value] of grouped.entries()) {
+        nextMap[key] = value;
+      }
+
+      setServiceActivityPreviewByAsset((prev) => (append ? { ...prev, ...nextMap } : nextMap));
     },
     [supabase],
   );
 
-  const fetchAssetMetrics = useCallback(
-    async (currentUserId: string, assetRows: AssetRow[]) => {
+  const loadThumbnailsForAssets = useCallback(
+    async (currentUserId: string, assetRows: ListAssetsRow[], options?: { append?: boolean }) => {
+      const append = options?.append === true;
       if (assetRows.length === 0) {
-        setMaintenanceDateByAsset({});
-        setDocumentCountByAsset({});
-        setServiceLogsByAsset({});
+        if (!append) setThumbnailUrls({});
         return;
       }
 
       const assetIds = assetRows.map((asset) => asset.id);
-
-      const [serviceRes, documentRes, maintenanceRes] = await Promise.all([
-        supabase
-          .from("service_logs")
-          .select("id,asset_id,service_type,service_date,cost")
-          .eq("user_id", currentUserId)
-          .in("asset_id", assetIds)
-          .order("service_date", { ascending: false }),
-        supabase
-          .from("documents")
-          .select("asset_id")
-          .eq("user_id", currentUserId)
-          .in("asset_id", assetIds),
-        supabase
-          .from("maintenance_rules")
-          .select("asset_id,next_due_date,is_active")
-          .eq("user_id", currentUserId)
-          .eq("is_active", true)
-          .in("asset_id", assetIds)
-          .order("next_due_date", { ascending: true }),
-      ]);
-
-      if (serviceRes.error) {
-        setFeedback(serviceRes.error.message);
-      } else {
-        const grouped = new Map<string, AssetActivityItem[]>();
-        for (const row of (serviceRes.data ?? []) as ServiceLogSummaryRow[]) {
-          const list = grouped.get(row.asset_id) ?? [];
-          list.push({
-            id: row.id,
-            serviceType: row.service_type,
-            serviceDate: row.service_date,
-            cost: Number(row.cost ?? 0),
-          });
-          grouped.set(row.asset_id, list);
-        }
-
-        const nextMap: Record<string, AssetActivityItem[]> = {};
-        for (const [key, value] of grouped.entries()) {
-          nextMap[key] = value;
-        }
-        setServiceLogsByAsset(nextMap);
-      }
-
-      if (documentRes.error) {
-        setFeedback(documentRes.error.message);
-      } else {
-        const counts: Record<string, number> = {};
-        for (const row of (documentRes.data ?? []) as DocumentSummaryRow[]) {
-          counts[row.asset_id] = (counts[row.asset_id] ?? 0) + 1;
-        }
-        setDocumentCountByAsset(counts);
-      }
-
-      if (maintenanceRes.error) {
-        setFeedback(maintenanceRes.error.message);
-      } else {
-        const dueMap: Record<string, string | null> = {};
-        for (const row of (maintenanceRes.data ?? []) as MaintenanceRuleSummaryRow[]) {
-          if (!row.is_active) continue;
-          if (!dueMap[row.asset_id]) dueMap[row.asset_id] = row.next_due_date;
-        }
-        setMaintenanceDateByAsset(dueMap);
-      }
-    },
-    [supabase],
-  );
-
-  useEffect(() => {
-    const load = async () => {
-      setIsLoading(true);
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        setHasValidSession(false);
-        router.replace("/login");
-        setIsLoading(false);
-        return;
-      }
-
-      setHasValidSession(true);
-      setUserId(user.id);
-      await fetchAssets(user.id);
-      setIsLoading(false);
-    };
-
-    void load();
-  }, [fetchAssets, router, supabase]);
-
-  useEffect(() => {
-    if (!userId) return;
-    void fetchAssetMetrics(userId, assets);
-  }, [assets, fetchAssetMetrics, userId]);
-
-  useEffect(() => {
-    setAssetCount(assets.length);
-  }, [assets.length, setAssetCount]);
-
-  useEffect(() => {
-    const loadThumbnails = async () => {
-      if (!userId || assets.length === 0) {
-        setThumbnailUrls({});
-        return;
-      }
-
-      const assetIds = assets.map((asset) => asset.id);
       const { data: mediaRows, error: mediaError } = await supabase
         .from("asset_media")
         .select("asset_id,type,storage_path")
-        .eq("user_id", userId)
+        .eq("user_id", currentUserId)
         .eq("type", "image")
         .in("asset_id", assetIds);
 
@@ -427,7 +305,7 @@ export function AssetsPageContainer() {
         }
       }
 
-      for (const asset of assets) {
+      for (const asset of assetRows) {
         if (!thumbnailSource.has(asset.id) && asset.photo_path) {
           thumbnailSource.set(asset.id, { path: asset.photo_path });
         }
@@ -446,11 +324,126 @@ export function AssetsPageContainer() {
         if (!entry) continue;
         nextUrls[entry[0]] = entry[1];
       }
-      setThumbnailUrls(nextUrls);
+
+      setThumbnailUrls((prev) => (append ? { ...prev, ...nextUrls } : nextUrls));
+    },
+    [supabase],
+  );
+
+  const fetchAssetsPage = useCallback(
+    async (
+      currentUserId: string,
+      options?: {
+        append?: boolean;
+        cursor?: AssetsCursor | null;
+        search?: string;
+        category?: string;
+        sort?: AssetSortMode;
+        assetFilter?: AssetFilterMode;
+        warrantyFilter?: WarrantyFilterMode;
+        maintenanceFilter?: MaintenanceFilterMode;
+      },
+    ) => {
+      const append = options?.append === true;
+
+      if (append) {
+        setIsLoadingMoreAssets(true);
+      } else {
+        setIsLoading(true);
+      }
+
+      const query = new URLSearchParams();
+      query.set("pageSize", String(ASSETS_PAGE_SIZE));
+      query.set("sort", options?.sort ?? "updated");
+      if (options?.search) query.set("search", options.search);
+      if (options?.category) query.set("category", options.category);
+      if (options?.assetFilter) query.set("assetFilter", options.assetFilter);
+      if (options?.warrantyFilter) query.set("warrantyFilter", options.warrantyFilter);
+      if (options?.maintenanceFilter) query.set("maintenanceFilter", options.maintenanceFilter);
+      if (options?.cursor?.value) query.set("cursorValue", options.cursor.value);
+      if (options?.cursor?.id) query.set("cursorId", options.cursor.id);
+      if (options?.cursor?.sort) query.set("cursorSort", options.cursor.sort);
+
+      const response = await fetch(`/api/assets?${query.toString()}`, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | (ListAssetsPageResponse & { error?: never })
+        | { error?: string }
+        | null;
+      const errorMessage = response.ok ? null : (payload?.error ?? "Varliklar yuklenemedi.");
+
+      if (errorMessage && isMissingQrCodeError(errorMessage)) {
+        setFeedback("Veritabani surumu guncellemesi gerekiyor: qr_code kolonu eksik.");
+        if (append) {
+          setIsLoadingMoreAssets(false);
+        } else {
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      if (errorMessage) {
+        setFeedback(errorMessage);
+        if (append) {
+          setIsLoadingMoreAssets(false);
+        } else {
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      const pageData: ListAssetsPageResponse =
+        payload && "rows" in payload
+          ? {
+              rows: payload.rows ?? [],
+              nextCursor: payload.nextCursor ?? null,
+              hasMore: payload.hasMore ?? false,
+            }
+          : { rows: [], nextCursor: null, hasMore: false };
+      const rows = (pageData.rows ?? []) as ListAssetsRow[];
+
+      setHasMoreAssets(pageData.hasMore);
+      setAssetsCursor(pageData.nextCursor);
+
+      await Promise.all([
+        fetchAssetActivityPreview(currentUserId, rows, { append }),
+        loadThumbnailsForAssets(currentUserId, rows, { append }),
+      ]);
+
+      if (append) {
+        setAssets((prev) => [...prev, ...rows]);
+        setIsLoadingMoreAssets(false);
+      } else {
+        setAssets(rows);
+        setIsLoading(false);
+      }
+    },
+    [fetchAssetActivityPreview, loadThumbnailsForAssets],
+  );
+
+  useEffect(() => {
+    const load = async () => {
+      setIsLoading(true);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        setHasValidSession(false);
+        router.replace("/login");
+        setIsLoading(false);
+        return;
+      }
+
+      setHasValidSession(true);
+      setUserId(user.id);
+      await Promise.all([refreshAssetCount(user.id), fetchCategoryOptions(user.id)]);
     };
 
-    void loadThumbnails();
-  }, [assets, supabase, userId]);
+    void load();
+  }, [fetchCategoryOptions, refreshAssetCount, router, supabase]);
 
   const uploadAssetMedia = useCallback(
     async (assetId: string, draft: AssetMediaDraft) => {
@@ -543,7 +536,7 @@ export function AssetsPageContainer() {
 
       if (!createResponse.ok || !createPayload?.id) {
         const trialAssetLimit = assetLimit ?? 3;
-        if (createResponse.status === 403 && plan !== "premium" && trialAssetLimit <= assets.length) {
+        if (createResponse.status === 403 && plan !== "premium" && trialAssetLimit <= totalAssetCount) {
           setIsQuotaModalOpen(true);
         }
         setFeedback(createPayload?.error ?? "Varlık kaydı oluşturulamadı.");
@@ -562,7 +555,15 @@ export function AssetsPageContainer() {
 
       form.reset();
       resetCreateForm();
-      await fetchAssets(userId);
+      await Promise.all([
+        refreshAssetCount(userId),
+        fetchCategoryOptions(userId),
+        fetchAssetsPage(userId, {
+          append: false,
+          cursor: null,
+          ...listQueryOptions,
+        }),
+      ]);
       setAuditRefreshKey((prev) => prev + 1);
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Varlık kaydı oluşturulamadı.");
@@ -679,7 +680,15 @@ export function AssetsPageContainer() {
       setEditingAsset(null);
       setEditMediaDraft(EMPTY_MEDIA_DRAFT);
       setEditMediaErrorMessage("");
-      await fetchAssets(userId);
+      await Promise.all([
+        refreshAssetCount(userId),
+        fetchCategoryOptions(userId),
+        fetchAssetsPage(userId, {
+          append: false,
+          cursor: null,
+          ...listQueryOptions,
+        }),
+      ]);
       setAuditRefreshKey((prev) => prev + 1);
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Varlık güncellenemedi.");
@@ -726,6 +735,17 @@ export function AssetsPageContainer() {
     }
 
     setAssets((prev) => prev.filter((item) => item.id !== asset.id));
+    setThumbnailUrls((prev) => {
+      const next = { ...prev };
+      delete next[asset.id];
+      return next;
+    });
+    setServiceActivityPreviewByAsset((prev) => {
+      const next = { ...prev };
+      delete next[asset.id];
+      return next;
+    });
+    await Promise.all([refreshAssetCount(userId), fetchCategoryOptions(userId)]);
     if (editingAsset?.id === asset.id) setEditingAsset(null);
     if (selectedPreviewAssetId === asset.id) setSelectedPreviewAssetId(null);
     if (qrPreviewAssetId === asset.id) setQrPreviewAssetId(null);
@@ -871,72 +891,30 @@ export function AssetsPageContainer() {
 
   const dashboardRows = useMemo<AssetDashboardRow[]>(() => {
     return assets.map((asset) => {
-      const serviceLogs = serviceLogsByAsset[asset.id] ?? [];
-      const lastServiceDate = serviceLogs.length > 0 ? serviceLogs[0].serviceDate : null;
-      const totalCost = serviceLogs.reduce((sum, row) => sum + Number(row.cost ?? 0), 0);
-      const documentCount = documentCountByAsset[asset.id] ?? 0;
-      const nextMaintenanceDate = maintenanceDateByAsset[asset.id] ?? null;
-      const warrantyState = resolveWarrantyState(asIsoDate(asset.warranty_end_date));
-      const maintenanceState = resolveMaintenanceState(asIsoDate(nextMaintenanceDate));
-      const assetState = resolveAssetState(maintenanceState);
-      const score = calculateHealthScore(warrantyState, maintenanceState, documentCount);
-
       return {
-        ...asset,
-        warrantyState,
-        maintenanceState,
-        assetState,
-        nextMaintenanceDate: asIsoDate(nextMaintenanceDate),
-        lastServiceDate: asIsoDate(lastServiceDate),
-        documentCount,
-        totalCost,
-        score,
+        id: asset.id,
+        name: asset.name,
+        category: asset.category,
+        serial_number: asset.serial_number,
+        brand: asset.brand,
+        model: asset.model,
+        purchase_date: asset.purchase_date,
+        warranty_end_date: asset.warranty_end_date,
+        photo_path: asset.photo_path,
+        qr_code: asset.qr_code,
+        created_at: asset.created_at,
+        updated_at: asset.updated_at,
+        warrantyState: asset.warranty_state,
+        maintenanceState: asset.maintenance_state,
+        assetState: asset.asset_state,
+        nextMaintenanceDate: asIsoDate(asset.next_maintenance_date),
+        lastServiceDate: asIsoDate(asset.last_service_date),
+        documentCount: Number(asset.document_count ?? 0),
+        totalCost: Number(asset.total_cost ?? 0),
+        score: Number(asset.score ?? 0),
       };
     });
-  }, [assets, documentCountByAsset, maintenanceDateByAsset, serviceLogsByAsset]);
-
-  const categories = useMemo(() => {
-    return [...new Set(dashboardRows.map((asset) => asset.category))]
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b, "tr-TR"));
-  }, [dashboardRows]);
-
-  const filteredAssets = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLocaleLowerCase("tr-TR");
-    const rows = dashboardRows.filter((asset) => {
-      if (
-        normalizedSearch &&
-        !asset.name.toLocaleLowerCase("tr-TR").includes(normalizedSearch) &&
-        !(asset.serial_number ?? "").toLocaleLowerCase("tr-TR").includes(normalizedSearch)
-      ) {
-        return false;
-      }
-
-      if (categoryFilter !== "all" && asset.category !== categoryFilter) return false;
-      if (assetFilter !== "all" && asset.assetState !== assetFilter) return false;
-      if (warrantyFilter !== "all" && asset.warrantyState !== warrantyFilter) return false;
-      if (maintenanceFilter === "upcoming" && asset.maintenanceState !== "upcoming") return false;
-      if (maintenanceFilter === "overdue" && asset.maintenanceState !== "overdue") return false;
-
-      return true;
-    });
-
-    rows.sort((left, right) => {
-      if (sortMode === "cost") return right.totalCost - left.totalCost;
-      if (sortMode === "score") return right.score - left.score;
-      return new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime();
-    });
-
-    return rows;
-  }, [
-    assetFilter,
-    categoryFilter,
-    dashboardRows,
-    maintenanceFilter,
-    searchTerm,
-    sortMode,
-    warrantyFilter,
-  ]);
+  }, [assets]);
 
   const selectedPreviewAsset = useMemo(() => {
     if (!selectedPreviewAssetId) return null;
@@ -945,8 +923,8 @@ export function AssetsPageContainer() {
 
   const selectedPreviewActivities = useMemo(() => {
     if (!selectedPreviewAssetId) return [];
-    return (serviceLogsByAsset[selectedPreviewAssetId] ?? []).slice(0, 3);
-  }, [selectedPreviewAssetId, serviceLogsByAsset]);
+    return serviceActivityPreviewByAsset[selectedPreviewAssetId] ?? [];
+  }, [selectedPreviewAssetId, serviceActivityPreviewByAsset]);
 
   const qrPreviewAsset = useMemo(() => {
     if (!qrPreviewAssetId) return null;
@@ -958,6 +936,15 @@ export function AssetsPageContainer() {
       setSelectedPreviewAssetId(null);
     }
   }, [dashboardRows, selectedPreviewAssetId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    void fetchAssetsPage(userId, {
+      append: false,
+      cursor: null,
+      ...listQueryOptions,
+    });
+  }, [fetchAssetsPage, listQueryOptions, userId]);
 
   const mediaSummary = useMemo(
     () => ({
@@ -1056,7 +1043,7 @@ export function AssetsPageContainer() {
       />
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="assets-summary">
-        <SummaryItem label="Toplam Varlık" value={String(dashboardRows.length)} />
+        <SummaryItem label="Toplam Varlık" value={String(totalAssetCount)} />
         <SummaryItem label="Yaklaşan Bakım" value={String(summary.upcomingCount)} />
         <SummaryItem label="Riskli Garanti" value={String(summary.expiringWarrantyCount)} />
         <SummaryItem label="Ortalama Skor" value={`${summary.avgScore}`} accent={summary.overdueCount > 0 ? "warn" : "ok"} />
@@ -1083,7 +1070,7 @@ export function AssetsPageContainer() {
       <AssetListTable
         isLoading={isLoading}
         viewMode={viewMode}
-        assets={filteredAssets}
+        assets={dashboardRows}
         thumbnailUrls={thumbnailUrls}
         onSelectAsset={(asset) => setSelectedPreviewAssetId(asset.id)}
         onStartEdit={onStartEdit}
@@ -1091,6 +1078,26 @@ export function AssetsPageContainer() {
         onDeleteAsset={onDeleteAsset}
         onFocusCreateAsset={focusCreateAssetForm}
       />
+
+      {hasMoreAssets ? (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => {
+              if (!userId || !assetsCursor || isLoadingMoreAssets) return;
+              void fetchAssetsPage(userId, {
+                append: true,
+                cursor: assetsCursor,
+                ...listQueryOptions,
+              });
+            }}
+            disabled={isLoadingMoreAssets}
+            className="rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isLoadingMoreAssets ? "Yukleniyor..." : "Daha Fazla Varlik"}
+          </button>
+        </div>
+      ) : null}
 
       <section id="asset-create-form" className="grid gap-3 xl:grid-cols-[1.05fr_0.95fr]" data-testid="assets-create-section">
         <AssetForm

@@ -4,7 +4,8 @@ import type { User } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import {
   applyProfilePlanToUserMetadata,
-  getOrCreateProfilePlan,
+  getProfilePlan,
+  getProfilePlanFromUserMetadata,
   type ProfilePlan,
 } from "@/lib/plans/profile-plan";
 import type { DbClient } from "@/lib/repos/_shared";
@@ -24,6 +25,54 @@ export type RouteAuthFailure = {
 };
 
 const UNAUTHORIZED_ERROR = "Unauthorized";
+const PROFILE_PLAN_CACHE_TTL_MS = 30_000;
+const profilePlanCache = new Map<string, { plan: ProfilePlan; expiresAt: number }>();
+
+const getCachedProfilePlan = (userId: string): ProfilePlan | null => {
+  const cacheEntry = profilePlanCache.get(userId);
+  if (!cacheEntry) {
+    return null;
+  }
+
+  if (cacheEntry.expiresAt <= Date.now()) {
+    profilePlanCache.delete(userId);
+    return null;
+  }
+
+  return cacheEntry.plan;
+};
+
+const setCachedProfilePlan = (userId: string, plan: ProfilePlan) => {
+  profilePlanCache.set(userId, {
+    plan,
+    expiresAt: Date.now() + PROFILE_PLAN_CACHE_TTL_MS,
+  });
+};
+
+const resolveRouteProfilePlan = async (
+  client: DbClient,
+  user: User,
+): Promise<{ plan: ProfilePlan; error: string | null }> => {
+  const metadataPlan = getProfilePlanFromUserMetadata(user);
+  if (metadataPlan) {
+    setCachedProfilePlan(user.id, metadataPlan);
+    return { plan: metadataPlan, error: null };
+  }
+
+  const cachedPlan = getCachedProfilePlan(user.id);
+  if (cachedPlan) {
+    return { plan: cachedPlan, error: null };
+  }
+
+  const profile = await getProfilePlan(client, user.id);
+  if (profile.error) {
+    return { plan: "free", error: profile.error };
+  }
+
+  const resolvedPlan: ProfilePlan = profile.plan ?? "free";
+  setCachedProfilePlan(user.id, resolvedPlan);
+  return { plan: resolvedPlan, error: null };
+};
 
 const extractBearerToken = (request: Request) => {
   const headerValue = request.headers.get("authorization");
@@ -66,7 +115,7 @@ export async function requireRouteUser(
     };
   }
 
-  const profilePlanResult = await getOrCreateProfilePlan(dbClient, authenticatedUser.id);
+  const profilePlanResult = await resolveRouteProfilePlan(dbClient, authenticatedUser);
   const resolvedProfilePlan: ProfilePlan = profilePlanResult.plan;
   const resolvedUser = {
     ...authenticatedUser,

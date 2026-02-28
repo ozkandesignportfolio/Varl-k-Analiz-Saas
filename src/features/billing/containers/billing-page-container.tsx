@@ -117,6 +117,7 @@ export function BillingPageContainer() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingSubscription, setIsSavingSubscription] = useState(false);
   const [isSavingInvoice, setIsSavingInvoice] = useState(false);
+  const [deletingInvoiceId, setDeletingInvoiceId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("");
   const [hasValidSession, setHasValidSession] = useState(true);
   const [selectedSubscriptionId, setSelectedSubscriptionId] = useState("");
@@ -433,6 +434,42 @@ export function BillingPageContainer() {
     setIsSavingInvoice(false);
   };
 
+  const onDeleteInvoice = async (invoice: InvoiceRow) => {
+    const ok = window.confirm("Bu fatura kaydini silmek istiyor musunuz?");
+    if (!ok) {
+      return;
+    }
+
+    setDeletingInvoiceId(invoice.id);
+    setFeedback("");
+
+    try {
+      ensureAuthUser();
+      const deleteResponse = await fetch("/api/billing/invoices", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: invoice.id }),
+      });
+
+      const deletePayload = (await deleteResponse.json().catch(() => null)) as
+        | { ok?: boolean; id?: string; error?: string }
+        | null;
+
+      if (!deleteResponse.ok || !deletePayload?.ok) {
+        setFeedback(deletePayload?.error ?? "Fatura kaydi silinemedi.");
+        return;
+      }
+
+      setFeedback("Fatura kaydi silindi.");
+      await fetchBillingData(userId);
+      await refreshPlanState();
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Fatura kaydi silinemedi.");
+    } finally {
+      setDeletingInvoiceId(null);
+    }
+  };
+
   const focusCreateSubscriptionForm = useCallback(() => {
     const createForm = document.getElementById("subscription-create-form");
     if (!createForm) return;
@@ -537,6 +574,8 @@ export function BillingPageContainer() {
           invoices={invoices}
           subscriptionLabelById={subscriptionLabelById}
           formatCurrency={(value) => currencyFormatter.format(value)}
+          deletingInvoiceId={deletingInvoiceId}
+          onDeleteInvoice={(invoice) => void onDeleteInvoice(invoice)}
           emptyState={
             !isLoading && invoiceModuleReady ? (
               subscriptions.length === 0 ? (
@@ -571,5 +610,4 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
-
 

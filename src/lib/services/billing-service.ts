@@ -16,6 +16,7 @@ import {
   getById as getBillingSubscriptionById,
   updateById as updateBillingSubscriptionById,
 } from "@/lib/repos/billing-subscriptions-repo";
+import { optionalText, parseDateOnlyToDate, uuid } from "@/lib/validation";
 
 export type CreateBillingSubscriptionPayload = {
   providerName?: unknown;
@@ -57,8 +58,6 @@ type BillingCycle = "monthly" | "yearly";
 type SubscriptionStatus = "active" | "paused" | "cancelled";
 type InvoiceStatus = "pending" | "paid" | "overdue" | "cancelled";
 
-const datePattern = /^\d{4}-\d{2}-\d{2}$/;
-const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const billingCycles: BillingCycle[] = ["monthly", "yearly"];
 const subscriptionStatuses: SubscriptionStatus[] = ["active", "paused", "cancelled"];
 const invoiceStatuses: InvoiceStatus[] = ["pending", "paid", "overdue", "cancelled"];
@@ -107,25 +106,7 @@ const ensureBillingTables = async (
   return null;
 };
 
-const parseDateOnly = (value: string): Date | null => {
-  if (!datePattern.test(value)) return null;
-  const [yearRaw, monthRaw, dayRaw] = value.split("-");
-  const year = Number(yearRaw);
-  const month = Number(monthRaw);
-  const day = Number(dayRaw);
-  const parsed = new Date(Date.UTC(year, month - 1, day));
-
-  if (
-    Number.isNaN(parsed.getTime()) ||
-    parsed.getUTCFullYear() !== year ||
-    parsed.getUTCMonth() !== month - 1 ||
-    parsed.getUTCDate() !== day
-  ) {
-    return null;
-  }
-
-  return parsed;
-};
+const parseDateOnly = (value: string): Date | null => parseDateOnlyToDate(value);
 
 const formatDateOnly = (value: Date) => {
   const year = value.getUTCFullYear();
@@ -134,56 +115,17 @@ const formatDateOnly = (value: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const readOptionalText = (value: unknown, maxLength: number) => {
-  if (value === null || value === undefined) {
-    return { value: null as string | null };
-  }
-
-  if (typeof value !== "string") {
-    return { value: null as string | null, invalidType: true };
-  }
-
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return { value: null as string | null };
-  }
-
-  if (trimmed.length > maxLength) {
-    return { value: null as string | null, tooLong: true };
-  }
-
-  return { value: trimmed };
-};
+const readOptionalText = (value: unknown, maxLength: number) => optionalText(maxLength)(value);
 
 const readRequiredText = (value: unknown, maxLength: number) => {
-  if (typeof value !== "string") {
-    return { value: "", invalidType: true };
-  }
-
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return { value: "", missing: true };
-  }
-
-  if (trimmed.length > maxLength) {
-    return { value: "", tooLong: true };
-  }
-
-  return { value: trimmed };
+  const parsed = optionalText(maxLength)(value, { required: true });
+  return {
+    ...parsed,
+    value: parsed.value ?? "",
+  };
 };
 
-const readDateText = (value: unknown) => {
-  if (value === null || value === undefined) {
-    return { value: null as string | null };
-  }
-
-  if (typeof value !== "string") {
-    return { value: null as string | null, invalidType: true };
-  }
-
-  const trimmed = value.trim();
-  return { value: trimmed || null };
-};
+const readDateText = (value: unknown) => optionalText(10)(value);
 
 const readBoolean = (value: unknown, defaultValue: boolean) => {
   if (value === null || value === undefined) {
@@ -207,13 +149,8 @@ const readBoolean = (value: unknown, defaultValue: boolean) => {
   return { value: defaultValue, invalidType: true };
 };
 
-const normalizeUuid = (value: string) => {
-  const normalized = value.trim().toLowerCase();
-  if (!uuidPattern.test(normalized)) {
-    return null;
-  }
-  return normalized;
-};
+const parseUuid = uuid();
+const normalizeUuid = (value: string) => parseUuid(value);
 
 const toDateOnly = (value: Date) =>
   new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));

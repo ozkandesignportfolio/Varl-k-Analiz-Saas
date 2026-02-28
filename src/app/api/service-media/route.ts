@@ -1,28 +1,28 @@
 import { randomUUID } from "crypto";
 import path from "node:path";
 import { NextResponse } from "next/server";
-import { logApiError, logAuditEvent } from "@/lib/api/logging";
+import { logApiError, logApiRequest, logAuditEvent } from "@/lib/api/logging";
+import { enforceUserRateLimit } from "@/lib/api/rate-limit";
 import { existsById } from "@/lib/repos/assets-repo";
-import { countByUser as countDocumentsByUser } from "@/lib/repos/documents-repo";
-import { canUploadDocument } from "@/lib/plans/plan-config";
-import { getPlanConfigFromProfilePlan } from "@/lib/plans/profile-plan";
+import { enforceLimit, isPlanLimitError, toPlanLimitErrorBody } from "@/lib/plans/limit-enforcer";
 import {
   buildMediaEnrichmentIdempotencyKey,
   queueMediaEnrichmentJob,
   type MediaEnrichmentJobStatus,
 } from "@/lib/service-media/enrichment-jobs";
 import { requireRouteUser, type RouteAuthSuccess } from "@/lib/supabase/route-auth";
+import { fileConstraints, optionalText, parseDateOnly, uuid } from "@/lib/validation";
 
 export const runtime = "nodejs";
 
 const STORAGE_BUCKET = "documents-private";
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_SERVICE_TYPE_LENGTH = 120;
 const MAX_PROVIDER_LENGTH = 120;
 const MAX_NOTES_LENGTH = 4000;
 const MAX_QUEUE_JOBS_PER_MINUTE = 20;
 const UPLOAD_CONCURRENCY = 3;
+const SERVICE_MEDIA_RATE_LIMIT_CAPACITY = 8;
+const SERVICE_MEDIA_RATE_LIMIT_REFILL_PER_SECOND = SERVICE_MEDIA_RATE_LIMIT_CAPACITY / 60;
 
 type MediaKind = "photo" | "video" | "audio";
 
@@ -123,37 +123,13 @@ const documentTypeByKind: Record<MediaKind, string> = {
   audio: "service_audio_note",
 };
 
-function normalizeUuid(value: string) {
-  const normalized = value.trim().toLowerCase();
-  if (!UUID_PATTERN.test(normalized)) {
-    return null;
-  }
-  return normalized;
-}
-
-function parseDateOnly(value: string) {
-  const trimmed = value.trim();
-  if (!DATE_PATTERN.test(trimmed)) {
-    return null;
-  }
-
-  const [yearRaw, monthRaw, dayRaw] = trimmed.split("-");
-  const year = Number(yearRaw);
-  const month = Number(monthRaw);
-  const day = Number(dayRaw);
-  const parsed = new Date(Date.UTC(year, month - 1, day));
-
-  if (
-    Number.isNaN(parsed.getTime()) ||
-    parsed.getUTCFullYear() !== year ||
-    parsed.getUTCMonth() !== month - 1 ||
-    parsed.getUTCDate() !== day
-  ) {
-    return null;
-  }
-
-  return trimmed;
-}
+const parseUuid = uuid();
+const parseServiceTypeText = optionalText(MAX_SERVICE_TYPE_LENGTH);
+const parseProviderText = optionalText(MAX_PROVIDER_LENGTH);
+const parseNotesText = optionalText(MAX_NOTES_LENGTH);
+const validatePhotoFile = fileConstraints("photo", Number.POSITIVE_INFINITY);
+const validateVideoFile = fileConstraints("video", Number.POSITIVE_INFINITY);
+const validateAudioFile = fileConstraints("audio", Number.POSITIVE_INFINITY);
 
 function readFormText(
   formData: FormData,
@@ -161,24 +137,16 @@ function readFormText(
   options: { required?: boolean; maxLength?: number } = {},
 ) {
   const entry = formData.get(key);
-  if (entry === null) {
-    return options.required ? { value: "", missing: true } : { value: "" };
-  }
+  const parser =
+    options.maxLength === MAX_SERVICE_TYPE_LENGTH
+      ? parseServiceTypeText
+      : options.maxLength === MAX_PROVIDER_LENGTH
+        ? parseProviderText
+        : options.maxLength === MAX_NOTES_LENGTH
+          ? parseNotesText
+          : optionalText(options.maxLength ?? Number.MAX_SAFE_INTEGER);
 
-  if (typeof entry !== "string") {
-    return { value: "", invalidType: true };
-  }
-
-  const trimmed = entry.trim();
-  if (options.required && !trimmed) {
-    return { value: "", missing: true };
-  }
-
-  if (options.maxLength && trimmed.length > options.maxLength) {
-    return { value: "", tooLong: true };
-  }
-
-  return { value: trimmed };
+  return parser(entry, { required: options.required });
 }
 
 function normalizeDisplayFileName(fileName: string) {
@@ -250,35 +218,14 @@ function buildMetadata(file: File, mimeType: string) {
 }
 
 function validateMediaFile(file: File, kind: MediaKind) {
-  if (file.size <= 0) {
-    return { error: `Bos dosya yuklenemez (${kind}).` };
-  }
+  const validate =
+    kind === "photo" ? validatePhotoFile : kind === "video" ? validateVideoFile : validateAudioFile;
 
-  const mimeType = file.type.trim().toLowerCase();
-  const acceptedMimeTypes = allowedMimeTypes[kind];
-  if (!mimeType || !acceptedMimeTypes.includes(mimeType)) {
-    return { error: `Desteklenmeyen dosya tipi (${kind}): ${mimeType || "unknown"}.` };
-  }
-
-  const extension = getExtension(file.name);
-  const acceptedExtensions = allowedExtensions[kind];
-  if (!extension || !acceptedExtensions.includes(extension)) {
-    return {
-      error: `Dosya uzantisi desteklenmiyor (${kind}): ${extension || "unknown"}.`,
-    };
-  }
-
-  const compatibleExtensions = compatibleExtensionsByMimeType[mimeType];
-  if (compatibleExtensions && !compatibleExtensions.includes(extension)) {
-    return {
-      error: `Dosya uzantisi ve MIME tipi uyusmuyor (${kind}): ${mimeType} / .${extension}.`,
-    };
-  }
-
-  return {
-    mimeType,
-    extension,
-  };
+  return validate(file, {
+    allowedMimeTypes: allowedMimeTypes[kind],
+    allowedExtensions: allowedExtensions[kind],
+    compatibleExtensionsByMimeType: compatibleExtensionsByMimeType,
+  });
 }
 
 async function rollbackUploadBatch(params: {
@@ -403,20 +350,63 @@ async function uploadSingleMedia(params: {
 }
 
 export async function POST(request: Request) {
+  const requestId = request.headers.get("x-request-id")?.trim() || randomUUID();
+  const startedAt = Date.now();
   let userId: string | null = null;
+  let responseStatus = 500;
+  let dbTimeMs = 0;
+
+  const timeDb = async <T>(work: () => PromiseLike<T>) => {
+    const started = Date.now();
+    try {
+      return await work();
+    } finally {
+      dbTimeMs += Date.now() - started;
+    }
+  };
+
+  const finalize = <T extends NextResponse>(response: T) => {
+    responseStatus = response.status;
+    return response;
+  };
+
+  const respond = (body: unknown, init?: ResponseInit) => finalize(NextResponse.json(body, init));
 
   try {
-    const auth = await requireRouteUser(request);
+    const auth = await timeDb(() => requireRouteUser(request));
     if ("response" in auth) {
-      return auth.response;
+      return finalize(auth.response);
     }
 
     const { supabase, user } = auth;
     userId = user.id;
 
+    const rateLimit = await timeDb(() =>
+      enforceUserRateLimit({
+        client: supabase,
+        scope: "api_service_media",
+        userId: user.id,
+        capacity: SERVICE_MEDIA_RATE_LIMIT_CAPACITY,
+        refillPerSecond: SERVICE_MEDIA_RATE_LIMIT_REFILL_PER_SECOND,
+        ttlSeconds: 180,
+      }),
+    );
+
+    if (!rateLimit.allowed) {
+      return respond(
+        { error: "Cok fazla medya istegi gonderildi. Lutfen biraz bekleyip tekrar deneyin." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.max(1, Math.ceil(rateLimit.retryAfterMs / 1_000))),
+          },
+        },
+      );
+    }
+
     const formData = await request.formData().catch(() => null);
     if (!formData) {
-      return NextResponse.json({ error: "Gecersiz form verisi." }, { status: 400 });
+      return respond({ error: "Gecersiz form verisi." }, { status: 400 });
     }
 
     const assetIdField = readFormText(formData, "assetId", { required: true });
@@ -430,7 +420,7 @@ export async function POST(request: Request) {
     const userNotesField = readFormText(formData, "notes", { maxLength: MAX_NOTES_LENGTH });
 
     if (assetIdField.invalidType || serviceLogIdField.invalidType) {
-      return NextResponse.json({ error: "Varlik veya servis kaydi kimligi gecersiz." }, { status: 400 });
+      return respond({ error: "Varlik veya servis kaydi kimligi gecersiz." }, { status: 400 });
     }
 
     if (
@@ -439,77 +429,90 @@ export async function POST(request: Request) {
       providerField.invalidType ||
       userNotesField.invalidType
     ) {
-      return NextResponse.json({ error: "Metin alanlari gecersiz." }, { status: 400 });
+      return respond({ error: "Metin alanlari gecersiz." }, { status: 400 });
     }
 
     if (serviceTypeField.tooLong) {
-      return NextResponse.json({ error: "Servis turu cok uzun." }, { status: 400 });
+      return respond({ error: "Servis turu cok uzun." }, { status: 400 });
     }
 
     if (providerField.tooLong) {
-      return NextResponse.json({ error: "Saglayici bilgisi cok uzun." }, { status: 400 });
+      return respond({ error: "Saglayici bilgisi cok uzun." }, { status: 400 });
     }
 
     if (userNotesField.tooLong) {
-      return NextResponse.json({ error: "Not alani cok uzun." }, { status: 400 });
+      return respond({ error: "Not alani cok uzun." }, { status: 400 });
     }
 
-    const assetId = normalizeUuid(assetIdField.value);
-    const serviceLogId = normalizeUuid(serviceLogIdField.value);
+    const assetId = parseUuid(assetIdField.value);
+    const serviceLogId = parseUuid(serviceLogIdField.value);
     const serviceType = serviceTypeField.value;
     const serviceDate = serviceDateField.value;
     if (!assetId || !serviceLogId) {
-      return NextResponse.json({ error: "Varlik veya servis kaydi kimligi gecersiz." }, { status: 400 });
+      return respond({ error: "Varlik veya servis kaydi kimligi gecersiz." }, { status: 400 });
     }
 
     if (!serviceType || !serviceDate) {
-      return NextResponse.json({ error: "Zorunlu alanlar eksik." }, { status: 400 });
+      return respond({ error: "Zorunlu alanlar eksik." }, { status: 400 });
     }
 
     if (!parseDateOnly(serviceDate)) {
-      return NextResponse.json({ error: "Servis tarihi gecersiz." }, { status: 400 });
+      return respond({ error: "Servis tarihi gecersiz." }, { status: 400 });
     }
 
     const oneMinuteAgoIso = new Date(Date.now() - 60_000).toISOString();
-    const { count: recentJobCount } = await supabase
-      .from("media_enrichment_jobs")
-      .select("id", { count: "exact", head: true })
-      .gte("created_at", oneMinuteAgoIso);
+    const recentJobsResult = (await timeDb(() =>
+      supabase
+        .from("media_enrichment_jobs")
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", oneMinuteAgoIso),
+    )) as {
+      count: number | null;
+      error: { message?: string } | null;
+    };
+    if (recentJobsResult.error) {
+      return respond({ error: recentJobsResult.error.message ?? "Islem gecici olarak tamamlanamadi." }, { status: 400 });
+    }
+    const recentJobCount = recentJobsResult.count;
 
     if ((recentJobCount ?? 0) >= MAX_QUEUE_JOBS_PER_MINUTE) {
-      return NextResponse.json(
+      return respond(
         { error: "Cok fazla medya istegi gonderildi. Lutfen biraz bekleyip tekrar deneyin." },
         { status: 429, headers: { "Retry-After": "60" } },
       );
     }
 
-    const { data: assetExists, error: assetCheckError } = await existsById(supabase, {
-      userId: user.id,
-      assetId,
-    });
+    const { data: assetExists, error: assetCheckError } = await timeDb(() =>
+      existsById(supabase, {
+        userId: user.id,
+        assetId,
+      }),
+    );
 
     if (assetCheckError) {
-      return NextResponse.json({ error: assetCheckError.message }, { status: 400 });
+      return respond({ error: assetCheckError.message }, { status: 400 });
     }
 
     if (!assetExists) {
-      return NextResponse.json({ error: "Secilen varliga erisim izniniz yok." }, { status: 403 });
+      return respond({ error: "Secilen varliga erisim izniniz yok." }, { status: 403 });
     }
 
-    const { data: serviceLog, error: serviceLogError } = await supabase
-      .from("service_logs")
-      .select("id,asset_id,user_id")
-      .eq("id", serviceLogId)
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const { data: serviceLog, error: serviceLogError } = await timeDb(() =>
+      supabase
+        .from("service_logs")
+        .select("id,asset_id,user_id")
+        .eq("id", serviceLogId)
+        .eq("user_id", user.id)
+        .maybeSingle(),
+    );
 
     if (serviceLogError || !serviceLog) {
-      return NextResponse.json({ error: "Servis kaydi bulunamadi." }, { status: 404 });
+      return respond({ error: "Servis kaydi bulunamadi." }, { status: 404 });
     }
 
     const relationAssetId = typeof serviceLog.asset_id === "string" ? serviceLog.asset_id.toLowerCase() : "";
     if (serviceLog.user_id !== user.id || !relationAssetId || relationAssetId !== assetId) {
-      return NextResponse.json({ error: "Bu servis kaydina erisim izniniz yok." }, { status: 403 });
+      return respond({ error: "Bu servis kaydina erisim izniniz yok." }, { status: 403 });
     }
 
     const photoFile = getFileEntry(formData, "photo");
@@ -520,76 +523,66 @@ export async function POST(request: Request) {
     if (photoFile) {
       const validation = validateMediaFile(photoFile, "photo");
       if ("error" in validation) {
-        return NextResponse.json({ error: validation.error }, { status: 400 });
+        return respond({ error: validation.error }, { status: 400 });
       }
       mediaEntries.push({ kind: "photo", file: photoFile, ...validation });
     }
     if (videoFile) {
       const validation = validateMediaFile(videoFile, "video");
       if ("error" in validation) {
-        return NextResponse.json({ error: validation.error }, { status: 400 });
+        return respond({ error: validation.error }, { status: 400 });
       }
       mediaEntries.push({ kind: "video", file: videoFile, ...validation });
     }
     if (audioFile) {
       const validation = validateMediaFile(audioFile, "audio");
       if ("error" in validation) {
-        return NextResponse.json({ error: validation.error }, { status: 400 });
+        return respond({ error: validation.error }, { status: 400 });
       }
       mediaEntries.push({ kind: "audio", file: audioFile, ...validation });
     }
 
     if (mediaEntries.length === 0) {
-      return NextResponse.json({ ok: true, uploadedCount: 0, warnings: ["Yuklenecek medya bulunamadi."] });
+      return respond({ ok: true, uploadedCount: 0, warnings: ["Yuklenecek medya bulunamadi."] }, { status: 200 });
     }
 
-    if (auth.profilePlan !== "premium") {
-      const userPlan = getPlanConfigFromProfilePlan(auth.profilePlan);
-      const { data: currentDocumentCount, error: documentCountError } = await countDocumentsByUser(supabase, {
+    await timeDb(() =>
+      enforceLimit({
+        client: supabase,
         userId: user.id,
-      });
-
-      if (documentCountError) {
-        return NextResponse.json({ error: documentCountError.message }, { status: 400 });
-      }
-
-      const documentLimitCheck = canUploadDocument({
-        planConfig: userPlan,
-        currentCount: currentDocumentCount ?? 0,
-        requestedCount: mediaEntries.length,
-      });
-
-      if (!documentLimitCheck.allowed) {
-        return NextResponse.json(
-          { error: documentLimitCheck.errorMessage ?? "Plan limitine ulastiniz." },
-          { status: 403 },
-        );
-      }
-    }
-
-    const attempts = await mapWithConcurrency(mediaEntries, UPLOAD_CONCURRENCY, async (entry) =>
-      uploadSingleMedia({
-        supabase,
-        userId: user.id,
-        assetId,
-        serviceLogId,
-        entry,
+        profilePlan: auth.profilePlan,
+        resource: "documents",
+        delta: mediaEntries.length,
       }),
+    );
+
+    const attempts = await timeDb(() =>
+      mapWithConcurrency(mediaEntries, UPLOAD_CONCURRENCY, async (entry) =>
+        uploadSingleMedia({
+          supabase,
+          userId: user.id,
+          assetId,
+          serviceLogId,
+          entry,
+        }),
+      ),
     );
 
     const failedAttempts = attempts.filter((item): item is Extract<UploadAttempt, { ok: false }> => !item.ok);
     const successfulAttempts = attempts.filter((item): item is Extract<UploadAttempt, { ok: true }> => item.ok);
 
     if (failedAttempts.length > 0) {
-      await rollbackUploadBatch({
-        supabase,
-        userId: user.id,
-        insertedDocumentPaths: successfulAttempts.map((item) => item.storagePath),
-        orphanedStoragePaths: failedAttempts
-          .map((item) => item.orphanedStoragePath)
-          .filter((value): value is string => Boolean(value)),
-      });
-      return NextResponse.json({ error: failedAttempts[0]?.error ?? "Medya yukleme basarisiz." }, { status: 500 });
+      await timeDb(() =>
+        rollbackUploadBatch({
+          supabase,
+          userId: user.id,
+          insertedDocumentPaths: successfulAttempts.map((item) => item.storagePath),
+          orphanedStoragePaths: failedAttempts
+            .map((item) => item.orphanedStoragePath)
+            .filter((value): value is string => Boolean(value)),
+        }),
+      );
+      return respond({ error: failedAttempts[0]?.error ?? "Medya yukleme basarisiz." }, { status: 500 });
     }
 
     const uploads = successfulAttempts.map((item) => item.upload);
@@ -603,29 +596,53 @@ export async function POST(request: Request) {
 
     let queuedJob: QueueRow | null = null;
     try {
-      queuedJob = (await queueMediaEnrichmentJob(supabase, {
-        user_id: user.id,
-        service_log_id: serviceLogId,
-        document_ids: sortedDocumentIds,
-        idempotency_key: idempotencyKey,
-      })) as QueueRow | null;
+      queuedJob = (await timeDb(() =>
+        queueMediaEnrichmentJob(supabase, {
+          user_id: user.id,
+          service_log_id: serviceLogId,
+          document_ids: sortedDocumentIds,
+          idempotency_key: idempotencyKey,
+        }),
+      )) as QueueRow | null;
     } catch {
       queuedJob = null;
     }
 
-    return buildQueuedServiceMediaResponse({
-      uploadedCount: uploads.length,
-      queuedJob,
-      uploads,
-    });
+    return finalize(
+      buildQueuedServiceMediaResponse({
+        uploadedCount: uploads.length,
+        queuedJob,
+        uploads,
+      }),
+    );
   } catch (error) {
+    if (isPlanLimitError(error)) {
+      return respond(toPlanLimitErrorBody(error), { status: 403 });
+    }
+
     logApiError({
       route: "/api/service-media",
       method: "POST",
+      requestId,
       userId,
       error,
+      status: 500,
+      durationMs: Date.now() - startedAt,
+      dbTimeMs,
+      openAiTimeMs: null,
       message: "Service media request failed unexpectedly",
     });
-    return NextResponse.json({ error: "Medya istegi islenemedi." }, { status: 500 });
+    return respond({ error: "Medya istegi islenemedi." }, { status: 500 });
+  } finally {
+    logApiRequest({
+      route: "/api/service-media",
+      method: "POST",
+      requestId,
+      userId,
+      status: responseStatus,
+      durationMs: Date.now() - startedAt,
+      dbTimeMs,
+      openAiTimeMs: null,
+    });
   }
 }

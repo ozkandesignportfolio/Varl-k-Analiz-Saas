@@ -214,9 +214,14 @@ export function ControlCenterHeader({ selectedRange, status }: ControlCenterHead
   const risk = status.risk;
   const riskKey = risk.riskKey;
 
-  const [riskAction, setRiskAction] = useState<RiskActionState | null>(() => readRiskAction(riskKey));
+  const [riskAction, setRiskAction] = useState<RiskActionState | null>(null);
   const [canUseSupabaseRiskActions, setCanUseSupabaseRiskActions] = useState(true);
-  const [nowTs, setNowTs] = useState(() => Date.now());
+  const [nowTs, setNowTs] = useState(0);
+
+  useEffect(() => {
+    setRiskAction(readRiskAction(riskKey));
+    setNowTs(Date.now());
+  }, [riskKey]);
 
   useEffect(() => {
     const snoozedUntil = riskAction?.snoozedUntil;

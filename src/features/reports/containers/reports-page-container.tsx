@@ -17,7 +17,6 @@ import { ReportsSummaryCards } from "@/features/reports/components/reports-summa
 import { ensurePdfUnicodeFont } from "@/features/reports/lib/pdf-font";
 import { REPORTS_TURKISH_SMOKE_TEXT, assertNoMojibakeText } from "@/features/reports/lib/text-integrity";
 import { countByUser as countAssetsByUser } from "@/lib/repos/assets-repo";
-import { listReports, type ReportsCursor } from "@/lib/repos/reports-repo";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type ServiceRow = ReportsServiceRow & {
@@ -29,6 +28,18 @@ type DocumentRow = ReportsDocumentRow & {
 };
 
 type AssetSummaryRow = ReportsAssetSummaryRow;
+type ReportsCursor = {
+  services: { createdAt: string; id: string } | null;
+  documents: { uploadedAt: string; id: string } | null;
+};
+type ReportsPageResponse = {
+  services: ServiceRow[];
+  documents: DocumentRow[];
+  nextCursor: ReportsCursor;
+  hasMore: boolean;
+  hasMoreServices: boolean;
+  hasMoreDocuments: boolean;
+};
 
 const currencyFormatter = new Intl.NumberFormat("tr-TR", {
   style: "currency",
@@ -103,7 +114,7 @@ export function ReportsPageContainer() {
 
   const fetchReportRows = useCallback(
     async (
-      currentUserId: string,
+      _currentUserId: string,
       options: {
         append: boolean;
         cursor: ReportsCursor | null;
@@ -119,18 +130,28 @@ export function ReportsPageContainer() {
         setIsLoading(true);
       }
 
-      const { data, error } = await listReports(supabase, {
-        userId: currentUserId,
-        from: options.startDateValue,
-        to: options.endDateValue,
-        pageSize: REPORTS_PAGE_SIZE,
-        cursor: options.cursor,
-        includeServices: options.includeServices ?? true,
-        includeDocuments: options.includeDocuments ?? true,
-      });
+      const query = new URLSearchParams();
+      query.set("from", options.startDateValue);
+      query.set("to", options.endDateValue);
+      query.set("pageSize", String(REPORTS_PAGE_SIZE));
+      query.set("includeServices", (options.includeServices ?? true) ? "1" : "0");
+      query.set("includeDocuments", (options.includeDocuments ?? true) ? "1" : "0");
+      if (options.cursor?.services?.createdAt) query.set("servicesCursorCreatedAt", options.cursor.services.createdAt);
+      if (options.cursor?.services?.id) query.set("servicesCursorId", options.cursor.services.id);
+      if (options.cursor?.documents?.uploadedAt) query.set("documentsCursorUploadedAt", options.cursor.documents.uploadedAt);
+      if (options.cursor?.documents?.id) query.set("documentsCursorId", options.cursor.documents.id);
 
-      if (error) {
-        setFeedback(error.message);
+      const response = await fetch(`/api/reports?${query.toString()}`, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | (ReportsPageResponse & { error?: never })
+        | { error?: string }
+        | null;
+
+      if (!response.ok) {
+        setFeedback(payload?.error ?? "Rapor satirlari yuklenemedi.");
         if (options.append) {
           setIsLoadingMoreRows(false);
         } else {
@@ -139,7 +160,16 @@ export function ReportsPageContainer() {
         return;
       }
 
-      const pageData = data ?? {
+      const pageData: ReportsPageResponse = payload && "nextCursor" in payload
+        ? {
+            services: payload.services ?? [],
+            documents: payload.documents ?? [],
+            nextCursor: payload.nextCursor ?? { services: null, documents: null },
+            hasMore: payload.hasMore ?? false,
+            hasMoreServices: payload.hasMoreServices ?? false,
+            hasMoreDocuments: payload.hasMoreDocuments ?? false,
+          }
+        : {
         services: [] as ServiceRow[],
         documents: [] as DocumentRow[],
         nextCursor: { services: null, documents: null },
@@ -165,7 +195,7 @@ export function ReportsPageContainer() {
         setIsLoading(false);
       }
     },
-    [supabase],
+    [],
   );
 
   useEffect(() => {

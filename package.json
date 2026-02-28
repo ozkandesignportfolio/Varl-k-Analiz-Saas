@@ -11,7 +11,11 @@
     "check:debug-plan-prod": "node scripts/check-debug-plan-prod.cjs",
     "test:stable": "node testsprite_tests/generated/run_stable_full_suite.cjs",
     "test:stable:trial": "node testsprite_tests/generated/run_stable_trial_suite.cjs",
-    "test:stable:premium": "node testsprite_tests/generated/run_stable_premium_suite.cjs"
+    "test:stable:premium": "node testsprite_tests/generated/run_stable_premium_suite.cjs",
+    "test:seed": "node scripts/e2e-seed.mjs",
+    "test:e2e:playwright": "playwright test -c playwright.config.ts",
+    "test:rls": "tsx --test tests/rls/rls-negative.test.ts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",
@@ -29,6 +33,7 @@
     "stripe": "^20.3.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/qrcode": "^1.5.6",
@@ -38,6 +43,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }

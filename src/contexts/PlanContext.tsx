@@ -15,7 +15,7 @@ import { countByUser as countBillingInvoicesByUser } from "@/lib/repos/billing-i
 import { countByUser as countBillingSubscriptionsByUser } from "@/lib/repos/billing-subscriptions-repo";
 import { countByUser as countDocumentsByUser } from "@/lib/repos/documents-repo";
 import { getPlanConfig } from "@/lib/plans/plan-config";
-import { ensureProfile } from "@/lib/plans/profile-plan";
+import { ensureProfile, getProfilePlanFromUserMetadata } from "@/lib/plans/profile-plan";
 import type { DbClient } from "@/lib/repos/_shared";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -39,6 +39,7 @@ export type PlanContextValue = {
 
 const STARTER_PLAN = getPlanConfig("starter");
 const PREMIUM_PLAN = getPlanConfig("pro");
+const CLIENT_PLAN_CACHE_TTL_MS = 30_000;
 
 const PlanContext = createContext<PlanContextValue | undefined>(undefined);
 
@@ -47,6 +48,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   const showPlanDebug = isDev && process.env.NEXT_PUBLIC_PLAN_DEBUG === "true";
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const hasLoggedProfilePlanLoadWarning = useRef(false);
+  const planCacheByUserRef = useRef(new Map<string, { plan: UserPlan; expiresAt: number }>());
   const [devPlanWarning, setDevPlanWarning] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [plan, setPlan] = useState<UserPlan>("free");
@@ -91,8 +93,15 @@ export function PlanProvider({ children }: { children: ReactNode }) {
 
       setUserId(user.id);
 
-      const dbClient = supabase as unknown as DbClient;
-      const profilePlanResult = await ensureProfile(dbClient, user.id);
+      const metadataPlan = getProfilePlanFromUserMetadata(user);
+      const cachedPlanEntry = planCacheByUserRef.current.get(user.id);
+      const cachedPlan =
+        cachedPlanEntry && cachedPlanEntry.expiresAt > Date.now() ? cachedPlanEntry.plan : null;
+
+      const profilePlanResult =
+        metadataPlan || cachedPlan
+          ? { plan: (metadataPlan ?? cachedPlan) as UserPlan, error: null }
+          : await ensureProfile(supabase as unknown as DbClient, user.id);
 
       if (profilePlanResult.error && !hasLoggedProfilePlanLoadWarning.current) {
         console.warn("Plan profile could not be loaded. Falling back to free plan.", profilePlanResult.error);
@@ -104,6 +113,10 @@ export function PlanProvider({ children }: { children: ReactNode }) {
 
       const resolvedPlan: UserPlan = profilePlanResult.plan === "premium" ? "premium" : "free";
       const resolvedPlanConfig = resolvedPlan === "premium" ? PREMIUM_PLAN : STARTER_PLAN;
+      planCacheByUserRef.current.set(user.id, {
+        plan: resolvedPlan,
+        expiresAt: Date.now() + CLIENT_PLAN_CACHE_TTL_MS,
+      });
       setPlan(resolvedPlan);
       setAssetLimit(resolvedPlanConfig.limits.assetsLimit);
       setDocumentLimit(resolvedPlanConfig.limits.documentsLimit);

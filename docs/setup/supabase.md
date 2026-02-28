@@ -22,9 +22,17 @@ Ardindan audit log tablosu ve trigger migrationini calistirin:
 `supabase/migrations/20260216124500_audit_logs.sql`
 Yeni premium medya ozelligi icin su migrationi da calistirin:
 `supabase/migrations/20260222153000_asset_media_premium_uploads.sql`
+Dashboard snapshot RPC icin su migrationi da calistirin:
+`supabase/migrations/20260228150000_dashboard_snapshot_rpc.sql`
+Dashboard snapshot RPC overload cakismasini temizlemek icin su migrationi da calistirin:
+`supabase/migrations/20260228155000_dashboard_snapshot_rpc_remove_ambiguous_overload.sql`
 
 Not: `public.asset_media` tablosu olusmadiginda Supabase sorgulari
 "Could not find the table 'public.asset_media' in the schema cache" hatasi dondurebilir.
+Not: Dashboard migrationlari eksikse su hata dondurebilir:
+"Could not find the function public.get_dashboard_snapshot(p_from, p_to, p_user_id) in the schema cache"
+Not: Asagidaki hata varsa overload cakismasi vardir:
+"Could not choose the best candidate function between: public.get_dashboard_snapshot(...)"
 
 ## 4) Private bucket
 - Bucket adı: `documents-private`

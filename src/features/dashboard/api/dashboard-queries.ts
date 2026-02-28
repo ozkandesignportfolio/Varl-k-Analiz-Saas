@@ -1,45 +1,31 @@
 import "server-only";
 import type { PostgrestError } from "@supabase/supabase-js";
-import type { DbClient, Row } from "@/lib/repos/_shared";
+import type { DbClient } from "@/lib/repos/_shared";
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
-type DashboardAssetRow = Pick<Row<"assets">, "id" | "name" | "category" | "warranty_end_date" | "created_at">;
-type DashboardRuleRow = Pick<Row<"maintenance_rules">, "id" | "asset_id" | "title" | "next_due_date" | "is_active" | "created_at">;
-type DashboardServiceLogRow = Pick<
-  Row<"service_logs">,
-  "id" | "asset_id" | "service_type" | "service_date" | "cost" | "created_at"
->;
-type DashboardDocumentRow = Pick<Row<"documents">, "id" | "asset_id" | "file_name" | "uploaded_at">;
-type DashboardSubscriptionRow = Pick<Row<"billing_subscriptions">, "id" | "provider_name" | "subscription_name">;
-type DashboardInvoiceRow = Pick<
-  Row<"billing_invoices">,
-  "id" | "subscription_id" | "invoice_no" | "due_date" | "total_amount" | "status" | "created_at" | "paid_at"
->;
-
-type DashboardAggregateRpcRow = {
-  total_assets: number | string | null;
-  active_rules: number | string | null;
-  document_count: number | string | null;
-  documented_asset_count: number | string | null;
-  subscription_count: number | string | null;
-  invoice_count: number | string | null;
-  total_service_cost: number | string | null;
-  current_assets_created: number | string | null;
-  previous_assets_created: number | string | null;
-  current_rules_created: number | string | null;
-  previous_rules_created: number | string | null;
-  current_service_cost: number | string | null;
-  previous_service_cost: number | string | null;
-  current_documents_uploaded: number | string | null;
-  previous_documents_uploaded: number | string | null;
+type DashboardSnapshotRpcTrend = {
+  direction?: unknown;
+  percentage?: unknown;
+  sparkline?: unknown;
 };
 
-type DashboardMissingDocumentRpcRow = {
-  asset_id: string;
-  asset_name: string;
-  created_at: string;
-  days_without_document: number | string;
+type DashboardSnapshotRpcStatus = {
+  tone?: unknown;
+  headline?: unknown;
+  detail?: unknown;
+  risk_count?: unknown;
+  risk?: unknown;
+};
+
+type DashboardSnapshotRpcPayload = {
+  counts?: unknown;
+  sums?: unknown;
+  metrics?: unknown;
+  trends?: unknown;
+  status?: unknown;
+  risk_panel?: unknown;
+  timeline?: unknown;
 };
 
 export type DashboardDateRangeDays = 7 | 30 | 90;
@@ -139,6 +125,8 @@ export type DashboardSnapshot = {
     documentCount: number;
     subscriptionCount: number;
     invoiceCount: number;
+    documentsTotalSize: number;
+    invoicesTotalAmount: number;
   };
   trends: {
     totalAssets: DashboardKpiTrend;
@@ -163,13 +151,28 @@ export type DashboardSnapshotResult = {
   warning: string | null;
 };
 
-const parseDate = (value: string) => new Date(value.includes("T") ? value : `${value}T00:00:00`);
-const toDateOnly = (date: Date) => date.toISOString().slice(0, 10);
+const ALLOWED_ACTIVITY_TYPES = new Set<DashboardActivityType>(["service", "document", "rule", "payment"]);
+const ALLOWED_TREND_DIRECTIONS = new Set<DashboardTrendDirection>(["up", "down", "flat"]);
+const ALLOWED_STATUS_TONES = new Set<DashboardSystemTone>(["stable", "healthy", "warning", "critical"]);
+const ALLOWED_RISK_TYPES = new Set<DashboardSystemRiskType>([
+  "maintenance_due",
+  "rule_missing",
+  "document_missing",
+  "invoice_due",
+  "notification_prefs",
+]);
+const DASHBOARD_SNAPSHOT_MISSING_FN_PATTERN = /Could not find the function public\.get_dashboard_snapshot/i;
+
 const toRiskKey = (type: DashboardSystemRiskType, entityId?: string | null) => `${type}:${entityId ?? "global"}`;
 
 const toNumber = (value: number | string | null | undefined) => {
   const parsed = Number(value ?? 0);
   return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const toInteger = (value: number | string | null | undefined) => {
+  const rounded = Math.round(toNumber(value));
+  return rounded > 0 ? rounded : 0;
 };
 
 const startOfToday = () => {
@@ -179,536 +182,169 @@ const startOfToday = () => {
 
 const addDays = (date: Date, days: number) => new Date(date.getTime() + days * DAY_IN_MS);
 
-const dayDiff = (date: Date, from: Date) => {
-  const diff = date.getTime() - from.getTime();
-  return Math.ceil(diff / DAY_IN_MS);
-};
-
 const createSparkline = (direction: DashboardTrendDirection) => {
   if (direction === "up") return [22, 24, 28, 30, 34, 37];
   if (direction === "down") return [37, 34, 31, 28, 25, 22];
   return [28, 27, 28, 27, 28, 27];
 };
 
-const buildTrend = (current: number, previous: number): DashboardKpiTrend => {
-  if (current <= 0 && previous <= 0) {
-    return {
-      direction: "flat",
-      percentage: 0,
-      sparkline: createSparkline("flat"),
-    };
-  }
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
 
-  if (previous <= 0 && current > 0) {
-    return {
-      direction: "up",
-      percentage: 100,
-      sparkline: createSparkline("up"),
-    };
-  }
+const asRecord = (value: unknown) => (isRecord(value) ? value : null);
+const asArray = (value: unknown) => (Array.isArray(value) ? value : []);
 
-  const delta = current - previous;
-  const direction: DashboardTrendDirection = delta > 0 ? "up" : delta < 0 ? "down" : "flat";
-  const percentage = Math.min(999, Math.round((Math.abs(delta) / Math.abs(previous || 1)) * 100));
+const toStringOr = (value: unknown, fallback = "") => (typeof value === "string" ? value : fallback);
+const toDashboardSnapshotWarning = (error: PostgrestError) => {
+  if (DASHBOARD_SNAPSHOT_MISSING_FN_PATTERN.test(error.message)) {
+    return "Dashboard snapshot RPC fonksiyonu bulunamadi. Supabase migration dosyalarini sirayla calistirin: 20260228150000_dashboard_snapshot_rpc.sql, 20260228155000_dashboard_snapshot_rpc_remove_ambiguous_overload.sql.";
+  }
+  return `Dashboard snapshot RPC hatasi: ${error.message}`;
+};
+
+const parseTrend = (value: unknown): DashboardKpiTrend => {
+  const record = asRecord(value) as DashboardSnapshotRpcTrend | null;
+  const directionCandidate = toStringOr(record?.direction, "flat");
+  const direction = ALLOWED_TREND_DIRECTIONS.has(directionCandidate as DashboardTrendDirection)
+    ? (directionCandidate as DashboardTrendDirection)
+    : "flat";
+
+  const sparkline = asArray(record?.sparkline)
+    .slice(0, 6)
+    .map((item) => toNumber(item as number | string | null | undefined));
 
   return {
     direction,
-    percentage,
-    sparkline: createSparkline(direction),
+    percentage: toInteger(record?.percentage as number | string | null | undefined),
+    sparkline: sparkline.length === 6 ? sparkline : createSparkline(direction),
   };
 };
 
-const toMaintenanceRisk = (
-  rules: DashboardRuleRow[],
-  assetsById: Map<string, DashboardAssetRow>,
-  today: Date,
-) => {
-  const overdue: DashboardMaintenanceRiskItem[] = [];
-  const upcoming: DashboardMaintenanceRiskItem[] = [];
+const parseStatus = (value: unknown): DashboardSystemStatus => {
+  const record = asRecord(value) as DashboardSnapshotRpcStatus | null;
+  const riskRecord = asRecord(record?.risk);
 
-  for (const rule of rules) {
-    if (!rule.is_active) continue;
-    const asset = assetsById.get(rule.asset_id);
-    if (!asset) continue;
+  const toneCandidate = toStringOr(record?.tone, "stable");
+  const tone = ALLOWED_STATUS_TONES.has(toneCandidate as DashboardSystemTone)
+    ? (toneCandidate as DashboardSystemTone)
+    : "stable";
 
-    const dueDate = parseDate(rule.next_due_date);
-    const dueInDays = dayDiff(dueDate, today);
+  const riskTypeCandidate = toStringOr(riskRecord?.type, "notification_prefs");
+  const riskType = ALLOWED_RISK_TYPES.has(riskTypeCandidate as DashboardSystemRiskType)
+    ? (riskTypeCandidate as DashboardSystemRiskType)
+    : "notification_prefs";
 
-    if (dueInDays < 0) {
-      overdue.push({
-        id: rule.id,
-        assetId: asset.id,
-        assetName: asset.name,
-        ruleTitle: rule.title,
-        dueDate: rule.next_due_date,
-        dayCount: Math.abs(dueInDays),
-      });
-      continue;
-    }
-
-    if (dueInDays <= 7) {
-      upcoming.push({
-        id: rule.id,
-        assetId: asset.id,
-        assetName: asset.name,
-        ruleTitle: rule.title,
-        dueDate: rule.next_due_date,
-        dayCount: dueInDays,
-      });
-    }
-  }
-
-  overdue.sort((a, b) => b.dayCount - a.dayCount);
-  upcoming.sort((a, b) => a.dayCount - b.dayCount);
+  const entityId = riskRecord?.entity_id;
+  const safeEntityId = typeof entityId === "string" && entityId.length > 0 ? entityId : null;
 
   return {
-    overdueMaintenance: overdue.slice(0, 6),
-    upcomingMaintenance: upcoming.slice(0, 6),
-  };
-};
-
-const toWarrantyRisk = (assets: DashboardAssetRow[], today: Date) =>
-  assets
-    .filter((asset) => !!asset.warranty_end_date)
-    .map((asset) => {
-      const warrantyEndDate = asset.warranty_end_date as string;
-      const daysRemaining = dayDiff(parseDate(warrantyEndDate), today);
-      return {
-        id: asset.id,
-        assetId: asset.id,
-        assetName: asset.name,
-        warrantyEndDate,
-        daysRemaining,
-      };
-    })
-    .filter((item) => item.daysRemaining >= 0 && item.daysRemaining <= 30)
-    .sort((a, b) => a.daysRemaining - b.daysRemaining)
-    .slice(0, 6);
-
-const toPaymentRisk = (
-  invoices: DashboardInvoiceRow[],
-  subscriptionNameById: Map<string, string>,
-  today: Date,
-) =>
-  invoices
-    .filter((invoice) => !!invoice.due_date && (invoice.status === "pending" || invoice.status === "overdue"))
-    .map((invoice) => {
-      const dueDate = invoice.due_date as string;
-      return {
-        id: invoice.id,
-        invoiceNo: invoice.invoice_no,
-        subscriptionName: subscriptionNameById.get(invoice.subscription_id) ?? "Abonelik",
-        dueDate,
-        totalAmount: Number(invoice.total_amount ?? 0),
-        status: invoice.status as "pending" | "overdue",
-        daysRemaining: dayDiff(parseDate(dueDate), today),
-      } as DashboardPaymentRiskItem;
-    })
-    .filter((invoice) => invoice.daysRemaining <= 30)
-    .sort((a, b) => a.daysRemaining - b.daysRemaining)
-    .slice(0, 6);
-
-const toRecentActivity = (
-  assetsById: Map<string, DashboardAssetRow>,
-  serviceLogs: DashboardServiceLogRow[],
-  documents: DashboardDocumentRow[],
-  rules: DashboardRuleRow[],
-  paidInvoices: DashboardInvoiceRow[],
-  subscriptionNameById: Map<string, string>,
-) => {
-  const events: DashboardActivityItem[] = [];
-
-  for (const log of serviceLogs.slice(0, 10)) {
-    const assetName = assetsById.get(log.asset_id)?.name ?? "Bilinmeyen Varlik";
-    events.push({
-      id: `service-${log.id}`,
-      type: "service",
-      title: "Servis kaydi eklendi",
-      description: `${assetName} - ${log.service_type}`,
-      date: log.created_at,
-      href: `/services?asset=${log.asset_id}`,
-    });
-  }
-
-  for (const document of documents.slice(0, 10)) {
-    const assetName = assetsById.get(document.asset_id)?.name ?? "Bilinmeyen Varlik";
-    events.push({
-      id: `document-${document.id}`,
-      type: "document",
-      title: "Belge yuklendi",
-      description: `${assetName} - ${document.file_name}`,
-      date: document.uploaded_at,
-      href: `/documents?asset=${document.asset_id}`,
-    });
-  }
-
-  for (const rule of rules.slice(0, 10)) {
-    const assetName = assetsById.get(rule.asset_id)?.name ?? "Bilinmeyen Varlik";
-    events.push({
-      id: `rule-${rule.id}`,
-      type: "rule",
-      title: "Bakim kurali olusturuldu",
-      description: `${assetName} - ${rule.title}`,
-      date: rule.created_at,
-      href: `/maintenance?asset=${rule.asset_id}`,
-    });
-  }
-
-  for (const invoice of paidInvoices.slice(0, 10)) {
-    const subscriptionName = subscriptionNameById.get(invoice.subscription_id) ?? "Abonelik";
-    const paymentDate = invoice.paid_at ?? invoice.created_at;
-    events.push({
-      id: `payment-${invoice.id}`,
-      type: "payment",
-      title: "Odeme islendi",
-      description: `${subscriptionName} - ${Number(invoice.total_amount ?? 0).toFixed(2)} TL`,
-      date: paymentDate,
-      href: "/invoices",
-    });
-  }
-
-  return events
-    .sort((a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime())
-    .slice(0, 10);
-};
-
-const toSystemStatus = ({
-  hasData,
-  assetCount,
-  activeRuleCount,
-  overdueMaintenanceCount,
-  overduePaymentCount,
-  upcomingPaymentCount,
-  missingDocumentCount,
-  warningCount,
-}: {
-  hasData: boolean;
-  assetCount: number;
-  activeRuleCount: number;
-  overdueMaintenanceCount: number;
-  overduePaymentCount: number;
-  upcomingPaymentCount: number;
-  missingDocumentCount: number;
-  warningCount: number;
-}): DashboardSystemStatus => {
-  if (!hasData) {
-    return {
-      tone: "stable",
-      headline: "Stabil",
-      detail: "Sistem durumu veri geldikce otomatik guncellenecek.",
-      riskCount: 0,
-      risk: {
-        type: "notification_prefs",
-        entityId: null,
-        riskKey: toRiskKey("notification_prefs"),
-      },
-    };
-  }
-
-  if (overdueMaintenanceCount > 0) {
-    return {
-      tone: "critical",
-      headline: `${overdueMaintenanceCount} gecikmis bakim`,
-      detail: "Bakim takvimi plani gerisinde. Hemen aksiyon alin.",
-      riskCount: overdueMaintenanceCount + overduePaymentCount + warningCount,
-      risk: {
-        type: "maintenance_due",
-        entityId: null,
-        riskKey: toRiskKey("maintenance_due"),
-      },
-    };
-  }
-
-  if (overduePaymentCount > 0) {
-    return {
-      tone: "critical",
-      headline: `${overduePaymentCount} gecikmis odeme`,
-      detail: "Finans kayitlari gecikmede. Vade durumunu kontrol edin.",
-      riskCount: overduePaymentCount + warningCount,
-      risk: {
-        type: "invoice_due",
-        entityId: null,
-        riskKey: toRiskKey("invoice_due"),
-      },
-    };
-  }
-
-  if (assetCount > 0 && activeRuleCount === 0) {
-    return {
-      tone: "warning",
-      headline: "Bakim kurali eksik",
-      detail: "Varliklar icin en az bir bakim kurali tanimlayarak riski azaltin.",
-      riskCount: Math.max(1, warningCount),
-      risk: {
-        type: "rule_missing",
-        entityId: null,
-        riskKey: toRiskKey("rule_missing"),
-      },
-    };
-  }
-
-  if (warningCount > 0) {
-    if (missingDocumentCount > 0) {
-      return {
-        tone: "warning",
-        headline: `${warningCount} risk var`,
-        detail: "Yaklasan takvimler icin onleyici adim alinmasi onerilir.",
-        riskCount: warningCount,
-        risk: {
-          type: "document_missing",
-          entityId: null,
-          riskKey: toRiskKey("document_missing"),
-        },
-      };
-    }
-
-    if (upcomingPaymentCount > 0) {
-      return {
-        tone: "warning",
-        headline: `${warningCount} risk var`,
-        detail: "Yaklasan takvimler icin onleyici adim alinmasi onerilir.",
-        riskCount: warningCount,
-        risk: {
-          type: "invoice_due",
-          entityId: null,
-          riskKey: toRiskKey("invoice_due"),
-        },
-      };
-    }
-
-    return {
-      tone: "warning",
-      headline: `${warningCount} risk var`,
-      detail: "Yaklasan takvimler icin onleyici adim alinmasi onerilir.",
-      riskCount: warningCount,
-      risk: {
-        type: "maintenance_due",
-        entityId: null,
-        riskKey: toRiskKey("maintenance_due"),
-      },
-    };
-  }
-
-  return {
-    tone: "healthy",
-    headline: "Her sey yolunda",
-    detail: "Kritik veya yaklasan risk kaydi su an bulunmuyor.",
-    riskCount: 0,
+    tone,
+    headline: toStringOr(record?.headline, "Stabil"),
+    detail: toStringOr(record?.detail, "Sistem durumu veri geldikce otomatik guncellenecek."),
+    riskCount: toInteger(record?.risk_count as number | string | null | undefined),
     risk: {
-      type: "notification_prefs",
-      entityId: null,
-      riskKey: toRiskKey("notification_prefs"),
+      type: riskType,
+      entityId: safeEntityId,
+      riskKey: toStringOr(riskRecord?.risk_key, toRiskKey(riskType, safeEntityId)),
     },
   };
 };
 
-const isMissingRelationError = (error: PostgrestError | null) =>
-  !!error && (error.code === "42P01" || error.message.toLocaleLowerCase("en-US").includes("does not exist"));
-
-const MISSING_RPC_FUNCTION_CODES = new Set(["42883", "PGRST202"]);
-
-const isMissingRpcFunctionError = (error: PostgrestError | null, functionName: string) => {
-  if (!error) return false;
-
-  const needle = functionName.toLocaleLowerCase("en-US");
-  const haystack = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`.toLocaleLowerCase("en-US");
-
-  return (
-    MISSING_RPC_FUNCTION_CODES.has(error.code ?? "") ||
-    (haystack.includes("function") && haystack.includes("does not exist") && haystack.includes(needle)) ||
-    (haystack.includes("could not find the function") && haystack.includes(needle))
-  );
-};
-
-const buildAggregateFallback = async (
-  client: DbClient,
-  userId: string,
-  params: {
-    currentPeriodStart: Date;
-    currentPeriodEnd: Date;
-    previousPeriodStart: Date;
-    previousPeriodEnd: Date;
-  },
-): Promise<{ data: DashboardAggregateRpcRow[]; error: PostgrestError | null }> => {
-  const currentPeriodStartIso = params.currentPeriodStart.toISOString();
-  const currentPeriodEndIso = params.currentPeriodEnd.toISOString();
-  const previousPeriodStartIso = params.previousPeriodStart.toISOString();
-  const previousPeriodEndIso = params.previousPeriodEnd.toISOString();
-
-  const currentPeriodStartDate = toDateOnly(params.currentPeriodStart);
-  const currentPeriodEndDate = toDateOnly(params.currentPeriodEnd);
-  const previousPeriodStartDate = toDateOnly(params.previousPeriodStart);
-  const previousPeriodEndDate = toDateOnly(params.previousPeriodEnd);
-
-  const [
-    totalAssetsRes,
-    activeRulesRes,
-    documentCountRes,
-    currentAssetsCreatedRes,
-    previousAssetsCreatedRes,
-    currentRulesCreatedRes,
-    previousRulesCreatedRes,
-    currentDocumentsUploadedRes,
-    previousDocumentsUploadedRes,
-    serviceLogsRes,
-    documentedAssetsRes,
-  ] = await Promise.all([
-    client.from("assets").select("id", { count: "exact", head: true }).eq("user_id", userId),
-    client.from("maintenance_rules").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("is_active", true),
-    client.from("documents").select("id", { count: "exact", head: true }).eq("user_id", userId),
-    client
-      .from("assets")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .gte("created_at", currentPeriodStartIso)
-      .lt("created_at", currentPeriodEndIso),
-    client
-      .from("assets")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .gte("created_at", previousPeriodStartIso)
-      .lt("created_at", previousPeriodEndIso),
-    client
-      .from("maintenance_rules")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .eq("is_active", true)
-      .gte("created_at", currentPeriodStartIso)
-      .lt("created_at", currentPeriodEndIso),
-    client
-      .from("maintenance_rules")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .eq("is_active", true)
-      .gte("created_at", previousPeriodStartIso)
-      .lt("created_at", previousPeriodEndIso),
-    client
-      .from("documents")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .gte("uploaded_at", currentPeriodStartIso)
-      .lt("uploaded_at", currentPeriodEndIso),
-    client
-      .from("documents")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .gte("uploaded_at", previousPeriodStartIso)
-      .lt("uploaded_at", previousPeriodEndIso),
-    client.from("service_logs").select("cost,service_date").eq("user_id", userId),
-    client.from("documents").select("asset_id").eq("user_id", userId).not("asset_id", "is", null),
-  ]);
-
-  const fallbackError =
-    totalAssetsRes.error ??
-    activeRulesRes.error ??
-    documentCountRes.error ??
-    currentAssetsCreatedRes.error ??
-    previousAssetsCreatedRes.error ??
-    currentRulesCreatedRes.error ??
-    previousRulesCreatedRes.error ??
-    currentDocumentsUploadedRes.error ??
-    previousDocumentsUploadedRes.error ??
-    serviceLogsRes.error ??
-    documentedAssetsRes.error ??
-    null;
-
-  if (fallbackError) {
-    return { data: [], error: fallbackError };
-  }
-
-  const serviceLogs = (serviceLogsRes.data ?? []) as Array<{ cost: number | string | null; service_date: string }>;
-
-  let totalServiceCost = 0;
-  let currentServiceCost = 0;
-  let previousServiceCost = 0;
-
-  for (const log of serviceLogs) {
-    const cost = toNumber(log.cost);
-    totalServiceCost += cost;
-
-    if (log.service_date >= currentPeriodStartDate && log.service_date < currentPeriodEndDate) {
-      currentServiceCost += cost;
-    }
-    if (log.service_date >= previousPeriodStartDate && log.service_date < previousPeriodEndDate) {
-      previousServiceCost += cost;
-    }
-  }
-
-  const documentedAssets = (documentedAssetsRes.data ?? []) as Array<{ asset_id: string | null }>;
-  const documentedAssetCount = new Set(
-    documentedAssets
-      .map((row) => row.asset_id)
-      .filter((assetId): assetId is string => typeof assetId === "string" && assetId.length > 0),
-  ).size;
-
-  return {
-    data: [
-      {
-        total_assets: totalAssetsRes.count ?? 0,
-        active_rules: activeRulesRes.count ?? 0,
-        document_count: documentCountRes.count ?? 0,
-        documented_asset_count: documentedAssetCount,
-        subscription_count: null,
-        invoice_count: null,
-        total_service_cost: totalServiceCost,
-        current_assets_created: currentAssetsCreatedRes.count ?? 0,
-        previous_assets_created: previousAssetsCreatedRes.count ?? 0,
-        current_rules_created: currentRulesCreatedRes.count ?? 0,
-        previous_rules_created: previousRulesCreatedRes.count ?? 0,
-        current_service_cost: currentServiceCost,
-        previous_service_cost: previousServiceCost,
-        current_documents_uploaded: currentDocumentsUploadedRes.count ?? 0,
-        previous_documents_uploaded: previousDocumentsUploadedRes.count ?? 0,
-      },
-    ],
-    error: null,
-  };
-};
-
-const buildMissingDocumentsFallback = async (
-  client: DbClient,
-  userId: string,
-  options?: { limit?: number; today?: Date },
-): Promise<{ data: DashboardMissingDocumentRpcRow[]; error: PostgrestError | null }> => {
-  const safeLimit = Math.max(1, Math.min(Math.round(options?.limit ?? 6), 50));
-  const today = options?.today ?? startOfToday();
-
-  const [assetsRes, documentedAssetsRes] = await Promise.all([
-    client.from("assets").select("id,name,created_at").eq("user_id", userId).order("created_at", { ascending: true }),
-    client.from("documents").select("asset_id").eq("user_id", userId).not("asset_id", "is", null),
-  ]);
-
-  const fallbackError = assetsRes.error ?? documentedAssetsRes.error ?? null;
-  if (fallbackError) {
-    return { data: [], error: fallbackError };
-  }
-
-  const documentedAssetIds = new Set(
-    ((documentedAssetsRes.data ?? []) as Array<{ asset_id: string | null }>)
-      .map((row) => row.asset_id)
-      .filter((assetId): assetId is string => typeof assetId === "string" && assetId.length > 0),
-  );
-
-  const missingRows = ((assetsRes.data ?? []) as Array<{ id: string; name: string; created_at: string }>)
-    .filter((asset) => !documentedAssetIds.has(asset.id))
-    .slice(0, safeLimit)
-    .map((asset) => {
-      const createdAt = parseDate(asset.created_at);
-      const createdAtMs = createdAt.getTime();
-      const daysWithoutDocument = Number.isFinite(createdAtMs)
-        ? Math.max(0, Math.floor((today.getTime() - createdAtMs) / DAY_IN_MS))
-        : 0;
+const parseMaintenanceRiskItems = (value: unknown): DashboardMaintenanceRiskItem[] =>
+  asArray(value)
+    .map((item) => {
+      const row = asRecord(item);
+      if (!row) return null;
 
       return {
-        asset_id: asset.id,
-        asset_name: asset.name,
-        created_at: asset.created_at,
-        days_without_document: daysWithoutDocument,
-      };
-    });
+        id: toStringOr(row.id),
+        assetId: toStringOr(row.asset_id),
+        assetName: toStringOr(row.asset_name, "Bilinmeyen Varlik"),
+        ruleTitle: toStringOr(row.rule_title),
+        dueDate: toStringOr(row.due_date),
+        dayCount: toInteger(row.day_count as number | string | null | undefined),
+      } satisfies DashboardMaintenanceRiskItem;
+    })
+    .filter((item): item is DashboardMaintenanceRiskItem => !!item && item.id.length > 0 && item.assetId.length > 0)
+    .slice(0, 10);
 
-  return { data: missingRows, error: null };
-};
+const parseWarrantyRiskItems = (value: unknown): DashboardWarrantyRiskItem[] =>
+  asArray(value)
+    .map((item) => {
+      const row = asRecord(item);
+      if (!row) return null;
+
+      return {
+        id: toStringOr(row.id),
+        assetId: toStringOr(row.asset_id),
+        assetName: toStringOr(row.asset_name, "Bilinmeyen Varlik"),
+        warrantyEndDate: toStringOr(row.warranty_end_date),
+        daysRemaining: toInteger(row.days_remaining as number | string | null | undefined),
+      } satisfies DashboardWarrantyRiskItem;
+    })
+    .filter((item): item is DashboardWarrantyRiskItem => !!item && item.id.length > 0 && item.assetId.length > 0)
+    .slice(0, 10);
+
+const parsePaymentRiskItems = (value: unknown): DashboardPaymentRiskItem[] =>
+  asArray(value)
+    .map((item) => {
+      const row = asRecord(item);
+      if (!row) return null;
+
+      const status = toStringOr(row.status) === "overdue" ? "overdue" : "pending";
+
+      return {
+        id: toStringOr(row.id),
+        invoiceNo: typeof row.invoice_no === "string" ? row.invoice_no : null,
+        subscriptionName: toStringOr(row.subscription_name, "Abonelik"),
+        dueDate: toStringOr(row.due_date),
+        totalAmount: toNumber(row.total_amount as number | string | null | undefined),
+        status,
+        daysRemaining: Math.round(toNumber(row.days_remaining as number | string | null | undefined)),
+      } satisfies DashboardPaymentRiskItem;
+    })
+    .filter((item): item is DashboardPaymentRiskItem => !!item && item.id.length > 0)
+    .slice(0, 10);
+
+const parseMissingDocumentRiskItems = (value: unknown): DashboardMissingDocumentRiskItem[] =>
+  asArray(value)
+    .map((item) => {
+      const row = asRecord(item);
+      if (!row) return null;
+
+      return {
+        id: toStringOr(row.id),
+        assetId: toStringOr(row.asset_id),
+        assetName: toStringOr(row.asset_name, "Bilinmeyen Varlik"),
+        createdAt: toStringOr(row.created_at),
+        daysWithoutDocument: toInteger(row.days_without_document as number | string | null | undefined),
+      } satisfies DashboardMissingDocumentRiskItem;
+    })
+    .filter((item): item is DashboardMissingDocumentRiskItem => !!item && item.id.length > 0 && item.assetId.length > 0)
+    .slice(0, 10);
+
+const parseRecentActivity = (value: unknown): DashboardActivityItem[] =>
+  asArray(value)
+    .map((item) => {
+      const row = asRecord(item);
+      if (!row) return null;
+
+      const typeCandidate = toStringOr(row.type);
+      if (!ALLOWED_ACTIVITY_TYPES.has(typeCandidate as DashboardActivityType)) {
+        return null;
+      }
+
+      return {
+        id: toStringOr(row.id),
+        type: typeCandidate as DashboardActivityType,
+        title: toStringOr(row.title),
+        description: toStringOr(row.description),
+        date: toStringOr(row.date),
+        href: toStringOr(row.href, "/timeline"),
+      } satisfies DashboardActivityItem;
+    })
+    .filter((item): item is DashboardActivityItem => !!item && item.id.length > 0)
+    .slice(0, 20);
 
 const EMPTY_DASHBOARD_DATA: DashboardSnapshot = {
   metrics: {
@@ -718,6 +354,8 @@ const EMPTY_DASHBOARD_DATA: DashboardSnapshot = {
     documentCount: 0,
     subscriptionCount: 0,
     invoiceCount: 0,
+    documentsTotalSize: 0,
+    invoicesTotalAmount: 0,
   },
   trends: {
     totalAssets: { direction: "flat", percentage: 0, sparkline: createSparkline("flat") },
@@ -746,6 +384,49 @@ const EMPTY_DASHBOARD_DATA: DashboardSnapshot = {
   recentActivity: [],
 };
 
+export function mapDashboardSnapshotRpcPayload(payload: unknown): DashboardSnapshot {
+  const root = asRecord(payload) as DashboardSnapshotRpcPayload | null;
+  if (!root) {
+    return EMPTY_DASHBOARD_DATA;
+  }
+
+  const counts = asRecord(root.counts);
+  const sums = asRecord(root.sums);
+  const metrics = asRecord(root.metrics);
+  const trends = asRecord(root.trends);
+  const riskPanel = asRecord(root.risk_panel);
+
+  return {
+    metrics: {
+      totalAssets: toInteger((metrics?.total_assets ?? counts?.assets_count) as number | string | null | undefined),
+      activeRules: toInteger(metrics?.active_rules as number | string | null | undefined),
+      totalServiceCost: toNumber((metrics?.total_service_cost ?? sums?.total_cost) as number | string | null | undefined),
+      documentCount: toInteger((metrics?.document_count ?? counts?.documents_count) as number | string | null | undefined),
+      subscriptionCount: toInteger(
+        (metrics?.subscription_count ?? counts?.subscriptions_count) as number | string | null | undefined,
+      ),
+      invoiceCount: toInteger((metrics?.invoice_count ?? counts?.invoices_count) as number | string | null | undefined),
+      documentsTotalSize: toNumber(sums?.documents_total_size as number | string | null | undefined),
+      invoicesTotalAmount: toNumber(sums?.invoices_total_amount as number | string | null | undefined),
+    },
+    trends: {
+      totalAssets: parseTrend(trends?.total_assets),
+      activeRules: parseTrend(trends?.active_rules),
+      totalServiceCost: parseTrend(trends?.total_service_cost),
+      documentCount: parseTrend(trends?.document_count),
+    },
+    status: parseStatus(root.status),
+    riskPanel: {
+      overdueMaintenance: parseMaintenanceRiskItems(riskPanel?.overdue_maintenance),
+      upcomingMaintenance: parseMaintenanceRiskItems(riskPanel?.upcoming_maintenance),
+      upcomingWarranty: parseWarrantyRiskItems(riskPanel?.upcoming_warranty),
+      upcomingPayments: parsePaymentRiskItems(riskPanel?.upcoming_payments),
+      missingDocuments: parseMissingDocumentRiskItems(riskPanel?.missing_documents),
+    },
+    recentActivity: parseRecentActivity(root.timeline),
+  };
+}
+
 export async function getDashboardSnapshot(
   client: DbClient,
   userId: string,
@@ -755,316 +436,35 @@ export async function getDashboardSnapshot(
 
   const today = startOfToday();
   const currentPeriodStart = addDays(today, -(rangeDays - 1));
-  const previousPeriodStart = addDays(currentPeriodStart, -rangeDays);
   const tomorrow = addDays(today, 1);
-  const thirtyDaysLater = addDays(today, 30);
 
   const rpcClient = client as unknown as {
     rpc: (
-      fn: "get_dashboard_aggregates" | "get_dashboard_missing_documents",
-      args: Record<string, unknown>,
+      fn: "get_dashboard_snapshot",
+      args: { p_from: string; p_to: string; p_user_id: string },
     ) => Promise<{ data: unknown; error: PostgrestError | null }>;
   };
 
-  const [aggregateRes, riskRulesRes, recentRulesRes, recentServiceLogsRes, recentDocumentsRes, missingDocumentsRes] =
-    await Promise.all([
-      rpcClient.rpc("get_dashboard_aggregates", {
-        p_user_id: userId,
-        p_current_start: toDateOnly(currentPeriodStart),
-        p_current_end: toDateOnly(tomorrow),
-        p_previous_start: toDateOnly(previousPeriodStart),
-        p_previous_end: toDateOnly(currentPeriodStart),
-      }),
-      client
-        .from("maintenance_rules")
-        .select("id,asset_id,title,next_due_date,is_active,created_at")
-        .eq("user_id", userId)
-        .eq("is_active", true)
-        .lte("next_due_date", toDateOnly(addDays(today, 7)))
-        .order("next_due_date", { ascending: true })
-        .limit(200),
-      client
-        .from("maintenance_rules")
-        .select("id,asset_id,title,next_due_date,is_active,created_at")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(10),
-      client
-        .from("service_logs")
-        .select("id,asset_id,service_type,service_date,cost,created_at")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(10),
-      client
-        .from("documents")
-        .select("id,asset_id,file_name,uploaded_at")
-        .eq("user_id", userId)
-        .order("uploaded_at", { ascending: false })
-        .limit(10),
-      rpcClient.rpc("get_dashboard_missing_documents", {
-        p_user_id: userId,
-        p_limit: 6,
-      }),
-    ]);
+  const { data, error } = await rpcClient.rpc("get_dashboard_snapshot", {
+    p_user_id: userId,
+    p_from: currentPeriodStart.toISOString(),
+    p_to: tomorrow.toISOString(),
+  });
 
-  let aggregateResult = aggregateRes;
-  if (aggregateResult.error && isMissingRpcFunctionError(aggregateResult.error, "get_dashboard_aggregates")) {
-    const aggregateFallback = await buildAggregateFallback(client, userId, {
-      currentPeriodStart,
-      currentPeriodEnd: tomorrow,
-      previousPeriodStart,
-      previousPeriodEnd: currentPeriodStart,
-    });
-    if (!aggregateFallback.error) {
-      aggregateResult = { data: aggregateFallback.data, error: null };
-    }
-  }
-
-  let missingDocumentsResult = missingDocumentsRes;
-  if (
-    missingDocumentsResult.error &&
-    isMissingRpcFunctionError(missingDocumentsResult.error, "get_dashboard_missing_documents")
-  ) {
-    const missingDocumentsFallback = await buildMissingDocumentsFallback(client, userId, {
-      limit: 6,
-      today,
-    });
-    if (!missingDocumentsFallback.error) {
-      missingDocumentsResult = { data: missingDocumentsFallback.data, error: null };
-    }
-  }
-
-  const coreWarnings: string[] = [];
-  if (aggregateResult.error) coreWarnings.push("Dashboard aggregate verisi alinamadi.");
-  if (riskRulesRes.error) coreWarnings.push("Bakim kurallari alinamadi.");
-  if (recentRulesRes.error) coreWarnings.push("Bakim aktivitesi alinamadi.");
-  if (recentServiceLogsRes.error) coreWarnings.push("Servis kayitlari alinamadi.");
-  if (recentDocumentsRes.error) coreWarnings.push("Belge listesi alinamadi.");
-  if (missingDocumentsResult.error) coreWarnings.push("Eksik belge riski alinamadi.");
-
-  const allCoreQueriesFailed =
-    !!aggregateResult.error &&
-    !!riskRulesRes.error &&
-    !!recentRulesRes.error &&
-    !!recentServiceLogsRes.error &&
-    !!recentDocumentsRes.error &&
-    !!missingDocumentsResult.error;
-
-  if (allCoreQueriesFailed) {
+  if (error) {
     return {
       data: EMPTY_DASHBOARD_DATA,
       isMock: false,
-      warning: "Canli veriler alinamadi. Dashboard sifir metriklerle gosteriliyor.",
+      warning: toDashboardSnapshotWarning(error),
     };
   }
 
-  const [warrantyRiskRes, overdueMaintenanceCountRes] = await Promise.all([
-    client
-      .from("assets")
-      .select("id,name,category,warranty_end_date,created_at")
-      .eq("user_id", userId)
-      .not("warranty_end_date", "is", null)
-      .gte("warranty_end_date", toDateOnly(today))
-      .lte("warranty_end_date", toDateOnly(thirtyDaysLater))
-      .order("warranty_end_date", { ascending: true })
-      .limit(20),
-    client
-      .from("maintenance_rules")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .eq("is_active", true)
-      .lt("next_due_date", toDateOnly(today)),
-  ]);
-
-  if (warrantyRiskRes.error) {
-    coreWarnings.push("Garanti riski verisi alinamadi.");
-  }
-  if (overdueMaintenanceCountRes.error) {
-    coreWarnings.push("Gecikmis bakim sayisi alinamadi.");
-  }
-
-  const optionalWarnings: string[] = [];
-  const [subscriptionCountRes, invoiceCountRes, subscriptionsRes, paymentRiskRes, paidInvoicesRes] = await Promise.all([
-    client.from("billing_subscriptions").select("id", { count: "exact", head: true }).eq("user_id", userId),
-    client.from("billing_invoices").select("id", { count: "exact", head: true }).eq("user_id", userId),
-    client.from("billing_subscriptions").select("id,provider_name,subscription_name").eq("user_id", userId),
-    client
-      .from("billing_invoices")
-      .select("id,subscription_id,invoice_no,due_date,total_amount,status,created_at,paid_at")
-      .eq("user_id", userId)
-      .in("status", ["pending", "overdue"])
-      .not("due_date", "is", null)
-      .lte("due_date", toDateOnly(thirtyDaysLater))
-      .order("due_date", { ascending: true })
-      .limit(40),
-    client
-      .from("billing_invoices")
-      .select("id,subscription_id,invoice_no,due_date,total_amount,status,created_at,paid_at")
-      .eq("user_id", userId)
-      .eq("status", "paid")
-      .not("paid_at", "is", null)
-      .order("paid_at", { ascending: false })
-      .limit(10),
-  ]);
-
-  if (subscriptionCountRes.error && !isMissingRelationError(subscriptionCountRes.error)) {
-    optionalWarnings.push("Abonelik limiti verisi alinamadi.");
-  }
-  if (invoiceCountRes.error && !isMissingRelationError(invoiceCountRes.error)) {
-    optionalWarnings.push("Fatura limiti verisi alinamadi.");
-  }
-  if (subscriptionsRes.error && !isMissingRelationError(subscriptionsRes.error)) {
-    optionalWarnings.push("Abonelik listesi alinamadi.");
-  }
-  if (paymentRiskRes.error && !isMissingRelationError(paymentRiskRes.error)) {
-    optionalWarnings.push("Odeme riski verisi alinamadi.");
-  }
-  if (paidInvoicesRes.error && !isMissingRelationError(paidInvoicesRes.error)) {
-    optionalWarnings.push("Odeme aktivitesi alinamadi.");
-  }
-
-  const aggregateRows = Array.isArray(aggregateResult.data)
-    ? ((aggregateResult.data as DashboardAggregateRpcRow[]) ?? [])
-    : [];
-  const aggregate = aggregateRows[0] ?? null;
-
-  const riskRules = riskRulesRes.error ? [] : ((riskRulesRes.data ?? []) as DashboardRuleRow[]);
-  const rules = recentRulesRes.error ? [] : ((recentRulesRes.data ?? []) as DashboardRuleRow[]);
-  const serviceLogs = recentServiceLogsRes.error
-    ? []
-    : ((recentServiceLogsRes.data ?? []) as DashboardServiceLogRow[]);
-  const documents = recentDocumentsRes.error ? [] : ((recentDocumentsRes.data ?? []) as DashboardDocumentRow[]);
-  const warrantyAssets = warrantyRiskRes.error ? [] : ((warrantyRiskRes.data ?? []) as DashboardAssetRow[]);
-  const subscriptions = (subscriptionsRes.data ?? []) as DashboardSubscriptionRow[];
-  const paymentRiskInvoices = (paymentRiskRes.data ?? []) as DashboardInvoiceRow[];
-  const paidInvoices = (paidInvoicesRes.data ?? []) as DashboardInvoiceRow[];
-  const missingDocumentRows = missingDocumentsResult.error
-    ? []
-    : (((missingDocumentsResult.data ?? []) as DashboardMissingDocumentRpcRow[]) ?? []);
-
-  const assetIdsForNameLookup = new Set<string>();
-  for (const row of [...riskRules, ...rules]) assetIdsForNameLookup.add(row.asset_id);
-  for (const row of serviceLogs) assetIdsForNameLookup.add(row.asset_id);
-  for (const row of documents) assetIdsForNameLookup.add(row.asset_id);
-  for (const row of warrantyAssets) assetIdsForNameLookup.add(row.id);
-  for (const row of missingDocumentRows) assetIdsForNameLookup.add(row.asset_id);
-
-  let assetLookupRows: DashboardAssetRow[] = [];
-  if (assetIdsForNameLookup.size > 0) {
-    const { data: assetLookupData, error: assetLookupError } = await client
-      .from("assets")
-      .select("id,name,category,warranty_end_date,created_at")
-      .eq("user_id", userId)
-      .in("id", [...assetIdsForNameLookup]);
-
-    if (assetLookupError) {
-      coreWarnings.push("Varlik adi lookup sorgusu basarisiz.");
-    } else {
-      assetLookupRows = (assetLookupData ?? []) as DashboardAssetRow[];
-    }
-  }
-
-  const assetsById = new Map(assetLookupRows.map((asset) => [asset.id, asset]));
-  for (const asset of warrantyAssets) {
-    if (!assetsById.has(asset.id)) {
-      assetsById.set(asset.id, asset);
-    }
-  }
-  for (const missing of missingDocumentRows) {
-    if (!assetsById.has(missing.asset_id)) {
-      assetsById.set(missing.asset_id, {
-        id: missing.asset_id,
-        name: missing.asset_name,
-        category: "",
-        warranty_end_date: null,
-        created_at: missing.created_at,
-      });
-    }
-  }
-
-  const subscriptionNameById = new Map(
-    subscriptions.map((subscription) => [
-      subscription.id,
-      `${subscription.provider_name} - ${subscription.subscription_name}`,
-    ]),
-  );
-
-  const maintenanceRisk = toMaintenanceRisk(riskRules, assetsById, today);
-  const warrantyRisk = toWarrantyRisk(warrantyAssets, today);
-  const paymentRisk = toPaymentRisk(paymentRiskInvoices, subscriptionNameById, today);
-  const missingDocuments = missingDocumentRows.map((row) => ({
-    id: row.asset_id,
-    assetId: row.asset_id,
-    assetName: row.asset_name,
-    createdAt: row.created_at,
-    daysWithoutDocument: Math.max(0, Math.round(toNumber(row.days_without_document))),
-  }));
-
-  const totalAssets = Math.round(toNumber(aggregate?.total_assets));
-  const activeRules = Math.round(toNumber(aggregate?.active_rules));
-  const documentCount = Math.round(toNumber(aggregate?.document_count));
-  const documentedAssetCount = Math.round(toNumber(aggregate?.documented_asset_count));
-  const totalServiceCost = toNumber(aggregate?.total_service_cost);
-
-  const currentAssetsCreated = Math.round(toNumber(aggregate?.current_assets_created));
-  const previousAssetsCreated = Math.round(toNumber(aggregate?.previous_assets_created));
-  const currentRulesCreated = Math.round(toNumber(aggregate?.current_rules_created));
-  const previousRulesCreated = Math.round(toNumber(aggregate?.previous_rules_created));
-  const currentServiceCost = toNumber(aggregate?.current_service_cost);
-  const previousServiceCost = toNumber(aggregate?.previous_service_cost);
-  const currentDocumentsUploaded = Math.round(toNumber(aggregate?.current_documents_uploaded));
-  const previousDocumentsUploaded = Math.round(toNumber(aggregate?.previous_documents_uploaded));
-
-  const overdueMaintenanceCount = overdueMaintenanceCountRes.count ?? maintenanceRisk.overdueMaintenance.length;
-  const overduePaymentCount = paymentRisk.filter((item) => item.daysRemaining < 0).length;
-  const upcomingPaymentCount = paymentRisk.filter((item) => item.daysRemaining >= 0).length;
-  const missingDocumentCount = Math.max(0, totalAssets - documentedAssetCount);
-  const warningCount =
-    maintenanceRisk.upcomingMaintenance.length +
-    warrantyRisk.length +
-    upcomingPaymentCount +
-    missingDocuments.length;
-
-  const hasData = totalAssets > 0 || activeRules > 0 || documentCount > 0 || totalServiceCost > 0;
-  const warningParts = [...coreWarnings, ...optionalWarnings];
-  const warning = warningParts.length > 0 ? warningParts.join(" ") : null;
+  const payload = Array.isArray(data) ? data[0] : data;
+  const snapshot = mapDashboardSnapshotRpcPayload(payload);
 
   return {
-    data: {
-      metrics: {
-        totalAssets,
-        activeRules,
-        totalServiceCost,
-        documentCount,
-        subscriptionCount: Math.round(toNumber(aggregate?.subscription_count ?? subscriptionCountRes.count ?? 0)),
-        invoiceCount: Math.round(toNumber(aggregate?.invoice_count ?? invoiceCountRes.count ?? 0)),
-      },
-      trends: {
-        totalAssets: buildTrend(currentAssetsCreated, previousAssetsCreated),
-        activeRules: buildTrend(currentRulesCreated, previousRulesCreated),
-        totalServiceCost: buildTrend(currentServiceCost, previousServiceCost),
-        documentCount: buildTrend(currentDocumentsUploaded, previousDocumentsUploaded),
-      },
-      status: toSystemStatus({
-        hasData,
-        assetCount: totalAssets,
-        activeRuleCount: activeRules,
-        overdueMaintenanceCount,
-        overduePaymentCount,
-        upcomingPaymentCount,
-        missingDocumentCount,
-        warningCount,
-      }),
-      riskPanel: {
-        overdueMaintenance: maintenanceRisk.overdueMaintenance,
-        upcomingMaintenance: maintenanceRisk.upcomingMaintenance,
-        upcomingWarranty: warrantyRisk,
-        upcomingPayments: paymentRisk,
-        missingDocuments,
-      },
-      recentActivity: toRecentActivity(assetsById, serviceLogs, documents, rules, paidInvoices, subscriptionNameById),
-    },
+    data: snapshot,
     isMock: false,
-    warning,
+    warning: null,
   };
 }

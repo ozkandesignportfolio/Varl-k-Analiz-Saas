@@ -531,13 +531,18 @@ export function listAssetActivityPreview(
   client: DbClient,
   params: ListAssetActivityPreviewParams,
 ): RepoResult<ListAssetActivityPreviewRow[]> {
+  const rpc = client.rpc.bind(client) as unknown as (
+    fn: string,
+    args?: Record<string, unknown>,
+  ) => PromiseLike<{ data: unknown; error: any }>;
+
   const assetIds = [...new Set(params.assetIds.filter((assetId) => assetId.trim().length > 0))];
   if (assetIds.length === 0) {
     return Promise.resolve({ data: [], error: null });
   }
 
   return Promise.resolve(
-    client.rpc("list_asset_activity_preview", {
+    rpc("list_asset_activity_preview", {
       p_user_id: params.userId,
       p_asset_ids: assetIds,
       p_per_asset_limit: Math.max(1, Math.min(10, Math.floor(params.perAssetLimit ?? 3))),

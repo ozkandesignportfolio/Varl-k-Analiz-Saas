@@ -3,15 +3,15 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
-import {
-  isEmailNotConfirmedError,
-  isEmailRateLimitError,
-} from "@/lib/supabase/auth-errors";
+import { getAuthRedirectUrl } from "@/lib/supabase/auth-redirect";
+import { isEmailNotConfirmedError, isEmailRateLimitError } from "@/lib/supabase/auth-errors";
 import { createClient } from "@/lib/supabase/client";
 
 const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
 const verificationMessage = "E-posta doğrulama bağlantısı gönderildi. Gelen kutusu + spam kontrol et.";
+const verificationCompletedMessage = "E-posta doğrulandı. Artık giriş yapabilirsin.";
+const resendVerificationSuccessMessage = "Doğrulama e-postası tekrar gönderildi. Gelen kutusu + spam kontrol et.";
 
 const getSafeNextPath = (candidate: string | null) => {
   if (!candidate) {
@@ -32,10 +32,19 @@ export default function LoginPage() {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
   const [message, setMessage] = useState(() => {
     if (typeof window === "undefined") return "";
-    const verificationRequired = new URLSearchParams(window.location.search).get("email_verification_required");
-    return verificationRequired === "1" ? verificationMessage : "";
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("email_verified") === "1") {
+      return verificationCompletedMessage;
+    }
+
+    return params.get("email_verification_required") === "1" ? verificationMessage : "";
+  });
+  const [verificationEmail, setVerificationEmail] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return (new URLSearchParams(window.location.search).get("email") ?? "").trim();
   });
   const [nextPath] = useState(() => {
     if (typeof window === "undefined") return "/dashboard";
@@ -67,20 +76,22 @@ export default function LoginPage() {
         }
 
         if (isEmailNotConfirmedError(error)) {
+          setVerificationEmail(email);
           setMessage("E-postanı doğrulamadan giriş yapamazsın.");
           return;
         }
 
-        setMessage(error.message || "Giriş yapilamadi. Lütfen tekrar deneyin.");
+        setMessage(error.message || "Giriş yapılamadı. Lütfen tekrar deneyin.");
         return;
       }
 
       if (!data.session || !data.user) {
-        setMessage("Giris tamamlanamadi. Lutfen tekrar deneyin.");
+        setMessage("Giriş tamamlanamadı. Lütfen tekrar deneyin.");
         return;
       }
 
       if (!isEmailConfirmed(data.user)) {
+        setVerificationEmail(email);
         await supabase.auth.signOut();
         setMessage("E-postanı doğrulamadan giriş yapamazsın.");
         return;
@@ -92,6 +103,43 @@ export default function LoginPage() {
       setMessage("Giriş sırasında beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const onResendVerification = async () => {
+    if (!verificationEmail) {
+      setMessage("Önce e-posta adresini gir ve giriş dene.");
+      return;
+    }
+
+    setIsResendingVerification(true);
+    setMessage("");
+
+    try {
+      const emailRedirectTo = getAuthRedirectUrl("/login?email_verified=1");
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: verificationEmail,
+        options: {
+          ...(emailRedirectTo ? { emailRedirectTo } : {}),
+        },
+      });
+
+      if (error) {
+        if (isEmailRateLimitError(error)) {
+          setMessage("E-posta limiti aşıldı. Lütfen kısa bir süre sonra tekrar deneyin.");
+          return;
+        }
+
+        setMessage(error.message || "Doğrulama e-postası gönderilemedi. Lütfen tekrar deneyin.");
+        return;
+      }
+
+      setMessage(resendVerificationSuccessMessage);
+    } catch {
+      setMessage("Doğrulama e-postası gönderilirken beklenmeyen bir hata oluştu.");
+    } finally {
+      setIsResendingVerification(false);
     }
   };
 
@@ -131,7 +179,8 @@ export default function LoginPage() {
                 type="email"
                 required
                 className={inputClassName}
-                placeholder="örnek@mail.com"
+                placeholder="ornek@mail.com"
+                defaultValue={verificationEmail || undefined}
                 data-testid="login-email-input"
               />
             </label>
@@ -162,6 +211,18 @@ export default function LoginPage() {
             >
               {isSubmitting ? "Giriş yapılıyor..." : "Giriş Yap"}
             </button>
+
+            {verificationEmail ? (
+              <button
+                type="button"
+                onClick={onResendVerification}
+                disabled={isResendingVerification}
+                className="w-full rounded-full border border-sky-300/40 px-5 py-2.5 text-sm font-semibold text-sky-200 transition hover:border-sky-200 disabled:cursor-not-allowed disabled:opacity-70"
+                data-testid="resend-verification-button"
+              >
+                {isResendingVerification ? "Doğrulama e-postası gönderiliyor..." : "Doğrulama e-postasını tekrar gönder"}
+              </button>
+            ) : null}
 
             {message ? (
               <p className="text-sm text-rose-200" data-testid="login-message">

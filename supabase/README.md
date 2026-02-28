@@ -26,9 +26,21 @@
 - Premium medya tablolari/bucket policy'leri icin
   `supabase/migrations/20260222153000_asset_media_premium_uploads.sql`
   dosyasini da calistirin.
+- Dashboard snapshot RPC icin
+  `supabase/migrations/20260228150000_dashboard_snapshot_rpc.sql`
+  dosyasini da calistirin.
+- Dashboard snapshot RPC overload cakismasini temizlemek icin
+  `supabase/migrations/20260228155000_dashboard_snapshot_rpc_remove_ambiguous_overload.sql`
+  dosyasini da calistirin.
 
 Not: Bu migration calismadiysa API tarafinda
 "Could not find the table 'public.asset_media' in the schema cache" hatasi alinabilir.
+Not: Dashboard migrationlari eksikse su hata gorulebilir:
+"Could not find the function public.get_dashboard_snapshot(p_from, p_to, p_user_id) in the schema cache"
+Not: Eger asagidaki hata gorulurse overload cakismasi vardir ve
+`20260228155000_dashboard_snapshot_rpc_remove_ambiguous_overload.sql`
+calistirilmalidir:
+"Could not choose the best candidate function between: public.get_dashboard_snapshot(...)"
 
 ## 2.1) Dogrulama
 - Kurulum sonrasi su dosyayi calistirin:
