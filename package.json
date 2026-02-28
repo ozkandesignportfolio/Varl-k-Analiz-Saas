@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:e2e": "playwright test",
     "check:debug-plan-access": "node scripts/check-debug-plan-access.mjs",
     "check:debug-plan-prod": "node scripts/check-debug-plan-prod.cjs",
     "test:stable": "node testsprite_tests/generated/run_stable_full_suite.cjs",
@@ -29,6 +30,7 @@
     "stripe": "^20.3.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/qrcode": "^1.5.6",
