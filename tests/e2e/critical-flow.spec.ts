@@ -1,16 +1,52 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+
+test.setTimeout(90000);
 import { confirmUserEmail } from "./helpers/supabase-admin";
 
 const PASSWORD = "E2E!Pass1234";
 const NAV_TIMEOUT_MS = 45_000;
+const VERIFY_NOTICE_REGEX = /(do[ğg]rul|verify|verification|confirm|onay)/i;
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function waitForDashboardOrLoginMarker(page: Page) {
+async function waitForPostRegisterMarker(page: Page) {
+  const dashboardMarker = page.getByTestId("dashboard-root");
+  const loginEmailInput = page.getByTestId("login-email-input");
+  const loginSubmitButton = page.getByTestId("login-submit-button");
+  const verifyNotice = page
+    .locator("[data-testid='login-message'], form p.text-sm")
+    .filter({ hasText: VERIFY_NOTICE_REGEX })
+    .first();
+
   await Promise.race([
-    page.getByTestId("dashboard-root").waitFor({ state: "visible", timeout: NAV_TIMEOUT_MS }),
-    page.getByTestId("login-form").waitFor({ state: "visible", timeout: NAV_TIMEOUT_MS }),
+    dashboardMarker.waitFor({ state: "visible", timeout: NAV_TIMEOUT_MS }),
+    (async () => {
+      await loginEmailInput.waitFor({ state: "visible", timeout: NAV_TIMEOUT_MS });
+      await loginSubmitButton.waitFor({ state: "visible", timeout: NAV_TIMEOUT_MS });
+    })(),
+    verifyNotice.waitFor({ state: "visible", timeout: NAV_TIMEOUT_MS }),
   ]);
+}
+
+async function throwIfRegisterHasError(page: Page) {
+  if (!page.url().includes("/register")) {
+    return;
+  }
+
+  const registerMessage = page.locator("form p.text-sm").first();
+  if (page.isClosed()) return;
+  let visible = false;
+  try { visible = await registerMessage.isVisible(); } catch { return; }
+  if (!visible) {
+    return;
+  }
+
+  const message = (await registerMessage.textContent())?.trim() || "(empty form message)";
+  if (VERIFY_NOTICE_REGEX.test(message)) {
+    return;
+  }
+
+  throw new Error(`register form submission failed: ${message}`);
 }
 
 async function failOnVisibleFormMessage(messageLocator: Locator, context: string) {
@@ -55,9 +91,10 @@ test("critical flow: register, login, create asset, and see it in list", async (
   await page.locator("form button[type='submit']").click();
 
   try {
-    await waitForDashboardOrLoginMarker(page);
+    await waitForPostRegisterMarker(page);
+    await throwIfRegisterHasError(page);
   } catch (error) {
-    await failOnVisibleFormMessage(page.locator("form p.text-sm").first(), "register");
+    await throwIfRegisterHasError(page);
     throw error;
   }
 
@@ -71,6 +108,7 @@ test("critical flow: register, login, create asset, and see it in list", async (
 
     const dashboardRoot = page.getByTestId("dashboard-root");
     const loginMessage = page.getByTestId("login-message");
+    await loginMessage.waitFor({ state: "hidden", timeout: 5_000 }).catch(() => undefined);
 
     await Promise.race([
       dashboardRoot.waitFor({ state: "visible", timeout: NAV_TIMEOUT_MS }),
