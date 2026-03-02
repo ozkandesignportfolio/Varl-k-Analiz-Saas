@@ -14,6 +14,15 @@ $findings = @(
     Patterns = @("frufbnurxhtrialetjdg.supabase.co")
   },
   @{
+    Id = "H-01"
+    Title = "H-01 - Security Definer Event Emit Fonksiyonlarinda Execute Yetki Riski"
+    PatternType = "Regex"
+    Patterns = @(
+      "grant\s+execute\s+on\s+function\s+public\.emit_[a-zA-Z0-9_]*\s*(\([^;]*\))?\s+to\s+(authenticated|public|anon)\b",
+      "grant\s+execute\s+on\s+function\s+public\.enqueue_[a-zA-Z0-9_]*\s*(\([^;]*\))?\s+to\s+(authenticated|public|anon)\b"
+    )
+  },
+  @{
     Id = "H-02"
     Title = "H-02 - Automation Dispatcher Secret Optional (Misconfig ile Public Trigger)"
     Patterns = @('if (cronSecret && request.headers.get("x-cron-secret") !== cronSecret)')
@@ -60,10 +69,18 @@ $today = Get-Date -Format "yyyy-MM-dd"
 
 foreach ($f in $findings) {
   $found = $false
+  $useRegex = $f.PatternType -eq "Regex"
   foreach ($p in $f.Patterns) {
-    $matches = Get-ChildItem -Recurse -File -ErrorAction SilentlyContinue |
-      Where-Object { $_.FullName -notmatch "\\node_modules\\|\\test-results\\|\\\.git\\|\\\.next\\|\\scripts\\update-security-md\.ps1$|\\security\.md$" } |
-      Select-String -Pattern $p -SimpleMatch -ErrorAction SilentlyContinue
+    $searchTargets = Get-ChildItem -Recurse -File -ErrorAction SilentlyContinue |
+      Where-Object { $_.FullName -notmatch "\\node_modules\\|\\test-results\\|\\\.git\\|\\\.next\\|\\scripts\\update-security-md\.ps1$|\\security\.md$" }
+
+    if ($useRegex) {
+      $matches = $searchTargets |
+        Select-String -Pattern $p -ErrorAction SilentlyContinue
+    } else {
+      $matches = $searchTargets |
+        Select-String -Pattern $p -SimpleMatch -ErrorAction SilentlyContinue
+    }
 
     if ($matches) { $found = $true; break }
   }
