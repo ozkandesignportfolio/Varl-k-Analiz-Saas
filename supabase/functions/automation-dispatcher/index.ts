@@ -48,8 +48,17 @@ Deno.serve(async (request) => {
     return json({ error: "Only POST is allowed." }, 405);
   }
 
-  if (cronSecret && request.headers.get("x-cron-secret") !== cronSecret) {
-    return json({ error: "Invalid x-cron-secret." }, 401);
+  if (!cronSecret) {
+    return json({ error: "AUTOMATION_CRON_SECRET is not configured." }, 503);
+  }
+
+  const providedCronSecret = request.headers.get("x-cron-secret");
+  if (!providedCronSecret) {
+    return json({ error: "Missing x-cron-secret." }, 401);
+  }
+
+  if (providedCronSecret !== cronSecret) {
+    return json({ error: "Invalid x-cron-secret." }, 403);
   }
 
   let body: Record<string, unknown> = {};
