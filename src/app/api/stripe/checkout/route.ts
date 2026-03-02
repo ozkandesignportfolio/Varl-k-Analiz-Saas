@@ -4,30 +4,15 @@ import { requireRouteUser } from "@/lib/supabase/route-auth";
 
 const normalizeBaseUrl = (value: string | undefined) => value?.trim().replace(/\/+$/, "");
 
-const resolveAppUrl = (request: Request) => {
-  const envAppUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_APP_URL) ?? normalizeBaseUrl(process.env.APP_URL);
-  if (envAppUrl) {
-    return envAppUrl;
+const resolveAppUrl = () => {
+  const envAppUrl =
+    normalizeBaseUrl(process.env.NEXT_PUBLIC_APP_URL) ?? normalizeBaseUrl(process.env.APP_URL);
+
+  if (!envAppUrl) {
+    throw new Error("APP_URL is required");
   }
 
-  const requestUrl = new URL(request.url);
-  const forwardedHost =
-    request.headers
-      .get("x-forwarded-host")
-      ?.split(",")[0]
-      ?.trim() ??
-    request.headers.get("host")?.split(",")[0]?.trim();
-  const forwardedProto =
-    request.headers
-      .get("x-forwarded-proto")
-      ?.split(",")[0]
-      ?.trim() ?? requestUrl.protocol.replace(":", "");
-
-  if (forwardedHost) {
-    return `${forwardedProto}://${forwardedHost}`.replace(/\/+$/, "");
-  }
-
-  return requestUrl.origin.replace(/\/+$/, "");
+  return envAppUrl;
 };
 
 const readMissingEnvVars = () => {
@@ -78,7 +63,15 @@ export async function POST(request: Request) {
   }
 
   const priceId = envCheck.premiumPriceId as string;
-  const appUrl = resolveAppUrl(request);
+  let appUrl: string;
+  try {
+    appUrl = resolveAppUrl();
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "APP_URL is required" },
+      { status: 500 },
+    );
+  }
 
   try {
     const session = await stripe.checkout.sessions.create({
