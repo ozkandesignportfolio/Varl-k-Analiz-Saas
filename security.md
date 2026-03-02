@@ -18,6 +18,7 @@ Dinamik pentest, runtime cloud konfig denetimi ve prod verisi ile dogrulama yapi
 ## Findings
 
 ### C-01 - Service Role Key Exfiltration via Hardcoded Fallback URL
+Status: FIXED (2026-03-02)
 - Severity: **Critical**
 - Kanit:
   - `supabase/migrations/20260228133000_media_enrichment_jobs_queue_refactor.sql:119`
