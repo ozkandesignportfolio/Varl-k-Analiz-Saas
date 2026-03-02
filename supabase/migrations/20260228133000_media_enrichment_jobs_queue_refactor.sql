@@ -34,8 +34,8 @@ set document_ids = '{}'::uuid[]
 where document_ids is null;
 
 update public.media_enrichment_jobs
-set idempotency_key = encode(gen_random_bytes(16), 'hex')
-where idempotency_key is null or btrim(idempotency_key) = '';
+set idempotency_key = replace(gen_random_uuid()::text, '-', '')
+where idempotency_key is null;
 
 alter table public.media_enrichment_jobs
   alter column user_id set not null,
