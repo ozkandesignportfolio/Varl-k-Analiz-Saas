@@ -120,7 +120,7 @@ declare
   v_service_role_key text := nullif(current_setting('app.settings.service_role_key', true), '');
 begin
   if v_base_url is null then
-    v_base_url := 'https://frufbnurxhtrialetjdg.supabase.co';
+    raise exception 'supabase_url not configured';
   end if;
 
   if v_service_role_key is null then
