@@ -2,6 +2,7 @@ begin;
 
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
+create extension if not exists pgcrypto;
 
 create table if not exists public.media_enrichment_jobs (
   id uuid primary key default gen_random_uuid(),
