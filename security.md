@@ -38,3 +38,4 @@ select exists (
 2. Rate-limit fonksiyonunda subject pinning uygula (`authenticated` için `p_subject = auth.uid()`).
 3. Backup/restore drill çalıştır: test restore, veri bütünlüğü doğrulaması ve ölçülen RPO/RTO kaydı.
 4. CLI timeout yaşanan ortamlarda kritik migration'ları SQL Editor ile uygula ve migration geçmişini doğrula.
+
