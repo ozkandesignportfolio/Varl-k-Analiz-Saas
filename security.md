@@ -37,6 +37,7 @@ Status: FIXED (2026-03-02)
   - Key transferi yerine function invocation auth modeli degistirilsin (m2m secret rotation + allowlist host kontrolu).
 
 ### H-01 - Security Definer Event Emit Fonksiyonlarinda Execute Yetki Riski
+Status: FIXED (2026-03-02)
 - Severity: **High** (konfig varsayimina bagli)
 - Kanit:
   - `supabase/migrations/20260218150000_notification_flow_cron_due_and_rule_crud.sql:23`
@@ -197,6 +198,9 @@ where n.nspname = 'public'
     'enqueue_maintenance_due_event_on_rule_change'
   );
 ```
+
+
+
 
 
 
