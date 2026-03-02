@@ -18,7 +18,7 @@ Dinamik pentest, runtime cloud konfig denetimi ve prod verisi ile dogrulama yapi
 ## Findings
 
 ### C-01 - Service Role Key Exfiltration via Hardcoded Fallback URL
-Status: OPEN
+Status: FIXED (2026-03-02)
 - Severity: **Critical**
 - Kanit:
   - `supabase/migrations/20260228133000_media_enrichment_jobs_queue_refactor.sql:119`
@@ -60,6 +60,7 @@ Status: OPEN
   - Ayrica fonksiyon icinde rol dogrulamasi ekleyin (`request.jwt.claim.role`).
 
 ### H-02 - Automation Dispatcher Secret Optional (Misconfig ile Public Trigger)
+Status: FIXED (2026-03-02)
 - Severity: **High**
 - Kanit:
   - `supabase/functions/automation-dispatcher/index.ts:13`
@@ -196,6 +197,9 @@ where n.nspname = 'public'
     'enqueue_maintenance_due_event_on_rule_change'
   );
 ```
+
+
+
 
 
 
