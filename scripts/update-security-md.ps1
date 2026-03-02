@@ -12,6 +12,11 @@ $findings = @(
     Id = "C-01"
     Title = "C-01 - Service Role Key Exfiltration via Hardcoded Fallback URL"
     Patterns = @("frufbnurxhtrialetjdg.supabase.co")
+  },
+  @{
+    Id = "H-02"
+    Title = "H-02 - Automation Dispatcher Secret Optional (Misconfig ile Public Trigger)"
+    Patterns = @('if (cronSecret && request.headers.get("x-cron-secret") !== cronSecret)')
   }
 )
 
@@ -57,7 +62,7 @@ foreach ($f in $findings) {
   $found = $false
   foreach ($p in $f.Patterns) {
     $matches = Get-ChildItem -Recurse -File -ErrorAction SilentlyContinue |
-      Where-Object { $_.FullName -notmatch "\\node_modules\\|\\test-results\\|\\\.git\\" } |
+      Where-Object { $_.FullName -notmatch "\\node_modules\\|\\test-results\\|\\\.git\\|\\scripts\\update-security-md\.ps1$" } |
       Select-String -Pattern $p -SimpleMatch -ErrorAction SilentlyContinue
 
     if ($matches) { $found = $true; break }
