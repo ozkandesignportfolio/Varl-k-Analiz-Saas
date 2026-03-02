@@ -39,3 +39,4 @@ select exists (
 3. Backup/restore drill çalıştır: test restore, veri bütünlüğü doğrulaması ve ölçülen RPO/RTO kaydı.
 4. CLI timeout yaşanan ortamlarda kritik migration'ları SQL Editor ile uygula ve migration geçmişini doğrula.
 
+
