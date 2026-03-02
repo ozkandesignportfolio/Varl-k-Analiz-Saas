@@ -1,4 +1,4 @@
-# Security Review - AssetCare
+﻿# Security Review - AssetCare
 
 Bu dokuman, kod tabaninin statik incelemesi ve yerel bagimlilik taramasi (`npm audit`) ile hazirlandi.
 Dinamik pentest, runtime cloud konfig denetimi ve prod verisi ile dogrulama yapilmadi.
@@ -18,7 +18,7 @@ Dinamik pentest, runtime cloud konfig denetimi ve prod verisi ile dogrulama yapi
 ## Findings
 
 ### C-01 - Service Role Key Exfiltration via Hardcoded Fallback URL
-Status: FIXED (2026-03-02)
+Status: OPEN
 - Severity: **Critical**
 - Kanit:
   - `supabase/migrations/20260228133000_media_enrichment_jobs_queue_refactor.sql:119`
@@ -196,3 +196,5 @@ where n.nspname = 'public'
     'enqueue_maintenance_due_event_on_rule_change'
   );
 ```
+
+
