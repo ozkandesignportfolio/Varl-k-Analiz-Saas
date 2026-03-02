@@ -138,6 +138,11 @@ begin
 end;
 $$;
 
+revoke all on function public.emit_service_log_created_event() from public;
+revoke all on function public.emit_service_log_created_event() from anon;
+revoke all on function public.emit_service_log_created_event() from authenticated;
+grant execute on function public.emit_service_log_created_event() to service_role;
+
 drop trigger if exists trg_service_log_created_event on public.service_logs;
 create trigger trg_service_log_created_event
 after insert on public.service_logs

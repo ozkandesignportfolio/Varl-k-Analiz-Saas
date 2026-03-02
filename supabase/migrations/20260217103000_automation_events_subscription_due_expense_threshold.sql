@@ -102,6 +102,11 @@ begin
 end;
 $$;
 
+revoke all on function public.emit_expense_threshold_event() from public;
+revoke all on function public.emit_expense_threshold_event() from anon;
+revoke all on function public.emit_expense_threshold_event() from authenticated;
+grant execute on function public.emit_expense_threshold_event() to service_role;
+
 do $$
 begin
   if to_regclass('public.expenses') is not null then

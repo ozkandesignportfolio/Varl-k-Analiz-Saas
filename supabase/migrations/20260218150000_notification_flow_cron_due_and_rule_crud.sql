@@ -66,6 +66,11 @@ begin
 end;
 $$;
 
+revoke all on function public.emit_warranty_due_events(timestamptz, interval) from public;
+revoke all on function public.emit_warranty_due_events(timestamptz, interval) from anon;
+revoke all on function public.emit_warranty_due_events(timestamptz, interval) from authenticated;
+grant execute on function public.emit_warranty_due_events(timestamptz, interval) to service_role;
+
 create or replace function public.emit_maintenance_due_events(
   p_run_at timestamptz default now(),
   p_window interval default interval '1 day'
@@ -117,6 +122,11 @@ begin
   return emitted_count;
 end;
 $$;
+
+revoke all on function public.emit_maintenance_due_events(timestamptz, interval) from public;
+revoke all on function public.emit_maintenance_due_events(timestamptz, interval) from anon;
+revoke all on function public.emit_maintenance_due_events(timestamptz, interval) from authenticated;
+grant execute on function public.emit_maintenance_due_events(timestamptz, interval) to service_role;
 
 create or replace function public.emit_subscription_due_events(
   p_run_at timestamptz default now(),
@@ -171,6 +181,11 @@ begin
 end;
 $$;
 
+revoke all on function public.emit_subscription_due_events(timestamptz, interval) from public;
+revoke all on function public.emit_subscription_due_events(timestamptz, interval) from anon;
+revoke all on function public.emit_subscription_due_events(timestamptz, interval) from authenticated;
+grant execute on function public.emit_subscription_due_events(timestamptz, interval) to service_role;
+
 create or replace function public.emit_due_automation_events(
   p_run_at timestamptz default now(),
   p_window interval default interval '1 day'
@@ -198,6 +213,11 @@ begin
   );
 end;
 $$;
+
+revoke all on function public.emit_due_automation_events(timestamptz, interval) from public;
+revoke all on function public.emit_due_automation_events(timestamptz, interval) from anon;
+revoke all on function public.emit_due_automation_events(timestamptz, interval) from authenticated;
+grant execute on function public.emit_due_automation_events(timestamptz, interval) to service_role;
 
 create or replace function public.enqueue_maintenance_due_event_on_rule_change()
 returns trigger
@@ -253,6 +273,11 @@ begin
   return new;
 end;
 $$;
+
+revoke all on function public.enqueue_maintenance_due_event_on_rule_change() from public;
+revoke all on function public.enqueue_maintenance_due_event_on_rule_change() from anon;
+revoke all on function public.enqueue_maintenance_due_event_on_rule_change() from authenticated;
+grant execute on function public.enqueue_maintenance_due_event_on_rule_change() to service_role;
 
 drop trigger if exists trg_maintenance_rule_due_event_on_change on public.maintenance_rules;
 create trigger trg_maintenance_rule_due_event_on_change
