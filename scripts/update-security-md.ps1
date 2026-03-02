@@ -62,7 +62,7 @@ foreach ($f in $findings) {
   $found = $false
   foreach ($p in $f.Patterns) {
     $matches = Get-ChildItem -Recurse -File -ErrorAction SilentlyContinue |
-      Where-Object { $_.FullName -notmatch "\\node_modules\\|\\test-results\\|\\\.git\\|\\scripts\\update-security-md\.ps1$" } |
+      Where-Object { $_.FullName -notmatch "\\node_modules\\|\\test-results\\|\\\.git\\|\\\.next\\|\\scripts\\update-security-md\.ps1$|\\security\.md$" } |
       Select-String -Pattern $p -SimpleMatch -ErrorAction SilentlyContinue
 
     if ($matches) { $found = $true; break }
