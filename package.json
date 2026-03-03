@@ -2,12 +2,17 @@
   "name": "assetcare",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20 <21"
+  },
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "test:e2e": "playwright test",
+    "test:rls:negative": "node scripts/run-rls-negative-playwright.mjs",
+    "test:rls:negative:debug": "cross-env DEBUG=pw:api,pw:browser,pw:webserver,pw:test node scripts/run-rls-negative-playwright.mjs",
     "check:debug-plan-access": "node scripts/check-debug-plan-access.mjs",
     "check:debug-plan-prod": "node scripts/check-debug-plan-prod.cjs",
     "security:update": "powershell -ExecutionPolicy Bypass -File scripts/update-security-md.ps1",
@@ -16,6 +21,7 @@
     "test:stable:premium": "node testsprite_tests/generated/run_stable_premium_suite.cjs"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.95.3",
     "chart.js": "^4.5.1",
