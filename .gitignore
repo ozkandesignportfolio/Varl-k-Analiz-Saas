@@ -84,3 +84,12 @@ test-results/
 node_modules/
 .env.local
 
+# archived test artifacts
+/test-results-*.zip
+
+
+# local artifacts
+test-results/
+playwright-report/
+*.zip
+
