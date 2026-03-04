@@ -5,11 +5,14 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:3000";
 export default defineConfig({
   testDir: "./tests",
   testMatch: ["**/*.spec.ts"],
+  testIgnore: ["**/*.test.ts"],
   fullyParallel: true,
   outputDir: "test-results/artifacts",
+  preserveOutput: "failures-only",
   reporter: [
     ["list"],
     ["json", { outputFile: "test-results/playwright-results.json" }],
+    ["junit", { outputFile: "test-results/playwright-junit.xml" }],
     ["html", { outputFolder: "test-results/playwright-report", open: "never" }],
   ],
   use: {

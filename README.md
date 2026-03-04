@@ -111,6 +111,21 @@ Raporlar:
 - `testsprite_tests/generated/stable_full_suite_report.trial.json`
 - `testsprite_tests/generated/stable_full_suite_report.premium.json`
 
+## RLS Negative Test (Playwright)
+Komut:
+```bash
+npm run test:rls:negative
+```
+
+Zorunlu env degiskenleri:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+Opsiyonel:
+- `PLAYWRIGHT_BASE_URL` (varsayilan: `http://127.0.0.1:3000`)
+- `TEST_BASE_URL` (`PLAYWRIGHT_BASE_URL` yoksa fallback)
+
 ## Klasor Yapisi
 ```text
 docs/

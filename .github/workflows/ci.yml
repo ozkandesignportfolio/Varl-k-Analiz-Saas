@@ -4,40 +4,80 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
-  lint-test-and-scan:
+  gitleaks_scan:
+    name: Gitleaks Scan
     runs-on: ubuntu-latest
-
-    env:
-      TEST_BASE_URL: http://localhost:3100
-      API_KEY: ${{ secrets.API_KEY }}
-      TRIAL_EMAIL: ${{ secrets.TRIAL_EMAIL }}
-      TRIAL_PASSWORD: ${{ secrets.TRIAL_PASSWORD }}
-      PREMIUM_EMAIL: ${{ secrets.PREMIUM_EMAIL }}
-      PREMIUM_PASSWORD: ${{ secrets.PREMIUM_PASSWORD }}
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Gitleaks scan
+      - name: Run Gitleaks
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Node
+  lint_build:
+    name: Lint + Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run build
-      - run: npm run check:debug-plan-prod
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify debug plan route disabled in production
+        run: npm run check:debug-plan-prod
+
+  stable_tests:
+    name: Stable Tests
+    runs-on: ubuntu-latest
+    needs: [gitleaks_scan, lint_build]
+    env:
+      TEST_BASE_URL: http://127.0.0.1:3100
+      API_KEY: ${{ secrets.API_KEY }}
+      TRIAL_EMAIL: ${{ secrets.TRIAL_EMAIL }}
+      TRIAL_PASSWORD: ${{ secrets.TRIAL_PASSWORD }}
+      PREMIUM_EMAIL: ${{ secrets.PREMIUM_EMAIL }}
+      PREMIUM_PASSWORD: ${{ secrets.PREMIUM_PASSWORD }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
 
       - name: Start app
         run: |
-          npm run start -- -p 3100 > /tmp/next-start.log 2>&1 &
+          npm run start -- -p 3100 --hostname 127.0.0.1 > /tmp/next-start.log 2>&1 &
           echo "APP_PID=$!" >> "$GITHUB_ENV"
           for i in {1..90}; do
             if curl -fsS http://127.0.0.1:3100/login > /dev/null; then
@@ -48,7 +88,8 @@ jobs:
           cat /tmp/next-start.log
           exit 1
 
-      - run: npm run test:stable
+      - name: Run stable suite
+        run: npm run test:stable
 
       - name: Stop app
         if: always()
@@ -56,3 +97,77 @@ jobs:
           if [ -n "${APP_PID:-}" ]; then
             kill -9 "$APP_PID" || true
           fi
+
+      - name: Upload stable suite reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stable-suite-reports
+          path: |
+            testsprite_tests/generated/*.json
+            testsprite_tests/generated/*.cjs
+          if-no-files-found: ignore
+
+  rls_negative_test:
+    name: RLS Negative Test
+    runs-on: ubuntu-latest
+    needs: [gitleaks_scan, lint_build]
+    env:
+      PLAYWRIGHT_BASE_URL: http://127.0.0.1:3100
+      TEST_BASE_URL: http://127.0.0.1:3100
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      E2E_RLS_USER_A_EMAIL: ${{ secrets.E2E_RLS_USER_A_EMAIL }}
+      E2E_RLS_USER_A_PASSWORD: ${{ secrets.E2E_RLS_USER_A_PASSWORD }}
+      E2E_RLS_USER_B_EMAIL: ${{ secrets.E2E_RLS_USER_B_EMAIL }}
+      E2E_RLS_USER_B_PASSWORD: ${{ secrets.E2E_RLS_USER_B_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Install Playwright Chromium
+        run: npm exec -- playwright install --with-deps chromium
+
+      - name: Start app
+        run: |
+          npm run start -- -p 3100 --hostname 127.0.0.1 > /tmp/next-start.log 2>&1 &
+          echo "APP_PID=$!" >> "$GITHUB_ENV"
+          for i in {1..90}; do
+            if curl -fsS http://127.0.0.1:3100/login > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/next-start.log
+          exit 1
+
+      - name: Run RLS negative suite
+        run: npm run test:rls:negative
+
+      - name: Stop app
+        if: always()
+        run: |
+          if [ -n "${APP_PID:-}" ]; then
+            kill -9 "$APP_PID" || true
+          fi
+
+      - name: Upload RLS test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rls-negative-artifacts
+          path: test-results/**
+          if-no-files-found: ignore

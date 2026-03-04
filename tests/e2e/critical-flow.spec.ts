@@ -20,7 +20,8 @@ test("critical flow: login, create asset, and see it in list", async ({ page }, 
     if (u.includes("/api/")) console.log("[RES]", res.status(), u);
   });
 
-  const runId = ${Date.now()}-;
+  const runId = `${Date.now()}-${testInfo.workerIndex}`;
+  const assetName = `E2E Asset ${runId}`;
 
   // 1) Login
   await page.goto("/login");
@@ -36,7 +37,7 @@ test("critical flow: login, create asset, and see it in list", async ({ page }, 
   await expect(page).toHaveURL(/\/assets(?:\?.*)?$/, { timeout: 45000 });
 
   // 3) Create an asset
-  await page.getByTestId("asset-name-input").fill(E2E Asset );
+  await page.getByTestId("asset-name-input").fill(assetName);
   await page.getByTestId("asset-brand-input").fill("TestBrand");
   await page.getByTestId("asset-model-input").fill("TestModel");
   await page.getByTestId("asset-category-select").selectOption("Elektronik");
@@ -53,11 +54,11 @@ test("critical flow: login, create asset, and see it in list", async ({ page }, 
   const res = await createAssetResponse;
   if (!res.ok()) {
     const body = await res.text().catch(() => "(no body)");
-    throw new Error(create asset failed:   body=);
+    throw new Error(`create asset failed: status=${res.status()} body=${body}`);
   }
 
   // 4) Assert created asset appears
   const table = page.getByTestId("assets-table");
   await expect(table).toBeVisible({ timeout: 45000 });
-  await expect(table).toContainText(E2E Asset , { timeout: 45000 });
+  await expect(table).toContainText(assetName, { timeout: 45000 });
 });

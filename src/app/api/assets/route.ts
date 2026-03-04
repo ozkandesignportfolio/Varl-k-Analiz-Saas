@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { logApiError, logAuditEvent } from "@/lib/api/logging";
+import { enforceUserRateLimit } from "@/lib/api/rate-limit";
 import {
   listAssets,
   type AssetFilterMode,
@@ -47,9 +48,29 @@ const ALLOWED_SORTS: AssetSortMode[] = ["updated", "cost", "score"];
 const ALLOWED_ASSET_FILTERS: AssetFilterMode[] = ["active", "passive"];
 const ALLOWED_WARRANTY_FILTERS: WarrantyFilterMode[] = ["active", "expiring", "expired"];
 const ALLOWED_MAINTENANCE_FILTERS: MaintenanceFilterMode[] = ["upcoming", "overdue"];
+const ASSETS_READ_RATE_LIMIT_CAPACITY = 120;
+const ASSETS_READ_RATE_LIMIT_REFILL_PER_SECOND = ASSETS_READ_RATE_LIMIT_CAPACITY / 60;
+const ASSETS_WRITE_RATE_LIMIT_CAPACITY = 30;
+const ASSETS_WRITE_RATE_LIMIT_REFILL_PER_SECOND = ASSETS_WRITE_RATE_LIMIT_CAPACITY / 60;
 
 const readBody = async <T extends object>(request: Request) =>
   (await request.json().catch(() => null)) as T | null;
+
+const applyAssetsRateLimit = async (params: {
+  client: unknown;
+  userId: string;
+  scope: "read" | "write";
+  capacity: number;
+  refillPerSecond: number;
+}) =>
+  enforceUserRateLimit({
+    client: params.client,
+    scope: `api_assets_${params.scope}`,
+    userId: params.userId,
+    capacity: params.capacity,
+    refillPerSecond: params.refillPerSecond,
+    ttlSeconds: 180,
+  });
 
 const parseUuid = uuid();
 const parseAssetPagination = paginationSchema(
@@ -86,6 +107,25 @@ export async function GET(request: Request) {
       return auth.response;
     }
     userId = auth.user.id;
+
+    const rateLimit = await applyAssetsRateLimit({
+      client: auth.supabase,
+      userId: auth.user.id,
+      scope: "read",
+      capacity: ASSETS_READ_RATE_LIMIT_CAPACITY,
+      refillPerSecond: ASSETS_READ_RATE_LIMIT_REFILL_PER_SECOND,
+    });
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Cok fazla varlik listeleme istegi gonderildi. Lutfen tekrar deneyin." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.max(1, Math.ceil(rateLimit.retryAfterMs / 1_000))),
+          },
+        },
+      );
+    }
 
     const params = new URL(request.url).searchParams;
     const { pageSize, cursor } = parseAssetPagination(params);
@@ -149,6 +189,25 @@ export async function POST(request: Request) {
       return auth.response;
     }
     userId = auth.user.id;
+
+    const rateLimit = await applyAssetsRateLimit({
+      client: auth.supabase,
+      userId: auth.user.id,
+      scope: "write",
+      capacity: ASSETS_WRITE_RATE_LIMIT_CAPACITY,
+      refillPerSecond: ASSETS_WRITE_RATE_LIMIT_REFILL_PER_SECOND,
+    });
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Cok fazla varlik olusturma istegi gonderildi. Lutfen tekrar deneyin." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.max(1, Math.ceil(rateLimit.retryAfterMs / 1_000))),
+          },
+        },
+      );
+    }
 
     const payload = await readBody<CreateAssetPayload>(request);
     if (!payload) {
@@ -273,6 +332,25 @@ export async function PATCH(request: Request) {
       return auth.response;
     }
     userId = auth.user.id;
+
+    const rateLimit = await applyAssetsRateLimit({
+      client: auth.supabase,
+      userId: auth.user.id,
+      scope: "write",
+      capacity: ASSETS_WRITE_RATE_LIMIT_CAPACITY,
+      refillPerSecond: ASSETS_WRITE_RATE_LIMIT_REFILL_PER_SECOND,
+    });
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Cok fazla varlik guncelleme istegi gonderildi. Lutfen tekrar deneyin." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.max(1, Math.ceil(rateLimit.retryAfterMs / 1_000))),
+          },
+        },
+      );
+    }
 
     const payload = await readBody<UpdateAssetPayload>(request);
     if (!payload) {
@@ -452,6 +530,25 @@ export async function DELETE(request: Request) {
       return auth.response;
     }
     userId = auth.user.id;
+
+    const rateLimit = await applyAssetsRateLimit({
+      client: auth.supabase,
+      userId: auth.user.id,
+      scope: "write",
+      capacity: ASSETS_WRITE_RATE_LIMIT_CAPACITY,
+      refillPerSecond: ASSETS_WRITE_RATE_LIMIT_REFILL_PER_SECOND,
+    });
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Cok fazla varlik silme istegi gonderildi. Lutfen tekrar deneyin." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.max(1, Math.ceil(rateLimit.retryAfterMs / 1_000))),
+          },
+        },
+      );
+    }
 
     const payload = await readBody<DeleteAssetPayload>(request);
     if (!payload) {

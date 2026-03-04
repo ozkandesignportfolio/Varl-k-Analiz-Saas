@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 
 const testResultsDir = resolve(process.cwd(), "test-results");
 mkdirSync(testResultsDir, { recursive: true });
+mkdirSync(resolve(testResultsDir, "artifacts"), { recursive: true });
 
 const logPath = resolve(testResultsDir, "rls-negative.log");
 const logStream = createWriteStream(logPath, { flags: "w" });
@@ -19,6 +20,8 @@ const args = [
 ];
 
 const env = { ...process.env };
+const baseUrl = (env.PLAYWRIGHT_BASE_URL || env.TEST_BASE_URL || "http://127.0.0.1:3000").trim();
+env.PLAYWRIGHT_BASE_URL = baseUrl;
 
 const child = spawn(process.execPath, [playwrightCliPath, ...args], {
   cwd: process.cwd(),

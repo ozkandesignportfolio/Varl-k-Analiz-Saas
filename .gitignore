@@ -74,3 +74,13 @@ audit.json
 # testsprite tmp artifacts
 testsprite_tests/tmp/
 
+
+# local artifacts
+-files*
+s before release*
+playwright-report/
+test-results/
+.next/
+node_modules/
+.env.local
+

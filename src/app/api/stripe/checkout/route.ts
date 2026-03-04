@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
+import { getStripeSecretKeyValidationError, stripe } from "@/lib/stripe";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
 
 const normalizeBaseUrl = (value: string | undefined) => value?.trim().replace(/\/+$/, "");
@@ -46,6 +46,11 @@ export async function POST(request: Request) {
   const auth = await requireRouteUser(request);
   if ("response" in auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const stripeKeyError = getStripeSecretKeyValidationError();
+  if (stripeKeyError) {
+    return NextResponse.json({ error: stripeKeyError }, { status: 500 });
   }
 
   const envCheck = readMissingEnvVars();

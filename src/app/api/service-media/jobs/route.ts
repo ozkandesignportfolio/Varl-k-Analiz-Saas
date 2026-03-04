@@ -1,6 +1,8 @@
+import { createHash } from "crypto";
 import { NextResponse } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { logApiError, logAuditEvent } from "@/lib/api/logging";
+import { enforceUserRateLimit } from "@/lib/api/rate-limit";
 import { mapWithConcurrency } from "@/lib/async/map-with-concurrency";
 import { enrichServiceMediaNotes, type ServiceMediaUploadPayload } from "@/lib/service-media/ai-enrichment";
 
@@ -11,6 +13,8 @@ const DEFAULT_BATCH_LIMIT = 3;
 const MAX_BATCH_LIMIT = 10;
 const DEFAULT_CONCURRENCY = 2;
 const MAX_CONCURRENCY = 3;
+const SERVICE_MEDIA_JOBS_RATE_LIMIT_CAPACITY = 12;
+const SERVICE_MEDIA_JOBS_RATE_LIMIT_REFILL_PER_SECOND = SERVICE_MEDIA_JOBS_RATE_LIMIT_CAPACITY / 60;
 
 type ClaimedJobRow = {
   id: string;
@@ -42,6 +46,9 @@ const toErrorMessage = (error: unknown) => {
   }
   return "Bilinmeyen enrichment hatasi.";
 };
+
+const hashSecretForRateLimitSubject = (secret: string) =>
+  createHash("sha256").update(secret).digest("hex").slice(0, 32);
 
 const parsePayload = (payload: unknown): JobPayload | null => {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
@@ -294,6 +301,27 @@ export async function POST(request: Request) {
   const serviceRoleClient = getServiceRoleClient();
   if (!serviceRoleClient) {
     return NextResponse.json({ error: "Service role baglantisi kurulamadi." }, { status: 503 });
+  }
+
+  const rateLimit = await enforceUserRateLimit({
+    client: serviceRoleClient,
+    scope: "api_service_media_jobs",
+    userId: `worker_${hashSecretForRateLimitSubject(providedSecret)}`,
+    capacity: SERVICE_MEDIA_JOBS_RATE_LIMIT_CAPACITY,
+    refillPerSecond: SERVICE_MEDIA_JOBS_RATE_LIMIT_REFILL_PER_SECOND,
+    ttlSeconds: 180,
+  });
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Cok fazla job tetiklendi. Lutfen tekrar deneyin." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.max(1, Math.ceil(rateLimit.retryAfterMs / 1_000))),
+        },
+      },
+    );
   }
 
   try {

@@ -1,20 +1,16 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
+import { enforceUserRateLimit } from "@/lib/api/rate-limit";
+import { getStripeSecretKeyValidationError, stripe } from "@/lib/stripe";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
 
 type ConfirmPayload = {
   session_id?: unknown;
 };
 
-const getStripeClient = () => {
-  const secretKey = process.env.STRIPE_SECRET_KEY;
-  if (!secretKey) {
-    return null;
-  }
-
-  return new Stripe(secretKey);
-};
+const STRIPE_CONFIRM_RATE_LIMIT_CAPACITY = 10;
+const STRIPE_CONFIRM_RATE_LIMIT_REFILL_PER_SECOND = STRIPE_CONFIRM_RATE_LIMIT_CAPACITY / 60;
 
 const isPremiumCheckoutCompleted = (session: Stripe.Checkout.Session) => {
   if (session.payment_status === "paid") {
@@ -45,6 +41,32 @@ export async function POST(request: Request) {
   }
   const { supabase, user } = auth;
 
+  const rateLimit = await enforceUserRateLimit({
+    client: supabase,
+    scope: "api_stripe_confirm",
+    userId: user.id,
+    capacity: STRIPE_CONFIRM_RATE_LIMIT_CAPACITY,
+    refillPerSecond: STRIPE_CONFIRM_RATE_LIMIT_REFILL_PER_SECOND,
+    ttlSeconds: 180,
+  });
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Cok fazla odeme dogrulama istegi gonderildi. Lutfen tekrar deneyin." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.max(1, Math.ceil(rateLimit.retryAfterMs / 1_000))),
+        },
+      },
+    );
+  }
+
+  const stripeKeyError = getStripeSecretKeyValidationError();
+  if (stripeKeyError) {
+    return NextResponse.json({ error: stripeKeyError }, { status: 500 });
+  }
+
   const payload = (await request.json().catch(() => null)) as ConfirmPayload | null;
   const sessionId = String(payload?.session_id ?? "").trim();
 
@@ -52,7 +74,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "session_id zorunludur." }, { status: 400 });
   }
 
-  const stripe = getStripeClient();
   if (!stripe) {
     return NextResponse.json({ error: "Stripe yapılandırması eksik." }, { status: 500 });
   }

@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { stripe } from "@/lib/stripe";
+import { getStripeSecretKeyValidationError, stripe } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const stripeKeyError = getStripeSecretKeyValidationError();
+  if (stripeKeyError) {
+    return NextResponse.json({ error: stripeKeyError }, { status: 500 });
+  }
+
   const signature = request.headers.get("stripe-signature");
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
   const rawBody = await request.text();
