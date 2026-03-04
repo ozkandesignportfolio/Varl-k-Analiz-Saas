@@ -1,10 +1,10 @@
-﻿import { loadEnvLocal } from './_load-env-local.mjs';
-loadEnvLocal();
-
-
 import { spawn } from "node:child_process";
 import { createWriteStream, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { loadEnvLocal } from "./_load-env-local.mjs";
+import { resolvePlaywrightCliPath } from "./_resolve-playwright-cli.mjs";
+
+loadEnvLocal();
 
 const testResultsDir = resolve(process.cwd(), "test-results");
 mkdirSync(testResultsDir, { recursive: true });
@@ -13,7 +13,15 @@ mkdirSync(resolve(testResultsDir, "artifacts"), { recursive: true });
 const logPath = resolve(testResultsDir, "rls-negative.log");
 const logStream = createWriteStream(logPath, { flags: "w" });
 
-const playwrightCliPath = resolve(process.cwd(), "node_modules", "playwright", "cli.js");
+const playwrightCliPath = resolvePlaywrightCliPath();
+if (!playwrightCliPath) {
+  const message =
+    "[run-rls-negative-playwright] Playwright CLI not found. Run `npm ci` (Node 20.19.x) before executing this test.\n";
+  process.stderr.write(message);
+  logStream.end(message);
+  process.exit(1);
+}
+
 const args = [
   "test",
   "tests/rls/rls-negative.spec.ts",
@@ -24,8 +32,10 @@ const args = [
 ];
 
 const env = { ...process.env };
-const baseUrl = (env.PLAYWRIGHT_BASE_URL || env.TEST_BASE_URL || "http://127.0.0.1:3000").trim();
-env.PLAYWRIGHT_BASE_URL = baseUrl;
+const configuredBaseUrl = (env.PLAYWRIGHT_BASE_URL || env.TEST_BASE_URL || "").trim();
+if (configuredBaseUrl.length > 0) {
+  env.PLAYWRIGHT_BASE_URL = configuredBaseUrl;
+}
 
 const child = spawn(process.execPath, [playwrightCliPath, ...args], {
   cwd: process.cwd(),
@@ -54,6 +64,3 @@ child.on("close", (code) => {
   logStream.end(`\n[run-rls-negative-playwright] Exit code: ${finalCode}\n`);
   process.exit(finalCode);
 });
-
-
-
