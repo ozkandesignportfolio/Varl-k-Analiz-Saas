@@ -42,13 +42,17 @@ jobs:
       - name: Lint
         run: npm run lint -- --max-warnings=0
 
-      - name: Build
+      - name: Validate Supabase public env
         run: |
           if [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ] || [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" ]; then
             echo "Supabase public env missing in CI -> skipping build."
             exit 0
           fi
-          npm run build
+          echo "Supabase public env present -> running build."
+
+      - name: Build
+        if: ${{ env.NEXT_PUBLIC_SUPABASE_URL != '' && env.NEXT_PUBLIC_SUPABASE_ANON_KEY != '' }}
+        run: npm run build
 
       - name: Verify debug plan route disabled in production
         run: npm run check:debug-plan-prod
