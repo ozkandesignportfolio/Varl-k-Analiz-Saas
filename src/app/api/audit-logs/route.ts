@@ -1,4 +1,5 @@
 ﻿import { NextResponse } from "next/server";
+import { enforceRateLimit, getRequestIp } from "@/lib/api/rate-limit";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
 
 const allowedEntityTypes = ["assets", "maintenance_rules", "service_logs", "documents"] as const;
@@ -32,6 +33,18 @@ const isMissingAuditLogsTableError = (error: { code?: string; message?: string }
 };
 
 export async function GET(request: Request) {
+  const requestIp = (request as Request & { ip?: string }).ip ?? getRequestIp(request) ?? "anon";
+  const rl = enforceRateLimit({
+    scope: "api",
+    key: requestIp,
+    limit: 60,
+    windowMs: 60_000,
+  });
+
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: "rate_limited" }), { status: 429 });
+  }
+
   const auth = await requireRouteUser(request);
   if ("response" in auth) {
     return auth.response;
@@ -86,4 +99,3 @@ export async function GET(request: Request) {
 
   return NextResponse.json({ logs: data ?? [] }, { status: 200 });
 }
-
