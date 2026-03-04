@@ -154,6 +154,8 @@ export const enforceUserRateLimit = async (params: EnforceUserRateLimitParams): 
   const ttlSeconds = toPositiveInt(params.ttlSeconds ?? 180, 180, 5);
   const subject = normalizeSubject(params.userId);
   const fallbackWindowMs = Math.max(5_000, Math.round((capacity / refillPerSecond) * 1_000));
+  const isProd = process.env.NODE_ENV === "production";
+  const allowFallback = process.env.RATE_LIMIT_ALLOW_MEMORY_FALLBACK === "1" || !isProd;
 
   try {
     const rpcClient = params.client as DbRateLimitRpcClient;
@@ -176,6 +178,14 @@ export const enforceUserRateLimit = async (params: EnforceUserRateLimitParams): 
     }
     return row;
   } catch {
+    if (!allowFallback) {
+      return {
+        allowed: false,
+        remaining: 0,
+        retryAfterMs: fallbackWindowMs,
+      };
+    }
+
     return enforceRateLimit({
       scope: `${params.scope}_memory_fallback`,
       key: subject,
