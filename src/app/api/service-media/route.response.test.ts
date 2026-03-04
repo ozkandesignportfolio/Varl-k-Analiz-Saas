@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildQueuedServiceMediaResponse } from "@/app/api/service-media/route";
+import { buildQueuedServiceMediaResponse } from "@/app/api/service-media/response";
 
 test("buildQueuedServiceMediaResponse returns HTTP 202 immediately", async () => {
   const startedAt = performance.now();

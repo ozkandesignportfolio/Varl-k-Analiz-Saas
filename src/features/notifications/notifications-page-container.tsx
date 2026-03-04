@@ -233,7 +233,7 @@ export function NotificationsPageContainer() {
     };
 
     void load();
-  }, [automationClient, router, supabase.auth]);
+  }, [automationClient, router, supabase]);
 
   const onDateRangeChange = (nextRange: DateRangeFilter) => {
     setDateRange(nextRange);

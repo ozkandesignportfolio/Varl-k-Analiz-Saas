@@ -120,6 +120,27 @@ type ListServiceLogsForReportsRawRow = Pick<
   asset: ReportAssetRelation;
 };
 
+type RpcPrimitive = string | number | boolean | null;
+type RpcArgValue = RpcPrimitive | RpcPrimitive[];
+type RpcArgs = Record<string, RpcArgValue>;
+type RpcResponse<T> = { data: T | null; error: PostgrestError | null };
+type RpcInvoker = <T>(fn: string, args?: RpcArgs) => PromiseLike<RpcResponse<T>>;
+
+type AssetActivityPreviewRpcRow = {
+  asset_id: string | null;
+  id: string | null;
+  service_type: string | null;
+  service_date: string | null;
+  cost: number | string | null;
+};
+
+const asRpcInvoker = (client: DbClient): RpcInvoker => client.rpc.bind(client) as RpcInvoker;
+
+const toFiniteNumber = (value: number | string | null, fallback = 0) => {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
 const getReportAssetName = (relation: ReportAssetRelation): string | null => {
   if (!relation) return null;
   if (Array.isArray(relation)) {
@@ -129,15 +150,15 @@ const getReportAssetName = (relation: ReportAssetRelation): string | null => {
 };
 
 const normalizePageSize = (value: number | undefined, fallback: number, max = 200) => {
-  if (!Number.isFinite(value)) return fallback;
-  const parsed = Math.floor(value as number);
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  const parsed = Math.floor(value);
   if (parsed <= 0) return fallback;
   return Math.min(max, parsed);
 };
 
 const normalizeOffset = (value: number | undefined) => {
-  if (!Number.isFinite(value)) return 0;
-  const parsed = Math.floor(value as number);
+  if (typeof value !== "number" || !Number.isFinite(value)) return 0;
+  const parsed = Math.floor(value);
   return parsed > 0 ? parsed : 0;
 };
 
@@ -420,7 +441,7 @@ export function listForReports(
         asset_id: row.asset_id,
         service_date: row.service_date,
         service_type: row.service_type,
-        cost: Number.isFinite(Number(row.cost)) ? Number(row.cost) : 0,
+        cost: toFiniteNumber(row.cost),
         asset_name: getReportAssetName(row.asset),
       })) ?? [],
     error: r.error,
@@ -463,7 +484,7 @@ export function listForReportsPaginated(
       asset_id: row.asset_id,
       service_date: row.service_date,
       service_type: row.service_type,
-      cost: Number.isFinite(Number(row.cost)) ? Number(row.cost) : 0,
+      cost: toFiniteNumber(row.cost),
       asset_name: getReportAssetName(row.asset),
       created_at: row.created_at,
     }));
@@ -531,10 +552,7 @@ export function listAssetActivityPreview(
   client: DbClient,
   params: ListAssetActivityPreviewParams,
 ): RepoResult<ListAssetActivityPreviewRow[]> {
-  const rpc = client.rpc.bind(client) as unknown as (
-    fn: string,
-    args?: Record<string, unknown>,
-  ) => PromiseLike<{ data: unknown; error: PostgrestError | null }>;
+  const rpc = asRpcInvoker(client);
 
   const assetIds = [...new Set(params.assetIds.filter((assetId) => assetId.trim().length > 0))];
   if (assetIds.length === 0) {
@@ -542,19 +560,19 @@ export function listAssetActivityPreview(
   }
 
   return Promise.resolve(
-    rpc("list_asset_activity_preview", {
+    rpc<AssetActivityPreviewRpcRow[]>("list_asset_activity_preview", {
       p_user_id: params.userId,
       p_asset_ids: assetIds,
       p_per_asset_limit: Math.max(1, Math.min(10, Math.floor(params.perAssetLimit ?? 3))),
     }),
   ).then((r) => ({
-    data: (((r.data as Array<Record<string, unknown>> | null) ?? []).map((row) => ({
-      asset_id: String(row.asset_id ?? ""),
-      id: String(row.id ?? ""),
-      service_type: String(row.service_type ?? ""),
-      service_date: String(row.service_date ?? ""),
-      cost: Number(row.cost ?? 0),
-    })) ?? []) as ListAssetActivityPreviewRow[],
+    data: (r.data ?? []).map((row) => ({
+      asset_id: row.asset_id ?? "",
+      id: row.id ?? "",
+      service_type: row.service_type ?? "",
+      service_date: row.service_date ?? "",
+      cost: toFiniteNumber(row.cost),
+    })),
     error: r.error,
   }));
 }
@@ -601,18 +619,22 @@ export function create(
   params: CreateServiceLogParams,
 ): RepoResult<CreateServiceLogRow> {
   const { values } = params;
-  const table = client.from("service_logs") as unknown as {
-    insert: (insertValues: CreateServiceLogParams["values"]) => {
-      select: (columns: "id,rule_id,asset_id,service_date") => {
-        single: () => Promise<{ data: unknown; error: PostgrestError | null }>;
+  const table = (
+    client as DbClient & {
+      from: (table: "service_logs") => {
+        insert: (insertValues: CreateServiceLogParams["values"]) => {
+          select: (columns: "id,rule_id,asset_id,service_date") => {
+            single: () => Promise<{ data: CreateServiceLogRow | null; error: PostgrestError | null }>;
+          };
+        };
       };
-    };
-  };
+    }
+  ).from("service_logs");
 
   return Promise.resolve(
     table.insert(values).select("id,rule_id,asset_id,service_date").single(),
   ).then((r) => ({
-    data: (r.data as CreateServiceLogRow | null) ?? null,
+    data: r.data ?? null,
     error: r.error,
   }));
 }
@@ -622,17 +644,21 @@ export function updateById(
   params: UpdateServiceLogByIdParams,
 ): RepoResult<UpdateServiceLogByIdRow> {
   const { patch, serviceLogId, userId } = params;
-  const table = client.from("service_logs") as unknown as {
-    update: (updateValues: UpdateServiceLogByIdParams["patch"]) => {
-      eq: (column: "id", value: string) => {
-        eq: (userColumn: "user_id", userValue: string) => {
-          select: (columns: "id,rule_id,asset_id,service_date") => {
-            single: () => Promise<{ data: unknown; error: PostgrestError | null }>;
+  const table = (
+    client as DbClient & {
+      from: (table: "service_logs") => {
+        update: (updateValues: UpdateServiceLogByIdParams["patch"]) => {
+          eq: (column: "id", value: string) => {
+            eq: (userColumn: "user_id", userValue: string) => {
+              select: (columns: "id,rule_id,asset_id,service_date") => {
+                single: () => Promise<{ data: UpdateServiceLogByIdRow | null; error: PostgrestError | null }>;
+              };
+            };
           };
         };
       };
-    };
-  };
+    }
+  ).from("service_logs");
 
   return Promise.resolve(
     table
@@ -642,7 +668,7 @@ export function updateById(
       .select("id,rule_id,asset_id,service_date")
       .single(),
   ).then((r) => ({
-    data: (r.data as UpdateServiceLogByIdRow | null) ?? null,
+    data: r.data ?? null,
     error: r.error,
   }));
 }
@@ -652,17 +678,21 @@ export function updateNotesById(
   params: UpdateServiceLogNotesByIdParams,
 ): RepoResult<UpdateServiceLogNotesByIdRow> {
   const { notes, serviceLogId, userId } = params;
-  const table = client.from("service_logs") as unknown as {
-    update: (updateValues: { notes: string | null }) => {
-      eq: (column: "id", value: string) => {
-        eq: (userColumn: "user_id", userValue: string) => {
-          select: (columns: "id") => {
-            single: () => Promise<{ data: unknown; error: PostgrestError | null }>;
+  const table = (
+    client as DbClient & {
+      from: (table: "service_logs") => {
+        update: (updateValues: { notes: string | null }) => {
+          eq: (column: "id", value: string) => {
+            eq: (userColumn: "user_id", userValue: string) => {
+              select: (columns: "id") => {
+                single: () => Promise<{ data: UpdateServiceLogNotesByIdRow | null; error: PostgrestError | null }>;
+              };
+            };
           };
         };
       };
-    };
-  };
+    }
+  ).from("service_logs");
 
   return Promise.resolve(
     table
@@ -672,7 +702,7 @@ export function updateNotesById(
       .select("id")
       .single(),
   ).then((r) => ({
-    data: (r.data as UpdateServiceLogNotesByIdRow | null) ?? null,
+    data: r.data ?? null,
     error: r.error,
   }));
 }

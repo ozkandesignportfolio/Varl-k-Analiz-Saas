@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import { buildQueuedServiceMediaResponse } from "./response";
 import { logApiError, logApiRequest, logAuditEvent } from "@/lib/api/logging";
 import { enforceUserRateLimit } from "@/lib/api/rate-limit";
 import { existsById } from "@/lib/repos/assets-repo";
@@ -52,30 +53,6 @@ type UploadAttempt =
       error: string;
       orphanedStoragePath?: string;
     };
-
-export function buildQueuedServiceMediaResponse(params: {
-  uploadedCount: number;
-  queuedJob: QueueRow | null;
-  uploads: MediaUploadResult[];
-}) {
-  return NextResponse.json(
-    {
-      ok: true,
-      uploadedCount: params.uploadedCount,
-      enrichment: params.queuedJob?.status ?? "queued",
-      jobId: params.queuedJob?.id ?? null,
-      media: params.uploads.map((item) => ({
-        kind: item.kind,
-        fileName: item.fileName,
-        mimeType: item.mimeType,
-        size: item.size,
-        storagePath: item.storagePath,
-        metadata: item.metadata,
-      })),
-    },
-    { status: 202 },
-  );
-}
 
 const allowedMimeTypes: Record<MediaKind, string[]> = {
   photo: ["image/jpeg", "image/png", "image/webp", "image/heic"],

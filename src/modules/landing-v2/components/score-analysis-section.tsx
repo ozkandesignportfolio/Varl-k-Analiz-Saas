@@ -22,9 +22,9 @@ function BreakdownBar({ label, score, toneClass }: { label: string; score: numbe
   const width = safeScore > 0 ? Math.max(4, safeScore) : 0;
 
   return (
-    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
       <span className="text-sm text-muted-foreground">{label}</span>
-      <div className="h-2.5 w-full overflow-hidden rounded-full bg-secondary/70">
+      <div className="col-span-2 h-2.5 w-full overflow-hidden rounded-full bg-secondary/70 sm:col-span-1">
         <div className={`h-full rounded-full ${toneClass}`} style={{ width: `${width}%` }} />
       </div>
       <span className="text-xs font-semibold text-foreground">{safeScore}/100</span>
@@ -105,7 +105,7 @@ export function ScoreAnalysisSection() {
   );
 
   return (
-    <section id="skor-analizi" className="relative isolate py-32" ref={ref}>
+    <section id="skor-analizi" className="relative isolate py-20 sm:py-32" ref={ref}>
       <div className="pointer-events-none absolute left-0 right-0 top-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
       <div className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-chart-3/10 blur-[140px]" />
 
@@ -115,9 +115,9 @@ export function ScoreAnalysisSection() {
           <span className="text-xs tracking-widest text-chart-3">Skor Analizi</span>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className={`${inView ? "animate-slide-up" : "opacity-0"}`}>
-            <div className="glass-card rounded-3xl border border-border/60 bg-background/70 p-8 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)]">
+            <div className="glass-card rounded-3xl border border-border/60 bg-background/70 p-5 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)] sm:p-8">
               <h2 className="text-3xl font-bold text-foreground sm:text-4xl">Skor nasıl hesaplanır?</h2>
               <p className="mt-2 text-base font-medium text-chart-3">3 adımda net bir puan</p>
               <p className="mt-5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
@@ -168,7 +168,7 @@ export function ScoreAnalysisSection() {
           </div>
 
           <div className={`${inView ? "animate-slide-in-left" : "opacity-0"}`} style={{ animationDelay: "0.15s" }}>
-            <div className="glass-card rounded-3xl border border-border/60 bg-background/70 p-8 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)]">
+            <div className="glass-card rounded-3xl border border-border/60 bg-background/70 p-5 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)] sm:p-8">
               <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1">
                 <Sparkles className="h-3.5 w-3.5 text-primary" />
                 <span className="text-[11px] font-semibold tracking-wide text-primary">Gerçekçi Örnek</span>
@@ -177,33 +177,33 @@ export function ScoreAnalysisSection() {
               <h3 className="mt-4 text-xl font-semibold text-foreground">{exampleAsset.title}</h3>
 
               <div className="mt-5 grid gap-3 text-sm">
-                <div className="flex items-center justify-between rounded-lg bg-secondary/35 px-3 py-2">
+                <div className="flex items-start justify-between gap-3 rounded-lg bg-secondary/35 px-3 py-2">
                   <span className="text-muted-foreground">Varlık değeri</span>
                   <span className="font-semibold text-foreground">{tlFormatter.format(exampleAsset.valueTl)} TL</span>
                 </div>
-                <div className="flex items-center justify-between rounded-lg bg-secondary/35 px-3 py-2">
+                <div className="flex items-start justify-between gap-3 rounded-lg bg-secondary/35 px-3 py-2">
                   <span className="text-muted-foreground">Son 12 ay bakım/servis</span>
                   <span className="font-semibold text-foreground">
                     {tlFormatter.format(exampleAsset.last12MonthServiceCostTl)} TL
                   </span>
                 </div>
-                <div className="flex items-center justify-between rounded-lg bg-secondary/35 px-3 py-2">
+                <div className="flex items-start justify-between gap-3 rounded-lg bg-secondary/35 px-3 py-2">
                   <span className="text-muted-foreground">Garanti</span>
                   <span className="font-semibold text-foreground">{exampleAsset.warrantyRemainingMonths} ay kaldı</span>
                 </div>
-                <div className="flex items-center justify-between rounded-lg bg-secondary/35 px-3 py-2">
+                <div className="flex items-start justify-between gap-3 rounded-lg bg-secondary/35 px-3 py-2">
                   <span className="text-muted-foreground">Belgeler</span>
                   <span className="font-semibold text-foreground">
                     {exampleAsset.documentsCompleted}/{exampleAsset.documentsTotal} tamam
                   </span>
                 </div>
-                <div className="flex items-center justify-between rounded-lg bg-secondary/35 px-3 py-2">
+                <div className="flex items-start justify-between gap-3 rounded-lg bg-secondary/35 px-3 py-2">
                   <span className="text-muted-foreground">Son bakım</span>
                   <span className="font-semibold text-foreground">{exampleAsset.lastMaintenanceMonthsAgo} ay önce</span>
                 </div>
               </div>
 
-              <div className="mt-6 flex items-center justify-between rounded-xl border border-emerald-300/25 bg-emerald-300/10 px-4 py-3">
+              <div className="mt-6 flex flex-col items-start gap-1 rounded-xl border border-emerald-300/25 bg-emerald-300/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-sm font-medium text-emerald-100">Skor</span>
                 <span className="text-lg font-semibold text-emerald-100">
                   {exampleAsset.score}/100 ({exampleAsset.scoreLabel})
@@ -216,7 +216,7 @@ export function ScoreAnalysisSection() {
                   {exampleAsset.improvements.map((item) => (
                     <li
                       key={item.action}
-                      className="flex items-center justify-between rounded-lg border border-border/50 bg-secondary/20 px-3 py-2 text-sm"
+                      className="flex items-start justify-between gap-3 rounded-lg border border-border/50 bg-secondary/20 px-3 py-2 text-sm"
                     >
                       <span className="text-muted-foreground">{item.action}</span>
                       <span className="font-semibold text-primary">+{item.scoreGain}</span>
@@ -228,7 +228,7 @@ export function ScoreAnalysisSection() {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1fr_0.75fr]">
+        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1fr_0.75fr]">
           <div className={`${inView ? "animate-slide-up" : "opacity-0"}`} style={{ animationDelay: "0.2s" }}>
             <div className="glass-card h-full rounded-3xl border border-border/60 bg-background/70 p-6 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)]">
               <h3 className="text-sm font-semibold text-foreground">Skor Dağılımı</h3>
@@ -249,7 +249,7 @@ export function ScoreAnalysisSection() {
                   Son 6 ay
                 </div>
               </div>
-              <div className="mt-3 h-[180px]">
+              <div className="mt-3 h-[170px] sm:h-[180px]">
                 <Line data={trendData} options={trendOptions} />
               </div>
             </div>

@@ -178,7 +178,7 @@ export function SettingsPageContainer() {
     };
 
     void load();
-  }, [router, supabase.auth]);
+  }, [router, supabase]);
 
   const persistNotificationPrefs = useCallback(
     async (nextPrefs: NotificationPrefsState) => {
@@ -226,7 +226,7 @@ export function SettingsPageContainer() {
       setFeedback("Bildirim tercihleri güncellendi.");
       setIsSavingNotificationPrefs(false);
     },
-    [router, supabase.auth],
+    [router, supabase],
   );
 
   const handleNotificationPrefsChange = useCallback(
@@ -377,7 +377,7 @@ export function SettingsPageContainer() {
       alert(message);
       setIsDeletingAccount(false);
     }
-  }, [isDeleteConfirmationValid, isDeletingAccount, router, supabase.auth]);
+  }, [isDeleteConfirmationValid, isDeletingAccount, router, supabase]);
 
   return (
     <AppShell title="Ayarlar" badge="Hesap ve Tercihler">

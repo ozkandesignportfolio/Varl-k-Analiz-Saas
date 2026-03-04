@@ -40,13 +40,6 @@ export function CTASection() {
               Ücretsiz Hesap Oluştur
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-border text-foreground hover:bg-secondary/50 px-8 py-6 text-base"
-            >
-              Demo Talep Et
-            </Button>
           </div>
 
           <p className="mt-8 text-sm text-muted-foreground">

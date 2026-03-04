@@ -49,7 +49,7 @@ export function Topbar({ title, breadcrumb, userEmail }: TopbarProps) {
 
     router.replace("/login");
     router.refresh();
-  }, [isSigningOut, router, supabase.auth]);
+  }, [isSigningOut, router, supabase]);
 
   return (
     <header className="auth-shell-topbar sticky top-0 z-40 h-16">

@@ -75,11 +75,249 @@ export type ListAssetsResult = {
   hasMore: boolean;
 };
 
+type RpcPrimitive = string | number | boolean | null;
+type RpcArgValue = RpcPrimitive | RpcPrimitive[];
+type RpcArgs = Record<string, RpcArgValue>;
+type RpcResponse<T> = { data: T | null; error: PostgrestError | null };
+type RpcInvoker = <T>(fn: string, args?: RpcArgs) => PromiseLike<RpcResponse<T>>;
+
+type ListAssetCategoriesRpcRow = {
+  category: string | null;
+};
+
+type ListAssetsPageRpcRow = {
+  id: string | null;
+  name: string | null;
+  category: string | null;
+  serial_number: string | null;
+  brand: string | null;
+  model: string | null;
+  purchase_date: string | null;
+  warranty_end_date: string | null;
+  photo_path: string | null;
+  qr_code: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  next_maintenance_date: string | null;
+  last_service_date: string | null;
+  document_count: number | string | null;
+  total_cost: number | string | null;
+  warranty_state: string | null;
+  maintenance_state: string | null;
+  asset_state: string | null;
+  score: number | string | null;
+  cursor_value: string | null;
+};
+
+const asRpcInvoker = (client: DbClient): RpcInvoker => client.rpc.bind(client) as RpcInvoker;
+const fallbackSelectWithQrCode =
+  "id,name,category,serial_number,brand,model,purchase_date,warranty_end_date,photo_path,qr_code,created_at,updated_at";
+const fallbackSelectWithoutQrCode =
+  "id,name,category,serial_number,brand,model,purchase_date,warranty_end_date,photo_path,created_at,updated_at";
+
+const toFiniteNumber = (value: number | string | null, fallback = 0) => {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const resolveWarrantyState = (value: string | null): ListAssetsRow["warranty_state"] =>
+  value === "active" || value === "expiring" || value === "expired" ? value : "active";
+
+const resolveMaintenanceState = (value: string | null): ListAssetsRow["maintenance_state"] =>
+  value === "none" || value === "scheduled" || value === "upcoming" || value === "overdue"
+    ? value
+    : "none";
+
+const resolveAssetState = (value: string | null): ListAssetsRow["asset_state"] =>
+  value === "active" || value === "passive" ? value : "active";
+
 const normalizePageSize = (value: number | undefined, fallback: number, max = 200) => {
-  if (!Number.isFinite(value)) return fallback;
-  const parsed = Math.floor(value as number);
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  const parsed = Math.floor(value);
   if (parsed <= 0) return fallback;
   return Math.min(max, parsed);
+};
+
+const isMissingQrCodeColumnError = (error: PostgrestError | null) => {
+  if (!error) return false;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("qr_code") &&
+    (message.includes("does not exist") ||
+      message.includes("schema cache") ||
+      message.includes("could not find the column"))
+  );
+};
+
+type FallbackAssetRow = {
+  id: string | null;
+  name: string | null;
+  category: string | null;
+  serial_number: string | null;
+  brand: string | null;
+  model: string | null;
+  purchase_date: string | null;
+  warranty_end_date: string | null;
+  photo_path: string | null;
+  qr_code?: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+const fallbackWarrantyState = (warrantyEndDate: string | null): ListAssetsRow["warranty_state"] => {
+  if (!warrantyEndDate) return "active";
+
+  const warrantyDate = new Date(warrantyEndDate);
+  if (Number.isNaN(warrantyDate.getTime())) return "active";
+
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  warrantyDate.setHours(0, 0, 0, 0);
+
+  if (warrantyDate < now) return "expired";
+
+  const dayDiff = Math.floor((warrantyDate.getTime() - now.getTime()) / 86_400_000);
+  return dayDiff <= 45 ? "expiring" : "active";
+};
+
+const fallbackScore = (warrantyState: ListAssetsRow["warranty_state"]) => {
+  if (warrantyState === "expired") return 55;
+  if (warrantyState === "expiring") return 75;
+  return 90;
+};
+
+const mapRpcRows = (rows: ListAssetsPageRpcRow[]): ListAssetsRow[] =>
+  rows.map((row): ListAssetsRow => ({
+    id: row.id ?? "",
+    name: row.name ?? "",
+    category: row.category ?? "",
+    serial_number: row.serial_number,
+    brand: row.brand,
+    model: row.model,
+    purchase_date: row.purchase_date,
+    warranty_end_date: row.warranty_end_date,
+    photo_path: row.photo_path,
+    qr_code: row.qr_code ?? "",
+    created_at: row.created_at ?? "",
+    updated_at: row.updated_at ?? "",
+    next_maintenance_date: row.next_maintenance_date,
+    last_service_date: row.last_service_date,
+    document_count: toFiniteNumber(row.document_count),
+    total_cost: toFiniteNumber(row.total_cost),
+    warranty_state: resolveWarrantyState(row.warranty_state),
+    maintenance_state: resolveMaintenanceState(row.maintenance_state),
+    asset_state: resolveAssetState(row.asset_state),
+    score: toFiniteNumber(row.score),
+    cursor_value: row.cursor_value ?? "",
+  }));
+
+const buildPagedResult = (rows: ListAssetsRow[], pageSize: number, sort: AssetSortMode): ListAssetsResult => {
+  const hasMore = rows.length > pageSize;
+  const pageRows = hasMore ? rows.slice(0, pageSize) : rows;
+  const lastRow = pageRows[pageRows.length - 1] ?? null;
+
+  return {
+    rows: pageRows,
+    hasMore,
+    nextCursor: hasMore && lastRow ? { value: lastRow.cursor_value, id: lastRow.id, sort } : null,
+  };
+};
+
+const listAssetsFallback = async (
+  client: DbClient,
+  params: ListAssetsParams,
+  pageSize: number,
+): Promise<{ data: ListAssetsResult; error: PostgrestError | null }> => {
+  const fallbackSort = "updated";
+
+  const buildQuery = (selectColumns: string) => {
+    let query = client.from("assets").select(selectColumns).eq("user_id", params.userId);
+
+    const searchTerm = params.search?.trim();
+    if (searchTerm) {
+      query = query.ilike("name", `%${searchTerm}%`);
+    }
+
+    if (params.category && params.category !== "all") {
+      query = query.eq("category", params.category);
+    }
+
+    if (params.cursor?.sort === fallbackSort && params.cursor.value) {
+      query = query.lt("updated_at", params.cursor.value);
+    }
+
+    return query.order("updated_at", { ascending: false }).order("id", { ascending: false }).limit(pageSize + 1);
+  };
+
+  const primary = await Promise.resolve(buildQuery(fallbackSelectWithQrCode));
+  if (primary.error && isMissingQrCodeColumnError(primary.error)) {
+    const legacy = await Promise.resolve(buildQuery(fallbackSelectWithoutQrCode));
+    const legacyRows = (legacy.data as FallbackAssetRow[] | null) ?? [];
+    const mappedRows = legacyRows.map((row): ListAssetsRow => {
+      const warrantyState = fallbackWarrantyState(row.warranty_end_date);
+      return {
+        id: row.id ?? "",
+        name: row.name ?? "",
+        category: row.category ?? "",
+        serial_number: row.serial_number,
+        brand: row.brand,
+        model: row.model,
+        purchase_date: row.purchase_date,
+        warranty_end_date: row.warranty_end_date,
+        photo_path: row.photo_path,
+        qr_code: "",
+        created_at: row.created_at ?? "",
+        updated_at: row.updated_at ?? "",
+        next_maintenance_date: null,
+        last_service_date: null,
+        document_count: 0,
+        total_cost: 0,
+        warranty_state: warrantyState,
+        maintenance_state: "none",
+        asset_state: "active",
+        score: fallbackScore(warrantyState),
+        cursor_value: row.updated_at ?? row.created_at ?? "",
+      };
+    });
+
+    return {
+      data: buildPagedResult(mappedRows, pageSize, fallbackSort),
+      error: legacy.error,
+    };
+  }
+
+  const primaryRows = (primary.data as FallbackAssetRow[] | null) ?? [];
+  const mappedRows = primaryRows.map((row): ListAssetsRow => {
+    const warrantyState = fallbackWarrantyState(row.warranty_end_date);
+    return {
+      id: row.id ?? "",
+      name: row.name ?? "",
+      category: row.category ?? "",
+      serial_number: row.serial_number,
+      brand: row.brand,
+      model: row.model,
+      purchase_date: row.purchase_date,
+      warranty_end_date: row.warranty_end_date,
+      photo_path: row.photo_path,
+      qr_code: row.qr_code ?? "",
+      created_at: row.created_at ?? "",
+      updated_at: row.updated_at ?? "",
+      next_maintenance_date: null,
+      last_service_date: null,
+      document_count: 0,
+      total_cost: 0,
+      warranty_state: warrantyState,
+      maintenance_state: "none",
+      asset_state: "active",
+      score: fallbackScore(warrantyState),
+      cursor_value: row.updated_at ?? row.created_at ?? "",
+    };
+  });
+
+  return {
+    data: buildPagedResult(mappedRows, pageSize, fallbackSort),
+    error: primary.error,
+  };
 };
 
 export function listIdName(
@@ -134,19 +372,16 @@ export function listCategories(
   client: DbClient,
   params: ListAssetCategoriesParams,
 ): RepoResult<string[]> {
-  const rpc = client.rpc.bind(client) as unknown as (
-    fn: string,
-    args?: Record<string, unknown>,
-  ) => PromiseLike<{ data: unknown; error: PostgrestError | null }>;
+  const rpc = asRpcInvoker(client);
 
   return Promise.resolve(
-    rpc("list_asset_categories", {
+    rpc<ListAssetCategoriesRpcRow[]>("list_asset_categories", {
       p_user_id: params.userId,
     }),
   ).then((r) => ({
-    data: (((r.data as Array<{ category: string | null }> | null) ?? [])
+    data: ((r.data ?? [])
       .map((row) => row.category?.trim() ?? "")
-      .filter((value) => value.length > 0) ?? []) as string[],
+      .filter((value) => value.length > 0)),
     error: r.error,
   }));
 }
@@ -155,17 +390,14 @@ export function listAssets(
   client: DbClient,
   params: ListAssetsParams,
 ): RepoResult<ListAssetsResult> {
-  const rpc = client.rpc.bind(client) as unknown as (
-    fn: string,
-    args?: Record<string, unknown>,
-  ) => PromiseLike<{ data: unknown; error: PostgrestError | null }>;
+  const rpc = asRpcInvoker(client);
 
   const pageSize = normalizePageSize(params.pageSize, 30, 100);
   const sort = params.sort ?? "updated";
   const cursor = params.cursor && params.cursor.sort === sort ? params.cursor : null;
 
   return Promise.resolve(
-    rpc("list_assets_page", {
+    rpc<ListAssetsPageRpcRow[]>("list_assets_page", {
       p_user_id: params.userId,
       p_cursor_value: cursor?.value ?? null,
       p_cursor_id: cursor?.id ?? null,
@@ -181,47 +413,19 @@ export function listAssets(
           : null,
       p_sort: sort,
     }),
-  ).then((r) => {
-    const rows = ((r.data as Array<Record<string, unknown>> | null) ?? []).map((row) => ({
-      id: String(row.id ?? ""),
-      name: String(row.name ?? ""),
-      category: String(row.category ?? ""),
-      serial_number: (row.serial_number as string | null) ?? null,
-      brand: (row.brand as string | null) ?? null,
-      model: (row.model as string | null) ?? null,
-      purchase_date: (row.purchase_date as string | null) ?? null,
-      warranty_end_date: (row.warranty_end_date as string | null) ?? null,
-      photo_path: (row.photo_path as string | null) ?? null,
-      qr_code: (row.qr_code as string | null) ?? null,
-      created_at: String(row.created_at ?? ""),
-      updated_at: String(row.updated_at ?? ""),
-      next_maintenance_date: (row.next_maintenance_date as string | null) ?? null,
-      last_service_date: (row.last_service_date as string | null) ?? null,
-      document_count: Number(row.document_count ?? 0),
-      total_cost: Number(row.total_cost ?? 0),
-      warranty_state:
-        ((row.warranty_state as string | null) ?? "active") as ListAssetsRow["warranty_state"],
-      maintenance_state:
-        ((row.maintenance_state as string | null) ?? "none") as ListAssetsRow["maintenance_state"],
-      asset_state: ((row.asset_state as string | null) ?? "active") as ListAssetsRow["asset_state"],
-      score: Number(row.score ?? 0),
-      cursor_value: String(row.cursor_value ?? ""),
-    })) as ListAssetsRow[];
+  ).then(async (r) => {
+    if (r.error) {
+      const fallback = await listAssetsFallback(client, params, pageSize);
+      return {
+        data: fallback.data,
+        error: fallback.error ?? r.error,
+      };
+    }
 
-    const hasMore = rows.length > pageSize;
-    const pageRows = hasMore ? rows.slice(0, pageSize) : rows;
-    const lastRow = pageRows[pageRows.length - 1] ?? null;
-
+    const rows = mapRpcRows(r.data ?? []);
     return {
-      data: {
-        rows: pageRows,
-        hasMore,
-        nextCursor:
-          hasMore && lastRow
-            ? { value: lastRow.cursor_value, id: lastRow.id, sort }
-            : null,
-      },
-      error: r.error,
+      data: buildPagedResult(rows, pageSize, sort),
+      error: null,
     };
   });
 }

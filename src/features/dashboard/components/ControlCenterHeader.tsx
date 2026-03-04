@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarDays, ChevronDown, Clock3, Plus, ShieldCheck, Wrench, X } from "lucide-react";
 import {
@@ -70,15 +70,22 @@ type RiskActionState = {
 };
 
 type RiskActionsStore = Record<string, RiskActionState>;
+type RiskActionsStoreListener = () => void;
 
 const RISK_ACTIONS_STORAGE_KEY = "assetcare:risk-actions";
 const RISK_ACTION_TABLE_CANDIDATES = ["notification_snoozes", "risk_actions"] as const;
 const FIX_SNOOZE_DURATION_MS = 10 * 60 * 1000;
 const DASHBOARD_RANGE_OPTIONS: DashboardDateRangeDays[] = [7, 30, 90];
+const EMPTY_RISK_ACTIONS_STORE: RiskActionsStore = {};
+
+let cachedRiskActionsRawValue: string | null | undefined;
+let cachedRiskActionsStore: RiskActionsStore = EMPTY_RISK_ACTIONS_STORE;
+let hasRiskActionsStorageListener = false;
+const riskActionsStoreListeners = new Set<RiskActionsStoreListener>();
 
 const SNOOZE_OPTIONS: { label: string; durationMs: number }[] = [
   { label: "1 saat", durationMs: 60 * 60 * 1000 },
-  { label: "1 gÃ¼n", durationMs: 24 * 60 * 60 * 1000 },
+  { label: "1 gün", durationMs: 24 * 60 * 60 * 1000 },
   { label: "1 hafta", durationMs: 7 * 24 * 60 * 60 * 1000 },
 ];
 
@@ -131,20 +138,15 @@ const isMissingRiskActionsTableError = (message: string | undefined) => {
   return refersKnownTable && (normalized.includes("does not exist") || normalized.includes("schema cache"));
 };
 
-const readRiskActionsStore = (): RiskActionsStore => {
-  if (typeof window === "undefined") {
-    return {};
-  }
-
-  const rawValue = window.localStorage.getItem(RISK_ACTIONS_STORAGE_KEY);
+const parseRiskActionsStore = (rawValue: string | null): RiskActionsStore => {
   if (!rawValue) {
-    return {};
+    return EMPTY_RISK_ACTIONS_STORE;
   }
 
   try {
     const parsed = JSON.parse(rawValue);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return {};
+      return EMPTY_RISK_ACTIONS_STORE;
     }
 
     const entries = Object.entries(parsed).filter(
@@ -153,30 +155,90 @@ const readRiskActionsStore = (): RiskActionsStore => {
 
     return Object.fromEntries(entries);
   } catch {
-    return {};
+    return EMPTY_RISK_ACTIONS_STORE;
   }
 };
 
-const readRiskAction = (riskKey: string) => readRiskActionsStore()[riskKey] ?? null;
+const getRiskActionsStoreSnapshot = (): RiskActionsStore => {
+  if (typeof window === "undefined") {
+    return EMPTY_RISK_ACTIONS_STORE;
+  }
+
+  const rawValue = window.localStorage.getItem(RISK_ACTIONS_STORAGE_KEY);
+  if (rawValue === cachedRiskActionsRawValue) {
+    return cachedRiskActionsStore;
+  }
+
+  cachedRiskActionsRawValue = rawValue;
+  cachedRiskActionsStore = parseRiskActionsStore(rawValue);
+  return cachedRiskActionsStore;
+};
+
+const notifyRiskActionsStoreListeners = () => {
+  riskActionsStoreListeners.forEach((listener) => {
+    listener();
+  });
+};
+
+const handleRiskActionsStorage = (event: StorageEvent) => {
+  if (event.key !== RISK_ACTIONS_STORAGE_KEY) {
+    return;
+  }
+
+  cachedRiskActionsRawValue = event.newValue;
+  cachedRiskActionsStore = parseRiskActionsStore(event.newValue);
+  notifyRiskActionsStoreListeners();
+};
+
+const subscribeToRiskActionsStore = (listener: RiskActionsStoreListener) => {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  riskActionsStoreListeners.add(listener);
+
+  if (!hasRiskActionsStorageListener) {
+    window.addEventListener("storage", handleRiskActionsStorage);
+    hasRiskActionsStorageListener = true;
+  }
+
+  return () => {
+    riskActionsStoreListeners.delete(listener);
+
+    if (hasRiskActionsStorageListener && riskActionsStoreListeners.size === 0) {
+      window.removeEventListener("storage", handleRiskActionsStorage);
+      hasRiskActionsStorageListener = false;
+    }
+  };
+};
+
+const readRiskAction = (riskKey: string) => getRiskActionsStoreSnapshot()[riskKey] ?? null;
 
 const writeRiskAction = (riskKey: string, value: RiskActionState | null) => {
   if (typeof window === "undefined") {
     return;
   }
 
-  const current = readRiskActionsStore();
+  const current = getRiskActionsStoreSnapshot();
   const hasValue = !!value && (typeof value.dismissedAt === "number" || typeof value.snoozedUntil === "number");
+  const nextStore = {
+    ...current,
+  };
 
   if (hasValue) {
-    current[riskKey] = {
+    nextStore[riskKey] = {
       dismissedAt: value.dismissedAt,
       snoozedUntil: value.snoozedUntil,
     };
   } else {
-    delete current[riskKey];
+    delete nextStore[riskKey];
   }
 
-  window.localStorage.setItem(RISK_ACTIONS_STORAGE_KEY, JSON.stringify(current));
+  const nextRawValue = JSON.stringify(nextStore);
+  cachedRiskActionsRawValue = nextRawValue;
+  cachedRiskActionsStore = nextStore;
+  window.localStorage.setItem(RISK_ACTIONS_STORAGE_KEY, nextRawValue);
+  notifyRiskActionsStoreListeners();
 };
 
 const toTimestamp = (value: string | null) => {
@@ -203,6 +265,31 @@ const fromRiskActionRow = (row: RiskActionRow | null | undefined): RiskActionSta
   return { dismissedAt, snoozedUntil };
 };
 
+const toRiskActionSnapshot = (action: RiskActionState | null) =>
+  JSON.stringify({
+    dismissedAt: typeof action?.dismissedAt === "number" ? action.dismissedAt : null,
+    snoozedUntil: typeof action?.snoozedUntil === "number" ? action.snoozedUntil : null,
+  });
+
+const fromRiskActionSnapshot = (snapshot: string): RiskActionState | null => {
+  try {
+    const parsed = JSON.parse(snapshot) as { dismissedAt?: number | null; snoozedUntil?: number | null } | null;
+    const dismissedAt = typeof parsed?.dismissedAt === "number" ? parsed.dismissedAt : undefined;
+    const snoozedUntil = typeof parsed?.snoozedUntil === "number" ? parsed.snoozedUntil : undefined;
+    if (typeof dismissedAt !== "number" && typeof snoozedUntil !== "number") {
+      return null;
+    }
+    return { dismissedAt, snoozedUntil };
+  } catch {
+    return null;
+  }
+};
+
+const isSameRiskActionState = (a: RiskActionState | null | undefined, b: RiskActionState | null) =>
+  (typeof a?.dismissedAt === "number" ? a.dismissedAt : null) === (typeof b?.dismissedAt === "number" ? b.dismissedAt : null) &&
+  (typeof a?.snoozedUntil === "number" ? a.snoozedUntil : null) ===
+    (typeof b?.snoozedUntil === "number" ? b.snoozedUntil : null);
+
 export function ControlCenterHeader({ selectedRange, status }: ControlCenterHeaderProps) {
   const router = useRouter();
   const style = STATUS_STYLES[status.tone];
@@ -218,13 +305,25 @@ export function ControlCenterHeader({ selectedRange, status }: ControlCenterHead
   const [canUseSupabaseRiskActions, setCanUseSupabaseRiskActions] = useState(true);
   const [nowTs, setNowTs] = useState(() => Date.now());
 
+  const localRiskActionSnapshot = useSyncExternalStore(
+    subscribeToRiskActionsStore,
+    () => toRiskActionSnapshot(readRiskAction(riskKey)),
+    () => toRiskActionSnapshot(null),
+  );
+
+  const localRiskAction = useMemo(
+    () => fromRiskActionSnapshot(localRiskActionSnapshot),
+    [localRiskActionSnapshot],
+  );
+
   const riskAction = useMemo(() => {
     const override = riskActionOverrides[riskKey];
     if (typeof override !== "undefined") {
       return override;
     }
-    return readRiskAction(riskKey);
-  }, [riskActionOverrides, riskKey]);
+
+    return localRiskAction;
+  }, [localRiskAction, riskActionOverrides, riskKey]);
 
   useEffect(() => {
     const snoozedUntil = riskAction?.snoozedUntil;
@@ -342,10 +441,16 @@ export function ControlCenterHeader({ selectedRange, status }: ControlCenterHead
 
   const setCurrentRiskAction = useCallback(
     (nextAction: RiskActionState | null) => {
-      setRiskActionOverrides((current) => ({
-        ...current,
-        [riskKey]: nextAction,
-      }));
+      setRiskActionOverrides((current) => {
+        if (isSameRiskActionState(current[riskKey], nextAction)) {
+          return current;
+        }
+
+        return {
+          ...current,
+          [riskKey]: nextAction,
+        };
+      });
     },
     [riskKey],
   );
@@ -482,14 +587,14 @@ export function ControlCenterHeader({ selectedRange, status }: ControlCenterHead
           <details className="group relative">
             <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl border border-[#2F4569] bg-[#10243F] px-4 py-2 text-sm font-semibold text-[#E2E8F0] transition hover:bg-[#143158]">
               <Plus className="size-4" aria-hidden />
-              HÄ±zlÄ± Ekle
+              Hızlı Ekle
               <ChevronDown className="size-4 transition group-open:rotate-180" aria-hidden />
             </summary>
             <div className="absolute right-0 z-20 mt-2 min-w-52 rounded-xl border border-[#2B3E5B] bg-[#0A162A]/95 p-1.5 shadow-[0_16px_30px_rgba(2,8,20,0.5)] backdrop-blur">
-              <HeaderDropdownLink href="/assets" label="VarlÄ±k Ekle" />
-              <HeaderDropdownLink href="/maintenance" label="BakÄ±m KuralÄ± OluÅŸtur" />
-              <HeaderDropdownLink href="/services" label="Servis KaydÄ± Ekle" />
-              <HeaderDropdownLink href="/documents" label="Belge YÃ¼kle" />
+              <HeaderDropdownLink href="/assets" label="Varlık Ekle" />
+              <HeaderDropdownLink href="/maintenance" label="Bakım Kuralı Oluştur" />
+              <HeaderDropdownLink href="/services" label="Servis Kaydı Ekle" />
+              <HeaderDropdownLink href="/documents" label="Belge Yükle" />
             </div>
           </details>
         </div>
@@ -519,12 +624,12 @@ export function ControlCenterHeader({ selectedRange, status }: ControlCenterHead
                       type="button"
                       onClick={handleDismiss}
                       className={`inline-flex size-7 items-center justify-center rounded-md border transition ${style.iconButton}`}
-                      aria-label="GÃ¶rmezden gel"
+                      aria-label="Görmezden gel"
                     >
                       <X className="size-3.5" aria-hidden />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent>GÃ¶rmezden gel</TooltipContent>
+                  <TooltipContent>Görmezden gel</TooltipContent>
                 </Tooltip>
 
                 <DropdownMenu>
@@ -534,20 +639,20 @@ export function ControlCenterHeader({ selectedRange, status }: ControlCenterHead
                         <button
                           type="button"
                           className={`inline-flex size-7 items-center justify-center rounded-md border transition ${style.iconButton}`}
-                          aria-label="Sonra hatÄ±rlat"
+                          aria-label="Sonra hatırlat"
                         >
                           <Clock3 className="size-3.5" aria-hidden />
                         </button>
                       </DropdownMenuTrigger>
                     </TooltipTrigger>
-                    <TooltipContent>Sonra hatÄ±rlat</TooltipContent>
+                    <TooltipContent>Sonra hatırlat</TooltipContent>
                   </Tooltip>
                   <DropdownMenuContent
                     align="end"
                     className="w-40 border-[#2F4569] bg-[#0D1F39]/95 text-[#E5EEFC] shadow-[0_14px_30px_rgba(2,8,20,0.5)]"
                   >
                     <DropdownMenuLabel className="text-xs uppercase tracking-[0.14em] text-[#9BB0CD]">
-                      Sonra hatÄ±rlat
+                      Sonra hatırlat
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator className="bg-[#314B6D]" />
                     {SNOOZE_OPTIONS.map((option) => (
@@ -568,12 +673,12 @@ export function ControlCenterHeader({ selectedRange, status }: ControlCenterHead
                       type="button"
                       onClick={handleFix}
                       className={`inline-flex size-7 items-center justify-center rounded-md border transition ${style.iconButton}`}
-                      aria-label="DÃ¼zelt"
+                      aria-label="Düzelt"
                     >
                       <Wrench className="size-3.5" aria-hidden />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent>DÃ¼zelt</TooltipContent>
+                  <TooltipContent>Düzelt</TooltipContent>
                 </Tooltip>
               </div>
             </TooltipProvider>

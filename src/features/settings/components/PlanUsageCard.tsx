@@ -36,7 +36,9 @@ export function PlanUsageCard({ plan, items }: PlanUsageCardProps) {
         <div>
           <h3 className="text-lg font-semibold text-white">Plan ve Kullanım</h3>
           <p className="mt-1 text-sm text-slate-300">
-            Kullanım durumunu takip edin ve ihtiyaç halinde planınızı yükseltin.
+            {isPremium
+              ? "Kullanım durumunu tek kartta takip edin."
+              : "Kullanım durumunu takip edin ve ihtiyaç halinde planınızı yükseltin."}
           </p>
         </div>
         <Badge
@@ -72,9 +74,11 @@ export function PlanUsageCard({ plan, items }: PlanUsageCardProps) {
         })}
       </div>
 
-      <Button asChild className="mt-5 bg-white/10 text-white hover:bg-white/15">
-        <Link href="/pricing">Premium’a Geç</Link>
-      </Button>
+      {!isPremium ? (
+        <Button asChild className="mt-5 bg-white/10 text-white hover:bg-white/15">
+          <Link href="/pricing">Premium'a Geç</Link>
+        </Button>
+      ) : null}
     </section>
   );
 }

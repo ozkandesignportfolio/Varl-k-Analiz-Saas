@@ -156,7 +156,7 @@ async function ensureAssetOption(page, context, selector) {
   await context.request.fetch(`${BASE_URL}/api/assets`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    data: { name: `TS UI Bootstrap ${Date.now()}`, category: "DiÄŸer" },
+    data: { name: `TS UI Bootstrap ${Date.now()}`, category: "Diğer" },
     timeout: 30000,
   });
 
@@ -266,7 +266,7 @@ async function run(profile) {
       await page.locator("[data-testid='asset-save-button']").click();
       await page.waitForTimeout(2200);
       const fb = await page.locator("[data-testid='assets-feedback']").first().textContent().catch(() => "");
-      if (/limit|oluÅŸturulamadÄ±|hata/i.test(fb || "")) throw new Error(`BACKEND: ${short(fb)}`);
+      if (/limit|oluşturulamadı|hata/i.test(fb || "")) throw new Error(`BACKEND: ${short(fb)}`);
     });
 
     await uiTest("FE-003", "Create maintenance rule", async () => {
@@ -321,7 +321,7 @@ async function run(profile) {
       await page.locator("[data-testid='service-save-button']").click();
       await page.waitForTimeout(1800);
       const fb = await page.locator("[data-testid='services-feedback']").first().textContent().catch(() => "");
-      if (/oluÅŸturulamadÄ±|hata|iÅŸlenirken/i.test(fb || "")) throw new Error(`BACKEND: ${short(fb)}`);
+      if (/oluşturulamadı|hata|işlenirken/i.test(fb || "")) throw new Error(`BACKEND: ${short(fb)}`);
     });
 
     await uiTest("FE-005", "Auth guard check", async () => {
@@ -513,6 +513,3 @@ runAll().catch((err) => {
   console.error(`RUN_FAILED=${String(err?.message || err)}`);
   process.exit(1);
 });
-
-
-

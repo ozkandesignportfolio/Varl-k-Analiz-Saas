@@ -39,4 +39,18 @@ select exists (
 3. Backup/restore drill çalıştır: test restore, veri bütünlüğü doğrulaması ve ölçülen RPO/RTO kaydı.
 4. CLI timeout yaşanan ortamlarda kritik migration'ları SQL Editor ile uygula ve migration geçmişini doğrula.
 
+## Web Security Controls (MVP Hardening)
+
+- `next.config.ts` içinde global response header'ları aktif:
+  - `X-Content-Type-Options: nosniff`
+  - `X-Frame-Options: DENY`
+  - `Referrer-Policy: strict-origin-when-cross-origin`
+  - `Permissions-Policy: camera=(), microphone=(), geolocation=()`
+  - `Cross-Origin-Opener-Policy: same-origin`
+  - `Cross-Origin-Resource-Policy: same-site`
+
+- Auth cookie davranışı:
+  - Supabase SSR cookie'leri `@supabase/ssr` tarafında yönetiliyor; middleware/server client katmanı sadece SDK'nin verdiği cookie option'larını forward ediyor.
+  - `HttpOnly/SameSite/Secure` değerlerini elle override etmek bu mimaride auth/session yenilemesini bozabildiği için uygulanmadı.
+  - Bu nedenle cookie flag enforcement bu repoda elle set edilmek yerine Supabase SDK + platform defaults'a bırakıldı; local dev (`http://localhost`) ve prod (`https`) davranışı farklıdır.
 

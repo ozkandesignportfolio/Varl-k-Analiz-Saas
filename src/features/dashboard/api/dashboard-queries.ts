@@ -162,6 +162,16 @@ const ALLOWED_RISK_TYPES = new Set<DashboardSystemRiskType>([
   "notification_prefs",
 ]);
 const DASHBOARD_SNAPSHOT_MISSING_FN_PATTERN = /Could not find the function public\.get_dashboard_snapshot/i;
+const DASHBOARD_SNAPSHOT_FETCH_FAILED_PATTERN = /fetch failed/i;
+
+const toDashboardRpcNetworkHint = () => {
+  const major = Number(process.versions.node.split(".")[0] ?? "0");
+  const hasNodeVersionMismatch = Number.isFinite(major) && major !== 20;
+  const nodeHint = hasNodeVersionMismatch
+    ? ` Aktif Node surumu v${process.versions.node}. Proje Node 20.x ile test edildi.`
+    : "";
+  return `Dashboard snapshot RPC baglantisi kurulamadi. NEXT_PUBLIC_SUPABASE_URL erisimi, VPN/proxy/firewall ve internet baglantinizi kontrol edin.${nodeHint}`;
+};
 
 const toRiskKey = (type: DashboardSystemRiskType, entityId?: string | null) => `${type}:${entityId ?? "global"}`;
 
@@ -195,11 +205,17 @@ const asRecord = (value: unknown) => (isRecord(value) ? value : null);
 const asArray = (value: unknown) => (Array.isArray(value) ? value : []);
 
 const toStringOr = (value: unknown, fallback = "") => (typeof value === "string" ? value : fallback);
-const toDashboardSnapshotWarning = (error: PostgrestError) => {
-  if (DASHBOARD_SNAPSHOT_MISSING_FN_PATTERN.test(error.message)) {
+const toDashboardSnapshotWarning = (error: PostgrestError | Error | unknown) => {
+  const errorMessage = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+  if (DASHBOARD_SNAPSHOT_MISSING_FN_PATTERN.test(errorMessage)) {
     return "Dashboard snapshot RPC fonksiyonu bulunamadi. Supabase migration dosyalarini sirayla calistirin: 20260228150000_dashboard_snapshot_rpc.sql, 20260228155000_dashboard_snapshot_rpc_remove_ambiguous_overload.sql.";
   }
-  return `Dashboard snapshot RPC hatasi: ${error.message}`;
+
+  if (DASHBOARD_SNAPSHOT_FETCH_FAILED_PATTERN.test(errorMessage)) {
+    return toDashboardRpcNetworkHint();
+  }
+
+  return `Dashboard snapshot RPC hatasi: ${errorMessage || "Bilinmeyen hata"}`;
 };
 
 const parseTrend = (value: unknown): DashboardKpiTrend => {
@@ -445,11 +461,24 @@ export async function getDashboardSnapshot(
     ) => Promise<{ data: unknown; error: PostgrestError | null }>;
   };
 
-  const { data, error } = await rpcClient.rpc("get_dashboard_snapshot", {
-    p_user_id: userId,
-    p_from: currentPeriodStart.toISOString(),
-    p_to: tomorrow.toISOString(),
-  });
+  let data: unknown;
+  let error: PostgrestError | null = null;
+
+  try {
+    const rpcResult = await rpcClient.rpc("get_dashboard_snapshot", {
+      p_user_id: userId,
+      p_from: currentPeriodStart.toISOString(),
+      p_to: tomorrow.toISOString(),
+    });
+    data = rpcResult.data;
+    error = rpcResult.error;
+  } catch (rpcError) {
+    return {
+      data: EMPTY_DASHBOARD_DATA,
+      isMock: false,
+      warning: toDashboardSnapshotWarning(rpcError),
+    };
+  }
 
   if (error) {
     return {
