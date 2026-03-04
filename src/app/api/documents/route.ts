@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { logApiError, logAuditEvent } from "@/lib/api/logging";
+import { enforceRateLimit, getRequestIp } from "@/lib/api/rate-limit";
 import { existsById } from "@/lib/repos/assets-repo";
 import { enforceLimit, isPlanLimitError, toPlanLimitErrorBody } from "@/lib/plans/limit-enforcer";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
@@ -128,6 +129,18 @@ const readDeleteBody = async (request: Request) =>
 export async function POST(request: Request) {
   let userId: string | null = null;
   try {
+    const requestIp = (request as Request & { ip?: string }).ip ?? getRequestIp(request) ?? "anon";
+    const rl = enforceRateLimit({
+      scope: "api",
+      key: requestIp,
+      limit: 60,
+      windowMs: 60_000,
+    });
+
+    if (!rl.allowed) {
+      return new Response(JSON.stringify({ error: "rate_limited" }), { status: 429 });
+    }
+
     const auth = await requireRouteUser(request);
     if ("response" in auth) {
       return auth.response;
@@ -260,6 +273,18 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   let userId: string | null = null;
   try {
+    const requestIp = (request as Request & { ip?: string }).ip ?? getRequestIp(request) ?? "anon";
+    const rl = enforceRateLimit({
+      scope: "api",
+      key: requestIp,
+      limit: 60,
+      windowMs: 60_000,
+    });
+
+    if (!rl.allowed) {
+      return new Response(JSON.stringify({ error: "rate_limited" }), { status: 429 });
+    }
+
     const auth = await requireRouteUser(request);
     if ("response" in auth) {
       return auth.response;

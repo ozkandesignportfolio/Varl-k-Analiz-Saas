@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { enforceRateLimit, getRequestIp } from "@/lib/api/rate-limit";
 import Stripe from "stripe";
 import { getStripeSecretKeyValidationError, stripe } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase-admin";
@@ -6,6 +7,18 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const requestIp = (request as Request & { ip?: string }).ip ?? getRequestIp(request) ?? "anon";
+  const rl = enforceRateLimit({
+    scope: "api",
+    key: request.headers.get("stripe-signature") ?? requestIp,
+    limit: 60,
+    windowMs: 60_000,
+  });
+
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: "rate_limited" }), { status: 429 });
+  }
+
   const stripeKeyError = getStripeSecretKeyValidationError();
   if (stripeKeyError) {
     return NextResponse.json({ error: stripeKeyError }, { status: 500 });

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { enforceRateLimit, getRequestIp } from "@/lib/api/rate-limit";
 import { getStripeSecretKeyValidationError, stripe } from "@/lib/stripe";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
 
@@ -43,6 +44,18 @@ const readMissingEnvVars = () => {
 };
 
 export async function POST(request: Request) {
+  const requestIp = (request as Request & { ip?: string }).ip ?? getRequestIp(request) ?? "anon";
+  const rl = enforceRateLimit({
+    scope: "api",
+    key: requestIp,
+    limit: 60,
+    windowMs: 60_000,
+  });
+
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: "rate_limited" }), { status: 429 });
+  }
+
   const auth = await requireRouteUser(request);
   if ("response" in auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

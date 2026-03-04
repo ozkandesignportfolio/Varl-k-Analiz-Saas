@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { calculateNextDueDate } from "@/lib/maintenance/next-due";
 import { logApiError, logAuditEvent } from "@/lib/api/logging";
+import { enforceRateLimit, getRequestIp } from "@/lib/api/rate-limit";
 import type { DbClient } from "@/lib/repos/_shared";
 import { existsById } from "@/lib/repos/assets-repo";
 import {
@@ -70,6 +71,18 @@ const parseLogsDateRange = dateRange();
 export async function GET(request: Request) {
   let userId: string | null = null;
   try {
+    const requestIp = (request as Request & { ip?: string }).ip ?? getRequestIp(request) ?? "anon";
+    const rl = enforceRateLimit({
+      scope: "api",
+      key: requestIp,
+      limit: 60,
+      windowMs: 60_000,
+    });
+
+    if (!rl.allowed) {
+      return new Response(JSON.stringify({ error: "rate_limited" }), { status: 429 });
+    }
+
     const auth = await requireRouteUser(request);
     if ("response" in auth) {
       return auth.response;
@@ -227,6 +240,18 @@ const syncRuleScheduleFromLatestLog = async (params: {
 export async function POST(request: Request) {
   let userId: string | null = null;
   try {
+    const requestIp = (request as Request & { ip?: string }).ip ?? getRequestIp(request) ?? "anon";
+    const rl = enforceRateLimit({
+      scope: "api",
+      key: requestIp,
+      limit: 60,
+      windowMs: 60_000,
+    });
+
+    if (!rl.allowed) {
+      return new Response(JSON.stringify({ error: "rate_limited" }), { status: 429 });
+    }
+
     const payload = await readBody(request);
     if (!payload) {
       return NextResponse.json({ error: "Geçersiz istek gövdesi." }, { status: 400 });
@@ -373,6 +398,18 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   let userId: string | null = null;
   try {
+    const requestIp = (request as Request & { ip?: string }).ip ?? getRequestIp(request) ?? "anon";
+    const rl = enforceRateLimit({
+      scope: "api",
+      key: requestIp,
+      limit: 60,
+      windowMs: 60_000,
+    });
+
+    if (!rl.allowed) {
+      return new Response(JSON.stringify({ error: "rate_limited" }), { status: 429 });
+    }
+
     const payload = await readUpdateBody(request);
     if (!payload) {
       return NextResponse.json({ error: "Geçersiz istek gövdesi." }, { status: 400 });

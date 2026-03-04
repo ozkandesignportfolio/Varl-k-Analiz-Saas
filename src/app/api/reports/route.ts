@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { logApiError } from "@/lib/api/logging";
+import { enforceRateLimit, getRequestIp } from "@/lib/api/rate-limit";
 import { listReports } from "@/lib/repos/reports-repo";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
 
@@ -64,6 +65,18 @@ const parseBoolean = (value: string | null, fallback: boolean) => {
 export async function GET(request: Request) {
   let userId: string | null = null;
   try {
+    const requestIp = (request as Request & { ip?: string }).ip ?? getRequestIp(request) ?? "anon";
+    const rl = enforceRateLimit({
+      scope: "api",
+      key: requestIp,
+      limit: 60,
+      windowMs: 60_000,
+    });
+
+    if (!rl.allowed) {
+      return new Response(JSON.stringify({ error: "rate_limited" }), { status: 429 });
+    }
+
     const auth = await requireRouteUser(request);
     if ("response" in auth) {
       return auth.response;
