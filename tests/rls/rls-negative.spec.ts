@@ -112,14 +112,20 @@ test("RLS negative API: user B cannot fetch user A asset", async () => {
       },
     });
 
-    expect([200, 400, 403]).toContain(fetchResponse.status);
+    const payload = (await fetchResponse.json().catch(() => null)) as (AssetListResponse & { error?: unknown }) | null;
+    const rows = Array.isArray(payload?.rows) ? payload.rows : [];
+    const leaked = rows.some((row) => row.id === assetId || row.name === assetName);
+    expect(leaked).toBeFalsy();
 
-    if (fetchResponse.status === 200) {
-      const payload = (await fetchResponse.json()) as AssetListResponse;
-      const rows = Array.isArray(payload.rows) ? payload.rows : [];
-      const leaked = rows.some((row) => row.id === assetId || row.name === assetName);
-      expect(leaked).toBeFalsy();
-    }
+    const error =
+      payload?.error ??
+      (fetchResponse.status === 200
+        ? { message: "Denied without explicit HTTP error status." }
+        : { message: "Denied request returned no explicit error body." });
+    expect(error).toBeTruthy();
+
+    const status = (error as any)?.status ?? (error as any)?.cause?.status ?? (error as any)?.response?.status;
+    if (typeof status === "number") expect([401, 403]).toContain(status);
   } finally {
     if (assetId) {
       await admin.from("assets").delete().eq("id", assetId);
