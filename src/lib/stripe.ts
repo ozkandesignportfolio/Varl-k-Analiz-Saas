@@ -16,7 +16,7 @@ const resolveStripeSecretKeyValidationError = (key: string | null): string | nul
   }
 
   if (nodeEnv !== "production" && key.startsWith("sk_live_") && !allowLiveInNonProd) {
-    return "Invalid STRIPE_SECRET_KEY for non-production: live key (sk_live_) is blocked.";
+    return "Invalid STRIPE_SECRET_KEY for non-production: live key (sk_live_) is blocked. Use a test key (sk_test_) or set STRIPE_ALLOW_LIVE_IN_NON_PROD=true intentionally.";
   }
 
   return null;
