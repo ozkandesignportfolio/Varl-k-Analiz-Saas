@@ -1,7 +1,6 @@
-﻿import dotenv from 'dotenv';
-import { existsSync } from 'node:fs';
-if (existsSync('.env.local')) dotenv.config({ path: '.env.local' });
-if (existsSync('.env')) dotenv.config({ path: '.env' });
+﻿import { loadEnvLocal } from './_load-env-local.mjs';
+loadEnvLocal();
+
 
 import { spawn } from "node:child_process";
 import { createWriteStream, mkdirSync } from "node:fs";
@@ -55,4 +54,6 @@ child.on("close", (code) => {
   logStream.end(`\n[run-rls-negative-playwright] Exit code: ${finalCode}\n`);
   process.exit(finalCode);
 });
+
+
 

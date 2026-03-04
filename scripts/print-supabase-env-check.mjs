@@ -1,7 +1,6 @@
-﻿import dotenv from 'dotenv';
-import { existsSync } from 'node:fs';
-if (existsSync('.env.local')) dotenv.config({ path: '.env.local' });
-if (existsSync('.env')) dotenv.config({ path: '.env' });
+﻿import { loadEnvLocal } from './_load-env-local.mjs';
+loadEnvLocal();
+
 const REQUIRED_ENV_KEYS = [
   "NEXT_PUBLIC_SUPABASE_URL",
   "NEXT_PUBLIC_SUPABASE_ANON_KEY",
@@ -144,5 +143,7 @@ if (failures.length > 0) {
 
 console.log("");
 console.log("All required Supabase env vars look valid.");
+
+
 
 

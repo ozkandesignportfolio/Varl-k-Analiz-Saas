@@ -1,0 +1,36 @@
+﻿import { readFileSync, existsSync } from "node:fs";
+
+const parseEnv = (text) => {
+  const out = {};
+  const lines = text.split(/\r?\n/);
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#")) continue;
+    const eq = line.indexOf("=");
+    if (eq === -1) continue;
+    const key = line.slice(0, eq).trim();
+    let val = line.slice(eq + 1).trim();
+
+    // strip quotes
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+      val = val.slice(1, -1);
+    }
+    // basic escapes
+    val = val.replace(/\\n/g, "\n");
+    out[key] = val;
+  }
+  return out;
+};
+
+export const loadEnvLocal = () => {
+  const paths = [".env.local", ".env"];
+  for (const p of paths) {
+    if (!existsSync(p)) continue;
+    const parsed = parseEnv(readFileSync(p, "utf8"));
+    for (const [k, v] of Object.entries(parsed)) {
+      if (process.env[k] == null || process.env[k] === "") {
+        process.env[k] = v;
+      }
+    }
+  }
+};
