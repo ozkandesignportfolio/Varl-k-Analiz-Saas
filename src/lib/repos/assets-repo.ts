@@ -418,7 +418,7 @@ export function listAssets(
       const fallback = await listAssetsFallback(client, params, pageSize);
       return {
         data: fallback.data,
-        error: fallback.error ?? r.error,
+        error: fallback.error,
       };
     }
 
@@ -429,4 +429,3 @@ export function listAssets(
     };
   });
 }
-
