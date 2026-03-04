@@ -176,6 +176,14 @@ export const enforceUserRateLimit = async (params: EnforceUserRateLimitParams): 
     }
     return row;
   } catch {
+    if (process.env.NODE_ENV === "production") {
+      return {
+        allowed: false,
+        remaining: 0,
+        retryAfterMs: 60_000,
+      };
+    }
+
     return enforceRateLimit({
       scope: `${params.scope}_memory_fallback`,
       key: subject,
