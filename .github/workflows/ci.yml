@@ -26,6 +26,7 @@ jobs:
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,17 +43,13 @@ jobs:
       - name: Lint
         run: npm run lint -- --max-warnings=0
 
-      - name: Validate Supabase public env
+      - name: Build
         run: |
-          if [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ] || [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" ]; then
-            echo "Supabase public env missing in CI -> skipping build."
+          if [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ] || [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" ] || [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
+            echo "Supabase secrets missing in CI -> skipping build."
             exit 0
           fi
-          echo "Supabase public env present -> running build."
-
-      - name: Build
-        if: ${{ env.NEXT_PUBLIC_SUPABASE_URL != '' && env.NEXT_PUBLIC_SUPABASE_ANON_KEY != '' }}
-        run: npm run build
+          npm run build
 
       - name: Verify debug plan route disabled in production
         run: npm run check:debug-plan-prod
