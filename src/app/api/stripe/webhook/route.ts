@@ -5,6 +5,14 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export const runtime = "nodejs";
 
+const toStripeId = (value: string | Stripe.Customer | Stripe.Subscription | Stripe.DeletedCustomer | null) => {
+  if (!value) {
+    return null;
+  }
+
+  return typeof value === "string" ? value : value.id;
+};
+
 export async function POST(request: Request) {
   const stripeKeyError = getStripeSecretKeyValidationError();
   if (stripeKeyError) {
@@ -31,17 +39,35 @@ export async function POST(request: Request) {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
       const userId = session.metadata?.userId;
+      const stripeCustomerId = toStripeId(session.customer);
+      const stripeSubscriptionId = toStripeId(session.subscription);
 
       if (!userId) {
         return NextResponse.json({ received: true }, { status: 200 });
+      }
+
+      if (stripeSubscriptionId) {
+        const { data: existingProfile, error: existingProfileError } = await supabaseAdmin
+          .from("profiles")
+          .select("plan, stripe_subscription_id")
+          .eq("id", userId)
+          .maybeSingle();
+
+        if (existingProfileError) {
+          throw existingProfileError;
+        }
+
+        if (existingProfile?.plan === "premium" && existingProfile.stripe_subscription_id === stripeSubscriptionId) {
+          return NextResponse.json({ received: true }, { status: 200 });
+        }
       }
 
       const { error } = await supabaseAdmin
         .from("profiles")
         .update({
           plan: "premium",
-          stripe_customer_id: session.customer,
-          stripe_subscription_id: session.subscription,
+          stripe_customer_id: stripeCustomerId,
+          stripe_subscription_id: stripeSubscriptionId,
         })
         .eq("id", userId);
 
