@@ -65,6 +65,138 @@ jobs:
             playwright-report/**
           if-no-files-found: ignore
 
+  stable_tests:
+    name: Stable Tests
+    runs-on: ubuntu-latest
+    needs: [gitleaks_scan, lint_build]
+    env:
+      TEST_BASE_URL: http://127.0.0.1:3100
+      API_KEY: ${{ secrets.API_KEY }}
+      TRIAL_EMAIL: ${{ secrets.TRIAL_EMAIL }}
+      TRIAL_PASSWORD: ${{ secrets.TRIAL_PASSWORD }}
+      PREMIUM_EMAIL: ${{ secrets.PREMIUM_EMAIL }}
+      PREMIUM_PASSWORD: ${{ secrets.PREMIUM_PASSWORD }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Check Supabase secrets
+        run: |
+          if [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ] || [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" ] || [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
+            echo "SKIP_SUPABASE_CHAIN=true" >> "$GITHUB_ENV"
+            echo "Supabase secrets missing in CI -> skipping Stable Tests steps."
+            exit 0
+          fi
+          echo "SKIP_SUPABASE_CHAIN=false" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
+        run: npm ci
+
+      - name: Validate required secrets
+        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
+        run: |
+          required_vars=(
+            API_KEY
+            TRIAL_EMAIL
+            TRIAL_PASSWORD
+            PREMIUM_EMAIL
+            PREMIUM_PASSWORD
+            NEXT_PUBLIC_SUPABASE_URL
+            NEXT_PUBLIC_SUPABASE_ANON_KEY
+            SUPABASE_SERVICE_ROLE_KEY
+          )
+          for var_name in "${required_vars[@]}"; do
+            if [ -z "${!var_name:-}" ]; then
+              echo "Missing required secret/env: $var_name" >&2
+              exit 1
+            fi
+          done
+
+      - name: Build
+        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
+        run: npm run build
+
+      - name: Start app
+        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
+        run: |
+          npm run start -- -p 3100 --hostname 127.0.0.1 > /tmp/next-start.log 2>&1 &
+          echo "APP_PID=$!" >> "$GITHUB_ENV"
+          for i in {1..90}; do
+            if curl -fsS http://127.0.0.1:3100/login > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/next-start.log
+          exit 1
+
+      - name: Wait for panel-health readiness
+        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
+        shell: pwsh
+        run: |
+          $maxAttempts = 30
+          $sleepSeconds = 2
+          $healthUrl = "$env:TEST_BASE_URL/api/panel-health"
+
+          for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+            try {
+              Invoke-WebRequest -Uri $healthUrl -UseBasicParsing | Out-Null
+              Write-Host "panel-health is ready: $healthUrl (attempt $attempt/$maxAttempts)"
+              exit 0
+            } catch {
+              Write-Host "panel-health not ready yet (attempt $attempt/$maxAttempts)"
+              Start-Sleep -Seconds $sleepSeconds
+            }
+          }
+
+          Write-Host "panel-health did not become ready in time: $healthUrl"
+          if (Test-Path "/tmp/next-start.log") {
+            Get-Content "/tmp/next-start.log"
+          }
+          exit 1
+
+      - name: Run stable suite
+        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
+        run: npm run test:stable
+
+      - name: Stop app
+        if: ${{ always() && env.SKIP_SUPABASE_CHAIN != 'true' }}
+        run: |
+          if [ -n "${APP_PID:-}" ]; then
+            kill -9 "$APP_PID" || true
+          fi
+
+      - name: Upload stable suite reports
+        if: ${{ always() && env.SKIP_SUPABASE_CHAIN != 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: stable-suite-reports
+          path: |
+            testsprite_tests/generated/*.json
+            testsprite_tests/generated/*.cjs
+          if-no-files-found: ignore
+
+      - name: Upload stable test diagnostics on failure
+        if: ${{ failure() && env.SKIP_SUPABASE_CHAIN != 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: stable-tests-failure-diagnostics
+          path: |
+            /tmp/next-start.log
+            test-results/**
+            playwright-report/**
+          if-no-files-found: ignore
+
   rate_limit_abuse_test:
     name: Rate Limit Abuse Test
     runs-on: ubuntu-latest
