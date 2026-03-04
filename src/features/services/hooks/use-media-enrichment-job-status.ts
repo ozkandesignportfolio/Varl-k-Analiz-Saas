@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -20,6 +20,7 @@ export function useMediaEnrichmentJobStatus(jobId: string | null, options?: { in
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastLoadedJobId, setLastLoadedJobId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!enabled || !jobId) {
@@ -37,6 +38,7 @@ export function useMediaEnrichmentJobStatus(jobId: string | null, options?: { in
 
     if (queryError) {
       setError(queryError.message);
+      setLastLoadedJobId(jobId);
       setIsLoading(false);
       return;
     }
@@ -44,33 +46,37 @@ export function useMediaEnrichmentJobStatus(jobId: string | null, options?: { in
     const row = (data ?? null) as JobStatusRow | null;
     setStatus(row?.status ?? null);
     setUpdatedAt(row?.updated_at ?? null);
+    setLastLoadedJobId(jobId);
     setIsLoading(false);
   }, [enabled, jobId, supabase]);
 
   useEffect(() => {
     if (!enabled) {
-      setStatus(null);
-      setUpdatedAt(null);
-      setError(null);
-      setIsLoading(false);
       return;
     }
 
-    void refresh();
+    const initialTimer = setTimeout(() => {
+      void refresh();
+    }, 0);
+
     const timer = setInterval(() => {
       void refresh();
     }, intervalMs);
 
     return () => {
+      clearTimeout(initialTimer);
       clearInterval(timer);
     };
   }, [enabled, intervalMs, refresh]);
 
+  const hasCurrentJobSnapshot = enabled && lastLoadedJobId === jobId;
+
   return {
-    status,
-    updatedAt,
-    isLoading,
-    error,
+    status: hasCurrentJobSnapshot ? status : null,
+    updatedAt: hasCurrentJobSnapshot ? updatedAt : null,
+    isLoading: enabled ? isLoading : false,
+    error: enabled ? error : null,
     refresh,
   };
 }
+

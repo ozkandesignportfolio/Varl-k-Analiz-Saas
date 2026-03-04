@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -78,7 +78,7 @@ const DASHBOARD_RANGE_OPTIONS: DashboardDateRangeDays[] = [7, 30, 90];
 
 const SNOOZE_OPTIONS: { label: string; durationMs: number }[] = [
   { label: "1 saat", durationMs: 60 * 60 * 1000 },
-  { label: "1 gün", durationMs: 24 * 60 * 60 * 1000 },
+  { label: "1 gÃ¼n", durationMs: 24 * 60 * 60 * 1000 },
   { label: "1 hafta", durationMs: 7 * 24 * 60 * 60 * 1000 },
 ];
 
@@ -214,14 +214,17 @@ export function ControlCenterHeader({ selectedRange, status }: ControlCenterHead
   const risk = status.risk;
   const riskKey = risk.riskKey;
 
-  const [riskAction, setRiskAction] = useState<RiskActionState | null>(null);
+  const [riskActionOverrides, setRiskActionOverrides] = useState<Record<string, RiskActionState | null>>({});
   const [canUseSupabaseRiskActions, setCanUseSupabaseRiskActions] = useState(true);
-  const [nowTs, setNowTs] = useState(0);
+  const [nowTs, setNowTs] = useState(() => Date.now());
 
-  useEffect(() => {
-    setRiskAction(readRiskAction(riskKey));
-    setNowTs(Date.now());
-  }, [riskKey]);
+  const riskAction = useMemo(() => {
+    const override = riskActionOverrides[riskKey];
+    if (typeof override !== "undefined") {
+      return override;
+    }
+    return readRiskAction(riskKey);
+  }, [riskActionOverrides, riskKey]);
 
   useEffect(() => {
     const snoozedUntil = riskAction?.snoozedUntil;
@@ -337,6 +340,16 @@ export function ControlCenterHeader({ selectedRange, status }: ControlCenterHead
     [canUseSupabaseRiskActions, resolveSupabaseTable, resolveUserId, riskActionsClient, riskKey],
   );
 
+  const setCurrentRiskAction = useCallback(
+    (nextAction: RiskActionState | null) => {
+      setRiskActionOverrides((current) => ({
+        ...current,
+        [riskKey]: nextAction,
+      }));
+    },
+    [riskKey],
+  );
+
   useEffect(() => {
     let isMounted = true;
 
@@ -378,7 +391,7 @@ export function ControlCenterHeader({ selectedRange, status }: ControlCenterHead
         return;
       }
 
-      setRiskAction(remoteAction);
+      setCurrentRiskAction(remoteAction);
       writeRiskAction(riskKey, remoteAction);
     };
 
@@ -387,7 +400,7 @@ export function ControlCenterHeader({ selectedRange, status }: ControlCenterHead
     return () => {
       isMounted = false;
     };
-  }, [canUseSupabaseRiskActions, resolveSupabaseTable, resolveUserId, riskActionsClient, riskKey]);
+  }, [canUseSupabaseRiskActions, resolveSupabaseTable, resolveUserId, riskActionsClient, riskKey, setCurrentRiskAction]);
 
   const isStatusCardVisible = useMemo(() => {
     if (!riskAction) {
@@ -407,26 +420,26 @@ export function ControlCenterHeader({ selectedRange, status }: ControlCenterHead
 
   const handleDismiss = useCallback(() => {
     const nextAction: RiskActionState = { dismissedAt: Date.now() };
-    setRiskAction(nextAction);
+    setCurrentRiskAction(nextAction);
     void persistRiskAction(nextAction);
-  }, [persistRiskAction]);
+  }, [persistRiskAction, setCurrentRiskAction]);
 
   const handleSnooze = useCallback(
     (durationMs: number) => {
       const nextAction: RiskActionState = { snoozedUntil: Date.now() + durationMs };
-      setRiskAction(nextAction);
+      setCurrentRiskAction(nextAction);
       void persistRiskAction(nextAction);
     },
-    [persistRiskAction],
+    [persistRiskAction, setCurrentRiskAction],
   );
 
   const handleFix = useCallback(() => {
     const nextAction: RiskActionState = { snoozedUntil: Date.now() + FIX_SNOOZE_DURATION_MS };
-    setRiskAction(nextAction);
+    setCurrentRiskAction(nextAction);
     void persistRiskAction(nextAction);
 
     router.push(RISK_FIX_ROUTES[risk.type]);
-  }, [persistRiskAction, risk.type, router]);
+  }, [persistRiskAction, risk.type, router, setCurrentRiskAction]);
 
   return (
     <section className="rounded-3xl border border-[#24344F] bg-[linear-gradient(145deg,rgba(8,20,45,0.92),rgba(9,17,33,0.84))] p-5 shadow-[0_20px_45px_rgba(3,8,20,0.42)] sm:p-6">
@@ -469,14 +482,14 @@ export function ControlCenterHeader({ selectedRange, status }: ControlCenterHead
           <details className="group relative">
             <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl border border-[#2F4569] bg-[#10243F] px-4 py-2 text-sm font-semibold text-[#E2E8F0] transition hover:bg-[#143158]">
               <Plus className="size-4" aria-hidden />
-              Hızlı Ekle
+              HÄ±zlÄ± Ekle
               <ChevronDown className="size-4 transition group-open:rotate-180" aria-hidden />
             </summary>
             <div className="absolute right-0 z-20 mt-2 min-w-52 rounded-xl border border-[#2B3E5B] bg-[#0A162A]/95 p-1.5 shadow-[0_16px_30px_rgba(2,8,20,0.5)] backdrop-blur">
-              <HeaderDropdownLink href="/assets" label="Varlık Ekle" />
-              <HeaderDropdownLink href="/maintenance" label="Bakım Kuralı Oluştur" />
-              <HeaderDropdownLink href="/services" label="Servis Kaydı Ekle" />
-              <HeaderDropdownLink href="/documents" label="Belge Yükle" />
+              <HeaderDropdownLink href="/assets" label="VarlÄ±k Ekle" />
+              <HeaderDropdownLink href="/maintenance" label="BakÄ±m KuralÄ± OluÅŸtur" />
+              <HeaderDropdownLink href="/services" label="Servis KaydÄ± Ekle" />
+              <HeaderDropdownLink href="/documents" label="Belge YÃ¼kle" />
             </div>
           </details>
         </div>
@@ -506,12 +519,12 @@ export function ControlCenterHeader({ selectedRange, status }: ControlCenterHead
                       type="button"
                       onClick={handleDismiss}
                       className={`inline-flex size-7 items-center justify-center rounded-md border transition ${style.iconButton}`}
-                      aria-label="Görmezden gel"
+                      aria-label="GÃ¶rmezden gel"
                     >
                       <X className="size-3.5" aria-hidden />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent>Görmezden gel</TooltipContent>
+                  <TooltipContent>GÃ¶rmezden gel</TooltipContent>
                 </Tooltip>
 
                 <DropdownMenu>
@@ -521,20 +534,20 @@ export function ControlCenterHeader({ selectedRange, status }: ControlCenterHead
                         <button
                           type="button"
                           className={`inline-flex size-7 items-center justify-center rounded-md border transition ${style.iconButton}`}
-                          aria-label="Sonra hatırlat"
+                          aria-label="Sonra hatÄ±rlat"
                         >
                           <Clock3 className="size-3.5" aria-hidden />
                         </button>
                       </DropdownMenuTrigger>
                     </TooltipTrigger>
-                    <TooltipContent>Sonra hatırlat</TooltipContent>
+                    <TooltipContent>Sonra hatÄ±rlat</TooltipContent>
                   </Tooltip>
                   <DropdownMenuContent
                     align="end"
                     className="w-40 border-[#2F4569] bg-[#0D1F39]/95 text-[#E5EEFC] shadow-[0_14px_30px_rgba(2,8,20,0.5)]"
                   >
                     <DropdownMenuLabel className="text-xs uppercase tracking-[0.14em] text-[#9BB0CD]">
-                      Sonra hatırlat
+                      Sonra hatÄ±rlat
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator className="bg-[#314B6D]" />
                     {SNOOZE_OPTIONS.map((option) => (
@@ -555,12 +568,12 @@ export function ControlCenterHeader({ selectedRange, status }: ControlCenterHead
                       type="button"
                       onClick={handleFix}
                       className={`inline-flex size-7 items-center justify-center rounded-md border transition ${style.iconButton}`}
-                      aria-label="Düzelt"
+                      aria-label="DÃ¼zelt"
                     >
                       <Wrench className="size-3.5" aria-hidden />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent>Düzelt</TooltipContent>
+                  <TooltipContent>DÃ¼zelt</TooltipContent>
                 </Tooltip>
               </div>
             </TooltipProvider>
@@ -582,3 +595,4 @@ function HeaderDropdownLink({ href, label }: { href: string; label: string }) {
     </Link>
   );
 }
+

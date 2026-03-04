@@ -1,3 +1,4 @@
+﻿import type { PostgrestError } from "@supabase/supabase-js";
 import type { DbClient, RepoResult, Row } from "./_shared";
 
 export type ListAssetIdNameParams = {
@@ -136,7 +137,7 @@ export function listCategories(
   const rpc = client.rpc.bind(client) as unknown as (
     fn: string,
     args?: Record<string, unknown>,
-  ) => PromiseLike<{ data: unknown; error: any }>;
+  ) => PromiseLike<{ data: unknown; error: PostgrestError | null }>;
 
   return Promise.resolve(
     rpc("list_asset_categories", {
@@ -157,7 +158,7 @@ export function listAssets(
   const rpc = client.rpc.bind(client) as unknown as (
     fn: string,
     args?: Record<string, unknown>,
-  ) => PromiseLike<{ data: unknown; error: any }>;
+  ) => PromiseLike<{ data: unknown; error: PostgrestError | null }>;
 
   const pageSize = normalizePageSize(params.pageSize, 30, 100);
   const sort = params.sort ?? "updated";
@@ -224,3 +225,4 @@ export function listAssets(
     };
   });
 }
+

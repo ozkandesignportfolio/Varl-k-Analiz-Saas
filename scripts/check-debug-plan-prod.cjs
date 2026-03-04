@@ -1,4 +1,6 @@
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const fs = require("node:fs");
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const path = require("node:path");
 
 const routeFile = path.join(process.cwd(), "src", "app", "api", "debug", "plan", "route.ts");

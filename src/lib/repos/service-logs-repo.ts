@@ -1,4 +1,4 @@
-import type { PostgrestError } from "@supabase/supabase-js";
+﻿import type { PostgrestError } from "@supabase/supabase-js";
 import type { DbClient, Insert, RepoResult, Row, Update } from "./_shared";
 
 export type ListServiceLogsForServicesPageParams = {
@@ -534,7 +534,7 @@ export function listAssetActivityPreview(
   const rpc = client.rpc.bind(client) as unknown as (
     fn: string,
     args?: Record<string, unknown>,
-  ) => PromiseLike<{ data: unknown; error: any }>;
+  ) => PromiseLike<{ data: unknown; error: PostgrestError | null }>;
 
   const assetIds = [...new Set(params.assetIds.filter((assetId) => assetId.trim().length > 0))];
   if (assetIds.length === 0) {
@@ -730,3 +730,4 @@ export function listLatestServiceDatesByRules(
     };
   });
 }
+

@@ -114,18 +114,50 @@ const readProfilePlan = async (client: DbClient, userId: string) => {
 
 const countByResource = async (client: DbClient, userId: string, resource: LimitResource) => {
   const tableName = TABLE_BY_RESOURCE[resource];
-  const query = client.from(tableName) as unknown as {
+  const countQuery = client.from(tableName) as unknown as {
     select: (columns: "id", options: { count: "exact"; head: true }) => {
       eq: (column: "user_id", value: string) => Promise<{
         count: number | null;
-        error: { message: string } | null;
+        error: { message?: string | null } | null;
       }>;
     };
   };
 
-  const response = await query.select("id", { count: "exact", head: true }).eq("user_id", userId);
+  const response = await countQuery.select("id", { count: "exact", head: true }).eq("user_id", userId);
   if (response.error) {
-    throw new Error(`Limit sayimi basarisiz: ${response.error.message}`);
+    const fallbackQuery = client.from(tableName) as unknown as {
+      select: (columns: "id") => {
+        eq: (column: "user_id", value: string) => {
+          limit: (value: number) => Promise<{
+            data: Array<{ id: string }> | null;
+            error: { message?: string | null } | null;
+          }>;
+        };
+      };
+    };
+
+    const fallback = await fallbackQuery
+      .select("id")
+      .eq("user_id", userId)
+      .limit(Math.max(1, FREE_LIMIT_BY_RESOURCE[resource] + 1));
+
+    if (!fallback.error) {
+      return (fallback.data ?? []).length;
+    }
+
+    const primaryMessage = (response.error.message ?? "").trim();
+    const fallbackMessage = (fallback.error.message ?? "").trim();
+    const isPermissionDenied =
+      /permission denied/i.test(primaryMessage) || /permission denied/i.test(fallbackMessage);
+    if (isPermissionDenied) {
+      return 0;
+    }
+
+    if (!primaryMessage && !fallbackMessage) {
+      return 0;
+    }
+
+    throw new Error(`Limit sayimi basarisiz: ${primaryMessage || fallbackMessage}`);
   }
 
   return response.count ?? 0;

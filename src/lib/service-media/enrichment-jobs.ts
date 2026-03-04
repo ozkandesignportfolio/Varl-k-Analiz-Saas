@@ -1,4 +1,4 @@
-import { createHash } from "crypto";
+﻿import { createHash } from "crypto";
 
 export type MediaEnrichmentJobStatus = "queued" | "processing" | "succeeded" | "failed";
 
@@ -29,7 +29,16 @@ export function buildMediaEnrichmentIdempotencyKey(params: {
 }
 
 type SupabaseLike = {
-  from: (table: string) => any;
+  from: (table: string) => {
+    upsert: (
+      values: MediaEnrichmentJobInsert,
+      options: { onConflict: string; ignoreDuplicates: boolean },
+    ) => {
+      select: (columns: "id,status") => {
+        maybeSingle: () => PromiseLike<{ data: MediaEnrichmentJobRow | null; error: { message: string } | null }>;
+      };
+    };
+  };
 };
 
 export async function queueMediaEnrichmentJob(
@@ -51,3 +60,4 @@ export async function queueMediaEnrichmentJob(
 
   return upsertRes.data;
 }
+

@@ -171,3 +171,23 @@ jobs:
           name: rls-negative-artifacts
           path: test-results/**
           if-no-files-found: ignore
+
+  rate_limit_abuse_test:
+    name: Rate Limit Abuse Test
+    runs-on: ubuntu-latest
+    needs: [gitleaks_scan, lint_build]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run rate-limit abuse spec
+        run: npm run test:abuse:rate-limit

@@ -32,6 +32,9 @@
 - Dashboard snapshot RPC overload cakismasini temizlemek icin
   `supabase/migrations/20260228155000_dashboard_snapshot_rpc_remove_ambiguous_overload.sql`
   dosyasini da calistirin.
+- Assets list RPC imza uyumlulugu icin
+  `supabase/migrations/202603040001_assets_list_assets_page_rpc.sql`
+  dosyasini da calistirin.
 
 Not: Bu migration calismadiysa API tarafinda
 "Could not find the table 'public.asset_media' in the schema cache" hatasi alinabilir.
@@ -41,6 +44,10 @@ Not: Eger asagidaki hata gorulurse overload cakismasi vardir ve
 `20260228155000_dashboard_snapshot_rpc_remove_ambiguous_overload.sql`
 calistirilmalidir:
 "Could not choose the best candidate function between: public.get_dashboard_snapshot(...)"
+Not: Eger asagidaki hata gorulurse assets RPC migrationi eksiktir ve
+`202603040001_assets_list_assets_page_rpc.sql`
+calistirilmalidir:
+"Could not find the function public.list_assets_page(...) in the schema cache"
 
 ## 2.1) Dogrulama
 - Kurulum sonrasi su dosyayi calistirin:

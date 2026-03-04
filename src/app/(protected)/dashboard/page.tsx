@@ -1,12 +1,11 @@
-import {
-  DashboardPageContainer,
-  type DashboardPageSearchParams,
-} from "@/features/dashboard/containers/dashboard-page-container";
+import { DashboardPageContainer } from "@/features/dashboard/containers/dashboard-page-container";
 
-export default function DashboardPage({
+type DashboardPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function DashboardPage({
   searchParams,
-}: {
-  searchParams?: DashboardPageSearchParams;
-}) {
+}: DashboardPageProps) {
   return <DashboardPageContainer searchParams={searchParams} />;
 }
