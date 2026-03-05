@@ -32,18 +32,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: stripeKeyError }, { status: 500 });
   }
 
-  const signature = request.headers.get("stripe-signature");
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
+  const sig = request.headers.get("stripe-signature");
   const rawBody = await request.text();
 
-  if (!stripe || !signature || !webhookSecret) {
-    return NextResponse.json({ error: "Webhook dogrulanamadi." }, { status: 400 });
+  if (!sig) {
+    return NextResponse.json({ error: "Missing Stripe signature." }, { status: 400 });
+  }
+
+  if (!process.env.STRIPE_WEBHOOK_SECRET) {
+    console.error("Missing STRIPE_WEBHOOK_SECRET.");
+    return NextResponse.json({ error: "Webhook secret missing." }, { status: 500 });
+  }
+
+  if (!stripe) {
+    return NextResponse.json({ error: "Stripe is not configured." }, { status: 500 });
   }
 
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+    event = stripe.webhooks.constructEvent(rawBody, sig!, process.env.STRIPE_WEBHOOK_SECRET!);
   } catch {
     return NextResponse.json({ error: "Gecersiz Stripe imzasi." }, { status: 400 });
   }
