@@ -124,7 +124,13 @@ test("RLS negative API: user B cannot fetch user A asset", async () => {
         : { message: "Denied request returned no explicit error body." });
     expect(error).toBeTruthy();
 
-    const status = (error as any)?.status ?? (error as any)?.cause?.status ?? (error as any)?.response?.status;
+    type ErrorWithStatus = {
+      status?: unknown;
+      cause?: { status?: unknown };
+      response?: { status?: unknown };
+    };
+    const errorWithStatus = error as ErrorWithStatus | null | undefined;
+    const status = errorWithStatus?.status ?? errorWithStatus?.cause?.status ?? errorWithStatus?.response?.status;
     if (typeof status === "number") expect([401, 403]).toContain(status);
   } finally {
     if (assetId) {
