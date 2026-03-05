@@ -75,7 +75,7 @@ export function UsageLimitsCard({ planLabel, isPremium, items }: UsageLimitsCard
             className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-amber-200/40 bg-[linear-gradient(120deg,rgba(251,191,36,0.28),rgba(245,158,11,0.32))] px-4 py-2.5 text-sm font-semibold text-amber-50 transition hover:bg-[linear-gradient(120deg,rgba(251,191,36,0.35),rgba(245,158,11,0.4))]"
           >
             <Crown className="size-4" aria-hidden />
-            Premium'a Geç
+            Premium&apos;a Geç
           </Link>
         </>
       ) : null}

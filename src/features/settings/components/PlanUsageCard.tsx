@@ -76,7 +76,7 @@ export function PlanUsageCard({ plan, items }: PlanUsageCardProps) {
 
       {!isPremium ? (
         <Button asChild className="mt-5 bg-white/10 text-white hover:bg-white/15">
-          <Link href="/pricing">Premium'a Geç</Link>
+          <Link href="/pricing">Premium&apos;a Geç</Link>
         </Button>
       ) : null}
     </section>
