@@ -25,9 +25,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: gitleaks_scan
     env:
-      NEXT_PUBLIC_SUPABASE_URL: "https://dummy.supabase.co"
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: "dummy-anon-key"
-      SUPABASE_SERVICE_ROLE_KEY: "dummy-service-role-key"
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -275,13 +275,13 @@ jobs:
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
-      - name: Skip RLS tests if Supabase secrets missing
+      - name: Skip rate-limit tests if Supabase secrets missing
         run: |
           if [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ] || \
              [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" ] || \
              [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
             echo "SKIP_SUPABASE_CHAIN=true" >> "$GITHUB_ENV"
-            echo "Skipping RLS tests: Supabase secrets missing"
+            echo "Skipping rate-limit tests: Supabase secrets missing"
             exit 0
           fi
           echo "SKIP_SUPABASE_CHAIN=false" >> "$GITHUB_ENV"
