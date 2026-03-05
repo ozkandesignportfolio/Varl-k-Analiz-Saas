@@ -82,19 +82,22 @@ jobs:
     steps:
       - name: Skip stable tests if credentials missing
         run: |
-          if [ -z "${TRIAL_EMAIL}" ] || \
-             [ -z "${TRIAL_PASSWORD}" ] || \
-             [ -z "${PREMIUM_EMAIL}" ] || \
-             [ -z "${PREMIUM_PASSWORD}" ]; then
+          if [ -z "${TRIAL_EMAIL:-}" ] || \
+             [ -z "${TRIAL_PASSWORD:-}" ] || \
+             [ -z "${PREMIUM_EMAIL:-}" ] || \
+             [ -z "${PREMIUM_PASSWORD:-}" ]; then
             echo "SKIP_SUPABASE_CHAIN=true" >> "$GITHUB_ENV"
             echo "Skipping stable tests: credentials missing"
             exit 0
           fi
+          echo "SKIP_SUPABASE_CHAIN=false" >> "$GITHUB_ENV"
 
       - name: Checkout
+        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
         uses: actions/checkout@v4
 
       - name: Setup Node 20
+        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -220,23 +223,28 @@ jobs:
     steps:
       - name: Skip RLS tests if Supabase secrets missing
         run: |
-          if [ -z "${NEXT_PUBLIC_SUPABASE_URL}" ] || \
-             [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY}" ] || \
-             [ -z "${SUPABASE_SERVICE_ROLE_KEY}" ]; then
+          if [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ] || \
+             [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" ] || \
+             [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
+            echo "SKIP_SUPABASE_CHAIN=true" >> "$GITHUB_ENV"
             echo "Skipping RLS tests: Supabase secrets missing"
             exit 0
           fi
+          echo "SKIP_SUPABASE_CHAIN=false" >> "$GITHUB_ENV"
 
       - name: Checkout
+        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
         uses: actions/checkout@v4
 
       - name: Setup Node 20
+        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
       - name: Check Supabase secrets
+        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
         run: |
           if [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ] || [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" ] || [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
             echo "SKIP_SUPABASE_CHAIN=true" >> "$GITHUB_ENV"
