@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { enforceRateLimit, getRequestIp } from "@/lib/api/rate-limit";
 import Stripe from "stripe";
 import { getStripeSecretKeyValidationError, stripe } from "@/lib/stripe";
-import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export const runtime = "nodejs";
 
@@ -56,35 +55,41 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Gecersiz Stripe imzasi." }, { status: 400 });
   }
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    console.error(
+      "Missing Supabase admin env vars for Stripe webhook dedupe. Check NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.",
+    );
+    return NextResponse.json({ error: "Supabase admin configuration missing." }, { status: 500 });
+  }
+
+  let supabaseAdmin: (typeof import("@/lib/supabase-admin"))["supabaseAdmin"];
+
   try {
-    const eventId = event.id;
-    const { data: existingEvent, error: existingEventError } = await supabaseAdmin
-      .from("stripe_webhook_events")
-      .select("id")
-      .eq("id", eventId)
-      .maybeSingle();
+    ({ supabaseAdmin } = await import("@/lib/supabase-admin"));
+  } catch (error) {
+    console.error("Failed to initialize Supabase admin client for Stripe webhook:", error);
+    return NextResponse.json({ error: "Webhook processing failed." }, { status: 500 });
+  }
 
-    if (existingEventError) {
-      throw existingEventError;
+  const eventId = event.id;
+  const { error: insertEventError } = await supabaseAdmin.from("stripe_webhook_events").insert({ id: eventId });
+
+  if (insertEventError) {
+    const isDuplicateInsert =
+      insertEventError.code === "23505" || insertEventError.message?.toLowerCase().includes("duplicate key");
+
+    if (isDuplicateInsert) {
+      return NextResponse.json({ received: true, deduped: true }, { status: 200 });
     }
 
-    if (existingEvent) {
-      return NextResponse.json({ received: true }, { status: 200 });
-    }
+    console.error("Failed to persist Stripe webhook event id:", insertEventError);
+    return NextResponse.json({ error: "Webhook processing failed." }, { status: 500 });
+  }
 
-    const { error: insertEventError } = await supabaseAdmin.from("stripe_webhook_events").insert({ id: eventId });
-
-    if (insertEventError) {
-      const isDuplicateInsert =
-        insertEventError.code === "23505" || insertEventError.message?.toLowerCase().includes("duplicate key");
-
-      if (isDuplicateInsert) {
-        return NextResponse.json({ received: true }, { status: 200 });
-      }
-
-      throw insertEventError;
-    }
-
+  try {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
       const userId = session.metadata?.userId;
