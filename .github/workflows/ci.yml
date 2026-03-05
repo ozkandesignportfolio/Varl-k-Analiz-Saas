@@ -62,7 +62,7 @@ jobs:
     name: Stable Tests
     runs-on: ubuntu-latest
     needs: lint_build
-    if: ${{ secrets.TRIAL_EMAIL != '' && secrets.TRIAL_PASSWORD != '' && secrets.PREMIUM_EMAIL != '' && secrets.PREMIUM_PASSWORD != '' }}
+    if: ${{ secrets.API_KEY != '' && secrets.TRIAL_EMAIL != '' && secrets.TRIAL_PASSWORD != '' && secrets.PREMIUM_EMAIL != '' && secrets.PREMIUM_PASSWORD != '' }}
 
     env:
       TEST_BASE_URL: http://127.0.0.1:3100
