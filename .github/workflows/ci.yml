@@ -80,6 +80,17 @@ jobs:
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
+      - name: Skip stable tests if credentials missing
+        run: |
+          if [ -z "${TRIAL_EMAIL}" ] || \
+             [ -z "${TRIAL_PASSWORD}" ] || \
+             [ -z "${PREMIUM_EMAIL}" ] || \
+             [ -z "${PREMIUM_PASSWORD}" ]; then
+            echo "SKIP_SUPABASE_CHAIN=true" >> "$GITHUB_ENV"
+            echo "Skipping stable tests: credentials missing"
+            exit 0
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -90,6 +101,7 @@ jobs:
           cache: npm
 
       - name: Check Supabase secrets
+        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
         run: |
           if [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ] || [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" ] || [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
             echo "SKIP_SUPABASE_CHAIN=true" >> "$GITHUB_ENV"
@@ -206,6 +218,15 @@ jobs:
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
+      - name: Skip RLS tests if Supabase secrets missing
+        run: |
+          if [ -z "${NEXT_PUBLIC_SUPABASE_URL}" ] || \
+             [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY}" ] || \
+             [ -z "${SUPABASE_SERVICE_ROLE_KEY}" ]; then
+            echo "Skipping RLS tests: Supabase secrets missing"
+            exit 0
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
 
