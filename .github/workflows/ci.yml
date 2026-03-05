@@ -46,8 +46,12 @@ jobs:
 
       - name: Build
         run: |
-          if [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ] || [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" ] || [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
-            echo "Supabase secrets missing in CI -> skipping build."
+          if [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ] || [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" ]; then
+            echo "Missing Supabase public env -> skip build"
+            exit 0
+          fi
+          if [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
+            echo "Missing Supabase service role -> skip build"
             exit 0
           fi
           npm run build
@@ -82,14 +86,13 @@ jobs:
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
-      - name: Skip stable tests if credentials missing
+      - name: Skip stable tests if Supabase secrets missing
         run: |
-          if [ -z "${TRIAL_EMAIL:-}" ] || \
-             [ -z "${TRIAL_PASSWORD:-}" ] || \
-             [ -z "${PREMIUM_EMAIL:-}" ] || \
-             [ -z "${PREMIUM_PASSWORD:-}" ]; then
+          if [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ] || \
+             [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" ] || \
+             [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
             echo "SKIP_SUPABASE_CHAIN=true" >> "$GITHUB_ENV"
-            echo "Skipping stable tests: credentials missing"
+            echo "Skipping Stable Tests: Supabase secrets missing"
             exit 0
           fi
           echo "SKIP_SUPABASE_CHAIN=false" >> "$GITHUB_ENV"
@@ -105,16 +108,6 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Check Supabase secrets
-        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
-        run: |
-          if [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ] || [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" ] || [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
-            echo "SKIP_SUPABASE_CHAIN=true" >> "$GITHUB_ENV"
-            echo "Supabase secrets missing in CI -> skipping Stable Tests steps."
-            exit 0
-          fi
-          echo "SKIP_SUPABASE_CHAIN=false" >> "$GITHUB_ENV"
-
       - name: Install dependencies
         if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
         run: npm ci
@@ -124,13 +117,6 @@ jobs:
         run: |
           required_vars=(
             API_KEY
-            TRIAL_EMAIL
-            TRIAL_PASSWORD
-            PREMIUM_EMAIL
-            PREMIUM_PASSWORD
-            NEXT_PUBLIC_SUPABASE_URL
-            NEXT_PUBLIC_SUPABASE_ANON_KEY
-            SUPABASE_SERVICE_ROLE_KEY
           )
           for var_name in "${required_vars[@]}"; do
             if [ -z "${!var_name:-}" ]; then
@@ -139,12 +125,29 @@ jobs:
             fi
           done
 
+      - name: Lint
+        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
+        run: npm run lint -- --max-warnings=0
+
       - name: Build
         if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
         run: npm run build
 
-      - name: Start app
+      - name: Check trial/premium login env
         if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
+        run: |
+          if [ -z "${TRIAL_EMAIL:-}" ] || \
+             [ -z "${TRIAL_PASSWORD:-}" ] || \
+             [ -z "${PREMIUM_EMAIL:-}" ] || \
+             [ -z "${PREMIUM_PASSWORD:-}" ]; then
+            echo "SKIP_STABLE_SUITE=true" >> "$GITHUB_ENV"
+            echo "Missing trial/premium login env -> skip stable suite"
+            exit 0
+          fi
+          echo "SKIP_STABLE_SUITE=false" >> "$GITHUB_ENV"
+
+      - name: Start app
+        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' && env.SKIP_STABLE_SUITE != 'true' }}
         run: |
           npm run start -- -p 3100 --hostname 127.0.0.1 > /tmp/next-start.log 2>&1 &
           echo "APP_PID=$!" >> "$GITHUB_ENV"
@@ -158,7 +161,7 @@ jobs:
           exit 1
 
       - name: Wait for panel-health readiness
-        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
+        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' && env.SKIP_STABLE_SUITE != 'true' }}
         shell: pwsh
         run: |
           $maxAttempts = 30
@@ -183,18 +186,18 @@ jobs:
           exit 1
 
       - name: Run stable suite
-        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
+        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' && env.SKIP_STABLE_SUITE != 'true' }}
         run: npm run test:stable
 
       - name: Stop app
-        if: ${{ always() && env.SKIP_SUPABASE_CHAIN != 'true' }}
+        if: ${{ always() && env.SKIP_SUPABASE_CHAIN != 'true' && env.SKIP_STABLE_SUITE != 'true' }}
         run: |
           if [ -n "${APP_PID:-}" ]; then
             kill -9 "$APP_PID" || true
           fi
 
       - name: Upload stable suite reports
-        if: ${{ always() && env.SKIP_SUPABASE_CHAIN != 'true' }}
+        if: ${{ always() && env.SKIP_SUPABASE_CHAIN != 'true' && env.SKIP_STABLE_SUITE != 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: stable-suite-reports
@@ -204,12 +207,61 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload stable test diagnostics on failure
-        if: ${{ failure() && env.SKIP_SUPABASE_CHAIN != 'true' }}
+        if: ${{ failure() && env.SKIP_SUPABASE_CHAIN != 'true' && env.SKIP_STABLE_SUITE != 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: stable-tests-failure-diagnostics
           path: |
             /tmp/next-start.log
+            test-results/**
+            playwright-report/**
+          if-no-files-found: ignore
+
+  rls_negative_test:
+    name: RLS Negative Test
+    runs-on: ubuntu-latest
+    needs: [gitleaks_scan, lint_build]
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Skip RLS negative test if Supabase secrets missing
+        run: |
+          if [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ] || \
+             [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" ] || \
+             [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
+            echo "SKIP_SUPABASE_CHAIN=true" >> "$GITHUB_ENV"
+            echo "Skipping RLS negative test: Supabase secrets missing"
+            exit 0
+          fi
+          echo "SKIP_SUPABASE_CHAIN=false" >> "$GITHUB_ENV"
+
+      - name: Checkout
+        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
+        run: npm ci
+
+      - name: Run RLS negative spec
+        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
+        run: npm run test:rls:negative
+
+      - name: Upload RLS artifacts on failure
+        if: ${{ failure() && env.SKIP_SUPABASE_CHAIN != 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: rls-negative-failure-artifacts
+          path: |
             test-results/**
             playwright-report/**
           if-no-files-found: ignore
