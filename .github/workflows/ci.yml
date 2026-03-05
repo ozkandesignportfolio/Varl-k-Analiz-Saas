@@ -73,8 +73,8 @@ jobs:
   stable_tests:
     name: Stable Tests
     runs-on: ubuntu-latest
-    if: always()
     needs: lint_build
+    if: ${{ secrets.TRIAL_EMAIL != '' && secrets.PREMIUM_EMAIL != '' }}
     env:
       TEST_BASE_URL: http://127.0.0.1:3100
       API_KEY: ${{ secrets.API_KEY }}
@@ -92,7 +92,6 @@ jobs:
              [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" ] || \
              [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
             echo "SKIP_SUPABASE_CHAIN=true" >> "$GITHUB_ENV"
-            echo "SKIP_STABLE_SUITE=true" >> "$GITHUB_ENV"
             echo "Skipping Stable Tests: Supabase secrets missing"
             exit 0
           fi
@@ -134,21 +133,8 @@ jobs:
         if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
         run: npm run build
 
-      - name: Check trial/premium login env
-        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
-        run: |
-          if [ -z "${TRIAL_EMAIL:-}" ] || \
-             [ -z "${TRIAL_PASSWORD:-}" ] || \
-             [ -z "${PREMIUM_EMAIL:-}" ] || \
-             [ -z "${PREMIUM_PASSWORD:-}" ]; then
-            echo "SKIP_STABLE_SUITE=true" >> "$GITHUB_ENV"
-            echo "Missing trial/premium login env -> skip stable suite"
-            exit 0
-          fi
-          echo "SKIP_STABLE_SUITE=false" >> "$GITHUB_ENV"
-
       - name: Start app
-        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' && env.SKIP_STABLE_SUITE != 'true' }}
+        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
         run: |
           npm run start -- -p 3100 --hostname 127.0.0.1 > /tmp/next-start.log 2>&1 &
           echo "APP_PID=$!" >> "$GITHUB_ENV"
@@ -162,7 +148,7 @@ jobs:
           exit 1
 
       - name: Wait for panel-health readiness
-        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' && env.SKIP_STABLE_SUITE != 'true' }}
+        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
         shell: pwsh
         run: |
           $maxAttempts = 30
@@ -186,28 +172,19 @@ jobs:
           }
           exit 1
 
-      - name: Guard stable test secrets
-        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' && env.SKIP_STABLE_SUITE != 'true' }}
-        run: |
-          if [ -z "$TRIAL_EMAIL" ] || [ -z "$PREMIUM_EMAIL" ]; then
-            echo "Stable test secrets missing -> skipping stable tests"
-            echo "SKIP_STABLE_SUITE=true" >> "$GITHUB_ENV"
-            exit 0
-          fi
-
       - name: Run stable suite
-        if: ${{ env.SKIP_STABLE_SUITE != 'true' }}
+        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' }}
         run: npm run test:stable
 
       - name: Stop app
-        if: ${{ always() && env.SKIP_SUPABASE_CHAIN != 'true' && env.SKIP_STABLE_SUITE != 'true' }}
+        if: ${{ always() && env.SKIP_SUPABASE_CHAIN != 'true' }}
         run: |
           if [ -n "${APP_PID:-}" ]; then
             kill -9 "$APP_PID" || true
           fi
 
       - name: Upload stable suite reports
-        if: ${{ always() && env.SKIP_SUPABASE_CHAIN != 'true' && env.SKIP_STABLE_SUITE != 'true' }}
+        if: ${{ always() && env.SKIP_SUPABASE_CHAIN != 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: stable-suite-reports
@@ -217,7 +194,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload stable test diagnostics on failure
-        if: ${{ failure() && env.SKIP_SUPABASE_CHAIN != 'true' && env.SKIP_STABLE_SUITE != 'true' }}
+        if: ${{ failure() && env.SKIP_SUPABASE_CHAIN != 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: stable-tests-failure-diagnostics
