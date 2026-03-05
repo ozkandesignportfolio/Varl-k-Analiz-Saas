@@ -185,6 +185,15 @@ jobs:
           }
           exit 1
 
+      - name: Guard stable test secrets
+        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' && env.SKIP_STABLE_SUITE != 'true' }}
+        run: |
+          if [ -z "$TRIAL_EMAIL" ] || [ -z "$PREMIUM_EMAIL" ]; then
+            echo "Stable test secrets missing -> skipping stable tests"
+            echo "SKIP_STABLE_SUITE=true" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
       - name: Run stable suite
         if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' && env.SKIP_STABLE_SUITE != 'true' }}
         run: npm run test:stable
