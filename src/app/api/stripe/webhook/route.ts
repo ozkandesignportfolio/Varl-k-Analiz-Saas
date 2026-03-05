@@ -49,6 +49,34 @@ export async function POST(request: Request) {
   }
 
   try {
+    const eventId = event.id;
+    const { data: existingEvent, error: existingEventError } = await supabaseAdmin
+      .from("stripe_webhook_events")
+      .select("id")
+      .eq("id", eventId)
+      .maybeSingle();
+
+    if (existingEventError) {
+      throw existingEventError;
+    }
+
+    if (existingEvent) {
+      return NextResponse.json({ received: true }, { status: 200 });
+    }
+
+    const { error: insertEventError } = await supabaseAdmin.from("stripe_webhook_events").insert({ id: eventId });
+
+    if (insertEventError) {
+      const isDuplicateInsert =
+        insertEventError.code === "23505" || insertEventError.message?.toLowerCase().includes("duplicate key");
+
+      if (isDuplicateInsert) {
+        return NextResponse.json({ received: true }, { status: 200 });
+      }
+
+      throw insertEventError;
+    }
+
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
       const userId = session.metadata?.userId;
