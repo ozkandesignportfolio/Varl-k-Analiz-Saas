@@ -47,11 +47,11 @@ jobs:
       - name: Build
         run: |
           if [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ] || [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" ]; then
-            echo "Missing Supabase public env -> skip build"
+            echo "Supabase public env missing in CI -> skipping build."
             exit 0
           fi
           if [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
-            echo "Missing Supabase service role -> skip build"
+            echo "Supabase service role missing in CI -> skipping build."
             exit 0
           fi
           npm run build
