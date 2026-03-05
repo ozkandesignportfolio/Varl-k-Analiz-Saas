@@ -92,6 +92,7 @@ jobs:
              [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" ] || \
              [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
             echo "SKIP_SUPABASE_CHAIN=true" >> "$GITHUB_ENV"
+            echo "SKIP_STABLE_SUITE=true" >> "$GITHUB_ENV"
             echo "Skipping Stable Tests: Supabase secrets missing"
             exit 0
           fi
@@ -195,7 +196,7 @@ jobs:
           fi
 
       - name: Run stable suite
-        if: ${{ env.SKIP_SUPABASE_CHAIN != 'true' && env.SKIP_STABLE_SUITE != 'true' }}
+        if: ${{ env.SKIP_STABLE_SUITE != 'true' }}
         run: npm run test:stable
 
       - name: Stop app
