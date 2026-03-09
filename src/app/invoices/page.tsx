@@ -6,12 +6,11 @@ export default function Page() {
   return (
     <AppShell>
       <PanelSurface>
-        <PageHeader title="Faturalar" subtitle="Fatura kayıtlarini bu alandan yonetin." />
+        <PageHeader title="Faturalar" subtitle="Fatura kayıtlarını bu alandan yönetin." />
         <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-          Fatura listesi ve Ödeme durumlari bu alanda goruntulenir.
+          Fatura listesi ve ödeme durumları bu alanda görüntülenir.
         </div>
       </PanelSurface>
     </AppShell>
   );
 }
-

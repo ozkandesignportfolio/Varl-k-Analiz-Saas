@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Gizlilik Politikası | AssetCare",
+  title: "Gizlilik Politikası | Assetly",
   description:
-    "AssetCare hizmetinde kişisel verilerin toplanması, işlenmesi, saklanması ve paylaşımına ilişkin gizlilik politikası.",
+    "Assetly hizmetinde kişisel verilerin toplanması, işlenmesi, saklanması ve paylaşımına ilişkin gizlilik politikası.",
 };
 
 export default function LegalPrivacyPage() {
   return (
     <article className="space-y-10">
       <header className="border-b border-border/60 pb-8">
-        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">AssetCare Legal</p>
+        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Assetly Legal</p>
         <h1 className="mt-4 text-3xl font-semibold text-foreground sm:text-4xl">Gizlilik Politikası</h1>
         <p className="mt-4 text-sm leading-7 text-muted-foreground">
-          Bu politika, AssetCare platformunda gerçekleştirilen varlık takibi, garanti/bakım/servis süreçleri, belge
+          Bu politika, Assetly platformunda gerçekleştirilen varlık takibi, garanti/bakım/servis süreçleri, belge
           kasası ve bildirim hizmetleri kapsamında kişisel verilerin nasıl işlendiğini açıklar.
         </p>
         <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Son güncelleme: 21 Şubat 2026</p>
@@ -22,7 +22,7 @@ export default function LegalPrivacyPage() {
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold text-foreground">1. Kapsam</h2>
         <p className="text-muted-foreground">
-          Bu metin, AssetCare hizmetine web uygulaması veya ilgili dijital kanallar üzerinden erişen kullanıcıların
+          Bu metin, Assetly hizmetine web uygulaması veya ilgili dijital kanallar üzerinden erişen kullanıcıların
           kişisel verilerinin işlenmesine uygulanır. Politika, hem bireysel hesapları hem de organizasyon bazlı hesap
           kullanımını kapsar.
         </p>
@@ -64,7 +64,7 @@ export default function LegalPrivacyPage() {
         <p className="text-muted-foreground">
           Veriler, hizmetin sağlanması için gerekli ölçüde barındırma, altyapı, e-posta iletimi, bildirim ve ödeme
           hizmetleri sunan iş ortaklarıyla paylaşılabilir. Kamu kurumlarına aktarım yalnızca ilgili mevzuatın zorunlu
-          kıldığı durumlarda gerçekleştirilir. AssetCare, gereksiz veri paylaşımı yapmama ilkesini benimser.
+          kıldığı durumlarda gerçekleştirilir. Assetly, gereksiz veri paylaşımı yapmama ilkesini benimser.
         </p>
       </section>
 
@@ -80,7 +80,7 @@ export default function LegalPrivacyPage() {
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold text-foreground">7. Güvenlik Tedbirleri</h2>
         <p className="text-muted-foreground">
-          AssetCare, rol bazlı yetkilendirme, erişim kontrolü, şifreli iletişim, loglama ve operasyonel güvenlik
+          Assetly, rol bazlı yetkilendirme, erişim kontrolü, şifreli iletişim, loglama ve operasyonel güvenlik
           kontrolleri uygular. Bununla birlikte internet altyapısı ve üçüncü taraf servisler nedeniyle mutlak kesintisiz
           ve sıfır riskli bir ortam garanti edilmez; güvenlik süreçleri düzenli olarak gözden geçirilir.
         </p>
@@ -98,7 +98,7 @@ export default function LegalPrivacyPage() {
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold text-foreground">9. Politika Güncellemeleri</h2>
         <p className="text-muted-foreground">
-          AssetCare, mevzuat değişikliği, ürün güncellemeleri veya güvenlik gereksinimleri doğrultusunda bu politikayı
+          Assetly, mevzuat değişikliği, ürün güncellemeleri veya güvenlik gereksinimleri doğrultusunda bu politikayı
           güncelleyebilir. Önemli değişiklikler uygulama içi duyuru, e-posta veya hesap ekranı bilgilendirmesiyle
           kullanıcıya iletilir.
         </p>
@@ -107,7 +107,7 @@ export default function LegalPrivacyPage() {
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold text-foreground">10. İletişim</h2>
         <p className="text-muted-foreground">
-          Gizlilik talepleri ve veri işleme süreçlerine ilişkin sorular için: destek@assetcare.app
+          Gizlilik talepleri ve veri işleme süreçlerine ilişkin sorular için: assetly@gmail.com
         </p>
       </section>
     </article>

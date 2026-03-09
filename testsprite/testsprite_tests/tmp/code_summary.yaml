@@ -1,0 +1,237 @@
+version: "2"
+type: frontend
+tech_stack:
+  - TypeScript
+  - Next.js App Router (v16)
+  - React 19
+  - Tailwind CSS v4
+  - Supabase (Auth, PostgREST, Storage)
+  - Stripe
+routes:
+  - path: /
+    file: src/app/page.tsx
+    auth_required: false
+    description: Landing page and product introduction.
+  - path: /login
+    file: src/app/(auth)/login/page.tsx
+    auth_required: false
+    description: User sign-in page.
+  - path: /register
+    file: src/app/(auth)/register/page.tsx
+    auth_required: false
+    description: User sign-up page.
+  - path: /forgot-password
+    file: src/app/(auth)/forgot-password/page.tsx
+    auth_required: false
+    description: Password reset request page.
+  - path: /dashboard
+    file: src/app/(protected)/dashboard/page.tsx
+    auth_required: true
+    description: Main KPI and status dashboard.
+  - path: /assets
+    file: src/app/assets/page.tsx
+    auth_required: true
+    description: Asset list and CRUD management.
+  - path: /assets/[id]
+    file: src/app/assets/[id]/page.tsx
+    auth_required: true
+    description: Asset detail page.
+  - path: /maintenance
+    file: src/app/maintenance/page.tsx
+    auth_required: true
+    description: Maintenance rules and scheduling.
+  - path: /services
+    file: src/app/services/page.tsx
+    auth_required: true
+    description: Service log management.
+  - path: /documents
+    file: src/app/documents/page.tsx
+    auth_required: true
+    description: Document upload and listing.
+  - path: /timeline
+    file: src/app/timeline/page.tsx
+    auth_required: true
+    description: Chronological maintenance/service activity timeline.
+  - path: /costs
+    file: src/app/costs/page.tsx
+    auth_required: true
+    description: Cost analytics and charts.
+  - path: /subscriptions
+    file: src/app/subscriptions/page.tsx
+    auth_required: true
+    description: Subscription tracking page.
+  - path: /invoices
+    file: src/app/invoices/page.tsx
+    auth_required: true
+    description: Invoice tracking page.
+  - path: /billing
+    file: src/app/billing/page.tsx
+    auth_required: true
+    description: Billing overview.
+  - path: /settings
+    file: src/app/(protected)/settings/page.tsx
+    auth_required: true
+    description: Profile, subscription and account settings.
+  - path: /notifications
+    file: src/app/(protected)/notifications/page.tsx
+    auth_required: true
+    description: Notification center.
+  - path: /reports
+    file: src/app/reports/page.tsx
+    auth_required: true
+    description: Report generation and export.
+  - path: /pricing
+    file: src/app/pricing/page.tsx
+    auth_required: false
+    description: Pricing and plan comparison.
+features:
+  - name: Authentication
+    description: Email/password sign-up, sign-in and session-protected routes.
+    files:
+      - src/app/(auth)/login/page.tsx
+      - src/app/(auth)/register/page.tsx
+      - src/lib/supabase/client.ts
+      - middleware.ts
+    entry_route: /login
+    user_interactions:
+      - Enter credentials and submit login form.
+      - Register a new account.
+      - Navigate to protected pages with active session.
+    api_calls:
+      - method: Supabase Auth
+        endpoint: supabase.auth.*
+    auth_required: false
+  - name: Asset Management
+    description: Create, list, update and delete assets with media attachments.
+    files:
+      - src/app/assets/page.tsx
+      - src/features/assets/containers/assets-page-container.tsx
+      - src/app/api/assets/route.ts
+      - src/app/api/asset-media/route.ts
+    entry_route: /assets
+    user_interactions:
+      - Create a new asset with category and metadata.
+      - Edit existing asset details.
+      - Upload and view asset media files.
+      - Delete asset and related media.
+    api_calls:
+      - method: GET/POST/PATCH/DELETE
+        endpoint: /api/assets
+      - method: POST
+        endpoint: /api/asset-media
+    auth_required: true
+  - name: Maintenance Rules
+    description: Define recurring maintenance and track upcoming maintenance dates.
+    files:
+      - src/app/maintenance/page.tsx
+      - src/features/maintenance/containers/maintenance-page-container.tsx
+      - src/app/api/maintenance-rules/route.ts
+      - src/app/api/maintenance-rules/[id]/route.ts
+    entry_route: /maintenance
+    user_interactions:
+      - Add maintenance rule to an asset.
+      - Update maintenance interval and due settings.
+      - Mark maintenance completed and review next date.
+    api_calls:
+      - method: GET/POST
+        endpoint: /api/maintenance-rules
+      - method: PATCH/DELETE
+        endpoint: /api/maintenance-rules/[id]
+    auth_required: true
+  - name: Service Logs
+    description: Store service records and related media.
+    files:
+      - src/app/services/page.tsx
+      - src/features/services/containers/services-page-container.tsx
+      - src/app/api/service-logs/route.ts
+      - src/app/api/service-media/route.ts
+    entry_route: /services
+    user_interactions:
+      - Create service entry with notes and cost.
+      - Upload service receipts/photos.
+      - Edit or remove service records.
+    api_calls:
+      - method: GET/POST/PATCH/DELETE
+        endpoint: /api/service-logs
+      - method: POST
+        endpoint: /api/service-media
+    auth_required: true
+  - name: Document Management
+    description: Upload and list warranty/invoice/other documents.
+    files:
+      - src/app/documents/page.tsx
+      - src/features/documents/documents-page-container.tsx
+      - src/app/api/documents/route.ts
+    entry_route: /documents
+    user_interactions:
+      - Upload a document file.
+      - Filter documents by type.
+      - Delete obsolete documents.
+    api_calls:
+      - method: GET/POST/DELETE
+        endpoint: /api/documents
+    auth_required: true
+  - name: Dashboard and Analytics
+    description: Display KPI cards, timelines and cost metrics.
+    files:
+      - src/app/(protected)/dashboard/page.tsx
+      - src/features/dashboard/containers/dashboard-page-container.tsx
+      - src/app/api/dashboard-metrics/route.ts
+    entry_route: /dashboard
+    user_interactions:
+      - Review dashboard KPI widgets.
+      - Change date range filters.
+      - Inspect timeline and cost trends.
+    api_calls:
+      - method: GET
+        endpoint: /api/dashboard-metrics
+    auth_required: true
+  - name: Billing and Subscription
+    description: Manage subscriptions/invoices and Stripe payment flows.
+    files:
+      - src/app/billing/page.tsx
+      - src/features/billing/containers/billing-page-container.tsx
+      - src/app/api/billing/subscriptions/route.ts
+      - src/app/api/billing/invoices/route.ts
+      - src/app/api/stripe/checkout/route.ts
+      - src/app/api/stripe/confirm/route.ts
+      - src/app/api/stripe/webhook/route.ts
+    entry_route: /billing
+    user_interactions:
+      - Create and update subscription entries.
+      - Add and track invoices.
+      - Start checkout flow and confirm payment state.
+    api_calls:
+      - method: GET/POST/PATCH/DELETE
+        endpoint: /api/billing/subscriptions
+      - method: GET/POST/PATCH/DELETE
+        endpoint: /api/billing/invoices
+      - method: POST
+        endpoint: /api/stripe/checkout
+      - method: POST
+        endpoint: /api/stripe/confirm
+      - method: POST
+        endpoint: /api/stripe/webhook
+    auth_required: true
+  - name: Reporting
+    description: Generate reports and export PDF for asset/maintenance history.
+    files:
+      - src/app/reports/page.tsx
+      - src/features/reports/containers/reports-page-container.tsx
+      - src/features/reports/lib
+    entry_route: /reports
+    user_interactions:
+      - Select report scope and date range.
+      - Generate report output.
+      - Download generated report as PDF.
+    api_calls:
+      - method: Client-side generation
+        endpoint: N/A
+    auth_required: true
+known_limitations:
+  - issue: Free plan quotas are constrained (asset/document/subscription/invoice limits).
+    location: src/lib/plans
+    impact: Users hit hard limits unless upgraded.
+  - issue: Team/collaboration workflow is not implemented in MVP.
+    location: Product scope (MVP)
+    impact: Single-user usage pattern only.

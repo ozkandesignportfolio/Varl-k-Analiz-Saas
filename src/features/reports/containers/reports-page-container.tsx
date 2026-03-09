@@ -486,7 +486,7 @@ export function ReportsPageContainer() {
       doc.setTextColor(15, 23, 42);
       doc.setFont("NotoSansUnicode", "bold");
       doc.setFontSize(18);
-      doc.text("AssetCare PDF Raporu", left, y);
+      doc.text("Assetly PDF Raporu", left, y);
       y += 20;
 
       doc.setFont("NotoSansUnicode", "normal");
@@ -549,7 +549,7 @@ export function ReportsPageContainer() {
         [95, 160, 260],
       );
 
-      doc.save(`assetcare-rapor-${startDate}-${endDate}.pdf`);
+      doc.save(`assetly-rapor-${startDate}-${endDate}.pdf`);
       setFeedback("PDF raporu başarıyla indirildi.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "PDF oluşturulurken hata oluştu.";

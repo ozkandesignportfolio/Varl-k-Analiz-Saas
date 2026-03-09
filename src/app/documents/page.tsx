@@ -287,7 +287,7 @@ export default function DocumentsPage() {
 
         {feedback ? <p className={feedbackClassName}>{feedback}</p> : null}
 
-        <p className="rounded-xl border border-sky-300/25 bg-sky-300/10 px-4 py-3 text-sm text-sky-100">
+        <p className="rounded-xl border border-sky-300/25 bg-sky-300/10 px-4 py-3 text-sm text-sky-100" data-testid="documents-plan-limit">
           Paket: {planConfig.label}. Belge limiti kullanimi: {documentUsageText}
         </p>
 
@@ -420,7 +420,12 @@ export default function DocumentsPage() {
                 </thead>
                 <tbody>
                   {documents.map((doc) => (
-                    <tr key={doc.id} className="border-b border-white/10 text-slate-100">
+                    <tr
+                      key={doc.id}
+                      className="border-b border-white/10 text-slate-100"
+                      data-testid="documents-row"
+                      data-document-id={doc.id}
+                    >
                       <td className="px-3 py-3">{doc.file_name}</td>
                       <td className="px-3 py-3">{doc.document_type}</td>
                       <td className="px-3 py-3">{assetNameById.get(doc.asset_id) ?? "-"}</td>
@@ -432,6 +437,7 @@ export default function DocumentsPage() {
                             type="button"
                             onClick={() => void onPreview(doc)}
                             disabled={previewingId === doc.id || deletingId === doc.id}
+                            data-testid={`documents-preview-${doc.id}`}
                             className="rounded-full border border-sky-300/35 bg-sky-300/10 px-3 py-1 text-xs font-semibold text-sky-100 transition hover:bg-sky-300/20 disabled:cursor-not-allowed disabled:opacity-70"
                           >
                             {previewingId === doc.id ? "Hazirlaniyor..." : "Onizle"}
@@ -440,6 +446,7 @@ export default function DocumentsPage() {
                             type="button"
                             onClick={() => void onDownload(doc)}
                             disabled={downloadingId === doc.id || deletingId === doc.id}
+                            data-testid={`documents-download-${doc.id}`}
                             className="rounded-full border border-emerald-300/35 bg-emerald-300/10 px-3 py-1 text-xs font-semibold text-emerald-100 transition hover:bg-emerald-300/20 disabled:cursor-not-allowed disabled:opacity-70"
                           >
                             {downloadingId === doc.id ? "Indiriliyor..." : "Indir"}

@@ -9,9 +9,9 @@
 - RLS negative test çalışıyor (artefact üretiyor)
 
 ## Mevcut Fail
-- tests/rls/rls-negative.spec.ts FAIL:
+- testsprite/tests/rls/rls-negative.spec.ts FAIL:
   Missing required env var: NEXT_PUBLIC_SUPABASE_URL
-  Kaynak: tests/e2e/helpers/supabase-admin.ts: must()
+  Kaynak: testsprite/tests/e2e/helpers/supabase-admin.ts: must()
 
 ## Kalanlar (kritik)
 - .env.local veya CI secrets içinde NEXT_PUBLIC_SUPABASE_URL + (muhtemelen) SUPABASE_SERVICE_ROLE_KEY setlemek
@@ -19,3 +19,5 @@
 - CI secret scan (gitleaks) job'unu tek workflow içinde finalize etmek
 - Stripe test->prod key ayrımı kontrol
 - Rate-limit abuse testi + 429 doğrulaması
+
+

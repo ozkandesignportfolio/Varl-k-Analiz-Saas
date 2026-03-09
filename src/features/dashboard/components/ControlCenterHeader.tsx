@@ -78,7 +78,7 @@ const DASHBOARD_RANGE_OPTIONS: DashboardDateRangeDays[] = [7, 30, 90];
 
 const SNOOZE_OPTIONS: { label: string; durationMs: number }[] = [
   { label: "1 saat", durationMs: 60 * 60 * 1000 },
-  { label: "1 gÃ¼n", durationMs: 24 * 60 * 60 * 1000 },
+  { label: "1 gün", durationMs: 24 * 60 * 60 * 1000 },
   { label: "1 hafta", durationMs: 7 * 24 * 60 * 60 * 1000 },
 ];
 
@@ -217,14 +217,26 @@ export function ControlCenterHeader({ selectedRange, status }: ControlCenterHead
   const [riskActionOverrides, setRiskActionOverrides] = useState<Record<string, RiskActionState | null>>({});
   const [canUseSupabaseRiskActions, setCanUseSupabaseRiskActions] = useState(true);
   const [nowTs, setNowTs] = useState(() => Date.now());
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    const hydrationTimer = window.setTimeout(() => {
+      setIsHydrated(true);
+    }, 0);
+
+    return () => window.clearTimeout(hydrationTimer);
+  }, []);
 
   const riskAction = useMemo(() => {
     const override = riskActionOverrides[riskKey];
     if (typeof override !== "undefined") {
       return override;
     }
+    if (!isHydrated) {
+      return null;
+    }
     return readRiskAction(riskKey);
-  }, [riskActionOverrides, riskKey]);
+  }, [isHydrated, riskActionOverrides, riskKey]);
 
   useEffect(() => {
     const snoozedUntil = riskAction?.snoozedUntil;
@@ -447,12 +459,12 @@ export function ControlCenterHeader({ selectedRange, status }: ControlCenterHead
         <div className="space-y-3">
           <p className="inline-flex items-center gap-2 rounded-full border border-[#314B6D] bg-[#0E2039]/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.15em] text-slate-300">
             <ShieldCheck className="size-3.5 text-emerald-300" aria-hidden />
-            Control Center
+            Kontrol Merkezi
           </p>
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-[#F8FAFC] sm:text-3xl">Kontrol Merkezi</h1>
             <p className="mt-2 max-w-2xl text-sm text-[#9FB2CE]">
-              Tum sistemi tek ekrandan yonetin: riskleri izleyin, hizli aksiyon alin ve kritik alanlari takip edin.
+              Tüm sistemi tek ekrandan yönetin: riskleri izleyin, hızlı aksiyon alın ve kritik alanları takip edin.
             </p>
           </div>
         </div>
@@ -473,7 +485,7 @@ export function ControlCenterHeader({ selectedRange, status }: ControlCenterHead
                       : "text-[#9CB0CE] hover:bg-[#132A4A] hover:text-[#F1F5F9]"
                   }`}
                 >
-                  Son {range} gun
+                  Son {range} gün
                 </Link>
               );
             })}
@@ -482,14 +494,14 @@ export function ControlCenterHeader({ selectedRange, status }: ControlCenterHead
           <details className="group relative">
             <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl border border-[#2F4569] bg-[#10243F] px-4 py-2 text-sm font-semibold text-[#E2E8F0] transition hover:bg-[#143158]">
               <Plus className="size-4" aria-hidden />
-              HÄ±zlÄ± Ekle
+              Hızlı Ekle
               <ChevronDown className="size-4 transition group-open:rotate-180" aria-hidden />
             </summary>
             <div className="absolute right-0 z-20 mt-2 min-w-52 rounded-xl border border-[#2B3E5B] bg-[#0A162A]/95 p-1.5 shadow-[0_16px_30px_rgba(2,8,20,0.5)] backdrop-blur">
-              <HeaderDropdownLink href="/assets" label="VarlÄ±k Ekle" />
-              <HeaderDropdownLink href="/maintenance" label="BakÄ±m KuralÄ± OluÅŸtur" />
-              <HeaderDropdownLink href="/services" label="Servis KaydÄ± Ekle" />
-              <HeaderDropdownLink href="/documents" label="Belge YÃ¼kle" />
+              <HeaderDropdownLink href="/assets" label="Varlık Ekle" />
+              <HeaderDropdownLink href="/maintenance" label="Bakım Kuralı Oluştur" />
+              <HeaderDropdownLink href="/services" label="Servis Kaydı Ekle" />
+              <HeaderDropdownLink href="/documents" label="Belge Yükle" />
             </div>
           </details>
         </div>
@@ -510,7 +522,7 @@ export function ControlCenterHeader({ selectedRange, status }: ControlCenterHead
             <TooltipProvider>
               <div className="flex items-center gap-1.5">
                 <span className={`inline-flex h-fit rounded-full border px-3 py-1 text-xs font-semibold ${style.badge}`}>
-                  {status.riskCount} aktif kayit
+                  {status.riskCount} aktif kayıt
                 </span>
 
                 <Tooltip>
@@ -519,12 +531,12 @@ export function ControlCenterHeader({ selectedRange, status }: ControlCenterHead
                       type="button"
                       onClick={handleDismiss}
                       className={`inline-flex size-7 items-center justify-center rounded-md border transition ${style.iconButton}`}
-                      aria-label="GÃ¶rmezden gel"
+                      aria-label="Görmezden gel"
                     >
                       <X className="size-3.5" aria-hidden />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent>GÃ¶rmezden gel</TooltipContent>
+                  <TooltipContent>Görmezden gel</TooltipContent>
                 </Tooltip>
 
                 <DropdownMenu>
@@ -534,20 +546,20 @@ export function ControlCenterHeader({ selectedRange, status }: ControlCenterHead
                         <button
                           type="button"
                           className={`inline-flex size-7 items-center justify-center rounded-md border transition ${style.iconButton}`}
-                          aria-label="Sonra hatÄ±rlat"
+                          aria-label="Sonra hatırlat"
                         >
                           <Clock3 className="size-3.5" aria-hidden />
                         </button>
                       </DropdownMenuTrigger>
                     </TooltipTrigger>
-                    <TooltipContent>Sonra hatÄ±rlat</TooltipContent>
+                    <TooltipContent>Sonra hatırlat</TooltipContent>
                   </Tooltip>
                   <DropdownMenuContent
                     align="end"
                     className="w-40 border-[#2F4569] bg-[#0D1F39]/95 text-[#E5EEFC] shadow-[0_14px_30px_rgba(2,8,20,0.5)]"
                   >
                     <DropdownMenuLabel className="text-xs uppercase tracking-[0.14em] text-[#9BB0CD]">
-                      Sonra hatÄ±rlat
+                      Sonra hatırlat
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator className="bg-[#314B6D]" />
                     {SNOOZE_OPTIONS.map((option) => (
@@ -568,12 +580,12 @@ export function ControlCenterHeader({ selectedRange, status }: ControlCenterHead
                       type="button"
                       onClick={handleFix}
                       className={`inline-flex size-7 items-center justify-center rounded-md border transition ${style.iconButton}`}
-                      aria-label="DÃ¼zelt"
+                      aria-label="Düzelt"
                     >
                       <Wrench className="size-3.5" aria-hidden />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent>DÃ¼zelt</TooltipContent>
+                  <TooltipContent>Düzelt</TooltipContent>
                 </Tooltip>
               </div>
             </TooltipProvider>
@@ -595,4 +607,3 @@ function HeaderDropdownLink({ href, label }: { href: string; label: string }) {
     </Link>
   );
 }
-

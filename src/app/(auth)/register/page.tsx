@@ -116,7 +116,7 @@ export default function RegisterPage() {
             href="/"
             className="inline-flex items-center gap-2 rounded-full border border-white/15 px-3 py-1.5 text-xs text-slate-300"
           >
-            AssetCare
+            Assetly
           </Link>
           <h1 className="mt-5 text-4xl font-semibold leading-[1.1] text-white">
             Hesabınızı oluşturun
@@ -131,15 +131,29 @@ export default function RegisterPage() {
           <h2 className="text-2xl font-semibold text-white">Kayıt Ol</h2>
           <p className="mt-2 text-sm text-slate-300">Yeni hesabınızı oluşturun.</p>
 
-          <form onSubmit={onSubmit} className="mt-6 space-y-4">
+          <form onSubmit={onSubmit} className="mt-6 space-y-4" data-testid="register-form">
             <label className="block">
               <span className="mb-1.5 block text-sm text-slate-300">Ad Soyad</span>
-              <input name="fullName" type="text" required className={inputClassName} placeholder="Örnek: Osman Yılmaz" />
+              <input
+                name="fullName"
+                type="text"
+                required
+                className={inputClassName}
+                placeholder="Örnek: Osman Yılmaz"
+                data-testid="register-fullname-input"
+              />
             </label>
 
             <label className="block">
               <span className="mb-1.5 block text-sm text-slate-300">E-posta</span>
-              <input name="email" type="email" required className={inputClassName} placeholder="örnek@mail.com" />
+              <input
+                name="email"
+                type="email"
+                required
+                className={inputClassName}
+                placeholder="örnek@mail.com"
+                data-testid="register-email-input"
+              />
             </label>
 
             <label className="block">
@@ -151,6 +165,7 @@ export default function RegisterPage() {
                 minLength={6}
                 className={inputClassName}
                 placeholder="En az 6 karakter"
+                data-testid="register-password-input"
               />
             </label>
 
@@ -163,18 +178,24 @@ export default function RegisterPage() {
                 minLength={6}
                 className={inputClassName}
                 placeholder="Şifrenizi tekrar girin"
+                data-testid="register-password-confirm-input"
               />
             </label>
 
             <button
               type="submit"
               disabled={isSubmitting}
+              data-testid="register-submit"
               className="w-full rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isSubmitting ? "Kayıt oluşturuluyor..." : "Kayıt Ol"}
             </button>
 
-            {message ? <p className="text-sm text-slate-200">{message}</p> : null}
+            {message ? (
+              <p className="text-sm text-slate-200" data-testid="register-message">
+                {message}
+              </p>
+            ) : null}
           </form>
 
           <p className="mt-5 text-sm text-slate-300">

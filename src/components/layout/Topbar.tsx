@@ -72,10 +72,11 @@ export function Topbar({ title, breadcrumb, userEmail }: TopbarProps) {
 
           <span className="auth-topbar-separator" aria-hidden />
 
-          <details ref={userMenuRef} className="auth-topbar-menu relative">
+          <details ref={userMenuRef} className="auth-topbar-menu relative" data-testid="topbar-user-menu">
             <summary
               aria-label="Kullan\u0131c\u0131 men\u00FCs\u00FC"
               className="auth-topbar-control auth-focus-ring flex list-none items-center gap-2 rounded-lg px-2.5 py-1.5 text-[var(--auth-foreground)] [&::-webkit-details-marker]:hidden"
+              data-testid="topbar-user-menu-toggle"
             >
               <span className="auth-topbar-avatar inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium">
                 {getUserInitial(userEmail)}
@@ -84,7 +85,7 @@ export function Topbar({ title, breadcrumb, userEmail }: TopbarProps) {
             </summary>
 
             <div className="auth-topbar-menu-panel absolute right-0 mt-2 w-56 rounded-xl p-2">
-              <p className="truncate px-2 py-1 text-xs text-[var(--auth-muted)]">{userEmail ?? "kullan\u0131c\u0131@assetcare.app"}</p>
+              <p className="truncate px-2 py-1 text-xs text-[var(--auth-muted)]">{userEmail ?? "assetly@gmail.com"}</p>
               <Link
                 href="/settings"
                 className="auth-topbar-menu-link auth-focus-ring mt-1 block rounded-md px-2 py-1.5 text-sm text-[var(--auth-muted)]"
@@ -96,6 +97,7 @@ export function Topbar({ title, breadcrumb, userEmail }: TopbarProps) {
                 onClick={handleSignOut}
                 disabled={isSigningOut}
                 className="auth-topbar-menu-link auth-focus-ring mt-1 block w-full rounded-md px-2 py-1.5 text-left text-sm text-rose-200 disabled:opacity-60"
+                data-testid="topbar-signout-button"
               >
                 {isSigningOut ? "C\u0131k\u0131\u015F yap\u0131l\u0131yor..." : "\u00C7\u0131k\u0131\u015F Yap"}
               </button>

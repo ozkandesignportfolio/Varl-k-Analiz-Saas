@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Hukuki Bilgilendirme | AssetCare",
+  title: "Hukuki Bilgilendirme | Assetly",
   description:
-    "AssetCare abonelik iptal/iade, hizmet seviyesi, veri saklama, güvenlik ve kabul edilebilir kullanım hükümlerinin açıklayıcı metni.",
+    "Assetly abonelik iptal/iade, hizmet seviyesi, veri saklama, güvenlik ve kabul edilebilir kullanım hükümlerinin açıklayıcı metni.",
 };
 
 export default function LegalNoticePage() {
   return (
     <article className="space-y-10">
       <header className="border-b border-border/60 pb-8">
-        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">AssetCare Legal</p>
+        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Assetly Legal</p>
         <h1 className="mt-4 text-3xl font-semibold text-foreground sm:text-4xl">Hukuki Bilgilendirme</h1>
         <p className="mt-4 text-sm leading-7 text-muted-foreground">
-          Bu sayfa, AssetCare hizmetinin kullanımına ilişkin tamamlayıcı hukuki konuları tek metinde açık ve anlaşılır
+          Bu sayfa, Assetly hizmetinin kullanımına ilişkin tamamlayıcı hukuki konuları tek metinde açık ve anlaşılır
           şekilde sunar. Amaç; kullanıcıların abonelik süreçleri, hizmetin operasyonel sınırları, veri yaşam döngüsü,
           güvenlik yaklaşımı ve kabul edilebilir kullanım kuralları hakkında öngörülebilir bir çerçeveye sahip olmasını
           sağlamaktır.
@@ -41,7 +41,7 @@ export default function LegalNoticePage() {
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold text-foreground">Hizmet Seviyesi, Süreklilik ve Sorumluluk Sınırları</h2>
         <p className="text-muted-foreground">
-          AssetCare, yüksek erişilebilirlik ve sürdürülebilir performans hedefleriyle işletilir. Bununla birlikte planlı
+          Assetly, yüksek erişilebilirlik ve sürdürülebilir performans hedefleriyle işletilir. Bununla birlikte planlı
           bakım çalışmaları, güvenlik müdahaleleri, telekomünikasyon ve bulut altyapısı kesintileri, mücbir sebepler ve
           üçüncü taraf bağımlılıkları nedeniyle geçici aksamalar oluşabilir. Hizmet seviyesi göstergeleri operasyonel
           hedef niteliğindedir ve mutlak kesintisizlik taahhüdü olarak yorumlanmamalıdır.
@@ -76,7 +76,7 @@ export default function LegalNoticePage() {
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold text-foreground">Bilgi Güvenliği ve Olay Yönetimi</h2>
         <p className="text-muted-foreground">
-          AssetCare, gizlilik, bütünlük ve erişilebilirlik ilkelerine dayanan çok katmanlı bir güvenlik modeli uygular.
+          Assetly, gizlilik, bütünlük ve erişilebilirlik ilkelerine dayanan çok katmanlı bir güvenlik modeli uygular.
           Bu model; kimlik doğrulama mekanizmaları, yetki ayrıştırması, şifreli veri aktarımı, oturum güvenliği,
           operasyonel izleme, değişiklik yönetimi ve denetim izi üretimi gibi teknik ve idari kontrollerden oluşur.
           Kritik sistemlerde olağandışı aktivite sinyalleri izlenir ve risk azaltma aksiyonları önceliklendirilir.

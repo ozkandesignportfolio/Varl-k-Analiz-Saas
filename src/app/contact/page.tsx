@@ -12,9 +12,16 @@ export default function ContactPage() {
         <section className="premium-panel px-6 py-12 text-center sm:px-10">
           <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">AssetCare</p>
           <h1 className="mt-4 text-3xl font-semibold text-foreground sm:text-4xl">İletişim</h1>
-          <p className="mt-6 text-lg text-foreground">Yakında</p>
-          <p className="mt-3 text-sm leading-7 text-muted-foreground">
-            Bu sayfa kısa süre içinde güncellenecektir. Şimdilik iletişim formu bulunmamaktadır.
+          <p className="mt-8 text-base leading-8 text-foreground sm:text-lg">
+            Görüş, öneri ve şikayetlerinizi bizimle paylaşmak için{" "}
+            <a
+              href="mailto:assetly@gmail.com"
+              className="text-lg font-semibold text-foreground underline decoration-2 underline-offset-4 sm:text-xl"
+            >
+              assetly@gmail.com
+            </a>{" "}
+            adresine e-posta gönderebilirsiniz. Tüm talepleriniz dikkatle değerlendirilir ve en kısa sürede geri dönüş
+            sağlanır.
           </p>
         </section>
       </div>

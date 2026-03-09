@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import Link from "next/link"
 import { useEffect, useRef, useState, type MouseEvent } from "react"
@@ -172,7 +172,7 @@ export function Navbar() {
             <Shield className="h-5 w-5 text-primary" />
           </div>
           <div className="flex flex-col">
-            <span className="text-lg font-bold tracking-tight text-foreground">ASSETCARE</span>
+            <span className="text-lg font-bold tracking-tight text-foreground">ASSETLY</span>
             <span className="text-[10px] tracking-[0.2em] text-muted-foreground">Premium Kontrol Paneli</span>
           </div>
         </a>

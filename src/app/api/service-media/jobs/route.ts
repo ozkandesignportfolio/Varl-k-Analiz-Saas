@@ -139,8 +139,8 @@ const buildRetryScheduleIso = (attempts: number) => {
 };
 
 async function markJobCompleted(client: ServiceRoleClient, jobId: string) {
-  await client
-    .from("service_media_enrichment_jobs")
+    await client
+      .from("media_enrichment_jobs")
     .update({
       status: "completed",
       completed_at: new Date().toISOString(),
@@ -159,8 +159,8 @@ async function markJobFailed(
   },
 ) {
   const isLastAttempt = params.attempts >= params.maxAttempts;
-  await client
-    .from("service_media_enrichment_jobs")
+    await client
+      .from("media_enrichment_jobs")
     .update(
       isLastAttempt
         ? {

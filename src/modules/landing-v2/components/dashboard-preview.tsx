@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useMemo, useState } from "react";
 import { Shield } from "lucide-react";
@@ -56,7 +56,7 @@ export function DashboardPreview() {
                       <Shield className="h-4 w-4" />
                     </span>
                     <div>
-                      <p className="text-xs font-bold tracking-tight text-[var(--auth-foreground)]">ASSETCARE</p>
+                      <p className="text-xs font-bold tracking-tight text-[var(--auth-foreground)]">ASSETLY</p>
                       <p className="text-[9px] text-[var(--auth-muted)]">Premium Kontrol Paneli</p>
                     </div>
                   </div>

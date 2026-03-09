@@ -82,6 +82,12 @@ const normalizePageSize = (value: number | undefined, fallback: number, max = 20
   return Math.min(max, parsed);
 };
 
+const isListAssetsSignatureError = (error: PostgrestError | null) => {
+  if (!error) return false;
+  const normalized = error.message.toLowerCase();
+  return error.code === "PGRST202" && normalized.includes("could not find the function public.list_assets_page");
+};
+
 export function listIdName(
   client: DbClient,
   params: ListAssetIdNameParams,
@@ -163,23 +169,53 @@ export function listAssets(
   const pageSize = normalizePageSize(params.pageSize, 30, 100);
   const sort = params.sort ?? "updated";
   const cursor = params.cursor && params.cursor.sort === sort ? params.cursor : null;
+  const searchValue = params.search?.trim() || null;
+  const buildRpcArgs = (includeSort: boolean) => ({
+    p_user_id: params.userId,
+    p_cursor_value: cursor?.value ?? null,
+    p_cursor_id: cursor?.id ?? null,
+    p_page_size: pageSize + 1,
+    p_search: searchValue,
+    p_category: params.category && params.category !== "all" ? params.category : null,
+    p_asset_filter: params.assetFilter && params.assetFilter !== "all" ? params.assetFilter : null,
+    p_warranty_filter:
+      params.warrantyFilter && params.warrantyFilter !== "all" ? params.warrantyFilter : null,
+    p_maintenance_filter:
+      params.maintenanceFilter && params.maintenanceFilter !== "all"
+        ? params.maintenanceFilter
+        : null,
+    ...(includeSort ? { p_sort: sort } : {}),
+  });
+  const buildLegacyRpcArgs = () => ({
+    p_user_id: params.userId,
+    p_cursor: cursor?.value || null,
+    p_page_size: pageSize + 1,
+    p_search: searchValue,
+  });
+  type ListAssetsRpcResult = {
+    data: unknown;
+    error: PostgrestError | null;
+    effectiveSort: AssetSortMode;
+  };
 
   return Promise.resolve(
-    rpc("list_assets_page", {
-      p_user_id: params.userId,
-      p_cursor_value: cursor?.value ?? null,
-      p_cursor_id: cursor?.id ?? null,
-      p_page_size: pageSize + 1,
-      p_search: params.search?.trim() || null,
-      p_category: params.category && params.category !== "all" ? params.category : null,
-      p_asset_filter: params.assetFilter && params.assetFilter !== "all" ? params.assetFilter : null,
-      p_warranty_filter:
-        params.warrantyFilter && params.warrantyFilter !== "all" ? params.warrantyFilter : null,
-      p_maintenance_filter:
-        params.maintenanceFilter && params.maintenanceFilter !== "all"
-          ? params.maintenanceFilter
-          : null,
-      p_sort: sort,
+    rpc("list_assets_page", buildRpcArgs(true)).then(async (result) => {
+      if (isListAssetsSignatureError(result.error)) {
+        // temporary compatibility until migration applied
+        const noSortResult = await rpc("list_assets_page", buildRpcArgs(false));
+        if (!noSortResult.error) {
+          return { ...noSortResult, effectiveSort: "updated" } as ListAssetsRpcResult;
+        }
+
+        if (isListAssetsSignatureError(noSortResult.error)) {
+          const legacyResult = await rpc("list_assets_page", buildLegacyRpcArgs());
+          return { ...legacyResult, effectiveSort: "updated" } as ListAssetsRpcResult;
+        }
+
+        return { ...noSortResult, effectiveSort: "updated" } as ListAssetsRpcResult;
+      }
+
+      return { ...result, effectiveSort: sort } as ListAssetsRpcResult;
     }),
   ).then((r) => {
     const rows = ((r.data as Array<Record<string, unknown>> | null) ?? []).map((row) => ({
@@ -193,8 +229,8 @@ export function listAssets(
       warranty_end_date: (row.warranty_end_date as string | null) ?? null,
       photo_path: (row.photo_path as string | null) ?? null,
       qr_code: (row.qr_code as string | null) ?? null,
-      created_at: String(row.created_at ?? ""),
-      updated_at: String(row.updated_at ?? ""),
+      created_at: String(row.created_at ?? row.updated_at ?? ""),
+      updated_at: String(row.updated_at ?? row.created_at ?? ""),
       next_maintenance_date: (row.next_maintenance_date as string | null) ?? null,
       last_service_date: (row.last_service_date as string | null) ?? null,
       document_count: Number(row.document_count ?? 0),
@@ -205,7 +241,7 @@ export function listAssets(
         ((row.maintenance_state as string | null) ?? "none") as ListAssetsRow["maintenance_state"],
       asset_state: ((row.asset_state as string | null) ?? "active") as ListAssetsRow["asset_state"],
       score: Number(row.score ?? 0),
-      cursor_value: String(row.cursor_value ?? ""),
+      cursor_value: String(row.cursor_value ?? row.updated_at ?? row.created_at ?? ""),
     })) as ListAssetsRow[];
 
     const hasMore = rows.length > pageSize;
@@ -218,11 +254,10 @@ export function listAssets(
         hasMore,
         nextCursor:
           hasMore && lastRow
-            ? { value: lastRow.cursor_value, id: lastRow.id, sort }
+            ? { value: lastRow.cursor_value, id: lastRow.id, sort: r.effectiveSort }
             : null,
       },
       error: r.error,
     };
   });
 }
-

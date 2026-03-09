@@ -32,10 +32,10 @@ export default function LandingFooter() {
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-sky-400 via-indigo-500 to-fuchsia-500 text-xs font-semibold text-white">
               AC
             </span>
-            <span className="text-sm font-semibold text-white">AssetCare</span>
+            <span className="text-sm font-semibold text-white">Assetly</span>
           </Link>
           <p className="mt-3 text-sm text-slate-300">Bakım, garanti ve servis süreçlerinde tek kontrol merkezi.</p>
-          <p className="mt-3 text-xs text-slate-400">© 2026 AssetCare</p>
+          <p className="mt-3 text-xs text-slate-400">© 2026 Assetly</p>
         </div>
 
         <FooterColumn title="Ürün" links={productLinks} />

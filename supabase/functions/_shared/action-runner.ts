@@ -99,7 +99,7 @@ async function buildPdfBytes(event: AutomationEvent): Promise<Uint8Array> {
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const nowIso = new Date().toISOString();
   const lines = [
-    "AssetCare Otomasyon Raporu",
+    "Assetly Otomasyon Raporu",
     "",
     `Event ID: ${event.id}`,
     `Trigger: ${event.trigger_type}`,

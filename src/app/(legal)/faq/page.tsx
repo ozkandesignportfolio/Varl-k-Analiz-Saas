@@ -58,20 +58,20 @@ const faqItems = [
   {
     question: "Destek talebi nasıl oluştururum?",
     answer:
-      "Destek taleplerinizi hesap içinden veya support@assetcare.app adresi üzerinden iletebilirsiniz. Talep içeriğine hesap ve senaryo detaylarını eklemeniz çözüm sürecini hızlandırır.",
+      "Destek taleplerinizi hesap içinden veya assetly@gmail.com adresi üzerinden iletebilirsiniz. Talep içeriğine hesap ve senaryo detaylarını eklemeniz çözüm sürecini hızlandırır.",
   },
 ];
 
 export const metadata: Metadata = {
-  title: "SSS | AssetCare",
-  description: "AssetCare hakkında sık sorulan sorular ve kullanım yanıtları.",
+  title: "SSS | Assetly",
+  description: "Assetly hakkında sık sorulan sorular ve kullanım yanıtları.",
 };
 
 export default function FaqPage() {
   return (
     <article className="space-y-10">
       <header className="space-y-4 border-b border-white/10 pb-8">
-        <p className="text-xs uppercase tracking-[0.22em] text-slate-400">AssetCare Legal</p>
+        <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Assetly Legal</p>
         <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Sık Sorulan Sorular (SSS)</h1>
         <p className="text-sm leading-7 text-slate-300">
           Aşağıdaki sorular, planlar, güvenlik yaklaşımı, veri yönetimi ve platform kullanımı hakkında en sık ihtiyaç

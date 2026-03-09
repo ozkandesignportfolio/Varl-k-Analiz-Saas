@@ -11,7 +11,10 @@
     "start": "next start",
     "lint": "eslint",
     "test:e2e": "playwright test",
-    "test:results:mkdir": "node -e \"require('node:fs').mkdirSync('test-results',{recursive:true});require('node:fs').mkdirSync('test-results/artifacts',{recursive:true})\"",
+    "test:e2e:playwright": "playwright test",
+    "test:seed": "node scripts/test-seed-users.mjs",
+    "test:results:mkdir": "node -e \"require('node:fs').mkdirSync('testsprite/test-results',{recursive:true});require('node:fs').mkdirSync('testsprite/test-results/artifacts',{recursive:true})\"",
+    "test:rls": "node scripts/run-rls-negative-playwright.mjs",
     "test:rls:negative": "node scripts/print-supabase-env-check.mjs && npm run test:results:mkdir && node scripts/run-rls-negative-playwright.mjs",
     "test:rls:negative:debug": "node scripts/print-supabase-env-check.mjs && cross-env DEBUG=pw:api,pw:browser,pw:webserver,pw:test node scripts/run-rls-negative-playwright.mjs",
     "test:abuse:rate-limit": "node scripts/run-rate-limit-playwright.mjs",
@@ -19,9 +22,9 @@
     "check:debug-plan-access": "node scripts/check-debug-plan-access.mjs",
     "check:debug-plan-prod": "node scripts/check-debug-plan-prod.cjs",
     "security:update": "powershell -ExecutionPolicy Bypass -File scripts/update-security-md.ps1",
-    "test:stable": "node testsprite_tests/generated/run_stable_full_suite.cjs",
-    "test:stable:trial": "node testsprite_tests/generated/run_stable_trial_suite.cjs",
-    "test:stable:premium": "node testsprite_tests/generated/run_stable_premium_suite.cjs"
+    "test:stable": "node scripts/run-stable-suite.cjs both",
+    "test:stable:trial": "node scripts/run-stable-suite.cjs trial",
+    "test:stable:premium": "node scripts/run-stable-suite.cjs premium"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.0",

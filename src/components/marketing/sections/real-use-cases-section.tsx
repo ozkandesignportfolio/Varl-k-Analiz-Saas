@@ -11,14 +11,14 @@ type Scenario = {
 const scenarios: Scenario[] = [
   {
     title: "Klima servisi zamanı geldi",
-    story: "Klimanızın yıllık bakım tarihi yaklaşıyor. AssetCare 7 gün önceden bildirim gönderir.",
+    story: "Klimanızın yıllık bakım tarihi yaklaşıyor. Assetly 7 gün önceden bildirim gönderir.",
     mockup: (
       <div className="rounded-2xl border border-white/15 bg-[#0B132A] p-4 shadow-[0_18px_45px_rgba(7,13,26,0.45)]">
         <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Push Bildirim</p>
         <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-white">AssetCare</p>
+              <p className="text-sm font-semibold text-white">Assetly</p>
               <p className="mt-1 text-xs text-slate-300">Salon Kliması bakım tarihi 7 gün sonra doluyor.</p>
             </div>
             <span className="rounded-full bg-emerald-400/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-300">
@@ -68,7 +68,7 @@ const scenarios: Scenario[] = [
       <div className="rounded-2xl border border-white/15 bg-[#0B132A] p-4 shadow-[0_18px_45px_rgba(7,13,26,0.45)]">
         <div className="rounded-lg border border-slate-300/20 bg-white p-3 text-slate-900">
           <div className="flex items-center justify-between text-[11px]">
-            <span className="font-semibold">AssetCare Raporu</span>
+            <span className="font-semibold">Assetly Raporu</span>
             <span>2026</span>
           </div>
           <p className="mt-2 text-sm font-semibold">Toplam servis maliyeti: 3.200₺</p>

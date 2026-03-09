@@ -27,6 +27,7 @@ export type RouteAuthFailure = {
 const UNAUTHORIZED_ERROR = "Unauthorized";
 const PROFILE_PLAN_CACHE_TTL_MS = 30_000;
 const profilePlanCache = new Map<string, { plan: ProfilePlan; expiresAt: number }>();
+const forceProfileFromDb = process.env.AUTH_FORCE_PROFILE_FROM_DB === "1";
 
 const getCachedProfilePlan = (userId: string): ProfilePlan | null => {
   const cacheEntry = profilePlanCache.get(userId);
@@ -53,15 +54,17 @@ const resolveRouteProfilePlan = async (
   client: DbClient,
   user: User,
 ): Promise<{ plan: ProfilePlan; error: string | null }> => {
-  const metadataPlan = getProfilePlanFromUserMetadata(user);
+  const metadataPlan = forceProfileFromDb ? null : getProfilePlanFromUserMetadata(user);
   if (metadataPlan) {
     setCachedProfilePlan(user.id, metadataPlan);
     return { plan: metadataPlan, error: null };
   }
 
-  const cachedPlan = getCachedProfilePlan(user.id);
-  if (cachedPlan) {
-    return { plan: cachedPlan, error: null };
+  if (!forceProfileFromDb) {
+    const cachedPlan = getCachedProfilePlan(user.id);
+    if (cachedPlan) {
+      return { plan: cachedPlan, error: null };
+    }
   }
 
   const profile = await getProfilePlan(client, user.id);

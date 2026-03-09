@@ -12,6 +12,11 @@ import {
 import type { DashboardDateRangeDays, DashboardSnapshot, DashboardTrendDirection } from "@/features/dashboard/api/dashboard-queries";
 
 const SPARKLINE_LENGTH = 6;
+const NUMBER_FORMATTER = new Intl.NumberFormat("tr-TR");
+const CURRENCY_FORMATTER = new Intl.NumberFormat("tr-TR", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
 
 type KPICardsProps = {
   metrics: DashboardSnapshot["metrics"];
@@ -57,18 +62,14 @@ const TREND_META: Record<
   },
 };
 
-const formatCurrency = (value: number) =>
-  `${new Intl.NumberFormat("tr-TR", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(value)} TL`;
+const formatCurrency = (value: number) => `${CURRENCY_FORMATTER.format(value)} TL`;
 
 export function KPICards({ metrics, trends, selectedRange }: KPICardsProps) {
   const cards: KpiCardItem[] = [
     {
       id: "assets",
       title: "Toplam Varlık",
-      value: new Intl.NumberFormat("tr-TR").format(metrics.totalAssets),
+      value: NUMBER_FORMATTER.format(metrics.totalAssets),
       trend: trends.totalAssets,
       icon: Package,
       href: "/assets",
@@ -76,7 +77,7 @@ export function KPICards({ metrics, trends, selectedRange }: KPICardsProps) {
     {
       id: "rules",
       title: "Aktif Bakım Kuralı",
-      value: new Intl.NumberFormat("tr-TR").format(metrics.activeRules),
+      value: NUMBER_FORMATTER.format(metrics.activeRules),
       trend: trends.activeRules,
       icon: Wrench,
       href: "/maintenance",
@@ -91,8 +92,8 @@ export function KPICards({ metrics, trends, selectedRange }: KPICardsProps) {
     },
     {
       id: "documents",
-      title: "Belge Sayisi",
-      value: new Intl.NumberFormat("tr-TR").format(metrics.documentCount),
+      title: "Belge Sayısı",
+      value: NUMBER_FORMATTER.format(metrics.documentCount),
       trend: trends.documentCount,
       icon: FileText,
       href: "/documents",
@@ -121,7 +122,10 @@ function KpiCard({ card }: { card: KpiCardItem }) {
   const Icon = card.icon;
 
   return (
-    <article className="rounded-2xl border border-[#273955] bg-[linear-gradient(160deg,rgba(10,22,44,0.92),rgba(11,19,33,0.84))] p-4 shadow-[0_16px_34px_rgba(2,8,20,0.36)]">
+    <article
+      className="rounded-2xl border border-[#273955] bg-[linear-gradient(160deg,rgba(10,22,44,0.92),rgba(11,19,33,0.84))] p-4 shadow-[0_16px_34px_rgba(2,8,20,0.36)]"
+      data-testid={`dashboard-kpi-${card.id}-card`}
+    >
       <div className="flex items-start justify-between gap-3">
         <p className="text-xs uppercase tracking-[0.16em] text-[#89A2C5]">{card.title}</p>
         <span className="inline-flex rounded-lg border border-[#2E4467] bg-[#10223E] p-2 text-[#9AB2D1]">
@@ -129,7 +133,9 @@ function KpiCard({ card }: { card: KpiCardItem }) {
         </span>
       </div>
 
-      <p className="mt-3 text-3xl font-semibold tracking-tight text-[#F8FAFC]">{card.value}</p>
+      <p className="mt-3 text-3xl font-semibold tracking-tight text-[#F8FAFC]" data-testid={`dashboard-kpi-${card.id}-value`}>
+        {card.value}
+      </p>
 
       <div className={`mt-3 inline-flex items-center gap-1 text-xs font-semibold ${trendMeta.textClass}`}>
         <TrendIcon className="size-3.5" aria-hidden />

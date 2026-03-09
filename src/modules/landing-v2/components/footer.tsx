@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { Shield } from "lucide-react";
@@ -56,7 +56,7 @@ export function Footer() {
                 <Shield className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <div className="text-sm font-bold tracking-tight text-foreground">ASSETCARE</div>
+                <div className="text-sm font-bold tracking-tight text-foreground">ASSETLY</div>
                 <div className="text-[9px] tracking-widest text-muted-foreground">Premium Kontrol Paneli</div>
               </div>
             </div>
@@ -85,7 +85,7 @@ export function Footer() {
 
         <div className="mt-16 border-t border-border/30 pt-8">
           <p className="mt-3 text-xs leading-relaxed text-muted-foreground/70">{PAYMENT_TEXT.stripeCollectionNotice}</p>
-          <p className="text-sm text-muted-foreground">2026 AssetCare. Tüm hakları saklıdır.</p>
+          <p className="text-sm text-muted-foreground">2026 Assetly. Tüm hakları saklıdır.</p>
         </div>
       </div>
     </footer>

@@ -5,8 +5,12 @@ import { loadEnvLocal } from "./_load-env-local.mjs";
 import { resolvePlaywrightCliPath } from "./_resolve-playwright-cli.mjs";
 
 loadEnvLocal();
+process.env.APP_ENV = process.env.APP_ENV || "test";
+process.env.NODE_ENV = process.env.NODE_ENV || "test";
+process.env.RATE_LIMIT_STRICT_IN_TEST = process.env.RATE_LIMIT_STRICT_IN_TEST || "1";
+process.env.AUTH_FORCE_PROFILE_FROM_DB = process.env.AUTH_FORCE_PROFILE_FROM_DB || "1";
 
-const testResultsDir = resolve(process.cwd(), "test-results");
+const testResultsDir = resolve(process.cwd(), "testsprite", "test-results");
 mkdirSync(testResultsDir, { recursive: true });
 mkdirSync(resolve(testResultsDir, "artifacts"), { recursive: true });
 
@@ -24,7 +28,7 @@ if (!playwrightCliPath) {
 
 const args = [
   "test",
-  "tests/rls/rls-negative.spec.ts",
+  "testsprite/tests/rls/rls-negative.spec.ts",
   "--workers=1",
   "--retries=1",
   "--trace=on",

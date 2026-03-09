@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Çerez Politikası | AssetCare",
-  description: "AssetCare çerez türleri, kullanım amaçları ve tercih yönetimi ilkeleri.",
+  title: "Çerez Politikası | Assetly",
+  description: "Assetly çerez türleri, kullanım amaçları ve tercih yönetimi ilkeleri.",
 };
 
 export default function LegalCookiesPage() {
   return (
     <article className="space-y-10">
       <header className="border-b border-border/60 pb-8">
-        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">AssetCare Legal</p>
+        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Assetly Legal</p>
         <h1 className="mt-4 text-3xl font-semibold text-foreground sm:text-4xl">Çerez Politikası</h1>
         <p className="mt-4 text-sm leading-7 text-muted-foreground">
-          Bu politika, AssetCare hizmetinde kullanılan çerez türlerini, kullanım amaçlarını ve kullanıcı tercih
+          Bu politika, Assetly hizmetinde kullanılan çerez türlerini, kullanım amaçlarını ve kullanıcı tercih
           yönetimine ilişkin temel prensipleri açıklar.
         </p>
         <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Son güncelleme: 21 Şubat 2026</p>
@@ -59,7 +59,7 @@ export default function LegalCookiesPage() {
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold text-foreground">4. Üçüncü Taraf Çerezleri</h2>
         <p className="text-muted-foreground">
-          AssetCare, barındırma, analitik veya benzeri hizmetler için üçüncü taraf araçlardan faydalanabilir. Bu tür
+          Assetly, barındırma, analitik veya benzeri hizmetler için üçüncü taraf araçlardan faydalanabilir. Bu tür
           araçlar kendi çerez veya benzeri teknolojilerini kullanabilir. Üçüncü tarafların veri işleme süreçleri ilgili
           sağlayıcıların politikalarına tabidir.
         </p>

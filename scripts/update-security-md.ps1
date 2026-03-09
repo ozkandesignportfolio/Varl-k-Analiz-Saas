@@ -3,8 +3,8 @@
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
 
-$securityFile = Join-Path $repoRoot "security.md"
-if (!(Test-Path $securityFile)) { throw "security.md not found" }
+$securityFile = Join-Path $repoRoot "docs\\security.md"
+if (!(Test-Path $securityFile)) { throw "docs/security.md not found" }
 
 # Findings to track (minimum set; we'll extend later)
 $findings = @(
@@ -72,7 +72,7 @@ foreach ($f in $findings) {
   $useRegex = $f.PatternType -eq "Regex"
   foreach ($p in $f.Patterns) {
     $searchTargets = Get-ChildItem -Recurse -File -ErrorAction SilentlyContinue |
-      Where-Object { $_.FullName -notmatch "\\node_modules\\|\\test-results\\|\\\.git\\|\\\.next\\|\\scripts\\update-security-md\.ps1$|\\security\.md$" }
+      Where-Object { $_.FullName -notmatch "\\node_modules\\|\\test-results\\|\\testsprite\\test-results\\|\\\.git\\|\\\.next\\|\\scripts\\update-security-md\.ps1$|\\docs\\security\.md$" }
 
     if ($useRegex) {
       $matches = $searchTargets |
@@ -93,4 +93,4 @@ foreach ($f in $findings) {
 }
 
 Set-Content -Path $securityFile -Value $securityContent -Encoding UTF8
-Write-Host "security.md updated."
+Write-Host "docs/security.md updated."

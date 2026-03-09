@@ -40,6 +40,7 @@ export type PlanContextValue = {
 const STARTER_PLAN = getPlanConfig("starter");
 const PREMIUM_PLAN = getPlanConfig("pro");
 const CLIENT_PLAN_CACHE_TTL_MS = 30_000;
+const forceProfileFromDb = process.env.AUTH_FORCE_PROFILE_FROM_DB === "1";
 
 const PlanContext = createContext<PlanContextValue | undefined>(undefined);
 
@@ -93,10 +94,10 @@ export function PlanProvider({ children }: { children: ReactNode }) {
 
       setUserId(user.id);
 
-      const metadataPlan = getProfilePlanFromUserMetadata(user);
+      const metadataPlan = forceProfileFromDb ? null : getProfilePlanFromUserMetadata(user);
       const cachedPlanEntry = planCacheByUserRef.current.get(user.id);
       const cachedPlan =
-        cachedPlanEntry && cachedPlanEntry.expiresAt > Date.now() ? cachedPlanEntry.plan : null;
+        !forceProfileFromDb && cachedPlanEntry && cachedPlanEntry.expiresAt > Date.now() ? cachedPlanEntry.plan : null;
 
       const profilePlanResult =
         metadataPlan || cachedPlan

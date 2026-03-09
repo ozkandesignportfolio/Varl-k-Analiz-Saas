@@ -34,18 +34,18 @@ const securityControls = [
 ];
 
 export const metadata: Metadata = {
-  title: "Güvenlik | AssetCare",
-  description: "AssetCare platformunda veri güvenliğini sağlayan teknik ve idari kontroller.",
+  title: "Güvenlik | Assetly",
+  description: "Assetly platformunda veri güvenliğini sağlayan teknik ve idari kontroller.",
 };
 
 export default function SecurityPage() {
   return (
     <article className="space-y-10">
       <header className="space-y-4 border-b border-white/10 pb-8">
-        <p className="text-xs uppercase tracking-[0.22em] text-slate-400">AssetCare Legal</p>
+        <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Assetly Legal</p>
         <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Güvenlik</h1>
         <p className="text-sm leading-7 text-slate-300">
-          AssetCare, kullanıcı verilerini korumak için çok katmanlı güvenlik yaklaşımı uygular. Aşağıdaki kontroller,
+          Assetly, kullanıcı verilerini korumak için çok katmanlı güvenlik yaklaşımı uygular. Aşağıdaki kontroller,
           hizmetin temel güvenlik omurgasını oluşturur.
         </p>
       </header>

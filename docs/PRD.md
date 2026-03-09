@@ -1,10 +1,10 @@
-# AssetCare PRD (MVP v1.1)
+# Assetly PRD (MVP v1.1)
 
 ## 1) Belge Amacı
-Bu belge AssetCare MVP ürününün güncel kapsamını, hedefini, deneme planı sınırlarını ve yol haritasını sade biçimde tanımlar.
+Bu belge Assetly MVP ürününün güncel kapsamını, hedefini, deneme planı sınırlarını ve yol haritasını sade biçimde tanımlar.
 
 ## 2) Ürün Özeti
-AssetCare; kullanıcıların varlık, bakım, servis ve belge süreçlerini tek panelden takip etmesini sağlayan web tabanlı SaaS üründür.
+Assetly; kullanıcıların varlık, bakım, servis ve belge süreçlerini tek panelden takip etmesini sağlayan web tabanlı SaaS üründür.
 
 Temel değer:
 - Bakım tarihlerini kaçırmamak

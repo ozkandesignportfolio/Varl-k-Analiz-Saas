@@ -1,11 +1,11 @@
-﻿import type { MetadataRoute } from "next";
+import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "AssetCare",
-    short_name: "AssetCare",
+    name: "Assetly",
+    short_name: "Assetly",
     description:
-      "AssetCare ile varlık, bakım, servis, belge ve maliyet süreçlerini tek panelde yönetin.",
+      "Assetly ile varlık, bakım, servis, belge ve maliyet süreçlerini tek panelde yönetin.",
     start_url: "/dashboard",
     scope: "/",
     display: "standalone",

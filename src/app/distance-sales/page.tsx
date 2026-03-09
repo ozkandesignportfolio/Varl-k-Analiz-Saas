@@ -2,20 +2,20 @@ import type { Metadata } from "next";
 import { LegalLayout, LegalSection } from "@/components/legal/LegalLayout";
 
 export const metadata: Metadata = {
-  title: "Distance Sales Information | AssetCare",
-  description: "Distance sales disclosure for AssetCare digital subscription services.",
+  title: "Distance Sales Information | Assetly",
+  description: "Distance sales disclosure for Assetly digital subscription services.",
 };
 
 export default function DistanceSalesPage() {
   return (
     <LegalLayout
       title="Distance Sales Information"
-      subtitle="This text summarizes key provisions that apply when AssetCare subscriptions are purchased remotely through electronic channels. It is focused on digital service delivery and recurring monthly usage rights."
+      subtitle="This text summarizes key provisions that apply when Assetly subscriptions are purchased remotely through electronic channels. It is focused on digital service delivery and recurring monthly usage rights."
       lastUpdated="February 18, 2026"
     >
       <LegalSection title="1. Digital Service Definition">
         <p>
-          AssetCare is delivered as an online digital service, not a physical good. Access is provided through account
+          Assetly is delivered as an online digital service, not a physical good. Access is provided through account
           activation, and the purchased value corresponds to software usage rights, hosted infrastructure capacity, and
           ongoing service operations during the active subscription period.
         </p>
@@ -49,8 +49,8 @@ export default function DistanceSalesPage() {
       <LegalSection title="5. Contact and Support">
         <p>
           For distance sales questions, contract clarifications, or billing disputes, contact{" "}
-          <a href="mailto:support@assetcare.app" className="text-sky-300 underline underline-offset-2">
-            support@assetcare.app
+          <a href="mailto:assetly@gmail.com" className="text-sky-300 underline underline-offset-2">
+            assetly@gmail.com
           </a>{" "}
           with your account and invoice reference for faster review.
         </p>
@@ -58,4 +58,3 @@ export default function DistanceSalesPage() {
     </LegalLayout>
   );
 }
-

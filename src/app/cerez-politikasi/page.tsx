@@ -4,7 +4,7 @@ export default function CookiePolicyPage() {
   return (
     <main className="mx-auto min-h-screen w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
       <article className="premium-panel p-6 sm:p-8">
-        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">AssetCare</p>
+        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Assetly</p>
         <h1 className="mt-3 text-3xl font-semibold text-white sm:text-4xl">Çerez Politikası</h1>
         <p className="mt-2 text-sm text-slate-300">Son güncelleme: 16 Şubat 2026</p>
 

@@ -2,21 +2,21 @@ import type { Metadata } from "next";
 import { LegalLayout, LegalSection } from "@/components/legal/LegalLayout";
 
 export const metadata: Metadata = {
-  title: "Data Deletion Policy | AssetCare",
-  description: "How account deletion and data removal workflows operate in AssetCare.",
+  title: "Data Deletion Policy | Assetly",
+  description: "How account deletion and data removal workflows operate in Assetly.",
 };
 
 export default function DataDeletionPage() {
   return (
     <LegalLayout
       title="Data Deletion Policy"
-      subtitle="This page defines how AssetCare executes account deletion requests, what data is removed, what records may remain due to legal obligations, and the expected processing timeline. The process is designed for traceability and controlled finalization."
+      subtitle="This page defines how Assetly executes account deletion requests, what data is removed, what records may remain due to legal obligations, and the expected processing timeline. The process is designed for traceability and controlled finalization."
       lastUpdated="February 18, 2026"
     >
       <LegalSection title="1. Account Deletion Flow">
         <p>
           Deletion requests must be initiated by the account owner or a legally authorized representative. Once a
-          request is received, AssetCare performs identity and authority validation, confirms account scope, and starts
+          request is received, Assetly performs identity and authority validation, confirms account scope, and starts
           a controlled deletion workflow. During this process, account access may be restricted to prevent conflicting
           changes and preserve procedural integrity.
         </p>
@@ -85,11 +85,11 @@ export default function DataDeletionPage() {
 
       <LegalSection title="5. Deletion Confirmation and Contact">
         <p>
-          When the deletion workflow is completed, AssetCare sends a closure confirmation to the authorized requester
+          When the deletion workflow is completed, Assetly sends a closure confirmation to the authorized requester
           with a summary of executed actions and legally retained record categories. Questions about active requests can
           be directed to{" "}
-          <a href="mailto:privacy@assetcare.app" className="text-sky-300 underline underline-offset-2">
-            privacy@assetcare.app
+          <a href="mailto:assetly@gmail.com" className="text-sky-300 underline underline-offset-2">
+            assetly@gmail.com
           </a>
           .
         </p>

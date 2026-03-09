@@ -1,0 +1,52 @@
+{
+  "startedAt": "2026-03-09T22:47:26.877Z",
+  "profile": "premium",
+  "target": "http://localhost:3000",
+  "auth": {
+    "source": "env",
+    "singleSessionReused": true
+  },
+  "bootstrap": {
+    "needLogin": true,
+    "codebase": {
+      "dataTestIdCount": 118,
+      "protectedRouteCount": 14,
+      "apiEndpointMethodCount": 32
+    }
+  },
+  "login": {
+    "success": false,
+    "finalUrl": null,
+    "dashboardRootVisible": false,
+    "error": "native validation: Please fill out this field."
+  },
+  "ui": {
+    "tests": [],
+    "counts": {
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0,
+      "total": 0
+    }
+  },
+  "api": {
+    "tests": [],
+    "counts": {
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0,
+      "total": 0
+    }
+  },
+  "failuresByCategory": {
+    "selector_mismatch": [
+      {
+        "id": "LOGIN",
+        "reason": "native validation: Please fill out this field."
+      }
+    ],
+    "assertion_error": [],
+    "backend_error": []
+  },
+  "finishedAt": "2026-03-09T22:47:44.840Z"
+}

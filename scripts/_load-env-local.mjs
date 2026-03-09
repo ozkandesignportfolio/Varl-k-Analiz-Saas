@@ -23,8 +23,20 @@ const parseEnv = (text) => {
 };
 
 export const loadEnvLocal = () => {
-  const paths = [".env.local", ".env"];
-  for (const p of paths) {
+  const explicitFiles = (process.env.TEST_ENV_FILE || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  const candidatePaths = [...explicitFiles, ".env.test", ".env.test.local", ".env", ".env.local"];
+  const seen = new Set();
+
+  for (const p of candidatePaths) {
+    if (seen.has(p)) {
+      continue;
+    }
+    seen.add(p);
+
     if (!existsSync(p)) continue;
     const parsed = parseEnv(readFileSync(p, "utf8"));
     for (const [k, v] of Object.entries(parsed)) {

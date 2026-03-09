@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Kullanım Şartları | AssetCare",
-  description: "AssetCare hizmetinin kullanımına ilişkin şartlar ve taraf yükümlülükleri.",
+  title: "Kullanım Şartları | Assetly",
+  description: "Assetly hizmetinin kullanımına ilişkin şartlar ve taraf yükümlülükleri.",
 };
 
 export default function TermsPage() {
   return (
     <article className="space-y-10">
       <header className="space-y-4 border-b border-white/10 pb-8">
-        <p className="text-xs uppercase tracking-[0.22em] text-slate-400">AssetCare Legal</p>
+        <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Assetly Legal</p>
         <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Kullanım Şartları</h1>
         <p className="text-sm leading-7 text-slate-300">
-          Bu metin, AssetCare platformuna erişim ve kullanım koşullarını düzenler. Hesap oluşturan veya hizmeti
+          Bu metin, Assetly platformuna erişim ve kullanım koşullarını düzenler. Hesap oluşturan veya hizmeti
           kullanan kullanıcılar aşağıdaki şartları kabul etmiş sayılır.
         </p>
         <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Son güncelleme: 18 Şubat 2026</p>
@@ -21,7 +21,7 @@ export default function TermsPage() {
       <section className="space-y-3">
         <h2 className="text-2xl font-semibold text-white">Hizmet Tanımı</h2>
         <p className="leading-7 text-slate-300">
-          AssetCare; varlık envanteri, bakım planlama, servis geçmişi, belge yönetimi, abonelik ve fatura süreçlerinin
+          Assetly; varlık envanteri, bakım planlama, servis geçmişi, belge yönetimi, abonelik ve fatura süreçlerinin
           tek panelden yönetilmesini sağlayan bulut tabanlı bir yazılım hizmetidir.
         </p>
       </section>
@@ -54,7 +54,7 @@ export default function TermsPage() {
       <section className="space-y-3">
         <h2 className="text-2xl font-semibold text-white">Sorumluluk Reddi</h2>
         <p className="leading-7 text-slate-300">
-          AssetCare, hukuken izin verilen ölçüde; dolaylı zararlar, kâr kaybı veya iş kesintisinden sorumlu değildir.
+          Assetly, hukuken izin verilen ölçüde; dolaylı zararlar, kâr kaybı veya iş kesintisinden sorumlu değildir.
           Hizmet sağlayıcı, makul teknik önlemleri uygular; ancak üçüncü taraf altyapı kesintileri ve kullanıcı kaynaklı
           hatalar üzerinde mutlak garanti vermez.
         </p>

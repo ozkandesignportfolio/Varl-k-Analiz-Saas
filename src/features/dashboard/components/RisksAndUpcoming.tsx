@@ -465,7 +465,7 @@ export function RisksAndUpcoming({ riskPanel }: RisksAndUpcomingProps) {
             <EmptyState
               icon={CalendarClock}
               title="7 gün içinde yaklaşan iş yok"
-              description="Takvimde acil bir olay gorunmuyor. Dilerseniz yeni servis kaydı ekleyebilirsiniz."
+              description="Takvimde acil bir olay görünmüyor. Dilerseniz yeni servis kaydı ekleyebilirsiniz."
               href="/services"
               ctaLabel="Servis kaydı ekle"
             />
@@ -580,4 +580,3 @@ function EmptyState({
     </div>
   );
 }
-

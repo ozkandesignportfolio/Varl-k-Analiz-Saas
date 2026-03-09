@@ -15,7 +15,7 @@ export default function SampleReportPreviewSection() {
             <span className="flex h-7 w-7 items-center justify-center rounded-md bg-indigo-600 text-xs font-semibold text-white">
               AC
             </span>
-            <span className="text-xs font-semibold text-slate-700">AssetCare</span>
+            <span className="text-xs font-semibold text-slate-700">Assetly</span>
           </div>
         </div>
 

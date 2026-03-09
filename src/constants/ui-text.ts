@@ -23,7 +23,7 @@ export const SIDEBAR_TEXT = {
   usageDocuments: "Belgeler",
   usageSubscriptions: "Abonelikler",
   usageInvoiceUploads: "Fatura Yükleme",
-  upgradeCta: "Premium'a Geç",
+  upgradeCta: "Premium’a Geç",
   premiumMemberBadge: "Premium Üye",
   unlimitedAssetsStatus: "Sınırsız varlık aktif",
   nextInvoicePrefix: "Sonraki fatura",

@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { loadEnvLocal } from "./_load-env-local.mjs";
 
 const npmExecPath = process.env.npm_execpath;
 const useNpmCliScript = Boolean(npmExecPath);
@@ -7,19 +7,11 @@ const npmCommand = useNpmCliScript ? process.execPath : "npm";
 const baseUrl = process.env.TEST_BASE_URL || "http://127.0.0.1:3100";
 const appUrl = new URL(baseUrl);
 const appPort = appUrl.port || (appUrl.protocol === "https:" ? "443" : "80");
-
-const loadEnvFileIfExists = (fileName) => {
-  if (!existsSync(fileName)) {
-    return;
-  }
-  if (typeof process.loadEnvFile !== "function") {
-    return;
-  }
-  try {
-    process.loadEnvFile(fileName);
-  } catch {
-    // Ignore malformed optional local env files in CI.
-  }
+const envDefaults = {
+  APP_ENV: "test",
+  NODE_ENV: "test",
+  RATE_LIMIT_STRICT_IN_TEST: "1",
+  AUTH_FORCE_PROFILE_FROM_DB: "1",
 };
 
 const spawnNpm = (args, options = {}) => {
@@ -92,8 +84,17 @@ const waitForApp = async () => {
 };
 
 const main = async () => {
-  loadEnvFileIfExists(".env");
-  loadEnvFileIfExists(".env.local");
+  loadEnvLocal();
+  Object.entries(envDefaults).forEach(([key, value]) => {
+    if (!process.env[key]) {
+      process.env[key] = value;
+    }
+  });
+
+  const testEnv = {
+    ...process.env,
+    TEST_BASE_URL: baseUrl,
+  };
 
   await runCommand(["run", "build"]);
   await runCommand(["exec", "--", "playwright", "install", "chromium"]);
@@ -122,22 +123,19 @@ const main = async () => {
 
     await runCommand(["run", "test:seed"], {
       env: {
-        ...process.env,
-        TEST_BASE_URL: baseUrl,
+        ...testEnv,
       },
     });
 
     await runCommand(["run", "test:e2e:playwright"], {
       env: {
-        ...process.env,
-        TEST_BASE_URL: baseUrl,
+        ...testEnv,
       },
     });
 
     await runCommand(["run", "test:rls"], {
       env: {
-        ...process.env,
-        TEST_BASE_URL: baseUrl,
+        ...testEnv,
       },
     });
   } finally {

@@ -2,15 +2,15 @@ import type { Metadata } from "next";
 import { LegalLayout, LegalSection } from "@/components/legal/LegalLayout";
 
 export const metadata: Metadata = {
-  title: "Cookie Policy | AssetCare",
-  description: "Cookie usage and session technologies used by AssetCare.",
+  title: "Cookie Policy | Assetly",
+  description: "Cookie usage and session technologies used by Assetly.",
 };
 
 export default function CookiesPage() {
   return (
     <LegalLayout
       title="Cookie Policy"
-      subtitle="This policy describes how AssetCare uses cookies and similar session technologies to keep the platform secure, stable, and usable. We prioritize essential technical cookies required for authenticated SaaS workflows."
+      subtitle="This policy describes how Assetly uses cookies and similar session technologies to keep the platform secure, stable, and usable. We prioritize essential technical cookies required for authenticated SaaS workflows."
       lastUpdated="February 18, 2026"
     >
       <LegalSection title="1. What Cookies Are Used For">
@@ -60,7 +60,7 @@ export default function CookiesPage() {
 
       <LegalSection title="3. Third-Party Cookie Controls">
         <p>
-          AssetCare may rely on trusted infrastructure vendors for hosting, session handling, and delivery services.
+          Assetly may rely on trusted infrastructure vendors for hosting, session handling, and delivery services.
           Where third-party technologies set technical cookies, usage is limited to service operation and protection.
           We do not rely on broad behavioral advertising cookies for the core product workflow.
         </p>

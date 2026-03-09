@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Hakkımızda | AssetCare",
+  title: "Hakkımızda | Assetly",
   description:
-    "AssetCare’in varlık takibi, garanti/bakım/servis süreçleri ve belge yönetimi yaklaşımını tanıtan kurumsal sayfa.",
+    "Assetly’in varlık takibi, garanti/bakım/servis süreçleri ve belge yönetimi yaklaşımını tanıtan kurumsal sayfa.",
 };
 
 export default function AboutPage() {
@@ -13,10 +13,10 @@ export default function AboutPage() {
       <div className="mx-auto w-full max-w-4xl">
         <article className="premium-panel px-6 py-10 sm:px-10">
           <header className="border-b border-border/60 pb-8">
-            <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">AssetCare</p>
+            <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Assetly</p>
             <h1 className="mt-4 text-3xl font-semibold text-foreground sm:text-4xl">Hakkımızda</h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-muted-foreground">
-              AssetCare; varlık takibi, garanti-bakım-servis süreçleri, belge kasası ve bildirim yönetimini tek bir
+              Assetly; varlık takibi, garanti-bakım-servis süreçleri, belge kasası ve bildirim yönetimini tek bir
               SaaS panelinde birleştirerek ekiplerin ve bireysel kullanıcıların operasyonel görünürlüğünü artırmayı
               amaçlar.
             </p>
@@ -24,9 +24,9 @@ export default function AboutPage() {
 
           <div className="mt-10 space-y-10 text-[0.98rem] leading-8 text-slate-200">
             <section className="space-y-4">
-              <h2 className="text-2xl font-semibold text-foreground">1) AssetCare Nedir?</h2>
+              <h2 className="text-2xl font-semibold text-foreground">1) Assetly Nedir?</h2>
               <p className="text-muted-foreground">
-                AssetCare, fiziksel varlıkların yaşam döngüsünü uçtan uca takip etmek için tasarlanmış web tabanlı bir
+                Assetly, fiziksel varlıkların yaşam döngüsünü uçtan uca takip etmek için tasarlanmış web tabanlı bir
                 platformdur. Varlık kayıtlarının oluşturulması, bakım takviminin planlanması, servis geçmişinin
                 belgelenmesi, garanti sürelerinin izlenmesi ve operasyonel maliyetlerin görünür hale getirilmesi tek
                 panelden yönetilir. Amaç, dağınık dosya ve uygulama kullanımından kaynaklanan gecikme, unutma ve bilgi
@@ -54,7 +54,7 @@ export default function AboutPage() {
                 ekipler arası veri standardı eksikliği, denetim ve raporlama süreçlerini zorlaştırır.
               </p>
               <p className="text-muted-foreground">
-                AssetCare bu tabloyu; varlık envanteri, garanti/servis geçmişi, belge kasası, bakım planı, masraf
+                Assetly bu tabloyu; varlık envanteri, garanti/servis geçmişi, belge kasası, bakım planı, masraf
                 görünürlüğü ve risk uyarılarıyla tek bir iş akışında birleştirir. Böylece unutulan garanti hakkı,
                 atlanan servis, kaybolan fatura ve kontrolsüz maliyet gibi operasyonel riskler daha erken görünür hale
                 gelir.
@@ -65,7 +65,7 @@ export default function AboutPage() {
               <h2 className="text-2xl font-semibold text-foreground">4) Alternatiflerden Farkımız</h2>
               <p className="text-muted-foreground">
                 Excel, Notion veya klasör tabanlı takip yaklaşımları esnek görünse de zamanla veri bütünlüğü, yetki
-                yönetimi ve hatırlatma otomasyonu açısından sürdürülebilirliğini kaybeder. AssetCare, bu dağınık yapıya
+                yönetimi ve hatırlatma otomasyonu açısından sürdürülebilirliğini kaybeder. Assetly, bu dağınık yapıya
                 karşı tek panelde standartlaştırılmış kayıt akışı sunar: otomatik hatırlatmalar, belge kasası, skor
                 analizi, birleşik zaman akışı ve operasyon metrikleri.
               </p>
@@ -79,7 +79,7 @@ export default function AboutPage() {
             <section className="space-y-4">
               <h2 className="text-2xl font-semibold text-foreground">5) Kimler İçin?</h2>
               <p className="text-muted-foreground">
-                Küçük işletme sahipleri için AssetCare, bakım ve servis planlarını tek yerde tutarak işletme
+                Küçük işletme sahipleri için Assetly, bakım ve servis planlarını tek yerde tutarak işletme
                 sürekliliğine katkı sağlar. Operasyon sorumluları için varlık bazlı geçmiş, masraf eğilimi ve risk
                 görünümü karar desteği sunar. Ev kullanıcıları için garanti takibi, servis belgelerinin saklanması ve
                 bildirimler günlük pratik değer üretir. Teknik servis takip eden ekiplerde ise iş emri, belge ve bakım
@@ -90,7 +90,7 @@ export default function AboutPage() {
             <section className="space-y-4">
               <h2 className="text-2xl font-semibold text-foreground">6) Güvenlik ve Veri Yaklaşımı</h2>
               <p className="text-muted-foreground">
-                AssetCare, çok kiracılı yapıda veri izolasyonu, kimlik doğrulama, yetkilendirme ve erişim kayıtları
+                Assetly, çok kiracılı yapıda veri izolasyonu, kimlik doğrulama, yetkilendirme ve erişim kayıtları
                 gibi temel SaaS güvenlik ilkelerini uygular. Belgeler kontrollü erişim prensibiyle saklanır; hesap
                 düzeyi işlemler doğrulama mekanizmalarından geçirilir. Bununla birlikte hiçbir bulut hizmetinde mutlak
                 sıfır risk iddiası gerçekçi değildir; bu nedenle süreçlerimiz sürekli iyileştirme ve izleme yaklaşımıyla
@@ -103,7 +103,7 @@ export default function AboutPage() {
               <p className="text-muted-foreground">
                 Yakın dönem yol haritamızda entegrasyon kapasitesini artırmak, raporlama ekranlarını genişletmek ve
                 otomasyon kurgularını senaryo bazlı hale getirmek yer alır. Bu gelişim, kullanıcı geri bildirimi ve
-                operasyonel gerçeklik üzerinden önceliklendirilir. AssetCare’i sürdürülebilir bir operasyon platformuna
+                operasyonel gerçeklik üzerinden önceliklendirilir. Assetly’i sürdürülebilir bir operasyon platformuna
                 dönüştüren temel ilke; sade, ölçülebilir ve güvenilir ürün yaklaşımıdır.
               </p>
             </section>

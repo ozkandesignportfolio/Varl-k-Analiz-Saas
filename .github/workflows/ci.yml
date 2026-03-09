@@ -71,6 +71,10 @@ jobs:
       TRIAL_PASSWORD: ${{ secrets.TRIAL_PASSWORD }}
       PREMIUM_EMAIL: ${{ secrets.PREMIUM_EMAIL }}
       PREMIUM_PASSWORD: ${{ secrets.PREMIUM_PASSWORD }}
+      APP_ENV: test
+      NODE_ENV: test
+      RATE_LIMIT_STRICT_IN_TEST: "1"
+      AUTH_FORCE_PROFILE_FROM_DB: "1"
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -97,6 +101,9 @@ jobs:
           echo "APP_PID=$!" >> "$GITHUB_ENV"
           sleep 10
 
+      - name: Seed deterministic test users
+        run: npm run test:seed
+
       - name: Run stable suite
         run: npm run test:stable
 
@@ -115,6 +122,10 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      APP_ENV: test
+      NODE_ENV: test
+      RATE_LIMIT_STRICT_IN_TEST: "1"
+      AUTH_FORCE_PROFILE_FROM_DB: "1"
 
     steps:
       - name: Skip if Supabase secrets missing
@@ -149,6 +160,10 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      APP_ENV: test
+      NODE_ENV: test
+      RATE_LIMIT_STRICT_IN_TEST: "1"
+      AUTH_FORCE_PROFILE_FROM_DB: "1"
 
     steps:
       - name: Skip if Supabase secrets missing

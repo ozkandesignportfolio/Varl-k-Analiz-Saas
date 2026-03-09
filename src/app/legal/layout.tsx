@@ -8,7 +8,7 @@ export default function LegalLayout({ children }: { children: ReactNode }) {
       <div className="mx-auto grid w-full max-w-7xl gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="premium-panel h-fit p-5 lg:sticky lg:top-6">
           <Link href="/" className="block">
-            <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">AssetCare</p>
+            <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Assetly</p>
             <p className="mt-2 text-lg font-semibold text-foreground">Yasal Metinler</p>
             <p className="mt-1 text-sm text-muted-foreground">SaaS kullanım ve veri politikaları</p>
           </Link>

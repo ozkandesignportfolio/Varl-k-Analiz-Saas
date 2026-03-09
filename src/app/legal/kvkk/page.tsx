@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "KVKK Aydınlatma Metni | AssetCare",
+  title: "KVKK Aydınlatma Metni | Assetly",
   description:
-    "6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında AssetCare veri işleme faaliyetlerine ilişkin aydınlatma metni.",
+    "6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında Assetly veri işleme faaliyetlerine ilişkin aydınlatma metni.",
 };
 
 export default function LegalKvkkPage() {
   return (
     <article className="space-y-10">
       <header className="border-b border-border/60 pb-8">
-        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">AssetCare Legal</p>
+        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Assetly Legal</p>
         <h1 className="mt-4 text-3xl font-semibold text-foreground sm:text-4xl">KVKK Aydınlatma Metni</h1>
         <p className="mt-4 text-sm leading-7 text-muted-foreground">
-          Bu metin, 6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında AssetCare tarafından yürütülen veri işleme
+          Bu metin, 6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında Assetly tarafından yürütülen veri işleme
           faaliyetleri hakkında ilgili kişileri bilgilendirmek amacıyla hazırlanmıştır.
         </p>
         <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Son güncelleme: 21 Şubat 2026</p>
@@ -22,7 +22,7 @@ export default function LegalKvkkPage() {
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold text-foreground">1. Veri Sorumlusu</h2>
         <p className="text-muted-foreground">
-          Kişisel verileriniz, veri sorumlusu sıfatıyla AssetCare tarafından işlenmektedir. AssetCare, varlık takibi,
+          Kişisel verileriniz, veri sorumlusu sıfatıyla Assetly tarafından işlenmektedir. Assetly, varlık takibi,
           garanti/bakım/servis süreçleri, belge kasası ve bildirim hizmetlerini sunarken kişisel verileri hukuka uygun
           şekilde işlemeyi taahhüt eder.
         </p>
@@ -89,7 +89,7 @@ export default function LegalKvkkPage() {
         <h2 className="text-2xl font-semibold text-foreground">8. Başvuru Yöntemi</h2>
         <p className="text-muted-foreground">
           KVKK kapsamındaki taleplerinizi kimlik doğrulamaya elverişli bilgilerle birlikte aşağıdaki iletişim adresine
-          iletebilirsiniz: destek@assetcare.app
+          iletebilirsiniz: assetly@gmail.com
         </p>
       </section>
     </article>

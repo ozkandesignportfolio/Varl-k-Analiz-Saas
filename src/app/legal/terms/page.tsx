@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Kullanım Şartları | AssetCare",
+  title: "Kullanım Şartları | Assetly",
   description:
-    "AssetCare platformunun kullanımı için geçerli olan şartlar, kullanıcı sorumlulukları ve sorumluluk sınırları.",
+    "Assetly platformunun kullanımı için geçerli olan şartlar, kullanıcı sorumlulukları ve sorumluluk sınırları.",
 };
 
 export default function LegalTermsPage() {
   return (
     <article className="space-y-10">
       <header className="border-b border-border/60 pb-8">
-        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">AssetCare Legal</p>
+        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Assetly Legal</p>
         <h1 className="mt-4 text-3xl font-semibold text-foreground sm:text-4xl">Kullanım Şartları</h1>
         <p className="mt-4 text-sm leading-7 text-muted-foreground">
-          Bu şartlar, AssetCare tarafından sunulan varlık takibi, garanti/bakım/servis süreçleri, belge kasası ve
+          Bu şartlar, Assetly tarafından sunulan varlık takibi, garanti/bakım/servis süreçleri, belge kasası ve
           bildirim hizmetlerinin kullanımına ilişkin temel kuralları belirler.
         </p>
         <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Son güncelleme: 21 Şubat 2026</p>
@@ -22,7 +22,7 @@ export default function LegalTermsPage() {
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold text-foreground">1. Hizmetin Tanımı</h2>
         <p className="text-muted-foreground">
-          AssetCare, kullanıcıların sahip oldukları veya yönettikleri varlıkların bakım, garanti, servis, belge ve
+          Assetly, kullanıcıların sahip oldukları veya yönettikleri varlıkların bakım, garanti, servis, belge ve
           maliyet süreçlerini tek panelden yönetebilmesi için bulut tabanlı bir SaaS hizmeti sunar.
         </p>
       </section>
@@ -66,7 +66,7 @@ export default function LegalTermsPage() {
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold text-foreground">6. Fikri Mülkiyet</h2>
         <p className="text-muted-foreground">
-          AssetCare markası, yazılımı, tasarımı ve ilgili içerikler üzerindeki tüm fikri mülkiyet hakları AssetCare’e
+          Assetly markası, yazılımı, tasarımı ve ilgili içerikler üzerindeki tüm fikri mülkiyet hakları Assetly’e
           veya lisans verenlerine aittir. Kullanıcıya yalnızca hizmetten yararlanmak için sınırlı, devredilemez kullanım
           hakkı tanınır.
         </p>
@@ -75,7 +75,7 @@ export default function LegalTermsPage() {
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold text-foreground">7. Askıya Alma ve Fesih</h2>
         <p className="text-muted-foreground">
-          Şartlara aykırılık, güvenlik riski veya hukuki zorunluluk durumlarında AssetCare hesabı geçici olarak askıya
+          Şartlara aykırılık, güvenlik riski veya hukuki zorunluluk durumlarında Assetly hesabı geçici olarak askıya
           alabilir ya da kalıcı olarak feshedebilir. Kullanıcı da aboneliğini hesap paneli üzerinden sonlandırabilir.
           Fesih halinde veri saklama/silme süreçleri ilgili politika kapsamında yürütülür.
         </p>
@@ -84,7 +84,7 @@ export default function LegalTermsPage() {
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold text-foreground">8. Sorumluluk Sınırı</h2>
         <p className="text-muted-foreground">
-          AssetCare, hizmetin sürekliliği ve güvenliği için makul teknik/organizasyonel tedbirleri uygular. Ancak üçüncü
+          Assetly, hizmetin sürekliliği ve güvenliği için makul teknik/organizasyonel tedbirleri uygular. Ancak üçüncü
           taraf altyapı arızaları, internet kesintileri, kullanıcı hataları veya mücbir sebepler nedeniyle doğabilecek
           dolaylı zararlar için mevzuatın izin verdiği ölçüde sorumluluk kabul edilmez.
         </p>

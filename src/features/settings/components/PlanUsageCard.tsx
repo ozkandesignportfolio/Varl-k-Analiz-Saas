@@ -31,12 +31,14 @@ export function PlanUsageCard({ plan, items }: PlanUsageCardProps) {
   const isPremium = plan === "premium";
 
   return (
-    <section className="premium-card border-white/10 bg-white/[0.02] p-5">
+    <section className="premium-card border-white/10 bg-white/[0.02] p-5" data-testid="settings-plan-usage-card">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold text-white">Plan ve Kullanım</h3>
           <p className="mt-1 text-sm text-slate-300">
-            Kullanım durumunu takip edin ve ihtiyaç halinde planınızı yükseltin.
+            {isPremium
+              ? "Premium planınız aktif. Kullanım özetinizi buradan takip edebilirsiniz."
+              : "Kullanım durumunu takip edin ve ihtiyaç halinde planınızı yükseltin."}
           </p>
         </div>
         <Badge
@@ -55,7 +57,7 @@ export function PlanUsageCard({ plan, items }: PlanUsageCardProps) {
         {items.map((item) => {
           const percent = getPercent(item.used, item.limit);
           return (
-            <article key={item.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+            <article key={item.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3" data-testid={`settings-plan-usage-item-${item.id}`}>
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-white">{item.label}</p>
                 <p className="text-xs text-slate-300">{formatRatio(item.used, item.limit)}</p>
@@ -72,9 +74,20 @@ export function PlanUsageCard({ plan, items }: PlanUsageCardProps) {
         })}
       </div>
 
-      <Button asChild className="mt-5 bg-white/10 text-white hover:bg-white/15">
-        <Link href="/pricing">Premium’a Geç</Link>
-      </Button>
+      {isPremium ? (
+        <div
+          data-testid="settings-plan-premium-status"
+          className="mt-5 inline-flex w-full items-center justify-center rounded-xl border border-emerald-300/35 bg-emerald-300/10 px-4 py-2.5 text-sm font-semibold text-emerald-100"
+        >
+          Premium plan aktif
+        </div>
+      ) : (
+        <Button asChild className="mt-5 bg-white/10 text-white hover:bg-white/15">
+          <Link href="/pricing" data-testid="settings-plan-upgrade-button">
+            Premium’a Geç
+          </Link>
+        </Button>
+      )}
     </section>
   );
 }

@@ -1,0 +1,447 @@
+{
+  "startedAt": "2026-02-26T23:58:36.161Z",
+  "baseUrl": "http://localhost:3000",
+  "login": {
+    "ok": true,
+    "url": "http://localhost:3000/dashboard",
+    "errorMessage": null,
+    "dashboardHeadingVisible": true
+  },
+  "ui": {
+    "pages": [
+      {
+        "route": "/dashboard",
+        "ok": true,
+        "finalUrl": "http://localhost:3000/dashboard",
+        "heading": "Kontrol Merkezi",
+        "errorsFound": []
+      },
+      {
+        "route": "/assets",
+        "ok": true,
+        "finalUrl": "http://localhost:3000/assets",
+        "heading": "Varlıklar",
+        "errorsFound": []
+      },
+      {
+        "route": "/maintenance",
+        "ok": true,
+        "finalUrl": "http://localhost:3000/maintenance",
+        "heading": "Bakım Planı",
+        "errorsFound": []
+      },
+      {
+        "route": "/services",
+        "ok": true,
+        "finalUrl": "http://localhost:3000/services",
+        "heading": "Servis Kayıtları",
+        "errorsFound": []
+      },
+      {
+        "route": "/documents",
+        "ok": true,
+        "finalUrl": "http://localhost:3000/documents",
+        "heading": "Belgeler",
+        "errorsFound": []
+      },
+      {
+        "route": "/timeline",
+        "ok": true,
+        "finalUrl": "http://localhost:3000/timeline",
+        "heading": "Olay Akışı",
+        "errorsFound": []
+      },
+      {
+        "route": "/expenses",
+        "ok": true,
+        "finalUrl": "http://localhost:3000/expenses",
+        "heading": "Giderler",
+        "errorsFound": []
+      },
+      {
+        "route": "/notifications",
+        "ok": true,
+        "finalUrl": "http://localhost:3000/notifications",
+        "heading": "Bildirimler",
+        "errorsFound": []
+      },
+      {
+        "route": "/billing",
+        "ok": true,
+        "finalUrl": "http://localhost:3000/billing",
+        "heading": "Abonelik Takibi",
+        "errorsFound": []
+      },
+      {
+        "route": "/invoices",
+        "ok": true,
+        "finalUrl": "http://localhost:3000/invoices",
+        "heading": "Fatura Takip",
+        "errorsFound": []
+      },
+      {
+        "route": "/costs",
+        "ok": true,
+        "finalUrl": "http://localhost:3000/costs",
+        "heading": "Maliyet ve Skor",
+        "errorsFound": []
+      },
+      {
+        "route": "/reports",
+        "ok": true,
+        "finalUrl": "http://localhost:3000/reports",
+        "heading": "PDF Raporlama",
+        "errorsFound": []
+      },
+      {
+        "route": "/settings",
+        "ok": true,
+        "finalUrl": "http://localhost:3000/settings",
+        "heading": "Ayarlar",
+        "errorsFound": []
+      }
+    ],
+    "flows": [
+      {
+        "flow": "create_asset",
+        "ok": true,
+        "details": "assetVisible=true; feedback=Varlık başarıyla eklendi."
+      },
+      {
+        "flow": "create_maintenance_rule",
+        "ok": true,
+        "details": "selectedAsset=6309b54a-0940-4045-a408-a8485c0c91ad; modalVisible=true; feedback=Bakım kuralı oluşturuldu."
+      },
+      {
+        "flow": "create_service_log",
+        "ok": true,
+        "details": "submitDisabled=false; feedback=Servis kaydı eklendi. Belge yüklemek için /documents ekranını kullanın."
+      },
+      {
+        "flow": "reports_page_controls",
+        "ok": true,
+        "details": "headingVisible=true"
+      }
+    ]
+  },
+  "api": {
+    "discoveredRouteCount": 19,
+    "endpoints": [
+      {
+        "route": "/api/asset-media",
+        "method": "POST",
+        "requestedPath": "/api/asset-media",
+        "status": 400,
+        "ok": true,
+        "body": "{\"error\":\"Geçersiz form verisi.\"}",
+        "error": null
+      },
+      {
+        "route": "/api/assets",
+        "method": "POST",
+        "requestedPath": "/api/assets",
+        "status": 400,
+        "ok": true,
+        "body": "{\"error\":\"İstek alanı tipleri geçersiz.\"}",
+        "error": null
+      },
+      {
+        "route": "/api/assets",
+        "method": "PATCH",
+        "requestedPath": "/api/assets",
+        "status": 400,
+        "ok": true,
+        "body": "{\"error\":\"Varlık kimliği geçersiz.\"}",
+        "error": null
+      },
+      {
+        "route": "/api/assets",
+        "method": "DELETE",
+        "requestedPath": "/api/assets",
+        "status": 400,
+        "ok": true,
+        "body": "{\"error\":\"Geçersiz istek gövdesi.\"}",
+        "error": null
+      },
+      {
+        "route": "/api/audit-logs",
+        "method": "GET",
+        "requestedPath": "/api/audit-logs",
+        "status": 200,
+        "ok": true,
+        "body": "{\"logs\":[{\"id\":\"dcd72592-b5e4-414d-9836-66acc6b1c929\",\"user_id\":\"73d1c16b-8025-462a-9978-e59e881d8489\",\"entity_type\":\"service_logs\",\"entity_id\":\"b4650580-470b-40db-9279-fa0a793c63ea\",\"action\":\"insert\",\"changed_fields\":[\"",
+        "error": null
+      },
+      {
+        "route": "/api/billing/invoices",
+        "method": "POST",
+        "requestedPath": "/api/billing/invoices",
+        "status": 400,
+        "ok": true,
+        "body": "{\"error\":\"İstek alanı tipleri geçersiz.\"}",
+        "error": null
+      },
+      {
+        "route": "/api/billing/subscriptions",
+        "method": "POST",
+        "requestedPath": "/api/billing/subscriptions",
+        "status": 400,
+        "ok": true,
+        "body": "{\"error\":\"İstek alanı tipleri geçersiz.\"}",
+        "error": null
+      },
+      {
+        "route": "/api/dashboard-metrics",
+        "method": "GET",
+        "requestedPath": "/api/dashboard-metrics",
+        "status": 200,
+        "ok": true,
+        "body": "{\"activeUsers\":1,\"trackedAssets\":5,\"completedTransactions\":4,\"systemHealthRate\":96,\"scope\":\"user\",\"generatedAt\":\"2026-02-27T00:00:21.461Z\"}",
+        "error": null
+      },
+      {
+        "route": "/api/debug/plan",
+        "method": "GET",
+        "requestedPath": "/api/debug/plan",
+        "status": 200,
+        "ok": true,
+        "body": "{\"ok\":true,\"uid\":\"73d1c16b-8025-462a-9978-e59e881d8489\",\"plan\":\"premium\",\"profileExists\":true,\"error\":null}",
+        "error": null
+      },
+      {
+        "route": "/api/documents",
+        "method": "POST",
+        "requestedPath": "/api/documents",
+        "status": 400,
+        "ok": true,
+        "body": "{\"error\":\"Geçersiz form verisi.\"}",
+        "error": null
+      },
+      {
+        "route": "/api/maintenance-predictions",
+        "method": "GET",
+        "requestedPath": "/api/maintenance-predictions",
+        "status": 200,
+        "ok": true,
+        "body": "{\"generatedAt\":\"2026-02-27T00:00:23.133Z\",\"model\":\"heuristic\",\"items\":[{\"assetId\":\"5f98915b-15aa-4f53-b0d3-409b47f0410a\",\"assetName\":\"TS Premium Asset 7002971\",\"category\":\"Beyaz Eşya\",\"predictedMaintenanceDate\":null,\"ris",
+        "error": null
+      },
+      {
+        "route": "/api/maintenance-predictions",
+        "method": "POST",
+        "requestedPath": "/api/maintenance-predictions",
+        "status": 200,
+        "ok": true,
+        "body": "{\"generatedAt\":\"2026-02-27T00:00:23.826Z\",\"model\":\"heuristic\",\"items\":[{\"assetId\":\"5f98915b-15aa-4f53-b0d3-409b47f0410a\",\"assetName\":\"TS Premium Asset 7002971\",\"category\":\"Beyaz Eşya\",\"predictedMaintenanceDate\":null,\"ris",
+        "error": null
+      },
+      {
+        "route": "/api/maintenance-rules",
+        "method": "GET",
+        "requestedPath": "/api/maintenance-rules",
+        "status": 200,
+        "ok": true,
+        "body": "{\"items\":[{\"id\":\"1de46d12-0003-4fa5-bbca-c6c5f5b52a48\",\"assetId\":\"6309b54a-0940-4045-a408-a8485c0c91ad\",\"title\":\"TS Rule 0368524\",\"intervalValue\":6,\"intervalUnit\":\"month\",\"lastServiceDate\":\"2026-02-26\",\"nextDueDate\":\"202",
+        "error": null
+      },
+      {
+        "route": "/api/maintenance-rules",
+        "method": "POST",
+        "requestedPath": "/api/maintenance-rules",
+        "status": 400,
+        "ok": true,
+        "body": "{\"error\":\"Varlık, baslik ve baz tarih zorunludur.\"}",
+        "error": null
+      },
+      {
+        "route": "/api/maintenance-rules/{id}",
+        "method": "GET",
+        "requestedPath": "/api/maintenance-rules/00000000-0000-0000-0000-000000000000",
+        "status": 404,
+        "ok": true,
+        "body": "{\"error\":\"Kural bulunamadı.\"}",
+        "error": null
+      },
+      {
+        "route": "/api/maintenance-rules/{id}",
+        "method": "PATCH",
+        "requestedPath": "/api/maintenance-rules/00000000-0000-0000-0000-000000000000",
+        "status": 404,
+        "ok": true,
+        "body": "{\"error\":\"Kural bulunamadı.\"}",
+        "error": null
+      },
+      {
+        "route": "/api/maintenance-rules/{id}",
+        "method": "DELETE",
+        "requestedPath": "/api/maintenance-rules/00000000-0000-0000-0000-000000000000",
+        "status": 404,
+        "ok": true,
+        "body": "{\"error\":\"Kural silinemedi veya bulunamadı.\"}",
+        "error": null
+      },
+      {
+        "route": "/api/panel-health",
+        "method": "GET",
+        "requestedPath": "/api/panel-health",
+        "status": 200,
+        "ok": true,
+        "body": "{\"score\":20,\"ratio\":0,\"hasNoCost\":false,\"assetPrice\":0,\"totalCost\":493.8,\"maintenanceCost\":493.8,\"expenseCost\":0,\"warranty\":{\"score\":40,\"active\":0,\"expiring\":0,\"expired\":0,\"unknown\":100},\"maintenance\":{\"score\":100,\"plann",
+        "error": null
+      },
+      {
+        "route": "/api/service-logs",
+        "method": "POST",
+        "requestedPath": "/api/service-logs",
+        "status": 400,
+        "ok": true,
+        "body": "{\"error\":\"Varlık, servis türü ve servis tarihi zorunludur.\"}",
+        "error": null
+      },
+      {
+        "route": "/api/service-logs",
+        "method": "PATCH",
+        "requestedPath": "/api/service-logs",
+        "status": 400,
+        "ok": true,
+        "body": "{\"error\":\"Servis kaydı kimliği zorunludur.\"}",
+        "error": null
+      },
+      {
+        "route": "/api/service-media",
+        "method": "POST",
+        "requestedPath": "/api/service-media",
+        "status": 400,
+        "ok": true,
+        "body": "{\"error\":\"Geçersiz form verisi.\"}",
+        "error": null
+      },
+      {
+        "route": "/api/stripe/checkout",
+        "method": "POST",
+        "requestedPath": "/api/stripe/checkout",
+        "status": 200,
+        "ok": true,
+        "body": "{\"url\":\"https://checkout.stripe.com/c/pay/cs_live_a15GPXSAfDMntuFRhbpFYGFIxtn21BhHrHYvTkyvXGIDg1JgXspA0COmSb#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdkdWxOYHwnPyd1blppbHNgWjA0VF1ESTxEaEtWVFJdUUBOSmY1SHdhaVVLZzxxQ19EQGtiMjU9S",
+        "error": null
+      },
+      {
+        "route": "/api/stripe/confirm",
+        "method": "POST",
+        "requestedPath": "/api/stripe/confirm",
+        "status": 400,
+        "ok": true,
+        "body": "{\"error\":\"session_id zorunludur.\"}",
+        "error": null
+      },
+      {
+        "route": "/api/stripe/webhook",
+        "method": "POST",
+        "requestedPath": "/api/stripe/webhook",
+        "status": 400,
+        "ok": true,
+        "body": "{\"error\":\"Webhook dogrulanamadi.\"}",
+        "error": null
+      },
+      {
+        "route": "/api/subscription-request",
+        "method": "POST",
+        "requestedPath": "/api/subscription-request",
+        "status": 400,
+        "ok": true,
+        "body": "{\"error\":\"Ad soyad ve e-posta alanları zorunludur.\"}",
+        "error": null
+      }
+    ],
+    "skipped": [
+      {
+        "route": "/api/account/delete",
+        "method": "POST",
+        "reason": "destructive_endpoint"
+      }
+    ]
+  },
+  "premiumVsTrial": {
+    "initialPlan": "premium",
+    "debugChecks": [
+      {
+        "step": "after_login",
+        "status": 200,
+        "body": {
+          "ok": true,
+          "uid": "73d1c16b-8025-462a-9978-e59e881d8489",
+          "plan": "premium",
+          "profileExists": true,
+          "error": null
+        },
+        "bodyText": "{\"ok\":true,\"uid\":\"73d1c16b-8025-462a-9978-e59e881d8489\",\"plan\":\"premium\",\"profileExists\":true,\"error\":null}"
+      },
+      {
+        "step": "after_switch_to_trial",
+        "status": 200,
+        "body": {
+          "ok": true,
+          "uid": "73d1c16b-8025-462a-9978-e59e881d8489",
+          "plan": "free",
+          "profileExists": true,
+          "error": null
+        },
+        "bodyText": "{\"ok\":true,\"uid\":\"73d1c16b-8025-462a-9978-e59e881d8489\",\"plan\":\"free\",\"profileExists\":true,\"error\":null}"
+      },
+      {
+        "step": "after_restore",
+        "status": 200,
+        "body": {
+          "ok": true,
+          "uid": "73d1c16b-8025-462a-9978-e59e881d8489",
+          "plan": "premium",
+          "profileExists": true,
+          "error": null
+        },
+        "bodyText": "{\"ok\":true,\"uid\":\"73d1c16b-8025-462a-9978-e59e881d8489\",\"plan\":\"premium\",\"profileExists\":true,\"error\":null}"
+      },
+      {
+        "step": "final_restore_guard",
+        "status": 200,
+        "body": {
+          "ok": true,
+          "uid": "73d1c16b-8025-462a-9978-e59e881d8489",
+          "plan": "premium",
+          "profileExists": true,
+          "error": null
+        },
+        "bodyText": "{\"ok\":true,\"uid\":\"73d1c16b-8025-462a-9978-e59e881d8489\",\"plan\":\"premium\",\"profileExists\":true,\"error\":null}"
+      }
+    ],
+    "premiumCheck": {
+      "status": 400,
+      "body": {
+        "error": "Geçersiz form verisi."
+      },
+      "bodyText": "{\"error\":\"Geçersiz form verisi.\"}",
+      "premiumAccessible": true
+    },
+    "trialSwitch": {
+      "ok": true
+    },
+    "trialCheck": {
+      "status": 403,
+      "body": {
+        "error": "Ek medya özelliği Premium planında aktif."
+      },
+      "bodyText": "{\"error\":\"Ek medya özelliği Premium planında aktif.\"}",
+      "blockedAsExpected": true
+    },
+    "restoredPlan": "premium",
+    "restoreAttempted": true,
+    "restoreOk": true,
+    "uiGateInTrial": {
+      "gateVisible": true
+    }
+  },
+  "errors": [],
+  "finishedAt": "2026-02-27T00:00:31.968Z",
+  "auth": {
+    "source": "env"
+  }
+}

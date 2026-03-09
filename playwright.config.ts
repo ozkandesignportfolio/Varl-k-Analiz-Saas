@@ -1,19 +1,23 @@
 ﻿import { defineConfig, devices } from "@playwright/test";
 
+import { loadTestEnv } from "./scripts/load-test-env.cjs";
+
+loadTestEnv();
+
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:3000";
 
 export default defineConfig({
-  testDir: "./tests",
+  testDir: "./testsprite/tests",
   testMatch: ["**/*.spec.ts"],
   testIgnore: ["**/*.test.ts"],
   fullyParallel: true,
-  outputDir: "test-results/artifacts",
+  outputDir: "testsprite/test-results/artifacts",
   preserveOutput: "failures-only",
   reporter: [
     ["list"],
-    ["json", { outputFile: "test-results/playwright-results.json" }],
-    ["junit", { outputFile: "test-results/playwright-junit.xml" }],
-    ["html", { outputFolder: "test-results/playwright-report", open: "never" }],
+    ["json", { outputFile: "testsprite/test-results/playwright-results.json" }],
+    ["junit", { outputFile: "testsprite/test-results/playwright-junit.xml" }],
+    ["html", { outputFolder: "testsprite/test-results/playwright-report", open: "never" }],
   ],
   use: {
     baseURL,

@@ -12,7 +12,7 @@ const ACTIONS: ActionItem[] = [
   {
     href: "/assets",
     title: "Varlık Ekle",
-    description: "Yeni varlık kaydı oluştur ve takibi hemen baslat.",
+    description: "Yeni varlık kaydı oluştur ve takibi hemen başlat.",
     icon: FolderPlus,
   },
   {
@@ -30,7 +30,7 @@ const ACTIONS: ActionItem[] = [
   {
     href: "/documents",
     title: "Belge Yükle",
-    description: "Garanti, fatura ve servis dokumanlarini arsivle.",
+    description: "Garanti, fatura ve servis dokümanlarını arşivle.",
     icon: FileUp,
   },
 ];
@@ -62,4 +62,3 @@ export function QuickActions() {
     </section>
   );
 }
-

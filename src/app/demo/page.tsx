@@ -19,9 +19,9 @@ const demoFlowSteps = [
 ] as const;
 
 export const metadata: Metadata = {
-  title: "AssetCare Demo",
+  title: "Assetly Demo",
   description:
-    "AssetCare ürün demosu: varlık takibi, bakım planı, belge kasası ve fatura/abonelik yönetimini hızlıca keşfedin.",
+    "Assetly ürün demosu: varlık takibi, bakım planı, belge kasası ve fatura/abonelik yönetimini hızlıca keşfedin.",
 };
 
 function getEmbedConfig(rawUrl: string): EmbedConfig | null {
@@ -67,7 +67,7 @@ export default function DemoPage() {
 
       <div className="relative mx-auto w-full max-w-5xl space-y-6">
         <header className="glass-card rounded-3xl border border-border/70 p-6 sm:p-8">
-          <h1 className="text-balance text-3xl font-bold text-foreground sm:text-4xl md:text-5xl">AssetCare Demo</h1>
+          <h1 className="text-balance text-3xl font-bold text-foreground sm:text-4xl md:text-5xl">Assetly Demo</h1>
           <p className="mt-4 max-w-3xl text-sm text-muted-foreground sm:text-base">
             Varlık takibi, bakım planı, belge kasası ve fatura/abonelik yönetimini 2 dakikada görün.
           </p>
@@ -90,7 +90,7 @@ export default function DemoPage() {
                 <iframe
                   className="absolute inset-0 h-full w-full"
                   src={embedConfig.src}
-                  title="AssetCare Demo Videosu"
+                  title="Assetly Demo Videosu"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
                 />

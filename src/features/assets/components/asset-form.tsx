@@ -33,6 +33,15 @@ type CreateAssetMediaSummary = {
   totalSizeLabel: string;
 };
 
+export type AssetFormExistingMediaItem = {
+  id: string;
+  type: AssetMediaType;
+  storagePath: string;
+  signedUrl: string;
+  createdAt: string;
+  isLegacy?: boolean;
+};
+
 type AssetFormMediaProps = {
   isPremiumMediaEnabled: boolean;
   mediaErrorMessage: string;
@@ -62,6 +71,10 @@ type EditAssetFormProps = AssetFormBaseProps &
   mode: "edit";
   asset: AssetFormAsset;
   onCancel: () => void;
+  existingMediaItems: AssetFormExistingMediaItem[];
+  isLoadingExistingMedia: boolean;
+  removingExistingMediaId: string | null;
+  onRemoveExistingMedia: (item: AssetFormExistingMediaItem) => void;
 };
 
 type AssetFormProps = CreateAssetFormProps | EditAssetFormProps;
@@ -103,7 +116,7 @@ export function AssetForm(props: AssetFormProps) {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="basic" className="mt-4">
+            <TabsContent value="basic" forceMount className="mt-4">
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="block">
                   <span className="mb-1.5 block text-sm text-slate-300">Varlık Adı</span>
@@ -194,7 +207,7 @@ export function AssetForm(props: AssetFormProps) {
               </div>
             </TabsContent>
 
-            <TabsContent value="media" className="mt-4">
+            <TabsContent value="media" forceMount className="mt-4">
               <section
                 className={`rounded-xl border p-4 ${
                   isPremiumMediaEnabled
@@ -294,7 +307,7 @@ export function AssetForm(props: AssetFormProps) {
               type="submit"
               disabled={isSubmitting}
               className="rounded-full bg-gradient-to-r from-sky-400 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
-              data-testid="asset-save-button"
+              data-testid="asset-submit"
             >
               {isSubmitting ? "Kaydediliyor..." : "Varlığı Kaydet"}
             </button>
@@ -315,6 +328,10 @@ export function AssetForm(props: AssetFormProps) {
     mediaErrorMessage,
     mediaSummary,
     onMediaSelection,
+    existingMediaItems,
+    isLoadingExistingMedia,
+    removingExistingMediaId,
+    onRemoveExistingMedia,
   } = props;
 
   return (
@@ -406,6 +423,50 @@ export function AssetForm(props: AssetFormProps) {
             {!isPremiumMediaEnabled ? (
               <Badge className="border-amber-300/40 bg-amber-300/15 text-amber-100">Premium&apos;da aktif</Badge>
             ) : null}
+          </div>
+
+          <div className="mt-4 rounded-lg border border-white/10 bg-slate-950/40 p-3">
+            <p className="text-xs font-semibold text-slate-200">Mevcut Medyalar</p>
+            {isLoadingExistingMedia ? (
+              <p className="mt-2 text-xs text-slate-300">Yukleniyor...</p>
+            ) : existingMediaItems.length === 0 ? (
+              <p className="mt-2 text-xs text-slate-300">Kayitli medya bulunmuyor.</p>
+            ) : (
+              <ul className="mt-2 space-y-2">
+                {existingMediaItems.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2"
+                  >
+                    <div className="text-xs text-slate-200">
+                      <p className="font-medium">
+                        {item.type === "image" ? "Gorsel" : item.type === "video" ? "Video" : "Ses"}
+                        {item.isLegacy ? " (Legacy)" : ""}
+                      </p>
+                      <p className="text-slate-400">{new Date(item.createdAt).toLocaleDateString("tr-TR")}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={item.signedUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-full border border-white/20 px-2.5 py-1 text-xs font-semibold text-slate-100 hover:bg-white/10"
+                      >
+                        Onizle
+                      </a>
+                      <button
+                        type="button"
+                        disabled={removingExistingMediaId === item.id}
+                        onClick={() => onRemoveExistingMedia(item)}
+                        className="rounded-full border border-rose-300/35 bg-rose-300/10 px-2.5 py-1 text-xs font-semibold text-rose-100 hover:bg-rose-300/20 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {removingExistingMediaId === item.id ? "Siliniyor..." : "Kaldir"}
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <div className="mt-4 grid gap-3 md:grid-cols-2">

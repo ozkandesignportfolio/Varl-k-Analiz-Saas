@@ -8,20 +8,20 @@ import { AuditHistoryPanel } from "@/components/audit-history-panel";
 import { QrScannerModal } from "@/components/qr-scanner-modal";
 import { QuotaExceededModal } from "@/components/ui/QuotaExceededModal";
 import { usePlanContext } from "@/contexts/PlanContext";
-import { AssetForm, type CreateAssetFormDefaults } from "@/features/assets/components/asset-form";
+import {
+  AssetForm,
+  type AssetFormExistingMediaItem,
+  type CreateAssetFormDefaults,
+} from "@/features/assets/components/asset-form";
+import { AssetsContent } from "@/features/assets/components/AssetsContent";
+import { AssetsToolbar } from "@/features/assets/components/AssetsToolbar";
 import { AssetQuickPreviewDrawer } from "@/features/assets/components/asset-quick-preview-drawer";
 import { AssetQrPreviewModal } from "@/features/assets/components/asset-qr-preview-modal";
-import { AssetsFilterBar } from "@/features/assets/components/assets-filter-bar";
-import { AssetListTable } from "@/features/assets/components/asset-list-table";
 import type {
-  AssetActivityItem,
   AssetDashboardRow,
-  AssetFilterMode,
-  AssetSortMode,
-  AssetViewMode,
-  MaintenanceFilterMode,
-  WarrantyFilterMode,
 } from "@/features/assets/components/assets-view-types";
+import { useAssetsData } from "@/features/assets/hooks/useAssetsData";
+import { useAssetsFilters } from "@/features/assets/hooks/useAssetsFilters";
 import {
   ASSET_MEDIA_BUCKET,
   ASSET_MEDIA_LIMITS,
@@ -32,13 +32,6 @@ import {
   validateAssetMediaFile,
   type AssetMediaType,
 } from "@/lib/assets/media-limits";
-import {
-  countByUser as countAssetsByUser,
-  listCategories as listAssetCategories,
-  type AssetsCursor,
-  type ListAssetsRow,
-} from "@/lib/repos/assets-repo";
-import { listAssetActivityPreview } from "@/lib/repos/service-logs-repo";
 import { parseAssetQrPayload } from "@/lib/assets/qr-payload";
 import { canPlanUsePremiumMedia } from "@/lib/plans/premium-media";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -58,21 +51,19 @@ type AssetRow = {
   updated_at: string;
 };
 
-type AssetMediaListRow = {
-  asset_id: string;
+type AssetMediaManageRow = {
+  id: string;
   type: string;
   storage_path: string;
+  mime_type: string;
+  size_bytes: number;
+  created_at: string;
 };
 
 type AssetMediaDraft = {
   images: File[];
   video: File | null;
   audio: File | null;
-};
-type ListAssetsPageResponse = {
-  rows: ListAssetsRow[];
-  nextCursor: AssetsCursor | null;
-  hasMore: boolean;
 };
 
 const LEGACY_PHOTO_BUCKET = "documents-private";
@@ -82,24 +73,21 @@ const categoryOptions = ["Beyaz Eşya", "Isıtma", "Soğutma", "Elektronik", "Mu
 const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
 const EMPTY_MEDIA_DRAFT: AssetMediaDraft = { images: [], video: null, audio: null };
-const ASSETS_PAGE_SIZE = 30;
 
 const toOptionalString = (value: FormDataEntryValue | null) => {
   const text = String(value ?? "").trim();
   return text || null;
 };
 
-const isMissingQrCodeError = (message: string | undefined) => {
-  const normalized = (message ?? "").toLowerCase();
-  return (
-    normalized.includes("qr_code") &&
-    (normalized.includes("does not exist") || normalized.includes("could not find the column"))
-  );
-};
-
 const isMissingAssetMediaError = (message: string | undefined) => {
   const normalized = (message ?? "").toLowerCase();
-  return normalized.includes("asset_media") && normalized.includes("does not exist");
+  return (
+    normalized.includes("asset_media") &&
+    (normalized.includes("does not exist") ||
+      normalized.includes("schema cache") ||
+      normalized.includes("could not find the table") ||
+      normalized.includes("not found in schema cache"))
+  );
 };
 
 const hasAnyMedia = (draft: AssetMediaDraft) =>
@@ -108,29 +96,15 @@ const hasAnyMedia = (draft: AssetMediaDraft) =>
 const getMediaDraftSize = (draft: AssetMediaDraft) =>
   draft.images.reduce((sum, file) => sum + file.size, 0) + (draft.video?.size ?? 0) + (draft.audio?.size ?? 0);
 
-const asIsoDate = (value: string | null) => (value ? value.slice(0, 10) : null);
-
 export function AssetsPageContainer() {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const router = useRouter();
   const { plan, assetLimit, setAssetCount } = usePlanContext();
   const isPremiumMediaEnabled = canPlanUsePremiumMedia(plan);
 
-  const [assets, setAssets] = useState<ListAssetsRow[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [totalAssetCount, setTotalAssetCount] = useState(0);
-  const [assetsCursor, setAssetsCursor] = useState<AssetsCursor | null>(null);
-  const [hasMoreAssets, setHasMoreAssets] = useState(false);
-  const [isLoadingMoreAssets, setIsLoadingMoreAssets] = useState(false);
-  const [thumbnailUrls, setThumbnailUrls] = useState<Record<string, string>>({});
-  const [serviceActivityPreviewByAsset, setServiceActivityPreviewByAsset] = useState<
-    Record<string, AssetActivityItem[]>
-  >({});
   const [userId, setUserId] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [feedback, setFeedback] = useState("");
   const [hasValidSession, setHasValidSession] = useState(true);
   const [auditRefreshKey, setAuditRefreshKey] = useState(0);
   const [editingAsset, setEditingAsset] = useState<AssetRow | null>(null);
@@ -142,28 +116,60 @@ export function AssetsPageContainer() {
   const [mediaErrorMessage, setMediaErrorMessage] = useState("");
   const [editMediaDraft, setEditMediaDraft] = useState<AssetMediaDraft>(EMPTY_MEDIA_DRAFT);
   const [editMediaErrorMessage, setEditMediaErrorMessage] = useState("");
+  const [editExistingMedia, setEditExistingMedia] = useState<AssetFormExistingMediaItem[]>([]);
+  const [isEditMediaLoading, setIsEditMediaLoading] = useState(false);
+  const [removingEditMediaId, setRemovingEditMediaId] = useState<string | null>(null);
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [assetFilter, setAssetFilter] = useState<AssetFilterMode>("all");
-  const [warrantyFilter, setWarrantyFilter] = useState<WarrantyFilterMode>("all");
-  const [maintenanceFilter, setMaintenanceFilter] = useState<MaintenanceFilterMode>("all");
-  const [sortMode, setSortMode] = useState<AssetSortMode>("updated");
-  const [viewMode, setViewMode] = useState<AssetViewMode>("table");
+  const {
+    searchTerm,
+    setSearchTerm,
+    categoryFilter,
+    setCategoryFilter,
+    assetFilter,
+    setAssetFilter,
+    warrantyFilter,
+    setWarrantyFilter,
+    maintenanceFilter,
+    setMaintenanceFilter,
+    sortMode,
+    setSortMode,
+    viewMode,
+    setViewMode,
+    listQueryOptions,
+    hasActiveFilters,
+    clearFilters,
+  } = useAssetsFilters();
+
+  const {
+    assets,
+    setAssets,
+    categories,
+    totalAssetCount,
+    assetsCursor,
+    hasMoreAssets,
+    isLoadingMoreAssets,
+    thumbnailUrls,
+    setThumbnailUrls,
+    serviceActivityPreviewByAsset,
+    setServiceActivityPreviewByAsset,
+    isLoading,
+    setIsLoading,
+    feedback,
+    setFeedback,
+    refreshAssetCount,
+    fetchCategoryOptions,
+    fetchAssetsPage,
+    dashboardRows,
+    summary,
+  } = useAssetsData({
+    supabase,
+    setAssetCount,
+    userId,
+    listQueryOptions,
+  });
+
   const [selectedPreviewAssetId, setSelectedPreviewAssetId] = useState<string | null>(null);
   const [qrPreviewAssetId, setQrPreviewAssetId] = useState<string | null>(null);
-
-  const listQueryOptions = useMemo(
-    () => ({
-      search: searchTerm.trim() ? searchTerm : undefined,
-      category: categoryFilter === "all" ? undefined : categoryFilter,
-      sort: sortMode,
-      assetFilter: assetFilter === "all" ? undefined : assetFilter,
-      warrantyFilter: warrantyFilter === "all" ? undefined : warrantyFilter,
-      maintenanceFilter: maintenanceFilter === "all" ? undefined : maintenanceFilter,
-    }),
-    [assetFilter, categoryFilter, maintenanceFilter, searchTerm, sortMode, warrantyFilter],
-  );
 
   const validateMediaDraft = useCallback((draft: AssetMediaDraft) => {
     if (draft.images.length > ASSET_MEDIA_LIMITS.image.maxFiles) {
@@ -192,235 +198,64 @@ export function AssetsPageContainer() {
     return null;
   }, []);
 
-  const refreshAssetCount = useCallback(
-    async (currentUserId: string) => {
-      const { data, error } = await countAssetsByUser(supabase, { userId: currentUserId });
-      if (error) {
-        setFeedback(error.message);
-        return;
-      }
-      const count = data ?? 0;
-      setTotalAssetCount(count);
-      setAssetCount(count);
-    },
-    [setAssetCount, supabase],
-  );
-
-  const fetchCategoryOptions = useCallback(
-    async (currentUserId: string) => {
-      const { data, error } = await listAssetCategories(supabase, { userId: currentUserId });
-      if (error) {
-        setFeedback(error.message);
-        return;
-      }
-      setCategories(data ?? []);
-    },
-    [supabase],
-  );
-
-  const fetchAssetActivityPreview = useCallback(
-    async (currentUserId: string, assetRows: ListAssetsRow[], options?: { append?: boolean }) => {
-      const append = options?.append === true;
-      if (assetRows.length === 0) {
-        if (!append) setServiceActivityPreviewByAsset({});
-        return;
-      }
-
-      const assetIds = assetRows.map((asset) => asset.id);
-      const { data, error } = await listAssetActivityPreview(supabase, {
-        userId: currentUserId,
-        assetIds,
-        perAssetLimit: 3,
-      });
-
-      if (error) {
-        setFeedback(error.message);
-        return;
-      }
-
-      const grouped = new Map<string, AssetActivityItem[]>();
-      for (const row of data ?? []) {
-        const list = grouped.get(row.asset_id) ?? [];
-        list.push({
-          id: row.id,
-          serviceType: row.service_type,
-          serviceDate: row.service_date,
-          cost: Number(row.cost ?? 0),
-        });
-        grouped.set(row.asset_id, list);
-      }
-
-      const nextMap: Record<string, AssetActivityItem[]> = {};
-      for (const [key, value] of grouped.entries()) {
-        nextMap[key] = value;
-      }
-
-      setServiceActivityPreviewByAsset((prev) => (append ? { ...prev, ...nextMap } : nextMap));
-    },
-    [supabase],
-  );
-
-  const loadThumbnailsForAssets = useCallback(
-    async (currentUserId: string, assetRows: ListAssetsRow[], options?: { append?: boolean }) => {
-      const append = options?.append === true;
-      if (assetRows.length === 0) {
-        if (!append) setThumbnailUrls({});
-        return;
-      }
-
-      const assetIds = assetRows.map((asset) => asset.id);
+  const loadEditMediaItems = useCallback(
+    async (currentUserId: string, asset: AssetDashboardRow) => {
       const { data: mediaRows, error: mediaError } = await supabase
         .from("asset_media")
-        .select("asset_id,type,storage_path")
+        .select("id,type,storage_path,mime_type,size_bytes,created_at")
+        .eq("asset_id", asset.id)
         .eq("user_id", currentUserId)
-        .eq("type", "image")
-        .in("asset_id", assetIds);
+        .order("created_at", { ascending: false });
 
       if (mediaError && !isMissingAssetMediaError(mediaError.message)) {
         setFeedback(mediaError.message);
-      }
-
-      const resolveSignedUrl = async (path: string, preferredBucket?: string) => {
-        const candidateBuckets = preferredBucket
-          ? [
-              preferredBucket,
-              ...THUMBNAIL_BUCKET_FALLBACK_ORDER.filter((bucket) => bucket !== preferredBucket),
-            ]
-          : [...THUMBNAIL_BUCKET_FALLBACK_ORDER];
-
-        for (const bucket of candidateBuckets) {
-          const signed = await supabase.storage.from(bucket).createSignedUrl(path, 60 * 5);
-          if (!signed.error && signed.data?.signedUrl) {
-            return signed.data.signedUrl;
-          }
-        }
-
-        return null;
-      };
-
-      const thumbnailSource = new Map<string, { path: string; preferredBucket?: string }>();
-      for (const row of (mediaRows ?? []) as AssetMediaListRow[]) {
-        if (!thumbnailSource.has(row.asset_id)) {
-          thumbnailSource.set(row.asset_id, { path: row.storage_path, preferredBucket: ASSET_MEDIA_BUCKET });
-        }
-      }
-
-      for (const asset of assetRows) {
-        if (!thumbnailSource.has(asset.id) && asset.photo_path) {
-          thumbnailSource.set(asset.id, { path: asset.photo_path });
-        }
+        return [] as AssetFormExistingMediaItem[];
       }
 
       const signedEntries = await Promise.all(
-        [...thumbnailSource.entries()].map(async ([assetId, source]) => {
-          const signedUrl = await resolveSignedUrl(source.path, source.preferredBucket);
-          if (!signedUrl) return null;
-          return [assetId, signedUrl] as const;
+        ((mediaRows ?? []) as AssetMediaManageRow[]).map(async (row) => {
+          const signed = await supabase.storage.from(ASSET_MEDIA_BUCKET).createSignedUrl(row.storage_path, 60 * 5);
+          if (signed.error || !signed.data?.signedUrl) {
+            return null;
+          }
+
+          if (row.type !== "image" && row.type !== "video" && row.type !== "audio") {
+            return null;
+          }
+
+          return {
+            id: row.id,
+            type: row.type,
+            storagePath: row.storage_path,
+            signedUrl: signed.data.signedUrl,
+            createdAt: row.created_at,
+          } as AssetFormExistingMediaItem;
         }),
       );
 
-      const nextUrls: Record<string, string> = {};
-      for (const entry of signedEntries) {
-        if (!entry) continue;
-        nextUrls[entry[0]] = entry[1];
-      }
+      const validItems = signedEntries.filter((item): item is AssetFormExistingMediaItem => Boolean(item));
+      const hasImage = validItems.some((item) => item.type === "image");
 
-      setThumbnailUrls((prev) => (append ? { ...prev, ...nextUrls } : nextUrls));
-    },
-    [supabase],
-  );
-
-  const fetchAssetsPage = useCallback(
-    async (
-      currentUserId: string,
-      options?: {
-        append?: boolean;
-        cursor?: AssetsCursor | null;
-        search?: string;
-        category?: string;
-        sort?: AssetSortMode;
-        assetFilter?: AssetFilterMode;
-        warrantyFilter?: WarrantyFilterMode;
-        maintenanceFilter?: MaintenanceFilterMode;
-      },
-    ) => {
-      const append = options?.append === true;
-
-      if (append) {
-        setIsLoadingMoreAssets(true);
-      } else {
-        setIsLoading(true);
-      }
-
-      const query = new URLSearchParams();
-      query.set("pageSize", String(ASSETS_PAGE_SIZE));
-      query.set("sort", options?.sort ?? "updated");
-      if (options?.search) query.set("search", options.search);
-      if (options?.category) query.set("category", options.category);
-      if (options?.assetFilter) query.set("assetFilter", options.assetFilter);
-      if (options?.warrantyFilter) query.set("warrantyFilter", options.warrantyFilter);
-      if (options?.maintenanceFilter) query.set("maintenanceFilter", options.maintenanceFilter);
-      if (options?.cursor?.value) query.set("cursorValue", options.cursor.value);
-      if (options?.cursor?.id) query.set("cursorId", options.cursor.id);
-      if (options?.cursor?.sort) query.set("cursorSort", options.cursor.sort);
-
-      const response = await fetch(`/api/assets?${query.toString()}`, {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      });
-      const payload = (await response.json().catch(() => null)) as
-        | (ListAssetsPageResponse & { error?: never })
-        | { error?: string }
-        | null;
-      const errorMessage = response.ok ? null : (payload?.error ?? "Varliklar yuklenemedi.");
-
-      if (errorMessage && isMissingQrCodeError(errorMessage)) {
-        setFeedback("Veritabani surumu guncellemesi gerekiyor: qr_code kolonu eksik.");
-        if (append) {
-          setIsLoadingMoreAssets(false);
-        } else {
-          setIsLoading(false);
+      if (!hasImage && asset.photo_path) {
+        for (const bucket of THUMBNAIL_BUCKET_FALLBACK_ORDER) {
+          const signed = await supabase.storage.from(bucket).createSignedUrl(asset.photo_path, 60 * 5);
+          if (!signed.error && signed.data?.signedUrl) {
+            validItems.unshift({
+              id: `legacy-${asset.id}`,
+              type: "image",
+              storagePath: asset.photo_path,
+              signedUrl: signed.data.signedUrl,
+              createdAt: asset.updated_at,
+              isLegacy: true,
+            });
+            break;
+          }
         }
-        return;
       }
 
-      if (errorMessage) {
-        setFeedback(errorMessage);
-        if (append) {
-          setIsLoadingMoreAssets(false);
-        } else {
-          setIsLoading(false);
-        }
-        return;
-      }
-
-      const pageData: ListAssetsPageResponse =
-        payload && "rows" in payload
-          ? {
-              rows: payload.rows ?? [],
-              nextCursor: payload.nextCursor ?? null,
-              hasMore: payload.hasMore ?? false,
-            }
-          : { rows: [], nextCursor: null, hasMore: false };
-      const rows = (pageData.rows ?? []) as ListAssetsRow[];
-
-      setHasMoreAssets(pageData.hasMore);
-      setAssetsCursor(pageData.nextCursor);
-
-      await Promise.all([
-        fetchAssetActivityPreview(currentUserId, rows, { append }),
-        loadThumbnailsForAssets(currentUserId, rows, { append }),
-      ]);
-
-      if (append) {
-        setAssets((prev) => [...prev, ...rows]);
-        setIsLoadingMoreAssets(false);
-      } else {
-        setAssets(rows);
-        setIsLoading(false);
-      }
+      return validItems;
     },
-    [fetchAssetActivityPreview, loadThumbnailsForAssets],
+    [setFeedback, supabase],
   );
 
   useEffect(() => {
@@ -443,7 +278,7 @@ export function AssetsPageContainer() {
     };
 
     void load();
-  }, [fetchCategoryOptions, refreshAssetCount, router, supabase]);
+  }, [fetchCategoryOptions, refreshAssetCount, router, setIsLoading, supabase]);
 
   const uploadAssetMedia = useCallback(
     async (assetId: string, draft: AssetMediaDraft) => {
@@ -572,7 +407,7 @@ export function AssetsPageContainer() {
     }
   };
 
-  const onStartEdit = (asset: AssetDashboardRow) => {
+  const onStartEdit = async (asset: AssetDashboardRow) => {
     setEditingAsset({
       id: asset.id,
       name: asset.name,
@@ -591,13 +426,113 @@ export function AssetsPageContainer() {
     setQrPreviewAssetId(null);
     setEditMediaDraft(EMPTY_MEDIA_DRAFT);
     setEditMediaErrorMessage("");
+    setEditExistingMedia([]);
+    setIsEditMediaLoading(true);
     setFeedback("");
+
+    if (!userId) {
+      setIsEditMediaLoading(false);
+      return;
+    }
+
+    const mediaItems = await loadEditMediaItems(userId, asset);
+    setEditExistingMedia(mediaItems);
+    setIsEditMediaLoading(false);
   };
 
   const onCancelEdit = () => {
     setEditingAsset(null);
     setEditMediaDraft(EMPTY_MEDIA_DRAFT);
     setEditMediaErrorMessage("");
+    setEditExistingMedia([]);
+    setIsEditMediaLoading(false);
+    setRemovingEditMediaId(null);
+  };
+
+  const onRemoveExistingMedia = async (item: AssetFormExistingMediaItem) => {
+    if (!editingAsset) {
+      setFeedback("Duzenlenen varlik bulunamadi.");
+      return;
+    }
+
+    if (!userId) {
+      setFeedback("Kullanici bilgisi yuklenemedi.");
+      return;
+    }
+
+    setRemovingEditMediaId(item.id);
+
+    try {
+      if (!item.isLegacy) {
+        const { error: deleteMediaError } = await supabase
+          .from("asset_media")
+          .delete()
+          .eq("id", item.id)
+          .eq("asset_id", editingAsset.id)
+          .eq("user_id", userId);
+
+        if (deleteMediaError) {
+          setFeedback(deleteMediaError.message);
+          return;
+        }
+
+        await supabase.storage.from(ASSET_MEDIA_BUCKET).remove([item.storagePath]);
+      } else {
+        await Promise.all([
+          supabase.storage.from(ASSET_MEDIA_BUCKET).remove([item.storagePath]),
+          supabase.storage.from(LEGACY_PHOTO_BUCKET).remove([item.storagePath]),
+        ]);
+      }
+
+      const nextItems = editExistingMedia.filter((media) => media.id !== item.id);
+      setEditExistingMedia(nextItems);
+
+      const shouldRefreshPhotoPath =
+        item.type === "image" && (item.isLegacy || editingAsset.photo_path === item.storagePath);
+
+      if (shouldRefreshPhotoPath) {
+        const nextImage = nextItems.find((media) => media.type === "image") ?? null;
+        const nextPhotoPath = nextImage?.storagePath ?? null;
+
+        const { error: updatePhotoPathError } = await supabase
+          .from("assets")
+          .update({ photo_path: nextPhotoPath })
+          .eq("id", editingAsset.id)
+          .eq("user_id", userId);
+
+        if (updatePhotoPathError) {
+          setFeedback(updatePhotoPathError.message);
+          return;
+        }
+
+        setEditingAsset((prev) => (prev ? { ...prev, photo_path: nextPhotoPath } : prev));
+        setAssets((prev) =>
+          prev.map((row) =>
+            row.id === editingAsset.id
+              ? {
+                  ...row,
+                  photo_path: nextPhotoPath,
+                }
+              : row,
+          ),
+        );
+        setThumbnailUrls((prev) => {
+          const next = { ...prev };
+          if (nextImage) {
+            next[editingAsset.id] = nextImage.signedUrl;
+          } else {
+            delete next[editingAsset.id];
+          }
+          return next;
+        });
+      }
+
+      setFeedback("Mevcut medya kaldirildi.");
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Medya kaldirilamadi.");
+    } finally {
+      setRemovingEditMediaId(null);
+    }
   };
 
   useEffect(() => {
@@ -680,6 +615,9 @@ export function AssetsPageContainer() {
       setEditingAsset(null);
       setEditMediaDraft(EMPTY_MEDIA_DRAFT);
       setEditMediaErrorMessage("");
+      setEditExistingMedia([]);
+      setIsEditMediaLoading(false);
+      setRemovingEditMediaId(null);
       await Promise.all([
         refreshAssetCount(userId),
         fetchCategoryOptions(userId),
@@ -746,7 +684,14 @@ export function AssetsPageContainer() {
       return next;
     });
     await Promise.all([refreshAssetCount(userId), fetchCategoryOptions(userId)]);
-    if (editingAsset?.id === asset.id) setEditingAsset(null);
+    if (editingAsset?.id === asset.id) {
+      setEditingAsset(null);
+      setEditExistingMedia([]);
+      setEditMediaDraft(EMPTY_MEDIA_DRAFT);
+      setEditMediaErrorMessage("");
+      setIsEditMediaLoading(false);
+      setRemovingEditMediaId(null);
+    }
     if (selectedPreviewAssetId === asset.id) setSelectedPreviewAssetId(null);
     if (qrPreviewAssetId === asset.id) setQrPreviewAssetId(null);
     setAuditRefreshKey((prev) => prev + 1);
@@ -889,33 +834,6 @@ export function AssetsPageContainer() {
     setEditMediaDraft(nextDraft);
   };
 
-  const dashboardRows = useMemo<AssetDashboardRow[]>(() => {
-    return assets.map((asset) => {
-      return {
-        id: asset.id,
-        name: asset.name,
-        category: asset.category,
-        serial_number: asset.serial_number,
-        brand: asset.brand,
-        model: asset.model,
-        purchase_date: asset.purchase_date,
-        warranty_end_date: asset.warranty_end_date,
-        photo_path: asset.photo_path,
-        qr_code: asset.qr_code,
-        created_at: asset.created_at,
-        updated_at: asset.updated_at,
-        warrantyState: asset.warranty_state,
-        maintenanceState: asset.maintenance_state,
-        assetState: asset.asset_state,
-        nextMaintenanceDate: asIsoDate(asset.next_maintenance_date),
-        lastServiceDate: asIsoDate(asset.last_service_date),
-        documentCount: Number(asset.document_count ?? 0),
-        totalCost: Number(asset.total_cost ?? 0),
-        score: Number(asset.score ?? 0),
-      };
-    });
-  }, [assets]);
-
   const selectedPreviewAsset = useMemo(() => {
     if (!selectedPreviewAssetId) return null;
     return dashboardRows.find((asset) => asset.id === selectedPreviewAssetId) ?? null;
@@ -936,15 +854,6 @@ export function AssetsPageContainer() {
       setSelectedPreviewAssetId(null);
     }
   }, [dashboardRows, selectedPreviewAssetId]);
-
-  useEffect(() => {
-    if (!userId) return;
-    void fetchAssetsPage(userId, {
-      append: false,
-      cursor: null,
-      ...listQueryOptions,
-    });
-  }, [fetchAssetsPage, listQueryOptions, userId]);
 
   const mediaSummary = useMemo(
     () => ({
@@ -973,18 +882,6 @@ export function AssetsPageContainer() {
     createForm.querySelector<HTMLInputElement>("input[name='name']")?.focus();
   }, []);
 
-  const summary = useMemo(() => {
-    const overdueCount = dashboardRows.filter((asset) => asset.maintenanceState === "overdue").length;
-    const upcomingCount = dashboardRows.filter((asset) => asset.maintenanceState === "upcoming").length;
-    const expiringWarrantyCount = dashboardRows.filter((asset) => asset.warrantyState !== "active").length;
-    const avgScore =
-      dashboardRows.length === 0
-        ? 0
-        : Math.round(dashboardRows.reduce((sum, asset) => sum + asset.score, 0) / dashboardRows.length);
-
-    return { overdueCount, upcomingCount, expiringWarrantyCount, avgScore };
-  }, [dashboardRows]);
-
   if (!hasValidSession) return null;
 
   return (
@@ -998,7 +895,7 @@ export function AssetsPageContainer() {
             type="button"
             onClick={focusCreateAssetForm}
             className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-sky-500 to-cyan-500 px-4 py-2 text-sm font-semibold text-white"
-            data-testid="assets-add-button"
+            data-testid="create-asset-button"
           >
             <Plus className="h-4 w-4" />
             Varlık Ekle
@@ -1042,14 +939,7 @@ export function AssetsPageContainer() {
         assets={assets.slice(0, assetLimit ?? 3).map((asset) => ({ id: asset.id, name: asset.name, category: asset.category }))}
       />
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="assets-summary">
-        <SummaryItem label="Toplam Varlık" value={String(totalAssetCount)} />
-        <SummaryItem label="Yaklaşan Bakım" value={String(summary.upcomingCount)} />
-        <SummaryItem label="Riskli Garanti" value={String(summary.expiringWarrantyCount)} />
-        <SummaryItem label="Ortalama Skor" value={`${summary.avgScore}`} accent={summary.overdueCount > 0 ? "warn" : "ok"} />
-      </section>
-
-      <AssetsFilterBar
+      <AssetsToolbar
         searchTerm={searchTerm}
         onSearchTermChange={setSearchTerm}
         categoryFilter={categoryFilter}
@@ -1066,38 +956,31 @@ export function AssetsPageContainer() {
         onViewModeChange={setViewMode}
         categories={categories}
       />
-
-      <AssetListTable
+      <AssetsContent
+        totalAssetCount={totalAssetCount}
+        summary={summary}
         isLoading={isLoading}
         viewMode={viewMode}
-        assets={dashboardRows}
+        dashboardRows={dashboardRows}
+        hasActiveFilters={hasActiveFilters}
         thumbnailUrls={thumbnailUrls}
         onSelectAsset={(asset) => setSelectedPreviewAssetId(asset.id)}
         onStartEdit={onStartEdit}
         onShowQr={(asset) => setQrPreviewAssetId(asset.id)}
         onDeleteAsset={onDeleteAsset}
         onFocusCreateAsset={focusCreateAssetForm}
+        onClearFilters={clearFilters}
+        hasMoreAssets={hasMoreAssets}
+        isLoadingMoreAssets={isLoadingMoreAssets}
+        onLoadMore={() => {
+          if (!userId || !assetsCursor || isLoadingMoreAssets) return;
+          void fetchAssetsPage(userId, {
+            append: true,
+            cursor: assetsCursor,
+            ...listQueryOptions,
+          });
+        }}
       />
-
-      {hasMoreAssets ? (
-        <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={() => {
-              if (!userId || !assetsCursor || isLoadingMoreAssets) return;
-              void fetchAssetsPage(userId, {
-                append: true,
-                cursor: assetsCursor,
-                ...listQueryOptions,
-              });
-            }}
-            disabled={isLoadingMoreAssets}
-            className="rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isLoadingMoreAssets ? "Yukleniyor..." : "Daha Fazla Varlik"}
-          </button>
-        </div>
-      ) : null}
 
       <section id="asset-create-form" className="grid gap-3 xl:grid-cols-[1.05fr_0.95fr]" data-testid="assets-create-section">
         <AssetForm
@@ -1159,6 +1042,10 @@ export function AssetsPageContainer() {
           mediaErrorMessage={editMediaErrorMessage}
           mediaSummary={editMediaSummary}
           onMediaSelection={onEditMediaSelection}
+          existingMediaItems={editExistingMedia}
+          isLoadingExistingMedia={isEditMediaLoading}
+          removingExistingMediaId={removingEditMediaId}
+          onRemoveExistingMedia={onRemoveExistingMedia}
         />
       ) : null}
 
@@ -1183,19 +1070,3 @@ export function AssetsPageContainer() {
   );
 }
 
-function SummaryItem({
-  label,
-  value,
-  accent = "ok",
-}: {
-  label: string;
-  value: string;
-  accent?: "ok" | "warn";
-}) {
-  return (
-    <article className="premium-card p-5">
-      <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{label}</p>
-      <p className={`mt-2 text-2xl font-semibold ${accent === "warn" ? "text-amber-200" : "text-white"}`}>{value}</p>
-    </article>
-  );
-}

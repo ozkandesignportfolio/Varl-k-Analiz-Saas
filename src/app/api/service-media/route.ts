@@ -12,6 +12,7 @@ import {
 } from "@/lib/service-media/enrichment-jobs";
 import { requireRouteUser, type RouteAuthSuccess } from "@/lib/supabase/route-auth";
 import { fileConstraints, optionalText, parseDateOnly, uuid } from "@/lib/validation";
+import { buildQueuedServiceMediaResponse } from "./response";
 
 export const runtime = "nodejs";
 
@@ -52,30 +53,6 @@ type UploadAttempt =
       error: string;
       orphanedStoragePath?: string;
     };
-
-export function buildQueuedServiceMediaResponse(params: {
-  uploadedCount: number;
-  queuedJob: QueueRow | null;
-  uploads: MediaUploadResult[];
-}) {
-  return NextResponse.json(
-    {
-      ok: true,
-      uploadedCount: params.uploadedCount,
-      enrichment: params.queuedJob?.status ?? "queued",
-      jobId: params.queuedJob?.id ?? null,
-      media: params.uploads.map((item) => ({
-        kind: item.kind,
-        fileName: item.fileName,
-        mimeType: item.mimeType,
-        size: item.size,
-        storagePath: item.storagePath,
-        metadata: item.metadata,
-      })),
-    },
-    { status: 202 },
-  );
-}
 
 const allowedMimeTypes: Record<MediaKind, string[]> = {
   photo: ["image/jpeg", "image/png", "image/webp", "image/heic"],

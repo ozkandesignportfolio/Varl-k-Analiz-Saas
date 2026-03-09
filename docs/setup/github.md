@@ -6,7 +6,7 @@ Bu ortamda `git` araci kurulu olmadığı için remote bağlantısı komutlari m
 ```bash
 git init
 git add .
-git commit -m "chore: bootstrap AssetCare MVP"
+git commit -m "chore: bootstrap Assetly MVP"
 ```
 
 ## 2) GitHub remote ekleme

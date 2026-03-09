@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import type { ComponentType } from "react"
 import { BarChart3, Bell, Clock, FileText, Lock, QrCode, Shield, Smartphone, Wrench, Zap } from "lucide-react"
@@ -90,7 +90,7 @@ export function FeaturesSection() {
             İhtiyacınız olan her şey, <span className="text-gradient">tek platformda</span>
           </h2>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
-            AssetCare ile varlık yönetiminin tüm boyutlarını kontrol altına alın
+            Assetly ile varlık yönetiminin tüm boyutlarını kontrol altına alın
           </p>
         </div>
 

@@ -155,7 +155,7 @@ export default function LoginPage() {
             href="/"
             className="inline-flex items-center gap-2 rounded-full border border-white/15 px-3 py-1.5 text-xs text-slate-300"
           >
-            AssetCare
+            Assetly
           </Link>
           <h1 className="mt-5 text-4xl font-semibold leading-[1.1] text-white">
             Hesabınıza
@@ -171,30 +171,30 @@ export default function LoginPage() {
           <h2 className="text-2xl font-semibold text-white">Giriş Yap</h2>
           <p className="mt-2 text-sm text-slate-300">Devam etmek için hesabınıza giriş yapın.</p>
 
-          <form onSubmit={onSubmit} className="mt-6 space-y-4" data-testid="login-form">
+            <form onSubmit={onSubmit} method="post" className="mt-6 space-y-4" data-testid="login-form">
             <label className="block">
               <span className="mb-1.5 block text-sm text-slate-300">E-posta</span>
-              <input
-                name="email"
-                type="email"
-                required
-                className={inputClassName}
-                placeholder="ornek@mail.com"
-                defaultValue={verificationEmail || undefined}
-                data-testid="login-email-input"
-              />
+                <input
+                  name="email"
+                  type="email"
+                  required
+                  className={inputClassName}
+                  placeholder="ornek@mail.com"
+                  defaultValue={verificationEmail || undefined}
+                  data-testid="login-email"
+                />
             </label>
 
             <label className="block">
               <span className="mb-1.5 block text-sm text-slate-300">Şifre</span>
-              <input
-                name="password"
-                type="password"
-                required
-                className={inputClassName}
-                placeholder="********"
-                data-testid="login-password-input"
-              />
+                <input
+                  name="password"
+                  type="password"
+                  required
+                  className={inputClassName}
+                  placeholder="********"
+                  data-testid="login-password"
+                />
             </label>
 
             <div className="text-right">
@@ -203,12 +203,12 @@ export default function LoginPage() {
               </Link>
             </div>
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
-              data-testid="login-submit-button"
-            >
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+                data-testid="login-submit"
+              >
               {isSubmitting ? "Giriş yapılıyor..." : "Giriş Yap"}
             </button>
 

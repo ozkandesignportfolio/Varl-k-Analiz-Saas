@@ -19,7 +19,7 @@ export function LegalLayout({ title, subtitle, lastUpdated, children }: LegalLay
     <main className="mx-auto min-h-screen w-full max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
       <article className="premium-panel p-6 sm:p-8 lg:p-10">
         <header className="border-b border-white/10 pb-6">
-          <p className="text-xs uppercase tracking-[0.22em] text-slate-400">AssetCare Legal</p>
+          <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Assetly Legal</p>
           <h1 className="mt-4 text-3xl font-semibold leading-[1.1] text-white sm:text-4xl">{title}</h1>
           <p className="mt-4 text-sm leading-7 text-slate-300">{subtitle}</p>
           <p className="mt-3 text-xs uppercase tracking-[0.18em] text-slate-400">Last updated: {lastUpdated}</p>

@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Gizlilik Politikası | AssetCare",
-  description: "AssetCare platformunda kişisel verilerin işlenmesine ilişkin gizlilik politikası.",
+  title: "Gizlilik Politikası | Assetly",
+  description: "Assetly platformunda kişisel verilerin işlenmesine ilişkin gizlilik politikası.",
 };
 
 export default function PrivacyPage() {
   return (
     <article className="space-y-10">
       <header className="space-y-4 border-b border-white/10 pb-8">
-        <p className="text-xs uppercase tracking-[0.22em] text-slate-400">AssetCare Legal</p>
+        <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Assetly Legal</p>
         <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Gizlilik Politikası</h1>
         <p className="text-sm leading-7 text-slate-300">
-          Bu politika, AssetCare hizmetini kullanırken işlenen kişisel ve operasyonel verilerin kapsamını,
+          Bu politika, Assetly hizmetini kullanırken işlenen kişisel ve operasyonel verilerin kapsamını,
           işlenme yöntemini ve kullanıcı haklarını açıklar.
         </p>
         <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Son güncelleme: 18 Şubat 2026</p>
@@ -63,12 +63,12 @@ export default function PrivacyPage() {
         <h2 className="border-l-2 border-indigo-500 pl-4 text-2xl font-semibold text-white">İletişim</h2>
         <p className="leading-7 text-slate-300">
           Gizlilik talepleri için{" "}
-          <a href="mailto:privacy@assetcare.app" className="text-indigo-300 underline underline-offset-2">
-            privacy@assetcare.app
+          <a href="mailto:assetly@gmail.com" className="text-indigo-300 underline underline-offset-2">
+            assetly@gmail.com
           </a>{" "}
           adresine, genel destek konuları için{" "}
-          <a href="mailto:support@assetcare.app" className="text-indigo-300 underline underline-offset-2">
-            support@assetcare.app
+          <a href="mailto:assetly@gmail.com" className="text-indigo-300 underline underline-offset-2">
+            assetly@gmail.com
           </a>{" "}
           adresine yazabilirsiniz.
         </p>

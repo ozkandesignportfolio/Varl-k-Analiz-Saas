@@ -1,4 +1,4 @@
-﻿import type { Metadata, Viewport } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { JetBrains_Mono } from "next/font/google";
 import { PwaRegister } from "@/components/pwa/register-sw";
@@ -20,10 +20,10 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AssetCare | Premium Varlık Takip SaaS",
+  title: "Assetly | Premium Varlık Takip SaaS",
   description:
     "Varlıklarınızın bakım, garanti, servis ve belge süreçlerini premium panelde takip edin.",
-  applicationName: "AssetCare",
+  applicationName: "Assetly",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "AssetCare",
+    title: "Assetly",
   },
 };
 

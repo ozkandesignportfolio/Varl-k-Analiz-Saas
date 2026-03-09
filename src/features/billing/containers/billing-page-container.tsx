@@ -235,26 +235,31 @@ export function BillingPageContainer() {
     );
   }, [subscriptions]);
 
+  const activeSubscriptions = useMemo(
+    () => subscriptions.filter((subscription) => subscription.status === "active"),
+    [subscriptions],
+  );
+
+  const activeSubscriptionCount = activeSubscriptions.length;
+
   const monthlyEquivalent = useMemo(() => {
-    return subscriptions
-      .filter((subscription) => subscription.status === "active")
-      .reduce((sum, subscription) => {
-        const amount = Number(subscription.amount ?? 0);
-        return sum + (subscription.billing_cycle === "yearly" ? amount / 12 : amount);
-      }, 0);
-  }, [subscriptions]);
+    return activeSubscriptions.reduce((sum, subscription) => {
+      const amount = Number(subscription.amount ?? 0);
+      return sum + (subscription.billing_cycle === "yearly" ? amount / 12 : amount);
+    }, 0);
+  }, [activeSubscriptions]);
 
   const nextThirtyDaysCount = useMemo(() => {
     const now = new Date();
     const maxDate = new Date(now);
     maxDate.setDate(now.getDate() + 30);
 
-    return subscriptions.filter((subscription) => {
-      if (subscription.status !== "active" || !subscription.next_billing_date) return false;
+    return activeSubscriptions.filter((subscription) => {
+      if (!subscription.next_billing_date) return false;
       const nextDate = new Date(subscription.next_billing_date);
       return nextDate >= now && nextDate <= maxDate;
     }).length;
-  }, [subscriptions]);
+  }, [activeSubscriptions]);
 
   const unpaidInvoiceCount = useMemo(
     () => invoices.filter((invoice) => invoice.status === "pending" || invoice.status === "overdue").length,
@@ -511,7 +516,7 @@ export function BillingPageContainer() {
       <section className="grid gap-3 md:grid-cols-4">
         <SummaryCard
           label="Aktif Abonelik"
-          value={String(subscriptions.filter((item) => item.status === "active").length)}
+          value={String(activeSubscriptionCount)}
         />
         <SummaryCard label="Aylık Eşdeğer Toplam" value={currencyFormatter.format(monthlyEquivalent)} />
         <SummaryCard label="30 Gün İçinde Yenileme" value={String(nextThirtyDaysCount)} />
@@ -536,12 +541,12 @@ export function BillingPageContainer() {
           formatCurrency={(value) => currencyFormatter.format(value)}
           emptyState={
             !isLoading ? (
-              <GuidedEmptyState
-                title="İlk aboneliği ekle"
-                description="Onboarding adimi olarak önce bir abonelik kaydı oluştur. Sonra bu abonelige fatura baglayabilirsin."
-                primaryAction={{
-                  label: "Abonelik formuna git",
-                  onClick: focusCreateSubscriptionForm,
+                <GuidedEmptyState
+                  title="İlk aboneliği ekle"
+                  description="Onboarding adımı olarak önce bir abonelik kaydı oluştur. Sonra bu aboneliğe fatura bağlayabilirsin."
+                  primaryAction={{
+                    label: "Abonelik formuna git",
+                    onClick: focusCreateSubscriptionForm,
                 }}
                 secondaryAction={
                   maintenanceRules.length > 0
@@ -610,4 +615,3 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
-

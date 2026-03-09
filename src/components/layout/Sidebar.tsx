@@ -91,7 +91,7 @@ export function Sidebar({ collapsed = false, brand, footer, className, onNavigat
           <Link
             href="/"
             onClick={onNavigate}
-            aria-label="AssetCare ana sayfa"
+            aria-label="Assetly ana sayfa"
             className={cn(
               "auth-shell-brand auth-focus-ring flex items-center gap-3 rounded-xl px-2 py-2",
               collapsed && "justify-center px-2",
@@ -102,7 +102,7 @@ export function Sidebar({ collapsed = false, brand, footer, className, onNavigat
             </span>
             {!collapsed ? (
               <div>
-                <p className="text-xs font-bold tracking-tight text-[var(--auth-foreground)]">ASSETCARE</p>
+                <p className="text-xs font-bold tracking-tight text-[var(--auth-foreground)]">ASSETLY</p>
                 <p className="text-[9px] text-[var(--auth-muted)]">{sidebarPlanLabel}</p>
               </div>
             ) : null}

@@ -25,7 +25,7 @@ export default function LegalLayout({ children }: { children: ReactNode }) {
                 AC
               </span>
               <div>
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-400">AssetCare</p>
+                <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Assetly</p>
                 <p className="text-sm font-semibold text-white">Yasal Metinler</p>
               </div>
             </Link>
@@ -79,7 +79,7 @@ export default function LegalLayout({ children }: { children: ReactNode }) {
         </section>
 
         <footer className="premium-panel motion-fade-up motion-delay-2 px-6 py-8">
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">AssetCare Legal</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Assetly Legal</p>
           <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
             {legalLinks.map((item) => (
               <Link

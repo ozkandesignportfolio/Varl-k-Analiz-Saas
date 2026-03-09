@@ -102,18 +102,18 @@ export function SidebarFooter({
       ) : null}
 
       {plan !== "premium" ? (
-        <article className="auth-plan-card auth-plan-card-free rounded-xl p-3">
+        <article className="auth-plan-card auth-plan-card-free rounded-xl p-3" data-testid="sidebar-plan-limit-card">
           <p className="text-xs tracking-[0.2em] text-amber-100">{FREE_PLAN_LABEL}</p>
-          <p className="mt-2 text-sm font-semibold text-[var(--auth-foreground)]">
+          <p className="mt-2 text-sm font-semibold text-[var(--auth-foreground)]" data-testid="sidebar-plan-assets">
             {SIDEBAR_TEXT.usageAssets}: {formatUsage(assetCount, assetLimit)}
           </p>
-          <p className="mt-1 text-xs text-[var(--auth-muted)]">
+          <p className="mt-1 text-xs text-[var(--auth-muted)]" data-testid="sidebar-plan-documents">
             {SIDEBAR_TEXT.usageDocuments}: {formatUsage(documentCount, documentLimit)}
           </p>
-          <p className="mt-1 text-xs text-[var(--auth-muted)]">
+          <p className="mt-1 text-xs text-[var(--auth-muted)]" data-testid="sidebar-plan-subscriptions">
             {SIDEBAR_TEXT.usageSubscriptions}: {formatUsage(subscriptionCount, subscriptionLimit)}
           </p>
-          <p className="mt-1 text-xs text-[var(--auth-muted)]">
+          <p className="mt-1 text-xs text-[var(--auth-muted)]" data-testid="sidebar-plan-invoices">
             {SIDEBAR_TEXT.usageInvoiceUploads}: {formatUsage(invoiceUploadCount, invoiceUploadLimit)}
           </p>
           <div className="auth-plan-progress mt-2 h-2 rounded-full">
@@ -125,6 +125,7 @@ export function SidebarFooter({
           <Link
             href="/pricing"
             onClick={onNavigate}
+            data-testid="sidebar-plan-upgrade-button"
             className="auth-focus-ring mt-3 inline-flex w-full items-center justify-center rounded-lg border border-amber-300/35 bg-amber-300/18 px-3 py-2 text-sm font-semibold text-amber-100 transition hover:bg-amber-300/28"
           >
             {SIDEBAR_TEXT.upgradeCta}

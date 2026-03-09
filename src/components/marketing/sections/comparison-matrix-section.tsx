@@ -42,9 +42,9 @@ const rows = [
 export default function ComparisonMatrixSection() {
   return (
     <section id="neden-assetcare" className="premium-panel motion-fade-up motion-delay-2 p-6 sm:p-7">
-      <h2 className="text-2xl font-semibold text-white">Neden AssetCare?</h2>
+      <h2 className="text-2xl font-semibold text-white">Neden Assetly?</h2>
       <p className="mt-2 text-sm text-slate-300">
-        Alternatif araçlar sadece hatırlatır; AssetCare aksiyon üretir ve kanıtlar.
+        Alternatif araçlar sadece hatırlatır; Assetly aksiyon üretir ve kanıtlar.
       </p>
 
       <div className="mt-5 overflow-x-auto">
@@ -55,7 +55,7 @@ export default function ComparisonMatrixSection() {
               <th className="border-b border-white/15 bg-white/[0.03] px-4 py-3 font-semibold">Reminder Uygulaması</th>
               <th className="border-b border-white/15 bg-white/[0.03] px-4 py-3 font-semibold">Excel/Not Defteri</th>
               <th className="matrix-accent border-b border-indigo-300/45 bg-indigo-500/10 px-4 py-3 font-semibold text-indigo-100">
-                AssetCare ✓
+                Assetly ✓
               </th>
             </tr>
           </thead>

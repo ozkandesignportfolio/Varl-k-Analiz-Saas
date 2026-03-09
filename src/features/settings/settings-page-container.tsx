@@ -273,7 +273,7 @@ export function SettingsPageContainer() {
 
       if (!res.ok) {
         const responseText = await res.text();
-        const checkoutError = responseText || "Stripe checkout baslatilamadi.";
+        const checkoutError = responseText || "Stripe checkout başlatılamadı.";
         console.error("Stripe checkout failed:", res.status, checkoutError);
         alert(checkoutError);
         setFeedback(checkoutError);
@@ -284,7 +284,7 @@ export function SettingsPageContainer() {
       const data = (await res.json().catch(() => null)) as { url?: string } | null;
 
       if (!data?.url) {
-        const missingUrlError = "Checkout URL donmedi.";
+        const missingUrlError = "Checkout URL dönmedi.";
         console.error("Stripe checkout failed:", missingUrlError);
         alert(missingUrlError);
         setFeedback(missingUrlError);
@@ -294,7 +294,7 @@ export function SettingsPageContainer() {
 
       window.location.href = data.url;
     } catch (error) {
-      const networkError = "Stripe yaniti okunamadi.";
+      const networkError = "Stripe yanıtı okunamadı.";
       console.error("Stripe checkout request failed:", error);
       alert(networkError);
       setFeedback(networkError);
