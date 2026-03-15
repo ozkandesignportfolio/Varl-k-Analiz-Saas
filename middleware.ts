@@ -16,7 +16,7 @@ const protectedRoutes = [
   "/settings",
 ];
 
-const authRoutes = ["/login", "/register"];
+const authRoutes = ["/login", "/register", "/verify-email"];
 const middlewareBypassPrefixes = ["/api/", "/billing/", "/_next/"] as const;
 const middlewareBypassExactPaths = new Set(["/api", "/billing", "/_next", "/favicon.ico"]);
 

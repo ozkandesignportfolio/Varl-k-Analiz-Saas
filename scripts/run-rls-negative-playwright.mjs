@@ -36,7 +36,7 @@ const args = [
 ];
 
 const env = { ...process.env };
-const configuredBaseUrl = (env.PLAYWRIGHT_BASE_URL || env.TEST_BASE_URL || "").trim();
+const configuredBaseUrl = (env.TEST_BASE_URL || env.PLAYWRIGHT_BASE_URL || "").trim();
 if (configuredBaseUrl.length > 0) {
   env.PLAYWRIGHT_BASE_URL = configuredBaseUrl;
 }

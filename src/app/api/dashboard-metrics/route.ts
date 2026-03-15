@@ -131,7 +131,13 @@ const triggerRefreshInBackground = (serviceClient: ReturnType<typeof getServiceR
     ) => Promise<{ data: unknown; error: PostgrestError | null }>;
   };
 
-  void rpcClient.rpc("refresh_global_metrics_cache", { p_key: CACHE_KEY }).catch(() => undefined);
+  void (async () => {
+    try {
+      await rpcClient.rpc("refresh_global_metrics_cache", { p_key: CACHE_KEY });
+    } catch {
+      // Best-effort refresh. Serving cached/fallback payload is still valid.
+    }
+  })();
 };
 
 export async function GET(request: Request) {

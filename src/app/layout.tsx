@@ -7,7 +7,6 @@ import "./globals.css";
 
 const inter = Inter({
   variable: "--font-inter",
-  weight: ["400", "500", "600", "700"],
   subsets: ["latin", "latin-ext"],
   display: "swap",
 });
@@ -52,11 +51,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="tr" suppressHydrationWarning>
+    <html lang="tr" className={jetBrainsMono.variable} suppressHydrationWarning>
       <head>
-        <meta charSet="UTF-8" />
+        <meta charSet="utf-8" />
       </head>
-      <body className={`${inter.variable} ${jetBrainsMono.variable} antialiased font-sans`}>
+      <body className={inter.className}>
         <PlanProvider>
           <PwaRegister />
           {children}
@@ -65,4 +64,3 @@ export default function RootLayout({
     </html>
   );
 }
-

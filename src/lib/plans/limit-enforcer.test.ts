@@ -124,7 +124,7 @@ test("enforceLimit blocks subscriptions creation when free limit is reached", as
 });
 
 test("enforceLimit blocks invoices creation when free limit is reached", async () => {
-  const client = createMockClient({ counts: { billing_invoices: 5 } });
+  const client = createMockClient({ counts: { billing_invoices: 3 } });
 
   await assert.rejects(
     () =>
@@ -141,12 +141,26 @@ test("enforceLimit blocks invoices creation when free limit is reached", async (
       const body = toPlanLimitErrorBody(error);
       assert.deepEqual(body, {
         code: "PLAN_LIMIT",
-        message: "Free planda en fazla 5 fatura olusturabilirsiniz.",
-        limit: 5,
+        message: "Free planda en fazla 3 fatura olusturabilirsiniz.",
+        limit: 3,
         resource: "invoices",
       });
       return true;
     },
+  );
+});
+
+test("enforceLimit allows creating the third invoice on free plan", async () => {
+  const client = createMockClient({ counts: { billing_invoices: 2 } });
+
+  await assert.doesNotReject(() =>
+    enforceLimit({
+      client,
+      userId: "user-1",
+      profilePlan: "free",
+      resource: "invoices",
+      delta: 1,
+    }),
   );
 });
 

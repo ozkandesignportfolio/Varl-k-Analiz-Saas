@@ -4,7 +4,7 @@ import { loadTestEnv } from "./scripts/load-test-env.cjs";
 
 loadTestEnv();
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:3000";
+const baseURL = process.env.TEST_BASE_URL || process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:3100";
 
 export default defineConfig({
   testDir: "./testsprite/tests",
@@ -25,10 +25,10 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "retain-on-failure",
   },
-  webServer: process.env.PLAYWRIGHT_BASE_URL
+  webServer: process.env.TEST_BASE_URL || process.env.PLAYWRIGHT_BASE_URL
     ? undefined
     : {
-        command: "npm run dev -- -p 3000",
+        command: "npm run dev -- -p 3100",
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 180_000,

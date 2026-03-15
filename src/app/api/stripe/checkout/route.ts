@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logApiError } from "@/lib/api/logging";
 import { enforceRateLimit, getRequestIp } from "@/lib/api/rate-limit";
 import { getStripeSecretKeyValidationError, stripe } from "@/lib/stripe";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
@@ -115,8 +116,16 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ url: session.url }, { status: 200 });
   } catch (error) {
-    console.error("Stripe checkout session creation failed.", {
-      message: error instanceof Error ? error.message : String(error),
+    logApiError({
+      route: "/api/stripe/checkout",
+      method: "POST",
+      status: 500,
+      error,
+      message: "Stripe checkout session creation failed.",
+      userId: user.id,
+      meta: {
+        message: error instanceof Error ? error.message : String(error),
+      },
     });
     return NextResponse.json({ error: "Checkout oturumu baslatilamadi." }, { status: 500 });
   }

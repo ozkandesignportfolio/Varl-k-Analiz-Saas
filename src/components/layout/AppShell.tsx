@@ -2,7 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
+import type { Session } from "@supabase/supabase-js";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { AppHeader } from "@/components/layout/header/AppHeader";
 import { SIDEBAR_LABEL_BY_KEY, SIDEBAR_NAV_ITEMS } from "@/constants/sidebar-nav";
@@ -15,6 +24,12 @@ export type AppShellProps = {
   children?: ReactNode;
   actions?: ReactNode;
   badge?: string;
+};
+
+type AppShellSessionContextValue = {
+  isSessionReady: boolean;
+  userEmail: string | null;
+  userId: string | null;
 };
 
 const TITLE_MAP: Record<string, string> = {
@@ -34,6 +49,11 @@ const TITLE_MAP: Record<string, string> = {
   costs: SIDEBAR_LABEL_BY_KEY.costs,
 };
 const subscribeToHydration = () => () => {};
+const AppShellSessionContext = createContext<AppShellSessionContextValue>({
+  isSessionReady: false,
+  userEmail: null,
+  userId: null,
+});
 
 const isActivePath = (pathname: string, href: string) => {
   if (href === "/dashboard") return pathname === href;
@@ -66,31 +86,55 @@ const buildBreadcrumb = (pathname: string) => {
   return [NAV_TEXT.panel, ...readableParts].join(" / ");
 };
 
+export const useAppShellSession = () => useContext(AppShellSessionContext);
+
 export function AppShell({ title, subtitle, children, actions, badge }: AppShellProps) {
   const pathname = usePathname();
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
-  const mobileNavItems = useMemo(() => SIDEBAR_NAV_ITEMS, []);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [sessionState, setSessionState] = useState<AppShellSessionContextValue>({
+    isSessionReady: false,
+    userEmail: null,
+    userId: null,
+  });
   const isHydrated = useSyncExternalStore(subscribeToHydration, () => true, () => false);
 
   useEffect(() => {
     let isCancelled = false;
 
-    const loadSession = async () => {
+    const syncSessionState = async () => {
       const {
-        data: { user },
-      } = await supabase.auth.getUser();
+        data: { session },
+      } = await supabase.auth.getSession();
 
       if (isCancelled) {
         return;
       }
 
-      setUserEmail(user?.email ?? null);
+      setSessionState({
+        isSessionReady: true,
+        userEmail: session?.user?.email ?? null,
+        userId: session?.user?.id ?? null,
+      });
     };
 
-    void loadSession();
+    void syncSessionState();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event: unknown, session: Session | null) => {
+      if (isCancelled) {
+        return;
+      }
+
+      setSessionState({
+        isSessionReady: true,
+        userEmail: session?.user?.email ?? null,
+        userId: session?.user?.id ?? null,
+      });
+    });
+
     return () => {
       isCancelled = true;
+      subscription.unsubscribe();
     };
   }, [supabase]);
 
@@ -101,15 +145,16 @@ export function AppShell({ title, subtitle, children, actions, badge }: AppShell
   const pageContentTestId = `${primarySegment}-content`;
 
   return (
-    <div className="auth-shell-theme min-h-screen" data-testid="app-shell-root">
-      <Sidebar className="auth-shell-sidebar fixed left-0 top-0 z-50 hidden h-screen w-[var(--auth-sidebar-width)] lg:flex" />
+    <AppShellSessionContext.Provider value={sessionState}>
+      <div className="auth-shell-theme min-h-screen" data-testid="app-shell-root">
+        <Sidebar className="auth-shell-sidebar fixed left-0 top-0 z-50 hidden h-screen w-[var(--auth-sidebar-width)] lg:flex" />
 
-      <div className="auth-shell-layout lg:pl-[var(--auth-sidebar-width)]">
-        <AppHeader title={resolvedTitle} breadcrumb={breadcrumb} userEmail={userEmail} />
+        <div className="auth-shell-layout lg:pl-[var(--auth-sidebar-width)]">
+          <AppHeader title={resolvedTitle} breadcrumb={breadcrumb} userEmail={sessionState.userEmail} />
 
         <main className="auth-shell-main px-4 py-4 sm:px-6 lg:px-8" data-testid={pageRootTestId}>
           <nav aria-label="Mobil menü" className="auth-mobile-nav mb-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
-            {mobileNavItems.map((item) => {
+            {SIDEBAR_NAV_ITEMS.map((item) => {
               const active = isHydrated ? isActivePath(pathname ?? "", item.href) : false;
 
               return (
@@ -143,7 +188,8 @@ export function AppShell({ title, subtitle, children, actions, badge }: AppShell
             {children}
           </div>
         </main>
+        </div>
       </div>
-    </div>
+    </AppShellSessionContext.Provider>
   );
 }

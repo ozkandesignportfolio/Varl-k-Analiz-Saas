@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { AppShell } from "@/components/app-shell";
 
 type ErrorPageProps = {
@@ -9,7 +10,15 @@ type ErrorPageProps = {
   reset: () => void;
 };
 
-const reportRuntimeError = (error: Error) => {
+const reportRuntimeError = (error: Error & { digest?: string }) => {
+  Sentry.withScope((scope) => {
+    scope.setTag("runtime_surface", "app_error_boundary");
+    if (error.digest) {
+      scope.setContext("next_error", { digest: error.digest });
+    }
+    Sentry.captureException(error);
+  });
+
   const reporter = (window as Window & { reportError?: (value: unknown) => void }).reportError;
   if (typeof reporter === "function") {
     reporter(error);
@@ -29,7 +38,7 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
     >
       <section className="premium-card ui-pad">
         <p className="text-sm text-slate-200">
-          Beklenmeyen bir hata oluştu. Sayfayi yeniden denemek genellikle problemi cozer.
+          Beklenmeyen bir hata oluştu. Sayfayı yeniden denemek genellikle problemi çözer.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <button
@@ -50,4 +59,3 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
     </AppShell>
   );
 }
-

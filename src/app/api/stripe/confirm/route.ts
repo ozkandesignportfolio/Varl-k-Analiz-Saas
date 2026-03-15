@@ -1,5 +1,6 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { logApiError } from "@/lib/api/logging";
 import Stripe from "stripe";
 import { enforceUserRateLimit } from "@/lib/api/rate-limit";
 import { getStripeSecretKeyValidationError, stripe } from "@/lib/stripe";
@@ -106,6 +107,17 @@ export async function POST(request: Request) {
   );
 
   if (profileUpdateError) {
+    logApiError({
+      route: "/api/stripe/confirm",
+      method: "POST",
+      status: 500,
+      error: profileUpdateError,
+      message: "Profile plan update failed during Stripe confirm.",
+      userId: user.id,
+      meta: {
+        code: profileUpdateError.code ?? null,
+      },
+    });
     return NextResponse.json({ error: "Profil planı premium olarak güncellenemedi." }, { status: 500 });
   }
 
@@ -129,6 +141,17 @@ export async function POST(request: Request) {
     });
 
     if (error) {
+      logApiError({
+        route: "/api/stripe/confirm",
+        method: "POST",
+        status: 500,
+        error,
+        message: "Admin metadata update failed during Stripe confirm.",
+        userId: user.id,
+        meta: {
+          code: error.code ?? null,
+        },
+      });
       return NextResponse.json({ error: "Premium planı aktifleştirilemedi." }, { status: 500 });
     }
   } else {
@@ -137,6 +160,17 @@ export async function POST(request: Request) {
     });
 
     if (error) {
+      logApiError({
+        route: "/api/stripe/confirm",
+        method: "POST",
+        status: 500,
+        error,
+        message: "User metadata update failed during Stripe confirm.",
+        userId: user.id,
+        meta: {
+          code: error.code ?? null,
+        },
+      });
       return NextResponse.json({ error: "Premium planı aktifleştirilemedi." }, { status: 500 });
     }
   }

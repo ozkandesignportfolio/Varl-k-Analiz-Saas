@@ -34,21 +34,21 @@ const FREE_LIMIT_BY_RESOURCE: Record<LimitResource, number> = {
   assets: 3,
   documents: 5,
   subscriptions: 3,
-  invoices: 5,
+  invoices: 3,
 };
 
 const buildLimitMessage = (resource: LimitResource, limit: number) => {
   switch (resource) {
     case "assets":
-      return `Free planda en fazla ${limit} varlik olusturabilirsiniz.`;
+      return `Free planda en fazla ${limit} varlık oluşturabilirsiniz.`;
     case "documents":
-      return `Free planda en fazla ${limit} belge yukleyebilirsiniz.`;
+      return `Free planda en fazla ${limit} belge yükleyebilirsiniz.`;
     case "subscriptions":
-      return `Free planda en fazla ${limit} abonelik olusturabilirsiniz.`;
+      return `Free planda en fazla ${limit} abonelik oluşturabilirsiniz.`;
     case "invoices":
-      return `Free planda en fazla ${limit} fatura olusturabilirsiniz.`;
+      return `Free planda en fazla ${limit} fatura oluşturabilirsiniz.`;
     default:
-      return "Plan limitine ulastiniz.";
+      return "Plan limitine ulaştınız.";
   }
 };
 
@@ -106,7 +106,7 @@ const readProfilePlan = async (client: DbClient, userId: string) => {
 
   const response = await query.select("plan").eq("id", userId).maybeSingle();
   if (response.error) {
-    throw new Error(`Plan bilgisi okunamadi: ${response.error.message}`);
+    throw new Error(`Plan bilgisi okunamadı: ${response.error.message}`);
   }
 
   return normalizeProfilePlan(response.data?.plan);
@@ -157,7 +157,7 @@ const countByResource = async (client: DbClient, userId: string, resource: Limit
       return 0;
     }
 
-    throw new Error(`Limit sayimi basarisiz: ${primaryMessage || fallbackMessage}`);
+    throw new Error(`Limit sayımı başarısız: ${primaryMessage || fallbackMessage}`);
   }
 
   return response.count ?? 0;

@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { AssetListTable } from "@/features/assets/components/asset-list-table";
 import type { AssetDashboardRow, AssetViewMode } from "@/features/assets/components/assets-view-types";
 
@@ -25,7 +26,7 @@ type AssetsContentProps = {
   onLoadMore: () => void;
 };
 
-export function AssetsContent({
+export const AssetsContent = memo(function AssetsContent({
   totalAssetCount,
   summary,
   isLoading,
@@ -46,8 +47,8 @@ export function AssetsContent({
   return (
     <>
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="assets-summary">
-        <SummaryItem label="Toplam Varlik" value={String(totalAssetCount)} />
-        <SummaryItem label="Yaklasan Bakim" value={String(summary.upcomingCount)} />
+        <SummaryItem label="Toplam Varlık" value={String(totalAssetCount)} />
+        <SummaryItem label="Yaklaşan Bakım" value={String(summary.upcomingCount)} />
         <SummaryItem label="Riskli Garanti" value={String(summary.expiringWarrantyCount)} />
         <SummaryItem label="Ortalama Skor" value={`${summary.avgScore}`} accent={summary.overdueCount > 0 ? "warn" : "ok"} />
       </section>
@@ -74,13 +75,13 @@ export function AssetsContent({
             disabled={isLoadingMoreAssets}
             className="rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isLoadingMoreAssets ? "Yukleniyor..." : "Daha Fazla Varlik"}
+            {isLoadingMoreAssets ? "Yükleniyor..." : "Daha Fazla Varlık"}
           </button>
         </div>
       ) : null}
     </>
   );
-}
+});
 
 function SummaryItem({
   label,

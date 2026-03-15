@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 export type ServiceLogFormAssetOption = {
   id: string;
   name: string;
+  label: string;
 };
 
 type ServiceLogFormRuleOption = {
@@ -14,6 +15,7 @@ type ServiceLogFormRuleOption = {
 type ServiceLogFormBaseProps = {
   assets: ServiceLogFormAssetOption[];
   activeRulesForSelectedAsset: ServiceLogFormRuleOption[];
+  hasAnyRules: boolean;
   selectedAssetId: string;
   selectedRuleId: string;
   onSelectedAssetIdChange: (assetId: string) => void;
@@ -41,6 +43,7 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
     const {
       assets,
       activeRulesForSelectedAsset,
+      hasAnyRules,
       selectedAssetId,
       selectedRuleId,
       onSelectedAssetIdChange,
@@ -63,17 +66,21 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
               value={selectedAssetId}
               onChange={(event) => onSelectedAssetIdChange(event.target.value)}
               className={inputClassName}
+              disabled={assets.length === 0}
               data-testid="service-asset-select"
             >
               <option value="" disabled className="bg-slate-900">
-                Varlık seçin
+                {assets.length === 0 ? "Önce varlık ekleyin" : "Varlık seçin"}
               </option>
               {assets.map((asset) => (
                 <option key={asset.id} value={asset.id} className="bg-slate-900">
-                  {asset.name}
+                  {asset.label}
                 </option>
               ))}
             </select>
+            {assets.length === 0 ? (
+              <p className="mt-1.5 text-xs text-amber-200">Önce bir varlık eklemelisiniz.</p>
+            ) : null}
           </label>
 
           <label className="block">
@@ -82,7 +89,7 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
               value={selectedRuleId}
               onChange={(event) => onSelectedRuleIdChange(event.target.value)}
               className={inputClassName}
-              disabled={!selectedAssetId}
+              disabled={!selectedAssetId || activeRulesForSelectedAsset.length === 0}
               data-testid="service-rule-select"
             >
               <option value="" className="bg-slate-900">
@@ -94,6 +101,11 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
                 </option>
               ))}
             </select>
+            {!hasAnyRules ? (
+              <p className="mt-1.5 text-xs text-slate-300">Kayıtlı bakım kuralı bulunmuyor.</p>
+            ) : selectedAssetId && activeRulesForSelectedAsset.length === 0 ? (
+              <p className="mt-1.5 text-xs text-slate-300">Seçili varlık için aktif bakım kuralı bulunmuyor.</p>
+            ) : null}
           </label>
 
           <label className="block">
@@ -150,7 +162,7 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
           </label>
 
           <p className="md:col-span-2 text-xs text-slate-400">
-            Belge yükleme resmi olarak <span className="font-semibold">/documents</span> ekranindan yapilir.
+            Belge yükleme resmi olarak <span className="font-semibold">/documents</span> ekranından yapılır.
           </p>
 
           <div className="md:col-span-2 pt-1">
@@ -171,6 +183,7 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
   const {
     assets,
     activeRulesForSelectedAsset,
+    hasAnyRules,
     selectedAssetId,
     selectedRuleId,
     onSelectedAssetIdChange,
@@ -204,16 +217,20 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
             value={selectedAssetId}
             onChange={(event) => onSelectedAssetIdChange(event.target.value)}
             className={inputClassName}
+            disabled={assets.length === 0}
           >
             <option value="" disabled className="bg-slate-900">
-              Varlık seçin
+              {assets.length === 0 ? "Önce varlık ekleyin" : "Varlık seçin"}
             </option>
             {assets.map((asset) => (
               <option key={asset.id} value={asset.id} className="bg-slate-900">
-                {asset.name}
+                {asset.label}
               </option>
             ))}
           </select>
+          {assets.length === 0 ? (
+            <p className="mt-1.5 text-xs text-amber-200">Önce bir varlık eklemelisiniz.</p>
+          ) : null}
         </label>
 
         <label className="block">
@@ -222,7 +239,7 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
             value={selectedRuleId}
             onChange={(event) => onSelectedRuleIdChange(event.target.value)}
             className={inputClassName}
-            disabled={!selectedAssetId}
+            disabled={!selectedAssetId || activeRulesForSelectedAsset.length === 0}
           >
             <option value="" className="bg-slate-900">
               Kural seçmeden devam et
@@ -233,6 +250,11 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
               </option>
             ))}
           </select>
+          {!hasAnyRules ? (
+            <p className="mt-1.5 text-xs text-slate-300">Kayıtlı bakım kuralı bulunmuyor.</p>
+          ) : selectedAssetId && activeRulesForSelectedAsset.length === 0 ? (
+            <p className="mt-1.5 text-xs text-slate-300">Seçili varlık için aktif bakım kuralı bulunmuyor.</p>
+          ) : null}
         </label>
 
         <label className="block">
@@ -277,7 +299,7 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
         </label>
 
         <p className="md:col-span-2 text-xs text-slate-400">
-          Belge yükleme resmi olarak <span className="font-semibold">/documents</span> ekranindan yapilir.
+          Belge yükleme resmi olarak <span className="font-semibold">/documents</span> ekranından yapılır.
         </p>
 
         <div className="md:col-span-2 pt-1">
@@ -293,6 +315,4 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
     </section>
   );
 }
-
-
 

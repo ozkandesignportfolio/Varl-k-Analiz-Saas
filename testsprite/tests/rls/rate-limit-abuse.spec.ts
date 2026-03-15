@@ -1,5 +1,5 @@
 ﻿import { expect, test } from "@playwright/test";
-import { enforceRateLimit } from "../../src/lib/api/rate-limit";
+import { enforceRateLimit } from "../../../src/lib/api/rate-limit";
 
 test("rate limiter blocks burst abuse attempts", async () => {
   const scope = `abuse_test_${Date.now()}`;

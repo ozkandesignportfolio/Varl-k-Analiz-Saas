@@ -3,15 +3,18 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
-import { getAuthRedirectUrl } from "@/lib/supabase/auth-redirect";
+import {
+  emailVerificationCompletedMessage,
+  emailVerificationLoginBlockedMessage,
+  emailVerificationPromptMessage,
+  emailVerificationResentMessage,
+  getEmailVerificationRedirectUrl,
+} from "@/lib/supabase/email-verification";
 import { isEmailNotConfirmedError, isEmailRateLimitError } from "@/lib/supabase/auth-errors";
 import { createClient } from "@/lib/supabase/client";
 
 const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
-const verificationMessage = "E-posta doğrulama bağlantısı gönderildi. Gelen kutusu + spam kontrol et.";
-const verificationCompletedMessage = "E-posta doğrulandı. Artık giriş yapabilirsin.";
-const resendVerificationSuccessMessage = "Doğrulama e-postası tekrar gönderildi. Gelen kutusu + spam kontrol et.";
 
 const getSafeNextPath = (candidate: string | null) => {
   if (!candidate) {
@@ -28,20 +31,32 @@ const getSafeNextPath = (candidate: string | null) => {
 const isEmailConfirmed = (user: { email_confirmed_at?: string | null; confirmed_at?: string | null } | null | undefined) =>
   Boolean(user?.email_confirmed_at ?? user?.confirmed_at);
 
+type MessageTone = "error" | "info";
+
+const getInitialMessage = () => {
+  if (typeof window === "undefined") {
+    return { text: "", tone: "info" as MessageTone };
+  }
+
+  const params = new URLSearchParams(window.location.search);
+
+  if (params.get("email_verified") === "1") {
+    return { text: emailVerificationCompletedMessage, tone: "info" as MessageTone };
+  }
+
+  if (params.get("email_verification_required") === "1") {
+    return { text: emailVerificationPromptMessage, tone: "info" as MessageTone };
+  }
+
+  return { text: "", tone: "info" as MessageTone };
+};
+
 export default function LoginPage() {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResendingVerification, setIsResendingVerification] = useState(false);
-  const [message, setMessage] = useState(() => {
-    if (typeof window === "undefined") return "";
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("email_verified") === "1") {
-      return verificationCompletedMessage;
-    }
-
-    return params.get("email_verification_required") === "1" ? verificationMessage : "";
-  });
+  const [{ text: message, tone: messageTone }, setFeedback] = useState(getInitialMessage);
   const [verificationEmail, setVerificationEmail] = useState(() => {
     if (typeof window === "undefined") return "";
     return (new URLSearchParams(window.location.search).get("email") ?? "").trim();
@@ -53,14 +68,14 @@ export default function LoginPage() {
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setMessage("");
+    setFeedback({ text: "", tone: "info" });
 
     const formData = new FormData(event.currentTarget);
     const email = String(formData.get("email") ?? "").trim();
     const password = String(formData.get("password") ?? "");
 
     if (!email || !password) {
-      setMessage("E-posta ve şifre zorunludur.");
+      setFeedback({ text: "E-posta ve şifre zorunludur.", tone: "error" });
       return;
     }
 
@@ -71,36 +86,36 @@ export default function LoginPage() {
 
       if (error) {
         if (isEmailRateLimitError(error)) {
-          setMessage("E-posta limiti aşıldı. Lütfen kısa bir süre sonra tekrar deneyin.");
+          setFeedback({ text: "E-posta limiti aşıldı. Lütfen kısa bir süre sonra tekrar deneyin.", tone: "error" });
           return;
         }
 
         if (isEmailNotConfirmedError(error)) {
           setVerificationEmail(email);
-          setMessage("E-postanı doğrulamadan giriş yapamazsın.");
+          setFeedback({ text: emailVerificationLoginBlockedMessage, tone: "error" });
           return;
         }
 
-        setMessage(error.message || "Giriş yapılamadı. Lütfen tekrar deneyin.");
+        setFeedback({ text: error.message || "Giriş yapılamadı. Lütfen tekrar deneyin.", tone: "error" });
         return;
       }
 
       if (!data.session || !data.user) {
-        setMessage("Giriş tamamlanamadı. Lütfen tekrar deneyin.");
+        setFeedback({ text: "Giriş tamamlanamadı. Lütfen tekrar deneyin.", tone: "error" });
         return;
       }
 
       if (!isEmailConfirmed(data.user)) {
         setVerificationEmail(email);
         await supabase.auth.signOut();
-        setMessage("E-postanı doğrulamadan giriş yapamazsın.");
+        setFeedback({ text: emailVerificationLoginBlockedMessage, tone: "error" });
         return;
       }
 
       router.push(nextPath);
       router.refresh();
     } catch {
-      setMessage("Giriş sırasında beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.");
+      setFeedback({ text: "Giriş sırasında beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.", tone: "error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -108,15 +123,15 @@ export default function LoginPage() {
 
   const onResendVerification = async () => {
     if (!verificationEmail) {
-      setMessage("Önce e-posta adresini gir ve giriş dene.");
+      setFeedback({ text: "Önce e-posta adresini gir ve giriş dene.", tone: "error" });
       return;
     }
 
     setIsResendingVerification(true);
-    setMessage("");
+    setFeedback({ text: "", tone: "info" });
 
     try {
-      const emailRedirectTo = getAuthRedirectUrl("/login?email_verified=1");
+      const emailRedirectTo = getEmailVerificationRedirectUrl();
       const { error } = await supabase.auth.resend({
         type: "signup",
         email: verificationEmail,
@@ -127,17 +142,17 @@ export default function LoginPage() {
 
       if (error) {
         if (isEmailRateLimitError(error)) {
-          setMessage("E-posta limiti aşıldı. Lütfen kısa bir süre sonra tekrar deneyin.");
+          setFeedback({ text: "E-posta limiti aşıldı. Lütfen kısa bir süre sonra tekrar deneyin.", tone: "error" });
           return;
         }
 
-        setMessage(error.message || "Doğrulama e-postası gönderilemedi. Lütfen tekrar deneyin.");
+        setFeedback({ text: error.message || "Doğrulama e-postası gönderilemedi. Lütfen tekrar deneyin.", tone: "error" });
         return;
       }
 
-      setMessage(resendVerificationSuccessMessage);
+      setFeedback({ text: emailVerificationResentMessage, tone: "info" });
     } catch {
-      setMessage("Doğrulama e-postası gönderilirken beklenmeyen bir hata oluştu.");
+      setFeedback({ text: "Doğrulama e-postası gönderilirken beklenmeyen bir hata oluştu.", tone: "error" });
     } finally {
       setIsResendingVerification(false);
     }
@@ -171,30 +186,30 @@ export default function LoginPage() {
           <h2 className="text-2xl font-semibold text-white">Giriş Yap</h2>
           <p className="mt-2 text-sm text-slate-300">Devam etmek için hesabınıza giriş yapın.</p>
 
-            <form onSubmit={onSubmit} method="post" className="mt-6 space-y-4" data-testid="login-form">
+          <form onSubmit={onSubmit} method="post" className="mt-6 space-y-4" data-testid="login-form">
             <label className="block">
               <span className="mb-1.5 block text-sm text-slate-300">E-posta</span>
-                <input
-                  name="email"
-                  type="email"
-                  required
-                  className={inputClassName}
-                  placeholder="ornek@mail.com"
-                  defaultValue={verificationEmail || undefined}
-                  data-testid="login-email"
-                />
+              <input
+                name="email"
+                type="email"
+                required
+                className={inputClassName}
+                placeholder="ornek@mail.com"
+                defaultValue={verificationEmail || undefined}
+                data-testid="login-email"
+              />
             </label>
 
             <label className="block">
               <span className="mb-1.5 block text-sm text-slate-300">Şifre</span>
-                <input
-                  name="password"
-                  type="password"
-                  required
-                  className={inputClassName}
-                  placeholder="********"
-                  data-testid="login-password"
-                />
+              <input
+                name="password"
+                type="password"
+                required
+                className={inputClassName}
+                placeholder="********"
+                data-testid="login-password"
+              />
             </label>
 
             <div className="text-right">
@@ -203,12 +218,12 @@ export default function LoginPage() {
               </Link>
             </div>
 
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
-                data-testid="login-submit"
-              >
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+              data-testid="login-submit"
+            >
               {isSubmitting ? "Giriş yapılıyor..." : "Giriş Yap"}
             </button>
 
@@ -225,7 +240,10 @@ export default function LoginPage() {
             ) : null}
 
             {message ? (
-              <p className="text-sm text-rose-200" data-testid="login-message">
+              <p
+                className={messageTone === "info" ? "text-sm text-sky-200" : "text-sm text-rose-200"}
+                data-testid="login-message"
+              >
                 {message}
               </p>
             ) : null}

@@ -47,8 +47,10 @@ export async function DashboardPageContainer({ searchParams }: DashboardPageCont
 
   const selectedRange = await parseRangeParam(searchParams);
   const dbClient = supabase as unknown as DbClient;
-  const snapshot = await getDashboardSnapshot(dbClient, user.id, { rangeDays: selectedRange });
-  const profilePlan = await getOrCreateProfilePlan(dbClient, user.id);
+  const [snapshot, profilePlan] = await Promise.all([
+    getDashboardSnapshot(dbClient, user.id, { rangeDays: selectedRange }),
+    getOrCreateProfilePlan(dbClient, user.id),
+  ]);
   const planConfig = getPlanConfigFromProfilePlan(profilePlan.plan);
 
   const usageItems: UsageLimitItem[] = [
@@ -87,18 +89,14 @@ export async function DashboardPageContainer({ searchParams }: DashboardPageCont
           </p>
         ) : null}
 
-        <ControlCenterHeader
-          key={snapshot.data.status.risk.riskKey}
-          selectedRange={selectedRange}
-          status={snapshot.data.status}
-        />
+        <ControlCenterHeader userId={user.id} selectedRange={selectedRange} status={snapshot.data.status} />
 
         <KPICards metrics={snapshot.data.metrics} trends={snapshot.data.trends} selectedRange={selectedRange} />
 
         <QuickActions />
 
         <section className="grid gap-4 xl:grid-cols-[1.8fr_1fr]">
-          <RisksAndUpcoming riskPanel={snapshot.data.riskPanel} />
+          <RisksAndUpcoming userId={user.id} riskPanel={snapshot.data.riskPanel} />
           <UsageLimitsCard
             planLabel={planConfig.label}
             isPremium={planConfig.code !== "starter"}

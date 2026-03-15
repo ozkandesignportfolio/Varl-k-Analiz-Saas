@@ -243,6 +243,23 @@ const buildCostAggregate = (rows: Array<{ cost: number | null }>): ServiceLogCos
   };
 };
 
+const isListAssetActivityPreviewSignatureError = (error: PostgrestError | null) => {
+  if (!error) return false;
+  const normalized = error.message.toLowerCase();
+  if (!normalized.includes("list_asset_activity_preview")) {
+    return false;
+  }
+
+  return (
+    error.code === "PGRST202" ||
+    error.code === "42883" ||
+    normalized.includes("schema cache") ||
+    normalized.includes("could not find the function") ||
+    normalized.includes("does not exist") ||
+    normalized.includes("undefined function")
+  );
+};
+
 export function listForServicesPage(
   client: DbClient,
   params: ListServiceLogsForServicesPageParams,
@@ -541,22 +558,59 @@ export function listAssetActivityPreview(
     return Promise.resolve({ data: [], error: null });
   }
 
+  const perAssetLimit = Math.max(1, Math.min(10, Math.floor(params.perAssetLimit ?? 3)));
+
   return Promise.resolve(
     rpc("list_asset_activity_preview", {
       p_user_id: params.userId,
       p_asset_ids: assetIds,
-      p_per_asset_limit: Math.max(1, Math.min(10, Math.floor(params.perAssetLimit ?? 3))),
+      p_per_asset_limit: perAssetLimit,
+    }).then(async (r) => {
+      if (!isListAssetActivityPreviewSignatureError(r.error)) {
+        return r;
+      }
+
+      const fallback = await client
+        .from("service_logs")
+        .select("asset_id,id,service_type,service_date,cost")
+        .eq("user_id", params.userId)
+        .in("asset_id", assetIds)
+        .order("service_date", { ascending: false });
+
+      return fallback;
     }),
-  ).then((r) => ({
-    data: (((r.data as Array<Record<string, unknown>> | null) ?? []).map((row) => ({
+  ).then((r) => {
+    const rows = ((r.data as Array<Record<string, unknown>> | null) ?? []).map((row) => ({
       asset_id: String(row.asset_id ?? ""),
       id: String(row.id ?? ""),
       service_type: String(row.service_type ?? ""),
       service_date: String(row.service_date ?? ""),
       cost: Number(row.cost ?? 0),
-    })) ?? []) as ListAssetActivityPreviewRow[],
-    error: r.error,
-  }));
+    }));
+
+    if (!isListAssetActivityPreviewSignatureError(r.error)) {
+      if (r.error) {
+        return { data: [] as ListAssetActivityPreviewRow[], error: r.error };
+      }
+
+      if (!Array.isArray(r.data)) {
+        return { data: [] as ListAssetActivityPreviewRow[], error: null };
+      }
+    }
+
+    const countsByAsset = new Map<string, number>();
+    const limitedRows = rows.filter((row) => {
+      if (!row.asset_id) return false;
+      const nextCount = (countsByAsset.get(row.asset_id) ?? 0) + 1;
+      countsByAsset.set(row.asset_id, nextCount);
+      return nextCount <= perAssetLimit;
+    });
+
+    return {
+      data: limitedRows as ListAssetActivityPreviewRow[],
+      error: r.error,
+    };
+  });
 }
 
 export function countByAsset(
@@ -730,4 +784,3 @@ export function listLatestServiceDatesByRules(
     };
   });
 }
-

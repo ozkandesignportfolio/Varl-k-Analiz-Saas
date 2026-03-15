@@ -11,6 +11,7 @@ export type Database = {
           category: string;
           brand: string | null;
           model: string | null;
+          purchase_price: number | null;
           purchase_date: string | null;
           warranty_end_date: string | null;
           serial_number: string | null;
@@ -27,6 +28,7 @@ export type Database = {
           category: string;
           brand?: string | null;
           model?: string | null;
+          purchase_price?: number | null;
           purchase_date?: string | null;
           warranty_end_date?: string | null;
           serial_number?: string | null;
@@ -41,6 +43,7 @@ export type Database = {
           category?: string;
           brand?: string | null;
           model?: string | null;
+          purchase_price?: number | null;
           purchase_date?: string | null;
           warranty_end_date?: string | null;
           serial_number?: string | null;

@@ -225,4 +225,50 @@ export const usePlanContext = () => {
   return value;
 };
 
+export type PlanIdentityContextValue = Pick<PlanContextValue, "userId" | "plan" | "isLoading">;
+
+export const usePlanIdentityContext = (): PlanIdentityContextValue => {
+  const { userId, plan, isLoading } = usePlanContext();
+  return { userId, plan, isLoading };
+};
+
+export type PlanUsageContextValue = Pick<
+  PlanContextValue,
+  | "assetCount"
+  | "assetLimit"
+  | "documentCount"
+  | "documentLimit"
+  | "subscriptionCount"
+  | "subscriptionLimit"
+  | "invoiceUploadCount"
+  | "invoiceUploadLimit"
+  | "setAssetCount"
+>;
+
+export const usePlanUsageContext = (): PlanUsageContextValue => {
+  const {
+    assetCount,
+    assetLimit,
+    documentCount,
+    documentLimit,
+    subscriptionCount,
+    subscriptionLimit,
+    invoiceUploadCount,
+    invoiceUploadLimit,
+    setAssetCount,
+  } = usePlanContext();
+
+  return {
+    assetCount,
+    assetLimit,
+    documentCount,
+    documentLimit,
+    subscriptionCount,
+    subscriptionLimit,
+    invoiceUploadCount,
+    invoiceUploadLimit,
+    setAssetCount,
+  };
+};
+
 export { PlanContext };

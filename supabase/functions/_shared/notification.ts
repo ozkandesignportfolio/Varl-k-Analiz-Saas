@@ -19,9 +19,28 @@ export type AutomationEvent = {
 
 export function buildMessage(event: AutomationEvent): { title: string; body: string } {
   const assetName = String(event.payload?.asset_name ?? "Varlik");
+  const notificationKind = String(event.payload?.notification_kind ?? "");
   const ruleTitle = String(event.payload?.rule_title ?? "Bakim kurali");
   const serviceType = String(event.payload?.service_type ?? "Servis");
   const serviceDate = String(event.payload?.service_date ?? "");
+
+  if (notificationKind === "asset_created") {
+    return {
+      title: "Yeni varlik olusturuldu",
+      body: `${assetName} varligi sisteme eklendi.`,
+    };
+  }
+
+  if (notificationKind === "asset_updated") {
+    const changedFields = Array.isArray(event.payload?.changed_fields)
+      ? event.payload.changed_fields.filter((field): field is string => typeof field === "string" && field.trim().length > 0)
+      : [];
+    const changedFieldsText = changedFields.length > 0 ? ` Guncellenen alanlar: ${changedFields.join(", ")}.` : "";
+    return {
+      title: "Varlik guncellendi",
+      body: `${assetName} varligi guncellendi.${changedFieldsText}`,
+    };
+  }
 
   if (event.trigger_type === "warranty_30_days") {
     const warrantyEndDate = String(event.payload?.warranty_end_date ?? "");

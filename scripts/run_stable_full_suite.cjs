@@ -8,7 +8,7 @@ loadTestEnv();
 const STABLE_SUITE_TARGET = String(process.env.STABLE_SUITE_TARGET || "both").toLowerCase();
 validateRequiredSuiteEnv("stable", { target: STABLE_SUITE_TARGET });
 
-const BASE_URL = process.env.TEST_BASE_URL || "http://localhost:3000";
+const BASE_URL = process.env.TEST_BASE_URL || "http://127.0.0.1:3100";
 const ROUTE_NAV_TIMEOUT_MS = 90000;
 const DEFAULT_API_TIMEOUT_MS = 45000;
 const ASSET_MEDIA_API_TIMEOUT_MS = 90000;

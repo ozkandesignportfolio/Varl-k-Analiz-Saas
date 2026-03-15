@@ -440,7 +440,7 @@ export function BillingPageContainer() {
   };
 
   const onDeleteInvoice = async (invoice: InvoiceRow) => {
-    const ok = window.confirm("Bu fatura kaydini silmek istiyor musunuz?");
+    const ok = window.confirm("Bu fatura kaydını silmek istiyor musunuz?");
     if (!ok) {
       return;
     }
@@ -461,15 +461,15 @@ export function BillingPageContainer() {
         | null;
 
       if (!deleteResponse.ok || !deletePayload?.ok) {
-        setFeedback(deletePayload?.error ?? "Fatura kaydi silinemedi.");
+        setFeedback(deletePayload?.error ?? "Fatura kaydı silinemedi.");
         return;
       }
 
-      setFeedback("Fatura kaydi silindi.");
+      setFeedback("Fatura kaydı silindi.");
       await fetchBillingData(userId);
       await refreshPlanState();
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "Fatura kaydi silinemedi.");
+      setFeedback(error instanceof Error ? error.message : "Fatura kaydı silinemedi.");
     } finally {
       setDeletingInvoiceId(null);
     }

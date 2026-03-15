@@ -1,5 +1,6 @@
 import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { logApiError } from "@/lib/api/logging";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -132,7 +133,13 @@ export async function POST() {
 
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error) {
-    console.error("Account delete route failed:", error);
+    logApiError({
+      route: "/api/account/delete",
+      method: "POST",
+      status: 500,
+      error,
+      message: "Account delete route failed.",
+    });
     return NextResponse.json({ error: "Account delete failed." }, { status: 500 });
   }
 }

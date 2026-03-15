@@ -1,138 +1,247 @@
-import { NextResponse } from "next/server";
-import { enforceRateLimit, getRequestIp } from "@/lib/api/rate-limit";
-import { createEmptyPanelHealthPayload, type PanelHealthPayload } from "@/lib/panel-health";
-import { createClient } from "@/lib/supabase/server";
+import { timingSafeEqual } from "node:crypto";
+import { NextRequest, NextResponse } from "next/server";
+import { createClient as createServiceRoleClient } from "@supabase/supabase-js";
 
 type QueryError = {
   message?: string | null;
 };
 
-const PANEL_HEALTH_RPC_MISSING_FN_PATTERN = /Could not find the function public\.compute_panel_health/i;
+type HealthStatus = "ok" | "degraded" | "fail";
+type DatabaseStatus = "ok" | "fail";
+type CacheStatus = "ok" | "stale";
+type RpcStatus = "ok" | "fail";
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
-const asRecord = (value: unknown) => (isRecord(value) ? value : null);
-const toNumber = (value: unknown, fallback: number) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-};
-const toString = (value: unknown, fallback: string) => (typeof value === "string" ? value : fallback);
-const toNullableString = (value: unknown) => (typeof value === "string" ? value : null);
-const toScope = (value: unknown): PanelHealthPayload["scope"] => (value === "public_fallback" ? "public_fallback" : "user");
-
-const normalizePanelHealthPayload = (value: unknown): PanelHealthPayload => {
-  const fallback = createEmptyPanelHealthPayload("user");
-  const root = asRecord(value);
-  if (!root) {
-    return fallback;
-  }
-
-  const warranty = asRecord(root.warranty);
-  const maintenance = asRecord(root.maintenance);
-  const documents = asRecord(root.documents);
-  const payments = asRecord(root.payments);
-
-  return {
-    score: toNumber(root.score, fallback.score),
-    ratio: toNumber(root.ratio, fallback.ratio),
-    hasNoCost: root.hasNoCost === true,
-    assetPrice: toNumber(root.assetPrice, fallback.assetPrice),
-    totalCost: toNumber(root.totalCost, fallback.totalCost),
-    maintenanceCost: toNumber(root.maintenanceCost, fallback.maintenanceCost),
-    expenseCost: toNumber(root.expenseCost, fallback.expenseCost),
-    warranty: {
-      score: toNumber(warranty?.score, fallback.warranty.score),
-      active: toNumber(warranty?.active, fallback.warranty.active),
-      expiring: toNumber(warranty?.expiring, fallback.warranty.expiring),
-      expired: toNumber(warranty?.expired, fallback.warranty.expired),
-      unknown: toNumber(warranty?.unknown, fallback.warranty.unknown),
-    },
-    maintenance: {
-      score: toNumber(maintenance?.score, fallback.maintenance.score),
-      planned: toNumber(maintenance?.planned, fallback.maintenance.planned),
-      completed: toNumber(maintenance?.completed, fallback.maintenance.completed),
-      onTrack: toNumber(maintenance?.onTrack, fallback.maintenance.onTrack),
-      overdue: toNumber(maintenance?.overdue, fallback.maintenance.overdue),
-    },
-    documents: {
-      score: toNumber(documents?.score, fallback.documents.score),
-      required: toNumber(documents?.required, fallback.documents.required),
-      uploaded: toNumber(documents?.uploaded, fallback.documents.uploaded),
-      missing: toNumber(documents?.missing, fallback.documents.missing),
-    },
-    payments: {
-      score: toNumber(payments?.score, fallback.payments.score),
-      paid: toNumber(payments?.paid, fallback.payments.paid),
-      pending: toNumber(payments?.pending, fallback.payments.pending),
-      overdue: toNumber(payments?.overdue, fallback.payments.overdue),
-      total: toNumber(payments?.total, fallback.payments.total),
-    },
-    scope: toScope(root.scope),
-    warning: toNullableString(root.warning),
-    generatedAt: toString(root.generatedAt, new Date().toISOString()),
+type HealthResponse = {
+  status: HealthStatus;
+  components: {
+    database: DatabaseStatus;
+    cache: CacheStatus;
+    rpc: RpcStatus;
   };
+  checkedAt: string;
 };
 
-const toPanelHealthWarning = (errorMessage: string) =>
-  PANEL_HEALTH_RPC_MISSING_FN_PATTERN.test(errorMessage)
-    ? "Panel health RPC fonksiyonu bulunamadi. Supabase migration dosyasini calistirin: 20260228170000_compute_panel_health_rpc.sql."
-    : errorMessage;
+type GlobalMetricsCacheRow = {
+  computed_at: string | null;
+};
 
-export const dynamic = "force-dynamic";
+const CACHE_KEY = "dashboard";
+const CACHE_TTL_MS = 15 * 60 * 1000;
+const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
+const INTERNAL_SECRET_HEADER = "x-panel-health-secret";
 
-export async function GET(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+type PublicVisibility = "summary" | "detailed";
 
-  if (userError || !user) {
-    return NextResponse.json(createEmptyPanelHealthPayload("public_fallback"), { status: 200 });
+const safeCompare = (left: string, right: string) => {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+
+  if (leftBuffer.length !== rightBuffer.length) {
+    return false;
   }
 
-  const rateLimit = enforceRateLimit({
-    scope: "api_panel_health",
-    key: `${user.id}:${getRequestIp(request)}`,
-    limit: 45,
-    windowMs: 60_000,
-  });
+  return timingSafeEqual(leftBuffer, rightBuffer);
+};
 
-  if (!rateLimit.allowed) {
-    return NextResponse.json(
-      { error: "Panel saglik istegi limiti asildi. Lutfen kisa bir sure sonra tekrar deneyin." },
-      {
-        status: 429,
-        headers: {
-          "Retry-After": String(Math.max(1, Math.ceil(rateLimit.retryAfterMs / 1_000))),
-        },
-      },
-    );
+const hasInternalAccess = (request: NextRequest) => {
+  const expectedSecret = process.env.PANEL_HEALTH_SECRET?.trim();
+  if (!expectedSecret) {
+    return false;
+  }
+
+  const providedSecret = request.headers.get(INTERNAL_SECRET_HEADER)?.trim();
+  if (!providedSecret) {
+    return false;
+  }
+
+  return safeCompare(providedSecret, expectedSecret);
+};
+
+const getPublicVisibility = (): PublicVisibility => {
+  const configuredVisibility = process.env.PANEL_HEALTH_PUBLIC_VISIBILITY?.trim().toLowerCase();
+  if (configuredVisibility === "detailed") {
+    return "detailed";
+  }
+
+  if (configuredVisibility === "summary") {
+    return "summary";
+  }
+
+  return process.env.NODE_ENV === "production" ? "summary" : "detailed";
+};
+
+const toPublicComponents = (status: HealthStatus): HealthResponse["components"] => {
+  if (status === "ok") {
+    return { database: "ok", cache: "ok", rpc: "ok" };
+  }
+
+  if (status === "degraded") {
+    return { database: "ok", cache: "stale", rpc: "ok" };
+  }
+
+  return { database: "fail", cache: "stale", rpc: "fail" };
+};
+
+const getServiceRoleClient = () => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    return null;
+  }
+
+  return createServiceRoleClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+};
+
+const checkAuthDependency = async (serviceClient: unknown) => {
+  if (!serviceClient) {
+    return false;
   }
 
   try {
-    const rpcClient = supabase as unknown as {
+    const authClient = serviceClient as {
+      auth: {
+        admin: {
+          listUsers: (
+            params?: { page?: number; perPage?: number },
+          ) => Promise<{ data: unknown; error: QueryError | null }>;
+        };
+      };
+    };
+
+    const { error } = await authClient.auth.admin.listUsers({ page: 1, perPage: 1 });
+    return !error;
+  } catch {
+    return false;
+  }
+};
+
+const checkDatabaseConnection = async (serviceClient: unknown) => {
+  if (!serviceClient) {
+    return false;
+  }
+
+  try {
+    const dbClient = serviceClient as {
+      from: (table: "global_metrics_cache") => {
+        select: (
+          columns: "key",
+        ) => {
+          limit: (value: number) => Promise<{ data: unknown; error: QueryError | null }>;
+        };
+      };
+    };
+
+    const { error } = await dbClient.from("global_metrics_cache").select("key").limit(1);
+    return !error;
+  } catch {
+    return false;
+  }
+};
+
+const checkCacheFreshness = async (serviceClient: unknown): Promise<CacheStatus> => {
+  if (!serviceClient) {
+    return "stale";
+  }
+
+  try {
+    const cacheClient = serviceClient as {
+      from: (table: "global_metrics_cache") => {
+        select: (
+          columns: "computed_at",
+        ) => {
+          eq: (
+            column: "key",
+            value: string,
+          ) => {
+            maybeSingle: () => Promise<{ data: GlobalMetricsCacheRow | null; error: QueryError | null }>;
+          };
+        };
+      };
+    };
+
+    const { data, error } = await cacheClient
+      .from("global_metrics_cache")
+      .select("computed_at")
+      .eq("key", CACHE_KEY)
+      .maybeSingle();
+
+    if (error || !data?.computed_at) {
+      return "stale";
+    }
+
+    const computedAtMs = new Date(data.computed_at).getTime();
+    if (!Number.isFinite(computedAtMs)) {
+      return "stale";
+    }
+
+    return Date.now() - computedAtMs >= CACHE_TTL_MS ? "stale" : "ok";
+  } catch {
+    return "stale";
+  }
+};
+
+const checkRpcAvailability = async (client: unknown) => {
+  if (!client) {
+    return false;
+  }
+
+  try {
+    const rpcClient = client as {
       rpc: (
         fn: "compute_panel_health",
         args: { p_user_id: string },
       ) => Promise<{ data: unknown; error: QueryError | null }>;
     };
-
-    const { data, error } = await rpcClient.rpc("compute_panel_health", {
-      p_user_id: user.id,
+    const { error } = await rpcClient.rpc("compute_panel_health", {
+      p_user_id: ZERO_UUID,
     });
-
-    if (error) {
-      throw new Error(toPanelHealthWarning(error.message ?? "Panel saglik RPC cagri hatasi."));
-    }
-
-    const payload = normalizePanelHealthPayload(Array.isArray(data) ? data[0] : data);
-
-    return NextResponse.json(payload, { status: 200 });
-  } catch (error) {
-    const fallback = createEmptyPanelHealthPayload("user");
-    fallback.warning = error instanceof Error ? error.message : "Panel saglik verisi hesaplanamadi.";
-    return NextResponse.json(fallback, { status: 200 });
+    return !error;
+  } catch {
+    return false;
   }
+};
+
+export const dynamic = "force-dynamic";
+
+export async function GET(request: NextRequest) {
+  const checkedAt = new Date().toISOString();
+  const serviceClient = getServiceRoleClient();
+
+  const [authOk, dbOk, cacheStatus, rpcOk] = await Promise.all([
+    checkAuthDependency(serviceClient),
+    checkDatabaseConnection(serviceClient),
+    checkCacheFreshness(serviceClient),
+    checkRpcAvailability(serviceClient),
+  ]);
+
+  // Auth is a critical dependency; it is folded into database component health.
+  const databaseStatus: DatabaseStatus = authOk && dbOk ? "ok" : "fail";
+  const rpcStatus: RpcStatus = rpcOk ? "ok" : "fail";
+  const criticalFailure = databaseStatus === "fail" || rpcStatus === "fail";
+
+  const fullResponse: HealthResponse = {
+    status: criticalFailure ? "fail" : cacheStatus === "stale" ? "degraded" : "ok",
+    components: {
+      database: databaseStatus,
+      cache: cacheStatus,
+      rpc: rpcStatus,
+    },
+    checkedAt,
+  };
+
+  const canSeeDetailedHealth = hasInternalAccess(request) || getPublicVisibility() === "detailed";
+  const response: HealthResponse = canSeeDetailedHealth
+    ? fullResponse
+    : {
+        ...fullResponse,
+        components: toPublicComponents(fullResponse.status),
+      };
+
+  return NextResponse.json(response, { status: criticalFailure ? 500 : 200 });
 }

@@ -11,7 +11,8 @@ select column_name
 from information_schema.columns
 where table_schema = 'public'
   and table_name = 'assets'
-  and column_name = 'qr_code';
+  and column_name in ('purchase_price', 'qr_code')
+order by column_name;
 
 select indexname
 from pg_indexes

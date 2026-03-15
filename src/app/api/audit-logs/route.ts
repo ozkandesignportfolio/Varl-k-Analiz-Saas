@@ -1,4 +1,5 @@
 ﻿import { NextResponse } from "next/server";
+import { logApiError } from "@/lib/api/logging";
 import { enforceRateLimit, getRequestIp } from "@/lib/api/rate-limit";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
 
@@ -89,10 +90,22 @@ export async function GET(request: Request) {
   if (error) {
     if (isMissingAuditLogsTableError(error)) {
       return NextResponse.json(
-        { logs: [], warning: "audit_logs tablosu bulunamadı, panel boş döndürüldü." },
+        { logs: [], warning: "audit_logs tablosu bulunamadi, panel bos donduruldu." },
         { status: 200 },
       );
     }
+
+    logApiError({
+      route: "/api/audit-logs",
+      method: "GET",
+      status: 400,
+      error,
+      message: "Audit logs query failed.",
+      userId: user.id,
+      meta: {
+        code: error.code ?? null,
+      },
+    });
 
     return NextResponse.json({ error: error.message }, { status: 400 });
   }

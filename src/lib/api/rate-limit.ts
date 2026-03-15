@@ -24,17 +24,22 @@ type DbRateLimitRpcRow = {
   retry_after_ms: number | null;
 };
 
+type DbRateLimitRpcArgs = {
+  p_scope: string;
+  p_capacity: number;
+  p_refill_per_sec: number;
+  p_cost: number;
+  p_ttl_seconds: number;
+};
+
+type DbServiceRateLimitRpcArgs = DbRateLimitRpcArgs & {
+  p_subject: string;
+};
+
 type DbRateLimitRpcClient = {
   rpc: (
-    fn: "take_api_rate_limit_token",
-    args: {
-      p_scope: string;
-      p_subject: string;
-      p_capacity: number;
-      p_refill_per_sec: number;
-      p_cost: number;
-      p_ttl_seconds: number;
-    },
+    fn: "take_api_rate_limit_token" | "take_api_rate_limit_token_internal",
+    args: DbRateLimitRpcArgs | DbServiceRateLimitRpcArgs,
   ) => Promise<{ data: DbRateLimitRpcRow[] | DbRateLimitRpcRow | null; error: { message?: string } | null }>;
 };
 
@@ -42,6 +47,16 @@ type EnforceUserRateLimitParams = {
   client: unknown;
   scope: string;
   userId: string;
+  capacity: number;
+  refillPerSecond: number;
+  cost?: number;
+  ttlSeconds?: number;
+};
+
+type EnforceServiceRateLimitParams = {
+  client: unknown;
+  scope: string;
+  subject: string;
   capacity: number;
   refillPerSecond: number;
   cost?: number;
@@ -164,7 +179,6 @@ export const enforceUserRateLimit = async (params: EnforceUserRateLimitParams): 
     const rpcClient = params.client as DbRateLimitRpcClient;
     const { data, error } = await rpcClient.rpc("take_api_rate_limit_token", {
       p_scope: params.scope,
-      p_subject: subject,
       p_capacity: capacity,
       p_refill_per_sec: refillPerSecond,
       p_cost: cost,
@@ -178,6 +192,57 @@ export const enforceUserRateLimit = async (params: EnforceUserRateLimitParams): 
     const row = readDbRateLimitRow(data);
     if (!row) {
       throw new Error("DB rate limit RPC returned invalid payload.");
+    }
+    return row;
+  } catch {
+    if (!allowFallback) {
+      return {
+        allowed: false,
+        remaining: 0,
+        retryAfterMs: fallbackWindowMs,
+      };
+    }
+
+    return enforceRateLimit({
+      scope: `${params.scope}_memory_fallback`,
+      key: subject,
+      limit: capacity,
+      windowMs: fallbackWindowMs,
+    });
+  }
+};
+
+export const enforceServiceRateLimit = async (params: EnforceServiceRateLimitParams): Promise<RateLimitResult> => {
+  const capacity = toPositiveInt(params.capacity, 10);
+  const refillPerSecond = toPositiveNumber(params.refillPerSecond, 1);
+  const cost = toPositiveInt(params.cost ?? 1, 1);
+  const ttlSeconds = toPositiveInt(params.ttlSeconds ?? 180, 180, 5);
+  const subject = normalizeSubject(params.subject);
+  const fallbackWindowMs = Math.max(5_000, Math.round((capacity / refillPerSecond) * 1_000));
+  const isProd = process.env.NODE_ENV === "production";
+  const strictInTest = process.env.RATE_LIMIT_STRICT_IN_TEST === "1";
+  const allowFallback = strictInTest
+    ? false
+    : process.env.RATE_LIMIT_ALLOW_MEMORY_FALLBACK === "1" || !isProd;
+
+  try {
+    const rpcClient = params.client as DbRateLimitRpcClient;
+    const { data, error } = await rpcClient.rpc("take_api_rate_limit_token_internal", {
+      p_scope: params.scope,
+      p_subject: subject,
+      p_capacity: capacity,
+      p_refill_per_sec: refillPerSecond,
+      p_cost: cost,
+      p_ttl_seconds: ttlSeconds,
+    });
+
+    if (error) {
+      throw new Error(error.message ?? "DB service rate limit RPC failed.");
+    }
+
+    const row = readDbRateLimitRow(data);
+    if (!row) {
+      throw new Error("DB service rate limit RPC returned invalid payload.");
     }
     return row;
   } catch {

@@ -151,12 +151,12 @@ export const fileConstraints = (type: string, maxFileSizeBytes: number) => {
 
   return (file: File, options: FileConstraintsOptions = {}): FileConstraintsResult => {
     if (file.size <= 0) {
-      return { error: `Bos ${normalizedType} yuklenemez.` };
+      return { error: `Boş ${normalizedType} yüklenemez.` };
     }
 
     if (Number.isFinite(maxFileSizeBytes) && maxFileSizeBytes > 0 && file.size > maxFileSizeBytes) {
       const mbLimit = Math.floor(maxFileSizeBytes / (1024 * 1024));
-      return { error: `${normalizedType} boyutu ${mbLimit} MB sinirini asiyor.` };
+      return { error: `${normalizedType} boyutu ${mbLimit} MB sınırını aşıyor.` };
     }
 
     const mimeType = file.type.trim().toLowerCase();
@@ -166,13 +166,13 @@ export const fileConstraints = (type: string, maxFileSizeBytes: number) => {
 
     const extension = getFileExtension(file.name);
     if (options.allowedExtensions && (!extension || !options.allowedExtensions.includes(extension))) {
-      return { error: `${normalizedType} uzantisi desteklenmiyor: ${extension || "unknown"}.` };
+      return { error: `${normalizedType} uzantısı desteklenmiyor: ${extension || "unknown"}.` };
     }
 
     if (options.compatibleExtensionsByMimeType && extension) {
       const compatible = options.compatibleExtensionsByMimeType[mimeType];
       if (compatible && !compatible.includes(extension)) {
-        return { error: `${normalizedType} uzantisi ve MIME tipi uyusmuyor: ${mimeType} / .${extension}.` };
+        return { error: `${normalizedType} uzantısı ve MIME tipi uyuşmuyor: ${mimeType} / .${extension}.` };
       }
     }
 

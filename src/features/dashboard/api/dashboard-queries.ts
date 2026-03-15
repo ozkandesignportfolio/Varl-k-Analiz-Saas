@@ -240,7 +240,7 @@ const parseStatus = (value: unknown): DashboardSystemStatus => {
   return {
     tone,
     headline: toStringOr(record?.headline, "Stabil"),
-    detail: toStringOr(record?.detail, "Sistem durumu veri geldikce otomatik guncellenecek."),
+    detail: toStringOr(record?.detail, "Sistem durumu veri geldikçe otomatik güncellenecek."),
     riskCount: toInteger(record?.risk_count as number | string | null | undefined),
     risk: {
       type: riskType,
@@ -259,7 +259,7 @@ const parseMaintenanceRiskItems = (value: unknown): DashboardMaintenanceRiskItem
       return {
         id: toStringOr(row.id),
         assetId: toStringOr(row.asset_id),
-        assetName: toStringOr(row.asset_name, "Bilinmeyen Varlik"),
+        assetName: toStringOr(row.asset_name, "Bilinmeyen Varlık"),
         ruleTitle: toStringOr(row.rule_title),
         dueDate: toStringOr(row.due_date),
         dayCount: toInteger(row.day_count as number | string | null | undefined),
@@ -277,7 +277,7 @@ const parseWarrantyRiskItems = (value: unknown): DashboardWarrantyRiskItem[] =>
       return {
         id: toStringOr(row.id),
         assetId: toStringOr(row.asset_id),
-        assetName: toStringOr(row.asset_name, "Bilinmeyen Varlik"),
+        assetName: toStringOr(row.asset_name, "Bilinmeyen Varlık"),
         warrantyEndDate: toStringOr(row.warranty_end_date),
         daysRemaining: toInteger(row.days_remaining as number | string | null | undefined),
       } satisfies DashboardWarrantyRiskItem;
@@ -315,7 +315,7 @@ const parseMissingDocumentRiskItems = (value: unknown): DashboardMissingDocument
       return {
         id: toStringOr(row.id),
         assetId: toStringOr(row.asset_id),
-        assetName: toStringOr(row.asset_name, "Bilinmeyen Varlik"),
+        assetName: toStringOr(row.asset_name, "Bilinmeyen Varlık"),
         createdAt: toStringOr(row.created_at),
         daysWithoutDocument: toInteger(row.days_without_document as number | string | null | undefined),
       } satisfies DashboardMissingDocumentRiskItem;
@@ -366,7 +366,7 @@ const EMPTY_DASHBOARD_DATA: DashboardSnapshot = {
   status: {
     tone: "stable",
     headline: "Stabil",
-    detail: "Sistem durumu veri geldikce otomatik guncellenecek.",
+    detail: "Sistem durumu veri geldikçe otomatik güncellenecek.",
     riskCount: 0,
     risk: {
       type: "notification_prefs",

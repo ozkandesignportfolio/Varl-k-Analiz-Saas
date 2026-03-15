@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logApiError } from "@/lib/api/logging";
 import { enforceRateLimit, getRequestIp } from "@/lib/api/rate-limit";
 import Stripe from "stripe";
 import { getStripeSecretKeyValidationError, stripe } from "@/lib/stripe";
@@ -39,7 +40,13 @@ export async function POST(request: Request) {
   }
 
   if (!process.env.STRIPE_WEBHOOK_SECRET) {
-    console.error("Missing STRIPE_WEBHOOK_SECRET.");
+    logApiError({
+      route: "/api/stripe/webhook",
+      method: "POST",
+      status: 500,
+      error: new Error("Missing STRIPE_WEBHOOK_SECRET"),
+      message: "Stripe webhook secret missing.",
+    });
     return NextResponse.json({ error: "Webhook secret missing." }, { status: 500 });
   }
 
@@ -59,9 +66,13 @@ export async function POST(request: Request) {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
   if (!supabaseUrl || !serviceRoleKey) {
-    console.error(
-      "Missing Supabase admin env vars for Stripe webhook dedupe. Check NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.",
-    );
+    logApiError({
+      route: "/api/stripe/webhook",
+      method: "POST",
+      status: 500,
+      error: new Error("Missing Supabase admin env vars for Stripe webhook dedupe."),
+      message: "Supabase admin env vars missing for Stripe webhook dedupe.",
+    });
     return NextResponse.json({ error: "Supabase admin configuration missing." }, { status: 500 });
   }
 
@@ -70,7 +81,13 @@ export async function POST(request: Request) {
   try {
     ({ supabaseAdmin } = await import("@/lib/supabase-admin"));
   } catch (error) {
-    console.error("Failed to initialize Supabase admin client for Stripe webhook:", error);
+    logApiError({
+      route: "/api/stripe/webhook",
+      method: "POST",
+      status: 500,
+      error,
+      message: "Failed to initialize Supabase admin client for Stripe webhook.",
+    });
     return NextResponse.json({ error: "Webhook processing failed." }, { status: 500 });
   }
 
@@ -85,7 +102,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ received: true, deduped: true }, { status: 200 });
     }
 
-    console.error("Failed to persist Stripe webhook event id:", insertEventError);
+    logApiError({
+      route: "/api/stripe/webhook",
+      method: "POST",
+      status: 500,
+      error: insertEventError,
+      message: "Failed to persist Stripe webhook event id.",
+      meta: {
+        code: insertEventError.code ?? null,
+      },
+    });
     return NextResponse.json({ error: "Webhook processing failed." }, { status: 500 });
   }
 
@@ -126,11 +152,23 @@ export async function POST(request: Request) {
         .eq("id", userId);
 
       if (error) {
-        console.error("Failed to update profile from Stripe webhook:", error);
+        logApiError({
+          route: "/api/stripe/webhook",
+          method: "POST",
+          status: 500,
+          error,
+          message: "Failed to update profile from Stripe webhook.",
+        });
       }
     }
   } catch (error) {
-    console.error("Stripe webhook processing failed:", error);
+    logApiError({
+      route: "/api/stripe/webhook",
+      method: "POST",
+      status: 400,
+      error,
+      message: "Stripe webhook processing failed.",
+    });
     return NextResponse.json({ error: "Webhook processing failed." }, { status: 400 });
   }
 

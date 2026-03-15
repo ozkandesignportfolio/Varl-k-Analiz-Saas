@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logApiError } from "@/lib/api/logging";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
 
 type PlanCode = "starter" | "pro" | "elite";
@@ -68,10 +69,20 @@ export async function POST(request: Request) {
   });
 
   if (error) {
+    logApiError({
+      route: "/api/subscription-request",
+      method: "POST",
+      status: 500,
+      error,
+      message: "Subscription request insert failed.",
+      userId: auth.user.id,
+      meta: {
+        code: error.code ?? null,
+      },
+    });
     return NextResponse.json({ error: "Abonelik talebi kaydedilemedi." }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true }, { status: 201 });
 }
-
 

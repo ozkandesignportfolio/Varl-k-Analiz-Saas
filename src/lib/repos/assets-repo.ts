@@ -7,6 +7,15 @@ export type ListAssetIdNameParams = {
 
 export type ListAssetIdNameRow = Pick<Row<"assets">, "id" | "name">;
 
+export type ListAssetsForServiceLogFormParams = {
+  userId: string;
+};
+
+export type ListAssetsForServiceLogFormRow = Pick<
+  Row<"assets">,
+  "id" | "name" | "category" | "serial_number"
+>;
+
 export type AssetExistsByIdParams = {
   userId: string;
   assetId: string;
@@ -51,6 +60,7 @@ export type ListAssetsRow = Pick<
   | "serial_number"
   | "brand"
   | "model"
+  | "purchase_price"
   | "purchase_date"
   | "warranty_end_date"
   | "photo_path"
@@ -88,6 +98,18 @@ const isListAssetsSignatureError = (error: PostgrestError | null) => {
   return error.code === "PGRST202" && normalized.includes("could not find the function public.list_assets_page");
 };
 
+const isListAssetCategoriesSignatureError = (error: PostgrestError | null) => {
+  if (!error) return false;
+  const normalized = error.message.toLowerCase();
+  return (
+    error.code === "PGRST202" &&
+    normalized.includes("could not find the function public.list_asset_categories")
+  );
+};
+
+const normalizeCategories = (rows: Array<{ category: string | null }> | null | undefined) =>
+  [...new Set((rows ?? []).map((row) => row.category?.trim() ?? "").filter((value) => value.length > 0))];
+
 export function listIdName(
   client: DbClient,
   params: ListAssetIdNameParams,
@@ -102,6 +124,24 @@ export function listIdName(
       .order("created_at", { ascending: false }),
   ).then((r) => ({
     data: (r.data as ListAssetIdNameRow[] | null) ?? [],
+    error: r.error,
+  }));
+}
+
+export function listForServiceLogForm(
+  client: DbClient,
+  params: ListAssetsForServiceLogFormParams,
+): RepoResult<ListAssetsForServiceLogFormRow[]> {
+  const { userId } = params;
+
+  return Promise.resolve(
+    client
+      .from("assets")
+      .select("id,name,category,serial_number")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false }),
+  ).then((r) => ({
+    data: (r.data as ListAssetsForServiceLogFormRow[] | null) ?? [],
     error: r.error,
   }));
 }
@@ -148,13 +188,27 @@ export function listCategories(
   return Promise.resolve(
     rpc("list_asset_categories", {
       p_user_id: params.userId,
+    }).then(async (r) => {
+      if (!isListAssetCategoriesSignatureError(r.error)) {
+        return {
+          data: normalizeCategories(r.data as Array<{ category: string | null }> | null),
+          error: r.error,
+        };
+      }
+
+      const fallback = await client
+        .from("assets")
+        .select("category")
+        .eq("user_id", params.userId)
+        .not("category", "is", null)
+        .order("category", { ascending: true });
+
+      return {
+        data: normalizeCategories((fallback.data as Array<{ category: string | null }> | null) ?? []),
+        error: fallback.error,
+      };
     }),
-  ).then((r) => ({
-    data: (((r.data as Array<{ category: string | null }> | null) ?? [])
-      .map((row) => row.category?.trim() ?? "")
-      .filter((value) => value.length > 0) ?? []) as string[],
-    error: r.error,
-  }));
+  );
 }
 
 export function listAssets(
@@ -225,6 +279,12 @@ export function listAssets(
       serial_number: (row.serial_number as string | null) ?? null,
       brand: (row.brand as string | null) ?? null,
       model: (row.model as string | null) ?? null,
+      purchase_price:
+        typeof row.purchase_price === "number"
+          ? row.purchase_price
+          : row.purchase_price === null
+            ? null
+            : null,
       purchase_date: (row.purchase_date as string | null) ?? null,
       warranty_end_date: (row.warranty_end_date as string | null) ?? null,
       photo_path: (row.photo_path as string | null) ?? null,

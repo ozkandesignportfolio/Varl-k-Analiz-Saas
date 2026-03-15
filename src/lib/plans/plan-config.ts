@@ -31,7 +31,7 @@ const PLAN_CONFIGS: Record<PlanCode, PlanConfig> = {
       assetsLimit: 3,
       documentsLimit: 5,
       subscriptionsLimit: 3,
-      invoiceUploadsLimit: 5,
+      invoiceUploadsLimit: 3,
     },
     features: {
       canExportPdfReports: false,

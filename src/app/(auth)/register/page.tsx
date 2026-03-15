@@ -4,9 +4,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { getPlanConfig } from "@/lib/plans/plan-config";
-import { getAuthRedirectUrl } from "@/lib/supabase/auth-redirect";
-import { isEmailNotConfirmedError, isEmailRateLimitError } from "@/lib/supabase/auth-errors";
+import {
+  isEmailNotConfirmedError,
+  isEmailRateLimitError,
+  isSupabaseUserEmailConfirmed,
+} from "@/lib/supabase/auth-errors";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
+import {
+  buildEmailVerificationPath,
+  emailVerificationPromptMessage,
+  getEmailVerificationRedirectUrl,
+} from "@/lib/supabase/email-verification";
 
 const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
@@ -15,7 +23,6 @@ const trialAssetLimit = trialPlan.limits.assetsLimit ?? 0;
 const trialDocumentLimit = trialPlan.limits.documentsLimit ?? 0;
 const trialSubscriptionLimit = trialPlan.limits.subscriptionsLimit ?? 0;
 const trialInvoiceUploadLimit = trialPlan.limits.invoiceUploadsLimit ?? 0;
-const verificationMessage = "E-posta doğrulama bağlantısı gönderildi. Gelen kutusu + spam kontrol et.";
 
 export default function RegisterPage() {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
@@ -27,8 +34,8 @@ export default function RegisterPage() {
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setMessage("");
-    const form = event.currentTarget;
 
+    const form = event.currentTarget;
     const formData = new FormData(form);
     const fullName = String(formData.get("fullName") ?? "").trim();
     const email = String(formData.get("email") ?? "").trim();
@@ -53,8 +60,7 @@ export default function RegisterPage() {
     setIsSubmitting(true);
 
     try {
-      const emailRedirectTo = getAuthRedirectUrl("/login?email_verified=1");
-
+      const emailRedirectTo = getEmailVerificationRedirectUrl();
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -73,7 +79,8 @@ export default function RegisterPage() {
         }
 
         if (isEmailNotConfirmedError(error)) {
-          setMessage("Hesap oluşturuldu ancak e-posta onayı gerekiyor. E-posta kutunuzu kontrol edin.");
+          setMessage(emailVerificationPromptMessage);
+          router.push(buildEmailVerificationPath(email));
           return;
         }
 
@@ -81,22 +88,23 @@ export default function RegisterPage() {
         return;
       }
 
-      await supabase.auth.signOut();
+      const requiresEmailVerification = !data.session || !isSupabaseUserEmailConfirmed(data.user);
+
+      if (requiresEmailVerification) {
+        await supabase.auth.signOut();
+        setMessage(emailVerificationPromptMessage);
+        router.push(buildEmailVerificationPath(email));
+        return;
+      }
 
       if (data.session) {
-        setMessage(verificationMessage);
-        router.push(`/login?email_verification_required=1&email=${encodeURIComponent(email)}`);
+        router.push("/dashboard");
+        router.refresh();
         return;
       }
 
-      if (data.user) {
-        setMessage(verificationMessage);
-        router.push(`/login?email_verification_required=1&email=${encodeURIComponent(email)}`);
-        return;
-      }
-
-      setMessage("E-postanı doğrula, sonra giriş yap.");
-      router.push(`/login?email_verification_required=1&email=${encodeURIComponent(email)}`);
+      setMessage("Kayıt tamamlandı ancak oturum başlatılamadı. Lütfen giriş yapmayı deneyin.");
+      router.push("/login");
     } catch {
       setMessage("Kayıt sırasında beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.");
     } finally {
@@ -118,9 +126,7 @@ export default function RegisterPage() {
           >
             Assetly
           </Link>
-          <h1 className="mt-5 text-4xl font-semibold leading-[1.1] text-white">
-            Hesabınızı oluşturun
-          </h1>
+          <h1 className="mt-5 text-4xl font-semibold leading-[1.1] text-white">Hesabınızı oluşturun</h1>
           <p className="mt-4 text-sm leading-7 text-slate-300">
             Deneme planında {trialAssetLimit} varlık, {trialDocumentLimit} belge, {trialSubscriptionLimit} abonelik ve{" "}
             {trialInvoiceUploadLimit} fatura yükleme ile başlayın. İstediğiniz zaman 149 TL premium plana geçin.
@@ -151,7 +157,7 @@ export default function RegisterPage() {
                 type="email"
                 required
                 className={inputClassName}
-                placeholder="örnek@mail.com"
+                placeholder="ornek@mail.com"
                 data-testid="register-email-input"
               />
             </label>

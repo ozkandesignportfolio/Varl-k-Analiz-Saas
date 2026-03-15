@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   AssetFilterMode,
   AssetSortMode,
@@ -18,6 +18,7 @@ export type AssetsListQueryOptions = {
 
 export function useAssetsFilters() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [assetFilter, setAssetFilter] = useState<AssetFilterMode>("all");
   const [warrantyFilter, setWarrantyFilter] = useState<WarrantyFilterMode>("all");
@@ -25,16 +26,27 @@ export function useAssetsFilters() {
   const [sortMode, setSortMode] = useState<AssetSortMode>("updated");
   const [viewMode, setViewMode] = useState<AssetViewMode>("table");
 
+  useEffect(() => {
+    const normalizedSearchTerm = searchTerm.trim();
+    const timeout = window.setTimeout(() => {
+      setDebouncedSearchTerm(normalizedSearchTerm.length === 0 ? "" : searchTerm);
+    }, normalizedSearchTerm.length === 0 ? 0 : 250);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [searchTerm]);
+
   const listQueryOptions = useMemo<AssetsListQueryOptions>(
     () => ({
-      search: searchTerm.trim() ? searchTerm : undefined,
+      search: debouncedSearchTerm.trim() ? debouncedSearchTerm : undefined,
       category: categoryFilter === "all" ? undefined : categoryFilter,
       sort: sortMode,
       assetFilter: assetFilter === "all" ? undefined : assetFilter,
       warrantyFilter: warrantyFilter === "all" ? undefined : warrantyFilter,
       maintenanceFilter: maintenanceFilter === "all" ? undefined : maintenanceFilter,
     }),
-    [assetFilter, categoryFilter, maintenanceFilter, searchTerm, sortMode, warrantyFilter],
+    [assetFilter, categoryFilter, debouncedSearchTerm, maintenanceFilter, sortMode, warrantyFilter],
   );
 
   const hasActiveFilters = useMemo(

@@ -1,6 +1,9 @@
+import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
-import { logApiError, logAuditEvent } from "@/lib/api/logging";
+import { logApiError, logApiRequest, logAuditEvent } from "@/lib/api/logging";
+import { enqueueUiNotification } from "@/features/notifications/lib/enqueue-ui-notification";
 import { enforceUserRateLimit } from "@/lib/api/rate-limit";
+import type { Update as TableUpdate } from "@/lib/repos/_shared";
 import {
   listAssets,
   type AssetFilterMode,
@@ -18,6 +21,7 @@ type CreateAssetPayload = {
   serialNumber?: unknown;
   brand?: unknown;
   model?: unknown;
+  purchase_price?: unknown;
   purchaseDate?: unknown;
   warrantyEndDate?: unknown;
 };
@@ -29,6 +33,7 @@ type UpdateAssetPayload = {
   serialNumber?: unknown;
   brand?: unknown;
   model?: unknown;
+  purchase_price?: unknown;
   purchaseDate?: unknown;
   warrantyEndDate?: unknown;
   photoPath?: unknown;
@@ -98,6 +103,35 @@ const parseBrandText = optionalText(MAX_BRAND_LENGTH);
 const parseModelText = optionalText(MAX_MODEL_LENGTH);
 const parseDateText = optionalText(10);
 const parsePhotoPathText = optionalText(MAX_PHOTO_PATH_LENGTH);
+const parsePurchasePrice = (value: unknown) => {
+  if (value === null || value === undefined) {
+    return { value: null as number | null };
+  }
+
+  if (typeof value === "number") {
+    if (!Number.isFinite(value) || Number.isNaN(value) || value < 0) {
+      return { value: null as number | null, invalidValue: true as const };
+    }
+
+    return { value };
+  }
+
+  if (typeof value !== "string") {
+    return { value: null as number | null, invalidType: true as const };
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return { value: null as number | null };
+  }
+
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed) || Number.isNaN(parsed) || parsed < 0) {
+    return { value: null as number | null, invalidValue: true as const };
+  }
+
+  return { value: parsed };
+};
 
 export async function GET(request: Request) {
   let userId: string | null = null;
@@ -168,7 +202,39 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    return NextResponse.json(data ?? { rows: [], nextCursor: null, hasMore: false }, { status: 200 });
+    const responseData = data ?? { rows: [], nextCursor: null, hasMore: false };
+    const assetIds = responseData.rows.map((row) => row.id).filter(Boolean);
+
+    if (assetIds.length === 0) {
+      return NextResponse.json(responseData, { status: 200 });
+    }
+
+    const { data: purchasePriceRows, error: purchasePriceError } = await auth.supabase
+      .from("assets")
+      .select("id,purchase_price")
+      .in("id", assetIds)
+      .eq("user_id", auth.user.id);
+
+    if (purchasePriceError) {
+      return NextResponse.json({ error: purchasePriceError.message }, { status: 400 });
+    }
+
+    const purchasePriceByAssetId = new Map(
+      (purchasePriceRows ?? []).map((row) => [row.id, row.purchase_price ?? null]),
+    );
+
+    return NextResponse.json(
+        {
+          ...responseData,
+          rows: responseData.rows.map((row) => ({
+            ...row,
+            purchase_price:
+              purchasePriceByAssetId.get(row.id) ??
+              ("purchase_price" in row ? (row.purchase_price ?? null) : null),
+          })),
+        },
+      { status: 200 },
+    );
   } catch (error) {
     logApiError({
       route: "/api/assets",
@@ -182,6 +248,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const requestId = request.headers.get("x-request-id")?.trim() || randomUUID();
+  const requestTimestamp = new Date().toISOString();
+  const requestStartedAt = Date.now();
   let userId: string | null = null;
   try {
     const auth = await requireRouteUser(request);
@@ -189,6 +258,20 @@ export async function POST(request: Request) {
       return auth.response;
     }
     userId = auth.user.id;
+
+    logApiRequest({
+      route: "/api/assets",
+      method: "POST",
+      status: 102,
+      durationMs: 0,
+      userId: auth.user.id,
+      requestId,
+      meta: {
+        phase: "start",
+        endpoint: "/api/assets",
+        timestamp: requestTimestamp,
+      },
+    });
 
     const rateLimit = await applyAssetsRateLimit({
       client: auth.supabase,
@@ -219,6 +302,7 @@ export async function POST(request: Request) {
     const serialNumberResult = parseSerialNumberText(payload.serialNumber);
     const brandResult = parseBrandText(payload.brand);
     const modelResult = parseModelText(payload.model);
+    const purchasePriceResult = parsePurchasePrice(payload.purchase_price);
     const purchaseDateResult = parseDateText(payload.purchaseDate);
     const warrantyEndDateResult = parseDateText(payload.warrantyEndDate);
 
@@ -228,10 +312,15 @@ export async function POST(request: Request) {
       serialNumberResult.invalidType ||
       brandResult.invalidType ||
       modelResult.invalidType ||
+      purchasePriceResult.invalidType ||
       purchaseDateResult.invalidType ||
       warrantyEndDateResult.invalidType
     ) {
       return NextResponse.json({ error: "İstek alanı tipleri geçersiz." }, { status: 400 });
+    }
+
+    if (purchasePriceResult.invalidValue) {
+      return NextResponse.json({ error: "Varlık fiyatı geçersiz." }, { status: 400 });
     }
 
     if (nameResult.missing || categoryResult.missing) {
@@ -289,10 +378,11 @@ export async function POST(request: Request) {
         serial_number: serialNumberResult.value,
         brand: brandResult.value,
         model: modelResult.value,
+        purchase_price: purchasePriceResult.value,
         purchase_date: purchaseDateParsed,
         warranty_end_date: warrantyEndDateParsed,
       })
-      .select("id")
+      .select("id,created_at")
       .single();
 
     if (error || !data?.id) {
@@ -307,6 +397,33 @@ export async function POST(request: Request) {
       action: "create",
     });
 
+    await enqueueUiNotification({
+      route: "/api/assets",
+      method: "POST",
+      userId: auth.user.id,
+      dedupeKey: `asset-created:${data.id}`,
+      kind: "asset_created",
+      assetId: data.id,
+      assetName: name,
+      payload: {
+        category,
+        created_at: data.created_at ?? null,
+      },
+    });
+
+    logApiRequest({
+      route: "/api/assets",
+      method: "POST",
+      status: 201,
+      durationMs: Date.now() - requestStartedAt,
+      userId: auth.user.id,
+      requestId,
+      meta: {
+        phase: "complete",
+        endpoint: "/api/assets",
+      },
+    });
+
     return NextResponse.json({ ok: true, id: data.id }, { status: 201 });
   } catch (error) {
     if (isPlanLimitError(error)) {
@@ -316,6 +433,7 @@ export async function POST(request: Request) {
     logApiError({
       route: "/api/assets",
       method: "POST",
+      requestId,
       userId,
       error,
       message: "Asset create request failed unexpectedly",
@@ -367,6 +485,7 @@ export async function PATCH(request: Request) {
     const hasSerialNumber = payload.serialNumber !== undefined;
     const hasBrand = payload.brand !== undefined;
     const hasModel = payload.model !== undefined;
+    const hasPurchasePrice = payload.purchase_price !== undefined;
     const hasPurchaseDate = payload.purchaseDate !== undefined;
     const hasWarrantyEndDate = payload.warrantyEndDate !== undefined;
     const hasPhotoPath = payload.photoPath !== undefined;
@@ -377,6 +496,7 @@ export async function PATCH(request: Request) {
       !hasSerialNumber &&
       !hasBrand &&
       !hasModel &&
+      !hasPurchasePrice &&
       !hasPurchaseDate &&
       !hasWarrantyEndDate &&
       !hasPhotoPath
@@ -384,14 +504,14 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Güncellenecek alan bulunamadı." }, { status: 400 });
     }
 
-    const patch: Record<string, string | null> = {};
+    const patch: TableUpdate<"assets"> = {};
 
     if (hasName) {
       const nameResult = parseNameText(payload.name, { required: true });
       if (nameResult.invalidType || nameResult.missing || nameResult.tooLong) {
         return NextResponse.json({ error: "Varlık adı geçersiz." }, { status: 400 });
       }
-      patch.name = nameResult.value;
+      patch.name = nameResult.value ?? undefined;
     }
 
     if (hasCategory) {
@@ -399,7 +519,7 @@ export async function PATCH(request: Request) {
       if (categoryResult.invalidType || categoryResult.missing || categoryResult.tooLong) {
         return NextResponse.json({ error: "Kategori geçersiz." }, { status: 400 });
       }
-      patch.category = categoryResult.value;
+      patch.category = categoryResult.value ?? undefined;
     }
 
     if (hasSerialNumber) {
@@ -424,6 +544,14 @@ export async function PATCH(request: Request) {
         return NextResponse.json({ error: "Model alanı geçersiz." }, { status: 400 });
       }
       patch.model = modelResult.value;
+    }
+
+    if (hasPurchasePrice) {
+      const purchasePriceResult = parsePurchasePrice(payload.purchase_price);
+      if (purchasePriceResult.invalidType || purchasePriceResult.invalidValue) {
+        return NextResponse.json({ error: "Varlık fiyatı geçersiz." }, { status: 400 });
+      }
+      patch.purchase_price = purchasePriceResult.value;
     }
 
     if (hasPurchaseDate) {
@@ -462,7 +590,7 @@ export async function PATCH(request: Request) {
 
     const { data: existingAsset, error: existingAssetError } = await auth.supabase
       .from("assets")
-      .select("id,purchase_date,warranty_end_date")
+      .select("id,name,purchase_date,warranty_end_date")
       .eq("id", assetId)
       .eq("user_id", auth.user.id)
       .maybeSingle();
@@ -489,7 +617,7 @@ export async function PATCH(request: Request) {
       .update(patch)
       .eq("id", assetId)
       .eq("user_id", auth.user.id)
-      .select("id")
+      .select("id,updated_at")
       .maybeSingle();
 
     if (error) {
@@ -507,6 +635,20 @@ export async function PATCH(request: Request) {
       entityId: data.id,
       action: "update",
       meta: { fields: Object.keys(patch) },
+    });
+
+    await enqueueUiNotification({
+      route: "/api/assets",
+      method: "PATCH",
+      userId: auth.user.id,
+      dedupeKey: `asset-updated:${data.id}:${data.updated_at ?? Object.keys(patch).sort().join(",")}`,
+      kind: "asset_updated",
+      assetId: data.id,
+      assetName: patch.name ?? existingAsset.name,
+      payload: {
+        changed_fields: Object.keys(patch),
+        updated_at: data.updated_at ?? null,
+      },
     });
 
     return NextResponse.json({ ok: true, id: data.id }, { status: 200 });

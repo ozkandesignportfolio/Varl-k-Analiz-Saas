@@ -1,12 +1,12 @@
 import { expect, test } from "@playwright/test";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { loadTestEnv, validateRequiredSuiteEnv } from "../../scripts/load-test-env.cjs";
 import { getSupabaseAdminClient, getSupabaseAnonClient } from "../e2e/helpers/supabase-admin";
+const { loadTestEnv, validateRequiredSuiteEnv } = require("../../../scripts/load-test-env.cjs");
 
 loadTestEnv();
 validateRequiredSuiteEnv("rls");
 
-const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:3000";
+const BASE_URL = process.env.TEST_BASE_URL || process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:3100";
 const PASSWORD = "Rls!Pass12345";
 
 type AssetListResponse = {

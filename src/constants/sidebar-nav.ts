@@ -39,7 +39,7 @@ export const SIDEBAR_NAV_ITEMS: SidebarNavItem[] = [
   { key: "dashboard", label: "Gösterge", href: "/dashboard", iconKey: "dashboard", shortCode: "GS" },
   { key: "assets", label: "Varlıklar", href: "/assets", iconKey: "package", shortCode: "VR" },
   { key: "maintenance", label: "Bakım", href: "/maintenance", iconKey: "wrench", shortCode: "BK" },
-  { key: "services", label: "Servisler", href: "/services", iconKey: "wrench", shortCode: "SR" },
+  { key: "services", label: "Servis Kayıtları", href: "/services", iconKey: "wrench", shortCode: "SR" },
   { key: "documents", label: "Belgeler", href: "/documents", iconKey: "folder-open", shortCode: "BG" },
   { key: "timeline", label: "Zaman Akışı", href: "/timeline", iconKey: "clock", shortCode: "ZA" },
   { key: "expenses", label: "Giderler", href: "/expenses", iconKey: "hand-coins", shortCode: "GD" },

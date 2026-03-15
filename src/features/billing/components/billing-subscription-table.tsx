@@ -30,7 +30,7 @@ type BillingSubscriptionTableProps = {
 
 const statusLabelMap: Record<BillingSubscriptionStatus, string> = {
   active: "Aktif",
-  paused: "Duraklatildi",
+  paused: "Duraklatıldı",
   cancelled: "İptal",
 };
 
@@ -98,4 +98,3 @@ function StatusBadge({ status }: { status: BillingSubscriptionStatus }) {
     </span>
   );
 }
-

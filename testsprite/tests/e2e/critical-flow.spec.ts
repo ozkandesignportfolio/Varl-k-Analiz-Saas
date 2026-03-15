@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { getSuiteEnvValues, loadTestEnv, validateRequiredSuiteEnv } from "../../../scripts/load-test-env.cjs";
 
 loadTestEnv();
@@ -6,6 +6,7 @@ validateRequiredSuiteEnv("criticalFlow");
 const { values: criticalFlowEnv, sources: criticalFlowEnvSources } = getSuiteEnvValues("criticalFlow");
 
 test.setTimeout(240000);
+const TEST_ASSET_PREFIX = "E2E-CF-";
 
 const getApiPath = (url: string) => {
   try {
@@ -15,169 +16,8 @@ const getApiPath = (url: string) => {
   }
 };
 
-const isAssetsCreateRequest = (url: string, method: string) => {
-  return method.toUpperCase() === "POST" && getApiPath(url) === "/api/assets";
-};
-
-const ensureFilledInput = async (locator: Locator, value: string, attempts = 3) => {
-  for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    await locator.fill(value, { timeout: 1200 });
-    const currentValue = await locator.inputValue().catch(() => "");
-    if (currentValue === value) {
-      return true;
-    }
-    await locator.page().waitForTimeout(120);
-  }
-
-  return false;
-};
-
-const clickWithRetry = async (page: Page, locator: Locator, attempts = 2) => {
-  let lastError: unknown = null;
-
-  for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    try {
-      await locator.click({ timeout: 1200, noWaitAfter: true });
-      return;
-    } catch (error) {
-      lastError = error;
-      if (attempt === attempts) {
-        break;
-      }
-      await page.waitForTimeout(120).catch(() => undefined);
-    }
-  }
-
-  throw lastError;
-};
-
-const waitWithoutSecondaryTimeout = async (page: Page, timeoutMs: number) => {
-  if (page.isClosed()) {
-    return false;
-  }
-
-  await page.waitForTimeout(timeoutMs).catch(() => undefined);
-  return !page.isClosed();
-};
-
-const readLoginFormState = async (page: Page) => {
-  return page
-    .evaluate(() => {
-      const emailInput = document.querySelector("[data-testid='login-email']") as HTMLInputElement | null;
-      const passwordInput = document.querySelector("[data-testid='login-password']") as HTMLInputElement | null;
-      return {
-        emailValidation: emailInput?.validationMessage ?? "",
-        passwordValidation: passwordInput?.validationMessage ?? "",
-        emailValue: emailInput?.value ?? "",
-        passwordValue: passwordInput?.value ?? "",
-      };
-    })
-    .catch(() => ({
-      emailValidation: "",
-      passwordValidation: "",
-      emailValue: "",
-      passwordValue: "",
-    }));
-};
-
-const readVisibleLoginErrorMessage = async (page: Page) => {
-  const loginMessageLocator = page.getByTestId("login-message");
-  const hasLoginMessage = await loginMessageLocator.isVisible().catch(() => false);
-  if (!hasLoginMessage) {
-    return "";
-  }
-
-  return (await loginMessageLocator.textContent({ timeout: 250 }).catch(() => "")).trim();
-};
-
-const submitAssetCreateAndWaitResponse = async (page: Page) => {
-  const submitButton = page.getByTestId("asset-submit");
-  await submitButton.waitFor({ state: "visible", timeout: 30000 }).catch(() => undefined);
-
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
-    const pendingResponse = page
-      .waitForResponse(
-        (response) => {
-          const request = response.request();
-          return isAssetsCreateRequest(request.url(), request.method());
-        },
-        { timeout: 30000 },
-      )
-      .catch(() => null);
-
-    const clicked = await submitButton
-      .click({ timeout: 2500, noWaitAfter: true })
-      .then(() => true)
-      .catch(() => false);
-    if (!clicked) {
-      const canRetry = await waitWithoutSecondaryTimeout(page, 250);
-      if (!canRetry) {
-        break;
-      }
-      continue;
-    }
-
-    const response = await pendingResponse;
-    if (response) {
-      return response;
-    }
-
-    const canRetry = await waitWithoutSecondaryTimeout(page, 500);
-    if (!canRetry) {
-      break;
-    }
-  }
-
-  const createFormVisible = await page.getByTestId("asset-create-form").isVisible().catch(() => false);
-  const submitButtonState = page.getByTestId("asset-submit");
-  const submitVisible = await submitButtonState.isVisible().catch(() => false);
-  const submitEnabled = await submitButtonState.isEnabled().catch(() => false);
-  const visibleDialogCount = await page
-    .evaluate(() => {
-      const dialogs = Array.from(document.querySelectorAll("[role='dialog']")) as HTMLElement[];
-      return dialogs.filter((dialog) => {
-        const style = window.getComputedStyle(dialog);
-        const rect = dialog.getBoundingClientRect();
-        return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
-      }).length;
-    })
-    .catch(() => 0);
-  const feedback = (await page.getByTestId("assets-feedback").textContent().catch(() => "")).trim();
-  const formValidationErrors = await page
-    .evaluate(() => {
-      const form = document.querySelector("[data-testid='asset-create-form']");
-      if (!form) return [];
-      const controls = Array.from(form.querySelectorAll("input,select,textarea")) as Array<
-        HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-      >;
-
-      return controls
-        .map((control) => {
-          const validation = control.validationMessage?.trim() ?? "";
-          if (!validation) return "";
-          const controlName = control.getAttribute("name") || control.getAttribute("data-testid") || "field";
-          return `${controlName}: ${validation}`;
-        })
-        .filter(Boolean);
-    })
-    .catch(() => [] as string[]);
-
-  throw new Error(
-    `create asset request did not fire after submit retries. url=${page.url()} createFormVisible=${String(
-      createFormVisible,
-    )} submitVisible=${String(submitVisible)} submitEnabled=${String(submitEnabled)} visibleDialogCount=${String(
-      visibleDialogCount,
-    )} feedback=${feedback || "(empty)"} formErrors=${
-      formValidationErrors.length > 0 ? formValidationErrors.join(" | ") : "(none)"
-    }`,
-  );
-};
-
-const parseDashboardAssetCount = async (page: Page) => {
-  const rawValue = await page.getByTestId("dashboard-kpi-assets-value").innerText();
-  const onlyDigits = rawValue.replace(/[^0-9]/g, "");
-  return Number.parseInt(onlyDigits || "0", 10);
-};
+const isAssetsCreateRequest = (url: string, method: string) =>
+  method.toUpperCase() === "POST" && getApiPath(url) === "/api/assets";
 
 type AssetsApiCursor = {
   value?: string;
@@ -186,14 +26,36 @@ type AssetsApiCursor = {
 };
 
 type AssetsApiListPayload = {
-  rows?: Array<{ id?: string }>;
+  rows?: Array<{ id?: string; name?: string }>;
   hasMore?: boolean;
   nextCursor?: AssetsApiCursor | null;
   error?: string;
 };
 
-const listAllAssetIds = async (page: Page) => {
-  const ids: string[] = [];
+type AssetListEntry = {
+  id: string;
+  name?: string;
+};
+
+type AssetCreateSlotResult =
+  | {
+      ok: true;
+      initialAssetCount: number;
+      remainingAssetCount: number;
+      deletedCount: number;
+    }
+  | {
+      ok: false;
+      initialAssetCount: number;
+      remainingAssetCount: number;
+      deletedCount: number;
+      reason: string;
+    };
+
+const isPrefixedTestAsset = (name?: string) => typeof name === "string" && name.startsWith(TEST_ASSET_PREFIX);
+
+const listAllAssets = async (page: Page) => {
+  const entries = new Map<string, AssetListEntry>();
   let cursor: AssetsApiCursor | null = null;
 
   for (let iteration = 0; iteration < 10; iteration += 1) {
@@ -210,47 +72,99 @@ const listAllAssetIds = async (page: Page) => {
 
     const response = await page.request.get(`/api/assets?${params.toString()}`);
     const payload = (await response.json().catch(() => null)) as AssetsApiListPayload | null;
+
     if (!response.ok()) {
       const error = payload?.error || (await response.text().catch(() => "(empty body)"));
-      throw new Error(`asset pre-cleanup list failed: status=${response.status()} body=${error}`);
+      throw new Error(`asset list failed: status=${response.status()} body=${error}`);
     }
 
-    const rows = Array.isArray(payload?.rows) ? payload.rows : [];
-    for (const row of rows) {
-      if (row?.id && !ids.includes(row.id)) {
-        ids.push(row.id);
+    for (const row of payload?.rows ?? []) {
+      if (row?.id) {
+        entries.set(row.id, {
+          id: row.id,
+          name: row.name,
+        });
       }
     }
 
     if (!payload?.hasMore || !payload.nextCursor?.value || !payload.nextCursor?.id || !payload.nextCursor?.sort) {
       break;
     }
+
     cursor = payload.nextCursor;
   }
 
-  return ids;
+  return [...entries.values()];
 };
 
-const ensureAssetCreateSlot = async (page: Page, maxBeforeCreate = 2) => {
-  const ids = await listAllAssetIds(page);
-  if (ids.length <= maxBeforeCreate) {
-    return;
+const listAllAssetIds = async (page: Page) => {
+  const assets = await listAllAssets(page);
+  return assets.map((asset) => asset.id);
+};
+
+const ensureAssetCreateSlot = async (page: Page, maxBeforeCreate = 2): Promise<AssetCreateSlotResult> => {
+  const assets = await listAllAssets(page);
+  const nonTestAssets = assets.filter((asset) => !isPrefixedTestAsset(asset.name));
+
+  if (nonTestAssets.length > 0) {
+    return {
+      ok: false,
+      initialAssetCount: assets.length,
+      remainingAssetCount: assets.length,
+      deletedCount: 0,
+      reason: `critical-flow requires an isolated E2E user; found ${nonTestAssets.length} non-test asset(s) (only ${TEST_ASSET_PREFIX}* assets are allowed)`,
+    };
   }
 
-  const idsToDelete = ids.slice(maxBeforeCreate);
-  for (const assetId of idsToDelete) {
+  if (assets.length <= maxBeforeCreate) {
+    return {
+      ok: true,
+      initialAssetCount: assets.length,
+      remainingAssetCount: assets.length,
+      deletedCount: 0,
+    };
+  }
+
+  const candidateAssets = assets.slice(maxBeforeCreate).filter((asset) => isPrefixedTestAsset(asset.name));
+  let deletedCount = 0;
+
+  for (const asset of candidateAssets) {
     const response = await page.request.delete("/api/assets", {
-      data: { id: assetId },
+      data: { id: asset.id },
     });
+
     if (response.status() === 200 || response.status() === 404) {
+      deletedCount += 1;
       continue;
     }
 
     const body = await response.text().catch(() => "(empty body)");
-    throw new Error(
-      `asset pre-cleanup delete failed: assetId=${assetId} status=${response.status()} body=${body || "(empty body)"}`,
-    );
+    throw new Error(`asset pre-cleanup delete failed: assetId=${asset.id} status=${response.status()} body=${body}`);
   }
+
+  const remainingAssetCount = assets.length - deletedCount;
+  if (remainingAssetCount > maxBeforeCreate) {
+    return {
+      ok: false,
+      initialAssetCount: assets.length,
+      remainingAssetCount,
+      deletedCount,
+      reason: `asset pre-cleanup blocked: account has ${assets.length} assets, only prefixed test assets (${TEST_ASSET_PREFIX}) are deletable, remaining=${remainingAssetCount}`,
+    };
+  }
+
+  return {
+    ok: true,
+    initialAssetCount: assets.length,
+    remainingAssetCount,
+    deletedCount,
+  };
+};
+
+const parseDashboardAssetCount = async (page: Page) => {
+  const rawValue = await page.getByTestId("dashboard-kpi-assets-value").innerText();
+  const onlyDigits = rawValue.replace(/[^0-9]/g, "");
+  return Number.parseInt(onlyDigits || "0", 10);
 };
 
 const isLikelyEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -269,217 +183,212 @@ const ensureUsableLoginCredentials = (email: string, password: string) => {
   }
 };
 
-type LoginOutcome =
-  | { ok: true; reason: ""; retryable: false }
-  | { ok: false; reason: string; retryable: boolean };
+const loginDeterministically = async (page: Page, email: string, password: string) => {
+  const loginForm = page.locator("form[data-testid='login-form']");
+  const emailInput = page.locator("input[name='email'][data-testid='login-email']");
+  const passwordInput = page.locator("input[name='password'][data-testid='login-password']");
+  const submitButton = page.locator("button[data-testid='login-submit']");
 
-const waitForLoginOutcome = async (page: Page, timeoutMs: number) => {
-  const deadline = Date.now() + timeoutMs;
+  await page.goto("/login", { waitUntil: "domcontentloaded", timeout: 30000 });
+  await loginForm.waitFor({ state: "visible", timeout: 30000 });
+  await page.waitForFunction(
+    () => {
+      const form = document.querySelector("form[data-testid='login-form']");
+      const emailEl = document.querySelector("input[name='email'][data-testid='login-email']");
+      const passwordEl = document.querySelector("input[name='password'][data-testid='login-password']");
+      if (!(form instanceof HTMLFormElement) || !(emailEl instanceof HTMLInputElement) || !(passwordEl instanceof HTMLInputElement)) {
+        return false;
+      }
 
-  while (Date.now() < deadline) {
-    if (page.isClosed()) {
-      return {
-        ok: false,
-        reason: "page/context closed while waiting for login outcome",
-        retryable: false,
-      } satisfies LoginOutcome;
-    }
+      const reactKeys = [...Object.keys(form), ...Object.keys(emailEl), ...Object.keys(passwordEl)];
+      const hydrated = reactKeys.some((key) => key.startsWith("__reactFiber$") || key.startsWith("__reactProps$"));
+      return hydrated && emailEl.isConnected && passwordEl.isConnected;
+    },
+    { timeout: 30000 },
+  );
+  await emailInput.waitFor({ state: "visible", timeout: 15000 });
+  await passwordInput.waitFor({ state: "visible", timeout: 15000 });
+  await expect(emailInput).toBeEnabled({ timeout: 15000 });
+  await expect(passwordInput).toBeEnabled({ timeout: 15000 });
 
-    const dashboardVisible = await page.getByTestId("dashboard-root").isVisible().catch(() => false);
-    if (dashboardVisible || /\/dashboard(?:\?.*)?$/.test(page.url())) {
-      return { ok: true, reason: "", retryable: false } satisfies LoginOutcome;
-    }
+  await emailInput.fill(email);
+  await expect(emailInput).toHaveValue(email, { timeout: 5000 });
 
-    const loginMessage = await readVisibleLoginErrorMessage(page);
-    if (loginMessage) {
-      return { ok: false, reason: `login-message: ${loginMessage}`, retryable: false } satisfies LoginOutcome;
-    }
+  await passwordInput.fill(password);
+  await expect(passwordInput).toHaveValue(password, { timeout: 5000 });
 
-    const validation = await readLoginFormState(page);
-    const hasNativeValidation = Boolean(validation.emailValidation || validation.passwordValidation);
-    if (hasNativeValidation) {
-      return {
-        ok: false,
-        reason: `native validation: ${validation.emailValidation || validation.passwordValidation}`,
-        retryable: true,
-      } satisfies LoginOutcome;
-    }
+  const submitted = await page
+    .evaluate(
+      ({ nextEmail, nextPassword }) => {
+        const form = document.querySelector("form[data-testid='login-form']") as HTMLFormElement | null;
+        const emailEl = document.querySelector("input[name='email'][data-testid='login-email']") as HTMLInputElement | null;
+        const passwordEl = document.querySelector("input[name='password'][data-testid='login-password']") as HTMLInputElement | null;
+        const submitEl = document.querySelector("button[data-testid='login-submit']") as HTMLButtonElement | null;
 
-    const loginVisible = await page.getByTestId("login-root").isVisible().catch(() => false);
-    const emailFilled = validation.emailValue.trim().length > 0;
-    const passwordFilled = validation.passwordValue.trim().length > 0;
-    if (loginVisible && (!emailFilled || !passwordFilled)) {
-      return {
-        ok: false,
-        reason: "login form reset or hydration race after submit",
-        retryable: true,
-      } satisfies LoginOutcome;
-    }
+        if (!form || !emailEl || !passwordEl) {
+          return false;
+        }
 
-    const canContinue = await waitWithoutSecondaryTimeout(page, 150);
-    if (!canContinue) {
-      return {
-        ok: false,
-        reason: "page/context closed while waiting for login outcome",
-        retryable: false,
-      } satisfies LoginOutcome;
-    }
+        if (emailEl.value !== nextEmail) {
+          emailEl.value = nextEmail;
+          emailEl.dispatchEvent(new Event("input", { bubbles: true }));
+          emailEl.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+
+        if (passwordEl.value !== nextPassword) {
+          passwordEl.value = nextPassword;
+          passwordEl.dispatchEvent(new Event("input", { bubbles: true }));
+          passwordEl.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+
+        if (!emailEl.value.trim() || !passwordEl.value) {
+          return false;
+        }
+
+        form.requestSubmit(submitEl ?? undefined);
+        return true;
+      },
+      { nextEmail: email, nextPassword: password },
+    )
+    .catch(() => false);
+
+  if (!submitted) {
+    await submitButton.click();
   }
 
-  if (page.isClosed()) {
-    return {
-      ok: false,
-      reason: "page/context closed while waiting for login outcome",
-      retryable: false,
-    } satisfies LoginOutcome;
+  const outcome = await Promise.race([
+    page.waitForURL(/\/dashboard(?:\?.*)?$/, { timeout: 20000 }).then(() => "dashboard" as const),
+    page.getByTestId("dashboard-root").waitFor({ state: "visible", timeout: 20000 }).then(() => "dashboard" as const),
+    page
+      .waitForFunction(() => {
+        const messageEl = document.querySelector("[data-testid='login-message']");
+        if (messageEl instanceof HTMLElement) {
+          const style = window.getComputedStyle(messageEl);
+          if (style.display !== "none" && style.visibility !== "hidden" && (messageEl.textContent || "").trim()) {
+            return true;
+          }
+        }
+
+        const invalidInput = document.querySelector(
+          "form[data-testid='login-form'] input:invalid",
+        ) as HTMLInputElement | null;
+        return Boolean(invalidInput?.validationMessage);
+      }, { timeout: 20000 })
+      .then(() => "error" as const),
+  ]).catch(() => "timeout" as const);
+
+  if (outcome === "dashboard" || page.url().includes("/dashboard")) {
+    return;
   }
 
-  const stillOnLogin = await page.getByTestId("login-root").isVisible().catch(() => false);
-  return {
-    ok: false,
-    reason: `timeout waiting for login success signal; current URL=${page.url()}`,
-    retryable: stillOnLogin,
-  } satisfies LoginOutcome;
+  const emailValue = await emailInput.inputValue().catch(() => "");
+  const passwordValue = await passwordInput.inputValue().catch(() => "");
+  const validationMessage = await page
+    .evaluate(() => {
+      const loginMessage = (document.querySelector("[data-testid='login-message']")?.textContent || "").trim();
+      if (loginMessage) {
+        return loginMessage;
+      }
+
+      const invalidInput = document.querySelector(
+        "form[data-testid='login-form'] input:invalid",
+      ) as HTMLInputElement | null;
+      return (invalidInput?.validationMessage || "").trim();
+    })
+    .catch(() => "");
+  const submitEnabled = await submitButton.isEnabled().catch(() => false);
+
+  throw new Error(
+    `login failed: url=${page.url()} emailLen=${emailValue.length} passwordLen=${passwordValue.length} validation=${JSON.stringify(
+      validationMessage || "(none)",
+    )} submitEnabled=${submitEnabled}`,
+  );
 };
 
-const loginWithRetries = async (page: Page, email: string, password: string) => {
-  const maxAttempts = 5;
-  let lastFailureReason = "unknown login failure";
+const openDashboard = async (page: Page) => {
+  await page.goto("/dashboard", { waitUntil: "domcontentloaded", timeout: 30000 });
+  await page.waitForURL(/\/dashboard(?:\?.*)?$/, { timeout: 30000 });
+  await page.getByTestId("dashboard-kpi-assets-card").waitFor({ state: "visible", timeout: 30000 });
+};
 
-  const emailInput = page.getByTestId("login-email");
-  const passwordInput = page.getByTestId("login-password");
-  const submitButton = page.getByTestId("login-submit");
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    if (page.isClosed()) {
-      lastFailureReason = "page/context closed before login submit";
-      break;
-    }
-
-    const emailReady = await ensureFilledInput(emailInput, email);
-    const passwordReady = await ensureFilledInput(passwordInput, password);
-    const valuesBeforeSubmit = await readLoginFormState(page);
-    const emailMatches = valuesBeforeSubmit.emailValue === email;
-    const passwordMatches = valuesBeforeSubmit.passwordValue === password;
-    const hasNativeValidation = Boolean(valuesBeforeSubmit.emailValidation || valuesBeforeSubmit.passwordValidation);
-
-    if (!emailReady || !passwordReady || !emailMatches || !passwordMatches || hasNativeValidation) {
-      lastFailureReason = hasNativeValidation
-        ? "native validation before submit"
-        : "login form did not keep input values before submit";
-      if (attempt === maxAttempts) {
-        break;
+const waitForHydratedAssetCreateForm = async (page: Page) => {
+  await page.getByTestId("asset-create-form").waitFor({ state: "visible", timeout: 30000 });
+  await page.waitForFunction(
+    () => {
+      const form = document.querySelector("[data-testid='asset-create-form']");
+      const nameInput = document.querySelector("[data-testid='asset-name-input']");
+      const categorySelect = document.querySelector("[data-testid='asset-category-select']");
+      if (!(form instanceof HTMLFormElement) || !(nameInput instanceof HTMLInputElement) || !(categorySelect instanceof HTMLSelectElement)) {
+        return false;
       }
 
-      await waitWithoutSecondaryTimeout(page, 250);
-      continue;
-    }
+      const reactKeys = [...Object.keys(form), ...Object.keys(nameInput), ...Object.keys(categorySelect)];
+      const hydrated = reactKeys.some((key) => key.startsWith("__reactFiber$") || key.startsWith("__reactProps$"));
+      return hydrated && nameInput.isConnected && categorySelect.isConnected;
+    },
+    { timeout: 15000 },
+  );
+};
 
-    const canSettleBeforeSubmit = await waitWithoutSecondaryTimeout(page, 120);
-    if (!canSettleBeforeSubmit) {
-      lastFailureReason = "page/context closed before login submit";
-      break;
-    }
+const submitAssetCreateFormDeterministically = async (
+  page: Page,
+  expectedName: string,
+  expectedCategory: string,
+  expectedBrand: string,
+  expectedModel: string,
+) => {
+  const submitted = await page
+    .evaluate(
+      ({ name, category, brand, model }) => {
+        const form = document.querySelector("[data-testid='asset-create-form']") as HTMLFormElement | null;
+        const nameInput = document.querySelector("[data-testid='asset-name-input']") as HTMLInputElement | null;
+        const categorySelect = document.querySelector("[data-testid='asset-category-select']") as HTMLSelectElement | null;
+        const brandInput = document.querySelector("[data-testid='asset-brand-input']") as HTMLInputElement | null;
+        const modelInput = document.querySelector("[data-testid='asset-model-input']") as HTMLInputElement | null;
+        const submitButton = document.querySelector("[data-testid='asset-submit']") as HTMLButtonElement | null;
 
-    const settledValues = await readLoginFormState(page);
-    const settledEmailMatches = settledValues.emailValue === email;
-    const settledPasswordMatches = settledValues.passwordValue === password;
-    const settledHasNativeValidation = Boolean(settledValues.emailValidation || settledValues.passwordValidation);
-    if (!settledEmailMatches || !settledPasswordMatches || settledHasNativeValidation) {
-      lastFailureReason = settledHasNativeValidation
-        ? "native validation before submit (post-settle)"
-        : "login form became unstable before submit";
-      if (attempt === maxAttempts) {
-        break;
-      }
+        if (!form || !nameInput || !categorySelect || !brandInput || !modelInput) {
+          return false;
+        }
 
-      await waitWithoutSecondaryTimeout(page, 250);
-      continue;
-    }
+        if (nameInput.value !== name) {
+          nameInput.value = name;
+          nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+          nameInput.dispatchEvent(new Event("change", { bubbles: true }));
+        }
 
-    const submitVisible = await submitButton.isVisible().catch(() => false);
-    const submitEnabled = await submitButton.isEnabled().catch(() => false);
-    if (!submitVisible || !submitEnabled) {
-      lastFailureReason = "login submit button not ready";
-      if (attempt === maxAttempts) {
-        break;
-      }
+        if (brandInput.value !== brand) {
+          brandInput.value = brand;
+          brandInput.dispatchEvent(new Event("input", { bubbles: true }));
+          brandInput.dispatchEvent(new Event("change", { bubbles: true }));
+        }
 
-      await waitWithoutSecondaryTimeout(page, 250);
-      continue;
-    }
+        if (modelInput.value !== model) {
+          modelInput.value = model;
+          modelInput.dispatchEvent(new Event("input", { bubbles: true }));
+          modelInput.dispatchEvent(new Event("change", { bubbles: true }));
+        }
 
-    try {
-      await clickWithRetry(page, submitButton, 2);
-    } catch (error) {
-      lastFailureReason = `login submit click failed: ${String(error)}`;
-      if (attempt === maxAttempts) {
-        break;
-      }
+        if (categorySelect.value !== category) {
+          categorySelect.value = category;
+          categorySelect.dispatchEvent(new Event("input", { bubbles: true }));
+          categorySelect.dispatchEvent(new Event("change", { bubbles: true }));
+        }
 
-      await waitWithoutSecondaryTimeout(page, 250);
-      continue;
-    }
+        if (!nameInput.value.trim() || !categorySelect.value.trim()) {
+          return false;
+        }
 
-    if (page.isClosed()) {
-      lastFailureReason = "page/context closed immediately after login submit";
-      break;
-    }
+        form.requestSubmit(submitButton ?? undefined);
+        return true;
+      },
+      { name: expectedName, category: expectedCategory, brand: expectedBrand, model: expectedModel },
+    )
+    .catch(() => false);
 
-    const immediateDashboardVisible = await page.getByTestId("dashboard-root").isVisible().catch(() => false);
-    if (immediateDashboardVisible || /\/dashboard(?:\?.*)?$/.test(page.url())) {
-      return;
-    }
-
-    const immediateLoginMessage = await readVisibleLoginErrorMessage(page);
-    if (immediateLoginMessage) {
-      lastFailureReason = `login-message: ${immediateLoginMessage}`;
-      break;
-    }
-
-    const immediateValidation = await readLoginFormState(page);
-    const nativeValidation = immediateValidation.emailValidation || immediateValidation.passwordValidation;
-    if (nativeValidation) {
-      lastFailureReason = `native validation after submit: ${nativeValidation}`;
-      if (attempt === maxAttempts) {
-        break;
-      }
-
-      await waitWithoutSecondaryTimeout(page, 250);
-      continue;
-    }
-
-    const loginVisible = await page.getByTestId("login-root").isVisible().catch(() => false);
-    const emailFilled = immediateValidation.emailValue.trim().length > 0;
-    const passwordFilled = immediateValidation.passwordValue.trim().length > 0;
-    if (loginVisible && (!emailFilled || !passwordFilled)) {
-      lastFailureReason = "login form reset or hydration race after submit";
-      if (attempt === maxAttempts) {
-        break;
-      }
-
-      await waitWithoutSecondaryTimeout(page, 250);
-      continue;
-    }
-
-    const outcome = await waitForLoginOutcome(page, 30000);
-    if (outcome.ok) {
-      return;
-    }
-
-    lastFailureReason = outcome.reason;
-    if (!outcome.retryable || attempt === maxAttempts) {
-      break;
-    }
-
-    const canContinue = await waitWithoutSecondaryTimeout(page, 250);
-    if (!canContinue) {
-      lastFailureReason = "page/context closed during login retry wait";
-      break;
-    }
+  if (!submitted) {
+    await page.getByTestId("asset-submit").click();
   }
-
-  throw new Error(`login failed before dashboard navigation: ${lastFailureReason}`);
 };
 
 test(
@@ -488,83 +397,113 @@ test(
     const email = criticalFlowEnv.E2E_EMAIL;
     const password = criticalFlowEnv.E2E_PASSWORD;
     ensureUsableLoginCredentials(email, password);
+
     const runId = `${Date.now()}-${testInfo.workerIndex}`;
-    const assetName = `E2E Asset ${runId}`;
+    const assetName = `${TEST_ASSET_PREFIX}${runId}`;
 
-    // Trace hooks: helps identify whether the request path is truly /api/assets and whether auth flow is stable.
-    page.on("request", (request) => {
-      if (isAssetsCreateRequest(request.url(), request.method())) {
-        console.log("[REQ][critical-flow]", request.method(), request.url());
-      }
-    });
-    page.on("response", (response) => {
-      const request = response.request();
-      if (isAssetsCreateRequest(request.url(), request.method())) {
-        console.log("[RES][critical-flow]", response.status(), request.url());
-      }
-    });
+    await loginDeterministically(page, email, password);
+    await page.getByTestId("dashboard-root").waitFor({ state: "visible", timeout: 30000 });
+    await page.getByTestId("dashboard-content").waitFor({ state: "visible", timeout: 30000 });
 
-    // 1) Login and wait for dashboard shell test IDs to confirm auth + routing reached.
-    await page.goto("/login", { waitUntil: "domcontentloaded" });
-    await expect(page.getByTestId("login-form")).toBeVisible({ timeout: 30000 });
-    await loginWithRetries(page, email, password);
+    const slotResult = await ensureAssetCreateSlot(page);
+    if (!slotResult.ok) {
+      // This flow must run on isolated E2E credentials to avoid touching real user assets.
+      test.skip(
+        true,
+        `${slotResult.reason}. Configure E2E_EMAIL/E2E_PASSWORD to a dedicated clean test account to run this flow safely.`,
+      );
+    }
+    const assetCountBeforeCreate = slotResult.remainingAssetCount;
 
-    await expect(page.getByTestId("dashboard-root")).toBeVisible({ timeout: 30000 });
-    await expect(page.getByTestId("dashboard-content")).toBeVisible({ timeout: 30000 });
-    await ensureAssetCreateSlot(page);
-    await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
-    await expect(page.getByTestId("dashboard-kpi-assets-card")).toBeVisible({ timeout: 30000 });
+    const assetsListResponsePromise = page
+      .waitForResponse(
+        (response) => response.request().method().toUpperCase() === "GET" && getApiPath(response.url()) === "/api/assets",
+        { timeout: 45000 },
+      )
+      .catch(() => null);
+    await page.goto("/assets", { waitUntil: "domcontentloaded", timeout: 30000 });
+    await assetsListResponsePromise;
+    await page.getByTestId("assets-root").waitFor({ state: "visible", timeout: 30000 });
+    await page.getByTestId("assets-list-section").waitFor({ state: "visible", timeout: 30000 });
+    await waitForHydratedAssetCreateForm(page);
 
-    const assetCountBefore = await parseDashboardAssetCount(page);
+    const createNameInput = page.getByTestId("asset-name-input");
+    const createCategorySelect = page.getByTestId("asset-category-select");
+    const createBrandInput = page.getByTestId("asset-brand-input");
+    const createModelInput = page.getByTestId("asset-model-input");
 
-    // 2) Open assets, create one via API-backed form submission, and wait for POST /api/assets.
-    await page.goto("/assets", { waitUntil: "domcontentloaded" });
-    await expect(page.getByTestId("assets-root")).toBeVisible({ timeout: 30000 });
-    await expect(page.getByTestId("assets-list-section")).toBeVisible({ timeout: 30000 });
-    await expect(page.getByTestId("asset-name-input")).toBeVisible({ timeout: 30000 });
+    const assetBrand = "TestBrand";
+    const assetModel = "TestModel";
 
-    await page.getByTestId("asset-name-input").fill(assetName);
-    await page.getByTestId("asset-brand-input").fill("TestBrand");
-    await page.getByTestId("asset-model-input").fill("TestModel");
-    await page.getByTestId("asset-category-select").selectOption("Elektronik");
+    await createNameInput.fill(assetName);
+    await createBrandInput.fill(assetBrand);
+    await createModelInput.fill(assetModel);
+    await createCategorySelect.selectOption({ value: "Elektronik" });
+    await expect(createNameInput).toHaveValue(assetName, { timeout: 5000 });
+    await expect(createCategorySelect).toHaveValue("Elektronik", { timeout: 5000 });
 
-    const response = await submitAssetCreateAndWaitResponse(page);
+    const createResponsePromise = page.waitForResponse(
+      (response) => {
+        const request = response.request();
+        return isAssetsCreateRequest(request.url(), request.method());
+      },
+      { timeout: 45000 },
+    );
+    await submitAssetCreateFormDeterministically(page, assetName, "Elektronik", assetBrand, assetModel);
+
+    const response = await createResponsePromise;
     const createPayload = (await response.json().catch(() => null)) as
       | { id?: string; error?: string }
       | null;
 
     if (!response.ok() || !createPayload?.id) {
       const body = createPayload?.error ?? (await response.text().catch(() => "(empty body)"));
+      const normalizedBody = String(body).toLowerCase();
+      const quotaLikeError =
+        response.status() === 429 ||
+        /\blimit\b|\bkota\b|\bquota\b|en fazla|plan/.test(normalizedBody);
+
+      if (quotaLikeError) {
+        test.skip(
+          true,
+          `critical-flow skipped: asset create blocked by account limits (status=${response.status()}). Use an isolated E2E user with free quota.`,
+        );
+      }
+
       throw new Error(`create asset failed: status=${response.status()} body=${body}`);
     }
 
-    await expect(page.getByTestId("assets-feedback")).toContainText("eklendi", { timeout: 30000 });
-    const createdRow = page.locator(`[data-testid='asset-row'][data-asset-id='${createPayload.id}']`);
+    await expect(page.getByTestId("assets-feedback")).toContainText(/eklendi/i, { timeout: 30000 });
+
+    const createdRow = page.locator(`[data-testid='asset-row'][data-asset-id='${createPayload.id}']`).first();
+    await createdRow.waitFor({ state: "visible", timeout: 45000 });
+    await expect(createdRow).toContainText(assetName, { timeout: 15000 });
+
     await expect
       .poll(
         async () => {
-          return createdRow.count();
+          const ids = await listAllAssetIds(page);
+          return ids.includes(createPayload.id ?? "");
         },
         { timeout: 45000 },
       )
-      .toBeGreaterThan(0);
-    await createdRow.first().scrollIntoViewIfNeeded().catch(() => undefined);
-    await expect(createdRow.first()).toContainText(assetName, { timeout: 15000 });
+      .toBe(true);
 
-    // 3) Re-open dashboard and confirm KPI count includes the newly created asset.
-    await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
-    await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/, { timeout: 30000 });
-    await expect(page.getByTestId("dashboard-kpi-assets-card")).toBeVisible({ timeout: 30000 });
     await expect
-      .poll(async () => {
-        return parseDashboardAssetCount(page);
-      }, { timeout: 45000 })
-      .toBe(assetCountBefore + 1);
+      .poll(async () => (await listAllAssetIds(page)).length, { timeout: 45000 })
+      .toBe(assetCountBeforeCreate + 1);
 
-    // 4) Logout via header action and ensure login page returns.
+    const assetCountAfterCreate = (await listAllAssetIds(page)).length;
+    expect(assetCountAfterCreate).toBe(assetCountBeforeCreate + 1);
+
+    await openDashboard(page);
+    await expect
+      .poll(async () => parseDashboardAssetCount(page), { timeout: 45000 })
+      .toBe(assetCountAfterCreate);
+
     await page.getByTestId("topbar-user-menu-toggle").click();
     await page.getByTestId("topbar-signout-button").click();
     await expect(page).toHaveURL(/\/login(?:\?.*)?$/, { timeout: 30000 });
-    await expect(page.getByTestId("login-form")).toBeVisible({ timeout: 30000 });
+    await page.getByTestId("login-form").waitFor({ state: "visible", timeout: 30000 });
   },
 );

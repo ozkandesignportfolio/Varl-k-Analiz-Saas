@@ -81,6 +81,17 @@ const toSafeString = (value: unknown, fallback = "") => {
   return fallback;
 };
 
+const toSafeStringArray = (value: unknown) => {
+  if (!Array.isArray(value)) {
+    return [] as string[];
+  }
+
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
 const resolveTypeFromEvent = (triggerType: string, payload: Record<string, unknown> | null): NotificationType => {
   if (triggerType === "maintenance_7_days") {
     return "Bakım";
@@ -106,6 +117,7 @@ const resolveTitleAndDescription = (
   payload: Record<string, unknown> | null,
 ): { title: string; description: string } => {
   const assetName = toSafeString(payload?.asset_name, "Varlık");
+  const notificationKind = toSafeString(payload?.notification_kind);
   const ruleTitle = toSafeString(payload?.rule_title, "Bakım kuralı");
   const warrantyDate = toSafeString(payload?.warranty_end_date, "-");
   const nextDueDate = toSafeString(payload?.next_due_date, "-");
@@ -113,6 +125,22 @@ const resolveTitleAndDescription = (
   const subscriptionName = toSafeString(payload?.subscription_name, "Abonelik");
   const providerName = toSafeString(payload?.provider_name, "Sağlayıcı");
   const nextBillingDate = toSafeString(payload?.next_billing_date, "-");
+
+  if (notificationKind === "asset_created") {
+    return {
+      title: "Yeni varlık oluşturuldu",
+      description: `${assetName} varlığı sisteme eklendi.`,
+    };
+  }
+
+  if (notificationKind === "asset_updated") {
+    const changedFields = toSafeStringArray(payload?.changed_fields);
+    const changedFieldsText = changedFields.length > 0 ? ` Güncellenen alanlar: ${changedFields.join(", ")}.` : "";
+    return {
+      title: "Varlık güncellendi",
+      description: `${assetName} varlığı güncellendi.${changedFieldsText}`,
+    };
+  }
 
   if (triggerType === "warranty_30_days") {
     return {

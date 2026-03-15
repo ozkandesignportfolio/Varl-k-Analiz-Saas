@@ -75,7 +75,7 @@ export function ServiceLogTable({
                             onClick={() => onStartEdit(log)}
                             className="rounded-full border border-sky-300/35 bg-sky-300/10 px-3 py-1 text-xs font-semibold text-sky-100 transition hover:bg-sky-300/20"
                           >
-                            Duzenle
+                            Düzenle
                           </button>
                         ) : null}
                         {onDeleteLog ? (

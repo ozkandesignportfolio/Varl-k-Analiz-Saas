@@ -6,7 +6,7 @@ import {
   type DashboardKpiTrend,
   type DashboardSnapshot,
   type DashboardSystemStatus,
-} from "./dashboard-queries.ts";
+} from "./dashboard-queries";
 
 type SeedAsset = {
   id: string;

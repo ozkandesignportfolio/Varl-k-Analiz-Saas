@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { loadTestEnv, validateRequiredSuiteEnv } from "../../scripts/load-test-env.cjs";
 import { getSupabaseAdminClient, getSupabaseAnonClient, getSupabaseAdminContext } from "../e2e/helpers/supabase-admin";
+const { loadTestEnv, validateRequiredSuiteEnv } = require("../../../scripts/load-test-env.cjs");
 
 loadTestEnv();
 validateRequiredSuiteEnv("rls");

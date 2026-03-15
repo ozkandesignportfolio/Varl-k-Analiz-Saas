@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   AssetActivityItem,
@@ -33,9 +33,34 @@ type ListAssetsPageResponse = {
   hasMore: boolean;
 };
 
+type AssetsDataState = {
+  assets: ListAssetsRow[];
+  categories: string[];
+  totalAssetCount: number;
+  assetsCursor: AssetsCursor | null;
+  hasMoreAssets: boolean;
+  isLoadingMoreAssets: boolean;
+  thumbnailUrls: Record<string, string>;
+  serviceActivityPreviewByAsset: Record<string, AssetActivityItem[]>;
+  isLoading: boolean;
+  feedback: string;
+};
+
 const LEGACY_PHOTO_BUCKET = "documents-private";
 const THUMBNAIL_BUCKET_FALLBACK_ORDER = [ASSET_MEDIA_BUCKET, LEGACY_PHOTO_BUCKET] as const;
 const ASSETS_PAGE_SIZE = 30;
+const INITIAL_DATA_STATE: AssetsDataState = {
+  assets: [],
+  categories: [],
+  totalAssetCount: 0,
+  assetsCursor: null,
+  hasMoreAssets: false,
+  isLoadingMoreAssets: false,
+  thumbnailUrls: {},
+  serviceActivityPreviewByAsset: {},
+  isLoading: true,
+  feedback: "",
+};
 
 const isMissingQrCodeError = (message: string | undefined) => {
   const normalized = (message ?? "").toLowerCase();
@@ -53,6 +78,21 @@ const isMissingAssetMediaError = (message: string | undefined) => {
       normalized.includes("schema cache") ||
       normalized.includes("could not find the table") ||
       normalized.includes("not found in schema cache"))
+  );
+};
+
+const isMissingAssetActivityPreviewError = (message: string | undefined) => {
+  const normalized = (message ?? "").toLowerCase();
+  if (!normalized.includes("list_asset_activity_preview")) {
+    return false;
+  }
+
+  return (
+    normalized.includes("does not exist") ||
+    normalized.includes("schema cache") ||
+    normalized.includes("could not find the function") ||
+    normalized.includes("not found in schema cache") ||
+    normalized.includes("undefined function")
   );
 };
 
@@ -80,19 +120,60 @@ const toListAssetsPageResponse = (payload: unknown): ListAssetsPageResponse => {
   };
 };
 
+const resolveSetStateAction = <T,>(
+  next: SetStateAction<T>,
+  current: T,
+): T => (typeof next === "function" ? (next as (previousState: T) => T)(current) : next);
+
 export function useAssetsData({ supabase, setAssetCount, userId, listQueryOptions }: UseAssetsDataArgs) {
-  const [assets, setAssets] = useState<ListAssetsRow[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [totalAssetCount, setTotalAssetCount] = useState(0);
-  const [assetsCursor, setAssetsCursor] = useState<AssetsCursor | null>(null);
-  const [hasMoreAssets, setHasMoreAssets] = useState(false);
-  const [isLoadingMoreAssets, setIsLoadingMoreAssets] = useState(false);
-  const [thumbnailUrls, setThumbnailUrls] = useState<Record<string, string>>({});
-  const [serviceActivityPreviewByAsset, setServiceActivityPreviewByAsset] = useState<
-    Record<string, AssetActivityItem[]>
-  >({});
-  const [isLoading, setIsLoading] = useState(true);
-  const [feedback, setFeedback] = useState("");
+  const [state, setState] = useState<AssetsDataState>(INITIAL_DATA_STATE);
+  const activeQueryVersionRef = useRef(0);
+  const replaceRequestAbortRef = useRef<AbortController | null>(null);
+  const thumbnailUrlCacheRef = useRef(new Map<string, string | null>());
+  const serviceActivityPreviewCacheRef = useRef(new Map<string, AssetActivityItem[]>());
+
+  const isActiveQueryVersion = useCallback(
+    (queryVersion: number) => activeQueryVersionRef.current === queryVersion,
+    [],
+  );
+
+  const setAssets = useCallback((next: SetStateAction<ListAssetsRow[]>) => {
+    setState((prev) => ({ ...prev, assets: resolveSetStateAction(next, prev.assets) }));
+  }, []);
+
+  const setThumbnailUrls = useCallback((next: SetStateAction<Record<string, string>>) => {
+    setState((prev) => {
+      const resolved = resolveSetStateAction(next, prev.thumbnailUrls);
+      for (const [assetId, url] of Object.entries(resolved)) {
+        thumbnailUrlCacheRef.current.set(assetId, url);
+      }
+      return { ...prev, thumbnailUrls: resolved };
+    });
+  }, []);
+
+  const setServiceActivityPreviewByAsset = useCallback(
+    (next: SetStateAction<Record<string, AssetActivityItem[]>>) => {
+      setState((prev) => {
+        const resolved = resolveSetStateAction(next, prev.serviceActivityPreviewByAsset);
+        for (const [assetId, items] of Object.entries(resolved)) {
+          serviceActivityPreviewCacheRef.current.set(assetId, items);
+        }
+        return {
+          ...prev,
+          serviceActivityPreviewByAsset: resolved,
+        };
+      });
+    },
+    [],
+  );
+
+  const setIsLoading = useCallback((next: SetStateAction<boolean>) => {
+    setState((prev) => ({ ...prev, isLoading: resolveSetStateAction(next, prev.isLoading) }));
+  }, []);
+
+  const setFeedback = useCallback((next: SetStateAction<string>) => {
+    setState((prev) => ({ ...prev, feedback: resolveSetStateAction(next, prev.feedback) }));
+  }, []);
 
   const refreshAssetCount = useCallback(
     async (currentUserId: string) => {
@@ -102,10 +183,10 @@ export function useAssetsData({ supabase, setAssetCount, userId, listQueryOption
         return;
       }
       const count = data ?? 0;
-      setTotalAssetCount(count);
+      setState((prev) => ({ ...prev, totalAssetCount: count }));
       setAssetCount(count);
     },
-    [setAssetCount, supabase],
+    [setAssetCount, setFeedback, supabase],
   );
 
   const fetchCategoryOptions = useCallback(
@@ -115,32 +196,67 @@ export function useAssetsData({ supabase, setAssetCount, userId, listQueryOption
         setFeedback(error.message);
         return;
       }
-      setCategories(data ?? []);
+      setState((prev) => ({ ...prev, categories: data ?? [] }));
     },
-    [supabase],
+    [setFeedback, supabase],
   );
 
   const fetchAssetActivityPreview = useCallback(
-    async (currentUserId: string, assetRows: ListAssetsRow[], options?: { append?: boolean }) => {
+    async (
+      currentUserId: string,
+      assetRows: ListAssetsRow[],
+      options?: { append?: boolean; queryVersion?: number },
+    ) => {
       const append = options?.append === true;
       if (assetRows.length === 0) {
-        if (!append) setServiceActivityPreviewByAsset({});
+        if (!append && isActiveQueryVersion(options?.queryVersion ?? activeQueryVersionRef.current)) {
+          setServiceActivityPreviewByAsset({});
+        }
         return;
       }
 
       const assetIds = assetRows.map((asset) => asset.id);
+      const cachedEntries: Record<string, AssetActivityItem[]> = {};
+      const missingAssetIds: string[] = [];
+
+      for (const assetId of assetIds) {
+        const cached = serviceActivityPreviewCacheRef.current.get(assetId);
+        if (cached) {
+          cachedEntries[assetId] = cached;
+          continue;
+        }
+
+        missingAssetIds.push(assetId);
+      }
+
+      if (missingAssetIds.length === 0) {
+        setServiceActivityPreviewByAsset((prev) => (append ? { ...prev, ...cachedEntries } : cachedEntries));
+        return;
+      }
+
       const { data, error } = await listAssetActivityPreview(supabase, {
         userId: currentUserId,
-        assetIds,
+        assetIds: missingAssetIds,
         perAssetLimit: 3,
       });
 
+      if (!isActiveQueryVersion(options?.queryVersion ?? activeQueryVersionRef.current)) {
+        return;
+      }
+
       if (error) {
+        if (isMissingAssetActivityPreviewError(error.message)) {
+          if (!append) setServiceActivityPreviewByAsset({});
+          return;
+        }
         setFeedback(error.message);
         return;
       }
 
       const grouped = new Map<string, AssetActivityItem[]>();
+      for (const assetId of missingAssetIds) {
+        grouped.set(assetId, []);
+      }
       for (const row of data ?? []) {
         const list = grouped.get(row.asset_id) ?? [];
         list.push({
@@ -154,29 +270,61 @@ export function useAssetsData({ supabase, setAssetCount, userId, listQueryOption
 
       const nextMap: Record<string, AssetActivityItem[]> = {};
       for (const [key, value] of grouped.entries()) {
+        serviceActivityPreviewCacheRef.current.set(key, value);
         nextMap[key] = value;
       }
 
-      setServiceActivityPreviewByAsset((prev) => (append ? { ...prev, ...nextMap } : nextMap));
+      const resolvedEntries = { ...cachedEntries, ...nextMap };
+      setServiceActivityPreviewByAsset((prev) => (append ? { ...prev, ...resolvedEntries } : resolvedEntries));
     },
-    [supabase],
+    [isActiveQueryVersion, setFeedback, setServiceActivityPreviewByAsset, supabase],
   );
 
   const loadThumbnailsForAssets = useCallback(
-    async (currentUserId: string, assetRows: ListAssetsRow[], options?: { append?: boolean }) => {
+    async (
+      currentUserId: string,
+      assetRows: ListAssetsRow[],
+      options?: { append?: boolean; queryVersion?: number },
+    ) => {
       const append = options?.append === true;
       if (assetRows.length === 0) {
-        if (!append) setThumbnailUrls({});
+        if (!append && isActiveQueryVersion(options?.queryVersion ?? activeQueryVersionRef.current)) {
+          setThumbnailUrls({});
+        }
         return;
       }
 
-      const assetIds = assetRows.map((asset) => asset.id);
+      const cachedEntries: Record<string, string> = {};
+      const uncachedRows: ListAssetsRow[] = [];
+      for (const asset of assetRows) {
+        const cached = thumbnailUrlCacheRef.current.get(asset.id);
+        if (typeof cached === "string" && cached.length > 0) {
+          cachedEntries[asset.id] = cached;
+          continue;
+        }
+        if (cached === null) {
+          continue;
+        }
+
+        uncachedRows.push(asset);
+      }
+
+      if (uncachedRows.length === 0) {
+        setThumbnailUrls((prev) => (append ? { ...prev, ...cachedEntries } : cachedEntries));
+        return;
+      }
+
+      const assetIds = uncachedRows.map((asset) => asset.id);
       const { data: mediaRows, error: mediaError } = await supabase
         .from("asset_media")
         .select("asset_id,type,storage_path")
         .eq("user_id", currentUserId)
         .eq("type", "image")
         .in("asset_id", assetIds);
+
+      if (!isActiveQueryVersion(options?.queryVersion ?? activeQueryVersionRef.current)) {
+        return;
+      }
 
       if (mediaError && !isMissingAssetMediaError(mediaError.message)) {
         setFeedback(mediaError.message);
@@ -207,7 +355,7 @@ export function useAssetsData({ supabase, setAssetCount, userId, listQueryOption
         }
       }
 
-      for (const asset of assetRows) {
+      for (const asset of uncachedRows) {
         if (!thumbnailSource.has(asset.id) && asset.photo_path) {
           thumbnailSource.set(asset.id, { path: asset.photo_path });
         }
@@ -222,14 +370,23 @@ export function useAssetsData({ supabase, setAssetCount, userId, listQueryOption
       );
 
       const nextUrls: Record<string, string> = {};
+      for (const asset of uncachedRows) {
+        thumbnailUrlCacheRef.current.set(asset.id, null);
+      }
       for (const entry of signedEntries) {
         if (!entry) continue;
+        thumbnailUrlCacheRef.current.set(entry[0], entry[1]);
         nextUrls[entry[0]] = entry[1];
       }
 
-      setThumbnailUrls((prev) => (append ? { ...prev, ...nextUrls } : nextUrls));
+      if (!isActiveQueryVersion(options?.queryVersion ?? activeQueryVersionRef.current)) {
+        return;
+      }
+
+      const resolvedEntries = { ...cachedEntries, ...nextUrls };
+      setThumbnailUrls((prev) => (append ? { ...prev, ...resolvedEntries } : resolvedEntries));
     },
-    [supabase],
+    [isActiveQueryVersion, setFeedback, setThumbnailUrls, supabase],
   );
 
   const fetchAssetsPage = useCallback(
@@ -241,11 +398,24 @@ export function useAssetsData({ supabase, setAssetCount, userId, listQueryOption
       } & AssetsListQueryOptions,
     ) => {
       const append = options?.append === true;
+      const queryVersion = append ? activeQueryVersionRef.current : activeQueryVersionRef.current + 1;
+      let requestAbortController: AbortController | null = null;
 
       if (append) {
-        setIsLoadingMoreAssets(true);
+        if (queryVersion === 0) {
+          return;
+        }
       } else {
-        setIsLoading(true);
+        activeQueryVersionRef.current = queryVersion;
+        replaceRequestAbortRef.current?.abort();
+        requestAbortController = new AbortController();
+        replaceRequestAbortRef.current = requestAbortController;
+      }
+
+      if (append) {
+        setState((prev) => ({ ...prev, isLoadingMoreAssets: true }));
+      } else {
+        setState((prev) => ({ ...prev, isLoading: true, isLoadingMoreAssets: false }));
       }
 
       try {
@@ -264,15 +434,20 @@ export function useAssetsData({ supabase, setAssetCount, userId, listQueryOption
         const response = await fetch(`/api/assets?${query.toString()}`, {
           method: "GET",
           headers: { Accept: "application/json" },
+          signal: requestAbortController?.signal,
         });
         const payload = (await response.json().catch(() => null)) as
           | (ListAssetsPageResponse & { error?: never })
           | { error?: string }
           | null;
-        const errorMessage = response.ok ? null : (payload?.error ?? "Varliklar yuklenemedi.");
+        const errorMessage = response.ok ? null : (payload?.error ?? "Varlıklar yüklenemedi.");
+
+        if (!isActiveQueryVersion(queryVersion)) {
+          return;
+        }
 
         if (errorMessage && isMissingQrCodeError(errorMessage)) {
-          setFeedback("Veritabani surumu guncellemesi gerekiyor: qr_code kolonu eksik.");
+          setFeedback("Veritabanı sürümü güncellemesi gerekiyor: `qr_code` kolonu eksik.");
           return;
         }
 
@@ -284,30 +459,40 @@ export function useAssetsData({ supabase, setAssetCount, userId, listQueryOption
         const pageData = toListAssetsPageResponse(payload);
         const rows = (pageData.rows ?? []) as ListAssetsRow[];
 
-        setHasMoreAssets(pageData.hasMore);
-        setAssetsCursor(pageData.nextCursor);
+        setState((prev) => ({
+          ...prev,
+          hasMoreAssets: pageData.hasMore,
+          assetsCursor: pageData.nextCursor,
+          assets: append ? [...prev.assets, ...rows] : rows,
+        }));
 
-        if (append) {
-          setAssets((prev) => [...prev, ...rows]);
-        } else {
-          setAssets(rows);
-        }
-
-        await Promise.allSettled([
-          fetchAssetActivityPreview(currentUserId, rows, { append }),
-          loadThumbnailsForAssets(currentUserId, rows, { append }),
+        void Promise.allSettled([
+          fetchAssetActivityPreview(currentUserId, rows, { append, queryVersion }),
+          loadThumbnailsForAssets(currentUserId, rows, { append, queryVersion }),
         ]);
       } catch (error) {
-        setFeedback(error instanceof Error ? error.message : "Varliklar yuklenemedi.");
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+        if (!isActiveQueryVersion(queryVersion)) {
+          return;
+        }
+        setFeedback("Varlıklar yüklenemedi.");
       } finally {
+        if (!append && replaceRequestAbortRef.current === requestAbortController) {
+          replaceRequestAbortRef.current = null;
+        }
+        if (!isActiveQueryVersion(queryVersion)) {
+          return;
+        }
         if (append) {
-          setIsLoadingMoreAssets(false);
+          setState((prev) => ({ ...prev, isLoadingMoreAssets: false }));
         } else {
-          setIsLoading(false);
+          setState((prev) => ({ ...prev, isLoading: false }));
         }
       }
     },
-    [fetchAssetActivityPreview, loadThumbnailsForAssets],
+    [fetchAssetActivityPreview, isActiveQueryVersion, loadThumbnailsForAssets, setFeedback],
   );
 
   useEffect(() => {
@@ -320,8 +505,15 @@ export function useAssetsData({ supabase, setAssetCount, userId, listQueryOption
     });
   }, [fetchAssetsPage, listQueryOptions, userId]);
 
+  useEffect(
+    () => () => {
+      replaceRequestAbortRef.current?.abort();
+    },
+    [],
+  );
+
   const dashboardRows = useMemo<AssetDashboardRow[]>(() => {
-    return assets.map((asset) => {
+    return state.assets.map((asset) => {
       return {
         id: asset.id,
         name: asset.name,
@@ -329,6 +521,7 @@ export function useAssetsData({ supabase, setAssetCount, userId, listQueryOption
         serial_number: asset.serial_number,
         brand: asset.brand,
         model: asset.model,
+        purchase_price: asset.purchase_price,
         purchase_date: asset.purchase_date,
         warranty_end_date: asset.warranty_end_date,
         photo_path: asset.photo_path,
@@ -345,35 +538,41 @@ export function useAssetsData({ supabase, setAssetCount, userId, listQueryOption
         score: Number(asset.score ?? 0),
       };
     });
-  }, [assets]);
+  }, [state.assets]);
 
   const summary = useMemo(() => {
-    const overdueCount = dashboardRows.filter((asset) => asset.maintenanceState === "overdue").length;
-    const upcomingCount = dashboardRows.filter((asset) => asset.maintenanceState === "upcoming").length;
-    const expiringWarrantyCount = dashboardRows.filter((asset) => asset.warrantyState !== "active").length;
-    const avgScore =
-      dashboardRows.length === 0
-        ? 0
-        : Math.round(dashboardRows.reduce((sum, asset) => sum + asset.score, 0) / dashboardRows.length);
+    let overdueCount = 0;
+    let upcomingCount = 0;
+    let expiringWarrantyCount = 0;
+    let totalScore = 0;
+
+    for (const asset of dashboardRows) {
+      if (asset.maintenanceState === "overdue") overdueCount += 1;
+      if (asset.maintenanceState === "upcoming") upcomingCount += 1;
+      if (asset.warrantyState !== "active") expiringWarrantyCount += 1;
+      totalScore += asset.score;
+    }
+
+    const avgScore = dashboardRows.length === 0 ? 0 : Math.round(totalScore / dashboardRows.length);
 
     return { overdueCount, upcomingCount, expiringWarrantyCount, avgScore };
   }, [dashboardRows]);
 
   return {
-    assets,
+    assets: state.assets,
     setAssets,
-    categories,
-    totalAssetCount,
-    assetsCursor,
-    hasMoreAssets,
-    isLoadingMoreAssets,
-    thumbnailUrls,
+    categories: state.categories,
+    totalAssetCount: state.totalAssetCount,
+    assetsCursor: state.assetsCursor,
+    hasMoreAssets: state.hasMoreAssets,
+    isLoadingMoreAssets: state.isLoadingMoreAssets,
+    thumbnailUrls: state.thumbnailUrls,
     setThumbnailUrls,
-    serviceActivityPreviewByAsset,
+    serviceActivityPreviewByAsset: state.serviceActivityPreviewByAsset,
     setServiceActivityPreviewByAsset,
-    isLoading,
+    isLoading: state.isLoading,
     setIsLoading,
-    feedback,
+    feedback: state.feedback,
     setFeedback,
     refreshAssetCount,
     fetchCategoryOptions,

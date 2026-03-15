@@ -21,6 +21,7 @@ export type AssetDashboardRow = {
   serial_number: string | null;
   brand: string | null;
   model: string | null;
+  purchase_price: number | null;
   purchase_date: string | null;
   warranty_end_date: string | null;
   photo_path: string | null;

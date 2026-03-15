@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logApiError } from "@/lib/api/logging";
 import { enforceRateLimit, getRequestIp } from "@/lib/api/rate-limit";
 import { fetchWithRetry } from "@/lib/net/fetch-with-timeout";
 import { getPlanConfigFromProfilePlan } from "@/lib/plans/profile-plan";
@@ -479,6 +480,14 @@ const buildPredictions = async (
   if (assetsRes.error || rulesRes.error || logsRes.error) {
     const message =
       assetsRes.error?.message ?? rulesRes.error?.message ?? logsRes.error?.message ?? "Query failed.";
+    logApiError({
+      route: "/api/maintenance-predictions",
+      method: request.method.toUpperCase(),
+      status: 500,
+      error: assetsRes.error ?? rulesRes.error ?? logsRes.error,
+      message: "Maintenance predictions query failed.",
+      userId: user.id,
+    });
     return NextResponse.json({ error: message }, { status: 500 });
   }
 
@@ -516,6 +525,15 @@ const buildPredictions = async (
       items: aiItems.sort((a, b) => b.riskScore - a.riskScore),
     };
   } catch (error) {
+    logApiError({
+      route: "/api/maintenance-predictions",
+      method: request.method.toUpperCase(),
+      status: 502,
+      error,
+      message: "AI scoring failed. Heuristic fallback used.",
+      userId: user.id,
+    });
+
     return {
       generatedAt: new Date().toISOString(),
       model: "heuristic-fallback",
@@ -538,7 +556,6 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   return handle(request);
 }
-
 
 
 

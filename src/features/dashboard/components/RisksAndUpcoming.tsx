@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarClock,
   FileWarning,
@@ -18,6 +18,7 @@ import type { DashboardSnapshot } from "@/features/dashboard/api/dashboard-queri
 import { createClient } from "@/lib/supabase/client";
 
 type RisksAndUpcomingProps = {
+  userId: string;
   riskPanel: DashboardSnapshot["riskPanel"];
 };
 
@@ -45,9 +46,6 @@ type DismissedAlertsTableQuery = {
 };
 
 type DismissedAlertsClient = {
-  auth: {
-    getUser: () => Promise<{ data: { user: { id: string } | null } }>;
-  };
   from: (table: string) => DismissedAlertsTableQuery;
 };
 
@@ -129,10 +127,9 @@ const writeDismissedAlertKeys = (keys: Set<string>) => {
   window.localStorage.setItem(DISMISSED_ALERTS_STORAGE_KEY, JSON.stringify(Array.from(keys)));
 };
 
-export function RisksAndUpcoming({ riskPanel }: RisksAndUpcomingProps) {
+export function RisksAndUpcoming({ userId, riskPanel }: RisksAndUpcomingProps) {
   const supabase = useMemo(() => createClient(), []);
   const dismissedAlertsClient = useMemo(() => supabase as unknown as DismissedAlertsClient, [supabase]);
-  const userIdRef = useRef<string | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [dismissedKeys, setDismissedKeys] = useState<Set<string>>(() => readDismissedAlertKeys());
@@ -248,17 +245,11 @@ export function RisksAndUpcoming({ riskPanel }: RisksAndUpcomingProps) {
     let isMounted = true;
 
     const loadDismissed = async () => {
-      const {
-        data: { user },
-      } = await dismissedAlertsClient.auth.getUser();
-
-      if (!isMounted || !user) {
+      if (!isMounted || !userId) {
         return;
       }
 
-      userIdRef.current = user.id;
-
-      const dismissRes = await dismissedAlertsClient.from("dismissed_alerts").select("alert_key").eq("user_id", user.id);
+      const dismissRes = await dismissedAlertsClient.from("dismissed_alerts").select("alert_key").eq("user_id", userId);
 
       if (!isMounted) {
         return;
@@ -293,23 +284,10 @@ export function RisksAndUpcoming({ riskPanel }: RisksAndUpcomingProps) {
         clearTimeout(undoTimerRef.current);
       }
     };
-  }, [dismissedAlertsClient]);
+  }, [dismissedAlertsClient, userId]);
 
-  const dismissAlertInSupabase = async (alertKey: string) => {
-    if (!canUseSupabaseDismiss) {
-      return;
-    }
-
-    let userId = userIdRef.current;
-    if (!userId) {
-      const {
-        data: { user },
-      } = await dismissedAlertsClient.auth.getUser();
-      userId = user?.id ?? null;
-      userIdRef.current = userId;
-    }
-
-    if (!userId) {
+  const dismissAlertInSupabase = useCallback(async (alertKey: string) => {
+    if (!canUseSupabaseDismiss || !userId) {
       return;
     }
 
@@ -321,23 +299,10 @@ export function RisksAndUpcoming({ riskPanel }: RisksAndUpcomingProps) {
     if (upsertRes.error && isMissingDismissedAlertsTableError(upsertRes.error.message)) {
       setCanUseSupabaseDismiss(false);
     }
-  };
+  }, [canUseSupabaseDismiss, dismissedAlertsClient, userId]);
 
-  const restoreAlertInSupabase = async (alertKey: string) => {
-    if (!canUseSupabaseDismiss) {
-      return;
-    }
-
-    let userId = userIdRef.current;
-    if (!userId) {
-      const {
-        data: { user },
-      } = await dismissedAlertsClient.auth.getUser();
-      userId = user?.id ?? null;
-      userIdRef.current = userId;
-    }
-
-    if (!userId) {
+  const restoreAlertInSupabase = useCallback(async (alertKey: string) => {
+    if (!canUseSupabaseDismiss || !userId) {
       return;
     }
 
@@ -350,9 +315,9 @@ export function RisksAndUpcoming({ riskPanel }: RisksAndUpcomingProps) {
     if (deleteRes.error && isMissingDismissedAlertsTableError(deleteRes.error.message)) {
       setCanUseSupabaseDismiss(false);
     }
-  };
+  }, [canUseSupabaseDismiss, dismissedAlertsClient, userId]);
 
-  const onDismiss = (alertKey: string) => {
+  const onDismiss = useCallback((alertKey: string) => {
     setDismissedKeys((prev) => {
       if (prev.has(alertKey)) {
         return prev;
@@ -374,9 +339,9 @@ export function RisksAndUpcoming({ riskPanel }: RisksAndUpcomingProps) {
     }, 5000);
 
     void dismissAlertInSupabase(alertKey);
-  };
+  }, [dismissAlertInSupabase]);
 
-  const onUndoDismiss = () => {
+  const onUndoDismiss = useCallback(() => {
     if (!undoState) {
       return;
     }
@@ -399,14 +364,18 @@ export function RisksAndUpcoming({ riskPanel }: RisksAndUpcomingProps) {
     });
 
     void restoreAlertInSupabase(alertKey);
-  };
+  }, [restoreAlertInSupabase, undoState]);
+
+  const onToggleShowDismissed = useCallback(() => {
+    setShowDismissed((prev) => !prev);
+  }, []);
 
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-end">
         <button
           type="button"
-          onClick={() => setShowDismissed((prev) => !prev)}
+          onClick={onToggleShowDismissed}
           className="inline-flex items-center rounded-lg border border-[#3C587C] bg-[#102643] px-3 py-1.5 text-xs font-semibold text-[#CFE0FA] transition hover:bg-[#163359]"
         >
           {showDismissed ? "Görmezden gelinenleri gizle" : "Görmezden gelinenleri göster"}
@@ -414,76 +383,39 @@ export function RisksAndUpcoming({ riskPanel }: RisksAndUpcomingProps) {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <article className="rounded-2xl border border-[#2B3F5D] bg-[linear-gradient(150deg,rgba(10,22,44,0.92),rgba(11,18,35,0.84))] p-5 shadow-[0_16px_34px_rgba(2,8,20,0.34)]">
-          <div className="mb-4 flex items-center justify-between gap-2">
-            <h2 className="text-lg font-semibold text-[#F8FAFC]">Öncelikli Riskler</h2>
-            <div className="flex items-center gap-2">
-              <span className="rounded-full border border-[#345073] bg-[#102643] px-2.5 py-1 text-xs font-semibold text-[#C3D7F4]">
-                {shownRiskRows.length} kayıt
-              </span>
-              <Link
-                href="/settings?tab=notifications"
-                className="inline-flex items-center gap-1 rounded-lg border border-[#3C587C] bg-[#143258] px-2.5 py-1.5 text-xs font-semibold text-[#E4EEFF] transition hover:bg-[#1A3E6D]"
-              >
-                <Settings className="size-3.5" aria-hidden />
-                Düzenle
-              </Link>
-            </div>
-          </div>
+        <RiskRowsPanel
+          title="Öncelikli Riskler"
+          rows={shownRiskRows}
+          dismissedKeys={dismissedKeys}
+          onDismiss={onDismiss}
+          settingsAction={{
+            href: "/settings?tab=notifications",
+            label: "Düzenle",
+            icon: Settings,
+          }}
+          emptyState={{
+            icon: ShieldCheck,
+            title: "Bugün için risk yok",
+            description: "Sistem şu an dengede. Proaktif kalmak için bakım planı oluşturabilirsiniz.",
+            href: "/maintenance",
+            ctaLabel: "Bakım kuralı oluştur",
+          }}
+        />
 
-          {shownRiskRows.length === 0 ? (
-            <EmptyState
-              icon={ShieldCheck}
-              title="Bugün için risk yok"
-              description="Sistem şu an dengede. Proaktif kalmak için bakım planı oluşturabilirsiniz."
-              href="/maintenance"
-              ctaLabel="Bakım kuralı oluştur"
-            />
-          ) : (
-            <ul className="space-y-2.5">
-              {shownRiskRows.map((row) => (
-                <RiskRow
-                  key={row.id}
-                  row={row}
-                  isDismissed={dismissedKeys.has(row.alertKey)}
-                  onDismiss={() => onDismiss(row.alertKey)}
-                />
-              ))}
-            </ul>
-          )}
-        </article>
-
-        <article className="rounded-2xl border border-[#2B3F5D] bg-[linear-gradient(150deg,rgba(10,22,44,0.92),rgba(11,18,35,0.84))] p-5 shadow-[0_16px_34px_rgba(2,8,20,0.34)]">
-          <div className="mb-4 flex items-center justify-between gap-2">
-            <h2 className="text-lg font-semibold text-[#F8FAFC]">Yaklaşanlar (7 gün)</h2>
-            <span className="rounded-full border border-[#345073] bg-[#102643] px-2.5 py-1 text-xs font-semibold text-[#C3D7F4]">
-              {shownUpcomingRows.length} kayıt
-            </span>
-          </div>
-
-          {shownUpcomingRows.length === 0 ? (
-            <EmptyState
-              icon={CalendarClock}
-              title="7 gün içinde yaklaşan iş yok"
-              description="Takvimde acil bir olay görünmüyor. Dilerseniz yeni servis kaydı ekleyebilirsiniz."
-              href="/services"
-              ctaLabel="Servis kaydı ekle"
-            />
-          ) : (
-            <ul className="space-y-2.5">
-              {shownUpcomingRows.map((row) => (
-                <RiskRow
-                  key={row.id}
-                  row={row}
-                  isDismissed={dismissedKeys.has(row.alertKey)}
-                  onDismiss={() => onDismiss(row.alertKey)}
-                />
-              ))}
-            </ul>
-          )}
-        </article>
+        <RiskRowsPanel
+          title="Yaklaşanlar (7 gün)"
+          rows={shownUpcomingRows}
+          dismissedKeys={dismissedKeys}
+          onDismiss={onDismiss}
+          emptyState={{
+            icon: CalendarClock,
+            title: "7 gün içinde yaklaşan iş yok",
+            description: "Takvimde acil bir olay görünmüyor. Dilerseniz yeni servis kaydı ekleyebilirsiniz.",
+            href: "/services",
+            ctaLabel: "Servis kaydı ekle",
+          }}
+        />
       </div>
-
       {undoState ? (
         <div className="fixed bottom-5 right-5 z-50 flex items-center gap-3 rounded-xl border border-[#3C587C] bg-[#0E1E37] px-4 py-3 text-sm text-[#EAF2FF] shadow-[0_10px_24px_rgba(2,8,20,0.45)]">
           <span>Uyarı gizlendi</span>
@@ -500,7 +432,78 @@ export function RisksAndUpcoming({ riskPanel }: RisksAndUpcomingProps) {
   );
 }
 
-function RiskRow({
+const RiskRowsPanel = memo(function RiskRowsPanel({
+  title,
+  rows,
+  dismissedKeys,
+  onDismiss,
+  emptyState,
+  settingsAction,
+}: {
+  title: string;
+  rows: ListRow[];
+  dismissedKeys: Set<string>;
+  onDismiss: (alertKey: string) => void;
+  emptyState: {
+    icon: LucideIcon;
+    title: string;
+    description: string;
+    href: string;
+    ctaLabel: string;
+  };
+  settingsAction?: {
+    href: string;
+    label: string;
+    icon: LucideIcon;
+  };
+}) {
+  const SettingsIcon = settingsAction?.icon;
+
+  return (
+    <article className="rounded-2xl border border-[#2B3F5D] bg-[linear-gradient(150deg,rgba(10,22,44,0.92),rgba(11,18,35,0.84))] p-5 shadow-[0_16px_34px_rgba(2,8,20,0.34)]">
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <h2 className="text-lg font-semibold text-[#F8FAFC]">{title}</h2>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full border border-[#345073] bg-[#102643] px-2.5 py-1 text-xs font-semibold text-[#C3D7F4]">
+            {rows.length} kayıt
+          </span>
+          {settingsAction ? (
+            <Link
+              href={settingsAction.href}
+              className="inline-flex items-center gap-1 rounded-lg border border-[#3C587C] bg-[#143258] px-2.5 py-1.5 text-xs font-semibold text-[#E4EEFF] transition hover:bg-[#1A3E6D]"
+            >
+              {SettingsIcon ? <SettingsIcon className="size-3.5" aria-hidden /> : null}
+              {settingsAction.label}
+            </Link>
+          ) : null}
+        </div>
+      </div>
+
+      {rows.length === 0 ? (
+        <EmptyState
+          icon={emptyState.icon}
+          title={emptyState.title}
+          description={emptyState.description}
+          href={emptyState.href}
+          ctaLabel={emptyState.ctaLabel}
+        />
+      ) : (
+        <ul className="space-y-2.5">
+          {rows.map((row) => (
+            <RiskRow
+              key={row.id}
+              row={row}
+              isDismissed={dismissedKeys.has(row.alertKey)}
+              onDismiss={() => onDismiss(row.alertKey)}
+            />
+          ))}
+        </ul>
+      )}
+    </article>
+  );
+});
+
+const RiskRow = memo(function RiskRow({
   row,
   isDismissed,
   onDismiss,
@@ -547,7 +550,7 @@ function RiskRow({
       </div>
     </li>
   );
-}
+});
 
 function EmptyState({
   icon,
@@ -580,3 +583,5 @@ function EmptyState({
     </div>
   );
 }
+
+

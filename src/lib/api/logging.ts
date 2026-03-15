@@ -1,4 +1,5 @@
 import "server-only";
+import { captureApiException } from "@/lib/monitoring/sentry-server";
 
 type ApiErrorLogParams = {
   route: string;
@@ -74,6 +75,18 @@ const writeStructuredLog = (level: LogLevel, payload: Record<string, unknown>) =
 export function logApiError(params: ApiErrorLogParams) {
   const { error, message, method, meta, route, status, userId, requestId, durationMs, dbTimeMs, openAiTimeMs } =
     params;
+
+  captureApiException({
+    route,
+    method,
+    error,
+    status,
+    message,
+    requestId,
+    userId,
+    meta,
+  });
+
   writeStructuredLog("error", {
     event: "api:error",
     ts: new Date().toISOString(),

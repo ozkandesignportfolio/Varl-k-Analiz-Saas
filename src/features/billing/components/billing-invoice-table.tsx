@@ -28,7 +28,7 @@ type BillingInvoiceTableProps = {
 
 const invoiceStatusLabelMap: Record<BillingInvoiceStatus, string> = {
   pending: "Beklemede",
-  paid: "Odendi",
+  paid: "Ödendi",
   overdue: "Gecikmiş",
   cancelled: "İptal",
 };
@@ -69,7 +69,7 @@ export function BillingInvoiceTable({
                 <tr key={invoice.id} className="border-b border-white/10 text-slate-100">
                   <td className="px-3 py-3">{new Date(invoice.issued_at).toLocaleDateString("tr-TR")}</td>
                   <td className="px-3 py-3">
-                    {subscriptionLabelById.get(invoice.subscription_id) ?? "Silinmis abonelik"}
+                    {subscriptionLabelById.get(invoice.subscription_id) ?? "Silinmiş abonelik"}
                   </td>
                   <td className="px-3 py-3">{formatCurrency(Number(invoice.total_amount ?? 0))}</td>
                   <td className="px-3 py-3">

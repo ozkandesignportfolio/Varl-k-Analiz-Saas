@@ -2,13 +2,22 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 
 type GlobalErrorProps = {
   error: Error & { digest?: string };
   reset: () => void;
 };
 
-const reportRuntimeError = (error: Error) => {
+const reportRuntimeError = (error: Error & { digest?: string }) => {
+  Sentry.withScope((scope) => {
+    scope.setTag("runtime_surface", "global_error_boundary");
+    if (error.digest) {
+      scope.setContext("next_error", { digest: error.digest });
+    }
+    Sentry.captureException(error);
+  });
+
   const reporter = (window as Window & { reportError?: (value: unknown) => void }).reportError;
   if (typeof reporter === "function") {
     reporter(error);
@@ -28,7 +37,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Kritik Hata</p>
             <h1 className="mt-2 text-2xl font-semibold text-white">Uygulama geçici olarak kullanılamıyor</h1>
             <p className="mt-3 text-sm text-slate-300">
-              Sistem guvenli moda alindi. Sayfayi yeniden deneyin veya panele donun.
+              Sistem güvenli moda alındı. Sayfayı yeniden deneyin veya panele dönün.
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
               <button

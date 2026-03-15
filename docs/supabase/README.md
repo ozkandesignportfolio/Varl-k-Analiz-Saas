@@ -35,6 +35,9 @@
 - Assets list RPC imza uyumlulugu icin
   `supabase/migrations/202603040001_assets_list_assets_page_rpc.sql`
   dosyasini da calistirin.
+- Assets tablosuna satin alma fiyati alani eklemek icin
+  `supabase/migrations/202603150001_assets_purchase_price.sql`
+  dosyasini da calistirin.
 
 Not: Bu migration calismadiysa API tarafinda
 "Could not find the table 'public.asset_media' in the schema cache" hatasi alinabilir.
@@ -48,6 +51,10 @@ Not: Eger asagidaki hata gorulurse assets RPC migrationi eksiktir ve
 `202603040001_assets_list_assets_page_rpc.sql`
 calistirilmalidir:
 "Could not find the function public.list_assets_page(...) in the schema cache"
+Not: Eger asagidaki hata gorulurse assets tablosunda satin alma fiyati kolonu eksiktir ve
+`202603150001_assets_purchase_price.sql`
+calistirilmalidir:
+"column assets.purchase_price does not exist"
 
 ## 2.1) Dogrulama
 - Kurulum sonrasi su dosyayi calistirin:

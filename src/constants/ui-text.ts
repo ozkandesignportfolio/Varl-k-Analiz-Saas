@@ -2,7 +2,7 @@
   dashboard: "Gösterge",
   assets: "Varlıklar",
   maintenance: "Bakım",
-  services: "Servisler",
+  services: "Servis Kayıtları",
   documents: "Belgeler",
   timeline: "Zaman Akışı",
   expenses: "Giderler",

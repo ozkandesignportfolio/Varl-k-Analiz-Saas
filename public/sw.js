@@ -1,6 +1,10 @@
 const CACHE_NAME = "assetcare-shell-v2";
 const OFFLINE_FALLBACK = "/offline";
 const APP_SHELL = ["/", "/offline", "/login", "/register"];
+const IS_LOCALHOST =
+  self.location.hostname === "localhost" ||
+  self.location.hostname === "127.0.0.1" ||
+  self.location.hostname === "[::1]";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -34,6 +38,7 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  if (IS_LOCALHOST && url.pathname.startsWith("/_next/")) return;
 
   if (request.mode === "navigate") {
     event.respondWith(

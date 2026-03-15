@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { CostTrendLineChart } from "@/components/costs/cost-trend-line-chart";
 import { YearlyCostBarChart } from "@/components/costs/yearly-cost-bar-chart";
@@ -74,6 +74,12 @@ const emptyCostAggregate: ServiceLogCostAggregate = {
   cost_score: 0,
 };
 
+const isSameCostAggregate = (left: ServiceLogCostAggregate, right: ServiceLogCostAggregate) =>
+  left.total_cost === right.total_cost &&
+  left.log_count === right.log_count &&
+  left.avg_cost === right.avg_cost &&
+  left.cost_score === right.cost_score;
+
 const toDateInput = (date: Date) => {
   const year = date.getUTCFullYear();
   const month = String(date.getUTCMonth() + 1).padStart(2, "0");
@@ -135,9 +141,11 @@ const isExpensesTableMissing = (error: { code?: string | null; message?: string 
 
 export default function CostsPage() {
   const supabase = useMemo(() => createClient(), []);
-  const { plan } = usePlanContext();
+  const { plan, userId: planUserId, isLoading: isPlanLoading } = usePlanContext();
   const planConfig = useMemo(() => getPlanConfigFromProfilePlan(plan), [plan]);
   const now = useMemo(() => new Date(), []);
+  const initializedUserIdRef = useRef<string | null>(null);
+  const periodAggregateInFlightRef = useRef(new Set<string>());
 
   const [activeUserId, setActiveUserId] = useState("");
   const [logs, setLogs] = useState<ServiceRow[]>([]);
@@ -151,43 +159,31 @@ export default function CostsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [feedback, setFeedback] = useState("");
 
-  useEffect(() => {
-    const load = async () => {
-      setIsLoading(true);
-      setFeedback("");
+  const resetAnalyticsState = useCallback(() => {
+    initializedUserIdRef.current = null;
+    setActiveUserId((prev) => (prev === "" ? prev : ""));
+    setLogs((prev) => (prev.length === 0 ? prev : []));
+    setAssets((prev) => (prev.length === 0 ? prev : []));
+    setMaintenanceRules((prev) => (prev.length === 0 ? prev : []));
+    setExpenseValues((prev) => (prev.length === 0 ? prev : []));
+    setPeriodAggregate((prev) => (isSameCostAggregate(prev, emptyCostAggregate) ? prev : emptyCostAggregate));
+    setCurrentYearAggregate((prev) => (isSameCostAggregate(prev, emptyCostAggregate) ? prev : emptyCostAggregate));
+    setTrailingTwelveAggregate((prev) =>
+      isSameCostAggregate(prev, emptyCostAggregate) ? prev : emptyCostAggregate,
+    );
+  }, []);
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        setFeedback(userError?.message ?? "Oturum bulunamadı. Lütfen tekrar giriş yapın.");
-        setIsLoading(false);
-        return;
-      }
-
-      if (!planConfig.features.canUseAdvancedAnalytics) {
-        setLogs([]);
-        setAssets([]);
-        setMaintenanceRules([]);
-        setExpenseValues([]);
-        setPeriodAggregate(emptyCostAggregate);
-        setCurrentYearAggregate(emptyCostAggregate);
-        setTrailingTwelveAggregate(emptyCostAggregate);
-        setIsLoading(false);
-        return;
-      }
-
-      setActiveUserId(user.id);
+  const loadAnalyticsForUser = useCallback(
+    async (currentUserId: string) => {
+      setActiveUserId((prev) => (prev === currentUserId ? prev : currentUserId));
 
       const [logsRes, assetsRes, rulesRes, expensesRes, currentYearRes, trailingTwelveRes] = await Promise.all([
-        listForCosts(supabase, { userId: user.id }),
-        supabase.from("assets").select("id,name,category,warranty_end_date").eq("user_id", user.id),
-        supabase.from("maintenance_rules").select("id,next_due_date,is_active").eq("user_id", user.id),
-        supabase.from("expenses").select("asset_id,amount,category,note,created_at").eq("user_id", user.id),
-        getCostAggregate(supabase, { userId: user.id, ...getCurrentYearRange(now) }),
-        getCostAggregate(supabase, { userId: user.id, ...getTrailingTwelveMonthRange(now) }),
+        listForCosts(supabase, { userId: currentUserId }),
+        supabase.from("assets").select("id,name,category,warranty_end_date").eq("user_id", currentUserId),
+        supabase.from("maintenance_rules").select("id,next_due_date,is_active").eq("user_id", currentUserId),
+        supabase.from("expenses").select("asset_id,amount,category,note,created_at").eq("user_id", currentUserId),
+        getCostAggregate(supabase, { userId: currentUserId, ...getCurrentYearRange(now) }),
+        getCostAggregate(supabase, { userId: currentUserId, ...getTrailingTwelveMonthRange(now) }),
       ]);
 
       if (logsRes.error) setFeedback(logsRes.error.message);
@@ -203,29 +199,102 @@ export default function CostsPage() {
       setAssets((assetsRes.data ?? []) as AssetRow[]);
       setMaintenanceRules((rulesRes.data ?? []) as MaintenanceRuleRow[]);
       setExpenseValues(isExpensesTableMissing(expensesRes.error) ? [] : ((expensesRes.data ?? []) as ExpenseValueRow[]));
-      setCurrentYearAggregate((currentYearRes.data ?? emptyCostAggregate) as ServiceLogCostAggregate);
-      setTrailingTwelveAggregate((trailingTwelveRes.data ?? emptyCostAggregate) as ServiceLogCostAggregate);
+      const nextCurrentYearAggregate = (currentYearRes.data ?? emptyCostAggregate) as ServiceLogCostAggregate;
+      const nextTrailingTwelveAggregate = (trailingTwelveRes.data ?? emptyCostAggregate) as ServiceLogCostAggregate;
+      setCurrentYearAggregate((prev) =>
+        isSameCostAggregate(prev, nextCurrentYearAggregate) ? prev : nextCurrentYearAggregate,
+      );
+      setTrailingTwelveAggregate((prev) =>
+        isSameCostAggregate(prev, nextTrailingTwelveAggregate) ? prev : nextTrailingTwelveAggregate,
+      );
       setIsLoading(false);
+    },
+    [now, supabase],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      setIsLoading(true);
+      setFeedback("");
+
+      if (!planConfig.features.canUseAdvancedAnalytics) {
+        resetAnalyticsState();
+        setIsLoading(false);
+        return;
+      }
+
+      const loadForUser = async (userId: string) => {
+        if (initializedUserIdRef.current === userId) {
+          setIsLoading(false);
+          return;
+        }
+        initializedUserIdRef.current = userId;
+        await loadAnalyticsForUser(userId);
+      };
+
+      if (planUserId) {
+        await loadForUser(planUserId);
+        return;
+      }
+
+      if (isPlanLoading) {
+        return;
+      }
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (cancelled) {
+        return;
+      }
+
+      if (userError || !user) {
+        resetAnalyticsState();
+        setFeedback(userError?.message ?? "Oturum bulunamadı. Lütfen tekrar giriş yapın.");
+        setIsLoading(false);
+        return;
+      }
+
+      await loadForUser(user.id);
     };
 
     void load();
-  }, [now, planConfig.features.canUseAdvancedAnalytics, supabase]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isPlanLoading, loadAnalyticsForUser, planConfig.features.canUseAdvancedAnalytics, planUserId, resetAnalyticsState, supabase]);
 
   useEffect(() => {
     if (!activeUserId || !planConfig.features.canUseAdvancedAnalytics) return;
 
     const loadPeriodAggregate = async () => {
-      const { data, error } = await getCostAggregate(supabase, {
-        userId: activeUserId,
-        ...getPeriodRange(period, now),
-      });
-
-      if (error) {
-        setFeedback(error.message);
+      const requestKey = `${activeUserId}|${period}`;
+      if (periodAggregateInFlightRef.current.has(requestKey)) {
         return;
       }
+      periodAggregateInFlightRef.current.add(requestKey);
 
-      setPeriodAggregate((data ?? emptyCostAggregate) as ServiceLogCostAggregate);
+      try {
+        const { data, error } = await getCostAggregate(supabase, {
+          userId: activeUserId,
+          ...getPeriodRange(period, now),
+        });
+
+        if (error) {
+          setFeedback(error.message);
+          return;
+        }
+
+        const nextAggregate = (data ?? emptyCostAggregate) as ServiceLogCostAggregate;
+        setPeriodAggregate((prev) => (isSameCostAggregate(prev, nextAggregate) ? prev : nextAggregate));
+      } finally {
+        periodAggregateInFlightRef.current.delete(requestKey);
+      }
     };
 
     void loadPeriodAggregate();
@@ -235,8 +304,19 @@ export default function CostsPage() {
   const monthlySeries = useMemo(() => buildMonthlyCostSeries(logs, period, now), [logs, period, now]);
   const yearlySeries = useMemo(() => buildYearlyCostSeries(logs), [logs]);
   const categorySeries = useMemo(() => buildCategoryCostSeries(filteredLogs, assets), [filteredLogs, assets]);
-  const periodLabel = periodOptions.find((option) => option.value === period)?.label ?? "Seçili dönem";
+  const periodLabel = useMemo(
+    () => periodOptions.find((option) => option.value === period)?.label ?? "Seçili dönem",
+    [period],
+  );
   const maxCategoryCost = useMemo(() => Math.max(1, ...categorySeries.map((item) => item.total)), [categorySeries]);
+  const categoryRowsWithWidth = useMemo(
+    () =>
+      categorySeries.map((item) => ({
+        ...item,
+        width: Math.max(8, (item.total / maxCategoryCost) * 100),
+      })),
+    [categorySeries, maxCategoryCost],
+  );
 
   const ratioBreakdown = useMemo(() => {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -491,39 +571,54 @@ export default function CostsPage() {
             </article>
           </section>
 
-          <section className="premium-card p-5">
-            <h2 className="text-lg font-semibold text-white">Seçili Dönem Kategori Dağılımı</h2>
-            {isLoading ? (
-              <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
-            ) : categorySeries.length === 0 ? (
-              <p className="mt-4 text-sm text-slate-300">Seçili dönemde maliyet kaydı bulunmuyor.</p>
-            ) : (
-              <div className="mt-4 space-y-3">
-                {categorySeries.map((item) => {
-                  const width = Math.max(8, (item.total / maxCategoryCost) * 100);
-                  return (
-                    <div key={item.label}>
-                      <div className="flex items-center justify-between text-sm text-slate-300">
-                        <span>{item.label}</span>
-                        <span>{currencyFormatter.format(item.total)}</span>
-                      </div>
-                      <div className="mt-1 h-2 rounded-full bg-white/10">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-sky-400 to-fuchsia-500"
-                          style={{ width: `${width}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
+          <CategoryDistributionCard
+            isLoading={isLoading}
+            rows={categoryRowsWithWidth}
+            formatter={currencyFormatter}
+          />
         </>
       )}
     </AppShell>
   );
 }
+
+const CategoryDistributionCard = memo(function CategoryDistributionCard({
+  isLoading,
+  rows,
+  formatter,
+}: {
+  isLoading: boolean;
+  rows: Array<{ label: string; total: number; width: number }>;
+  formatter: Intl.NumberFormat;
+}) {
+  return (
+    <section className="premium-card p-5">
+      <h2 className="text-lg font-semibold text-white">Seçili Dönem Kategori Dağılımı</h2>
+      {isLoading ? (
+        <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
+      ) : rows.length === 0 ? (
+        <p className="mt-4 text-sm text-slate-300">Seçili dönemde maliyet kaydı bulunmuyor.</p>
+      ) : (
+        <div className="mt-4 space-y-3">
+          {rows.map((item) => (
+            <div key={item.label}>
+              <div className="flex items-center justify-between text-sm text-slate-300">
+                <span>{item.label}</span>
+                <span>{formatter.format(item.total)}</span>
+              </div>
+              <div className="mt-1 h-2 rounded-full bg-white/10">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-sky-400 to-fuchsia-500"
+                  style={{ width: `${item.width}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+});
 
 function ScoreProgressRow({ label, score, barClass }: { label: string; score: number; barClass: string }) {
   const width = score > 0 ? Math.max(4, score) : 0;

@@ -12,6 +12,7 @@ create table if not exists public.assets (
   category text not null,
   brand text,
   model text,
+  purchase_price numeric(12,2),
   purchase_date date,
   warranty_end_date date,
   serial_number text,
@@ -21,6 +22,16 @@ create table if not exists public.assets (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.assets
+add column if not exists purchase_price numeric(12,2);
+
+alter table public.assets
+drop constraint if exists assets_purchase_price_nonnegative;
+
+alter table public.assets
+add constraint assets_purchase_price_nonnegative
+check (purchase_price is null or purchase_price >= 0);
 
 create table if not exists public.maintenance_rules (
   id uuid primary key default gen_random_uuid(),
