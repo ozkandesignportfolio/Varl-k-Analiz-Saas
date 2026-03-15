@@ -24,6 +24,8 @@ export type AppShellProps = {
   children?: ReactNode;
   actions?: ReactNode;
   badge?: string;
+  pageRootTestId?: string;
+  pageContentTestId?: string;
 };
 
 type AppShellSessionContextValue = {
@@ -88,7 +90,15 @@ const buildBreadcrumb = (pathname: string) => {
 
 export const useAppShellSession = () => useContext(AppShellSessionContext);
 
-export function AppShell({ title, subtitle, children, actions, badge }: AppShellProps) {
+export function AppShell({
+  title,
+  subtitle,
+  children,
+  actions,
+  badge,
+  pageRootTestId,
+  pageContentTestId,
+}: AppShellProps) {
   const pathname = usePathname();
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const [sessionState, setSessionState] = useState<AppShellSessionContextValue>({
@@ -141,8 +151,8 @@ export function AppShell({ title, subtitle, children, actions, badge }: AppShell
   const resolvedTitle = title ?? getFallbackTitle(pathname);
   const breadcrumb = buildBreadcrumb(pathname);
   const primarySegment = pathname.split("/").filter(Boolean)[0] ?? "home";
-  const pageRootTestId = `${primarySegment}-root`;
-  const pageContentTestId = `${primarySegment}-content`;
+  const resolvedPageRootTestId = pageRootTestId ?? `${primarySegment}-root`;
+  const resolvedPageContentTestId = pageContentTestId ?? `${primarySegment}-content`;
 
   return (
     <AppShellSessionContext.Provider value={sessionState}>
@@ -152,7 +162,7 @@ export function AppShell({ title, subtitle, children, actions, badge }: AppShell
         <div className="auth-shell-layout lg:pl-[var(--auth-sidebar-width)]">
           <AppHeader title={resolvedTitle} breadcrumb={breadcrumb} userEmail={sessionState.userEmail} />
 
-        <main className="auth-shell-main px-4 py-4 sm:px-6 lg:px-8" data-testid={pageRootTestId}>
+        <main className="auth-shell-main px-4 py-4 sm:px-6 lg:px-8" data-testid={resolvedPageRootTestId}>
           <nav aria-label="Mobil menü" className="auth-mobile-nav mb-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
             {SIDEBAR_NAV_ITEMS.map((item) => {
               const active = isHydrated ? isActivePath(pathname ?? "", item.href) : false;
@@ -184,7 +194,7 @@ export function AppShell({ title, subtitle, children, actions, badge }: AppShell
             </section>
           ) : null}
 
-          <div className="auth-shell-content" data-testid={pageContentTestId}>
+          <div className="auth-shell-content" data-testid={resolvedPageContentTestId}>
             {children}
           </div>
         </main>

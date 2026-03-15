@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
-import loadTestEnvModule from "../../../scripts/load-test-env.cjs";
+import loadTestEnvModule from "../../../../scripts/load-test-env.cjs";
 
 const { loadTestEnv, validateRequiredSuiteEnv } = loadTestEnvModule as {
   loadTestEnv: () => void;

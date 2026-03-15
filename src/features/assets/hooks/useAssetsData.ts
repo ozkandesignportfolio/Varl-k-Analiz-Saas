@@ -43,6 +43,7 @@ type AssetsDataState = {
   thumbnailUrls: Record<string, string>;
   serviceActivityPreviewByAsset: Record<string, AssetActivityItem[]>;
   isLoading: boolean;
+  assetsLoadError: string;
   feedback: string;
 };
 
@@ -59,6 +60,7 @@ const INITIAL_DATA_STATE: AssetsDataState = {
   thumbnailUrls: {},
   serviceActivityPreviewByAsset: {},
   isLoading: true,
+  assetsLoadError: "",
   feedback: "",
 };
 
@@ -173,6 +175,10 @@ export function useAssetsData({ supabase, setAssetCount, userId, listQueryOption
 
   const setFeedback = useCallback((next: SetStateAction<string>) => {
     setState((prev) => ({ ...prev, feedback: resolveSetStateAction(next, prev.feedback) }));
+  }, []);
+
+  const setAssetsLoadError = useCallback((next: SetStateAction<string>) => {
+    setState((prev) => ({ ...prev, assetsLoadError: resolveSetStateAction(next, prev.assetsLoadError) }));
   }, []);
 
   const refreshAssetCount = useCallback(
@@ -415,7 +421,12 @@ export function useAssetsData({ supabase, setAssetCount, userId, listQueryOption
       if (append) {
         setState((prev) => ({ ...prev, isLoadingMoreAssets: true }));
       } else {
-        setState((prev) => ({ ...prev, isLoading: true, isLoadingMoreAssets: false }));
+        setState((prev) => ({
+          ...prev,
+          isLoading: true,
+          isLoadingMoreAssets: false,
+          assetsLoadError: "",
+        }));
       }
 
       try {
@@ -447,12 +458,12 @@ export function useAssetsData({ supabase, setAssetCount, userId, listQueryOption
         }
 
         if (errorMessage && isMissingQrCodeError(errorMessage)) {
-          setFeedback("Veritabanı sürümü güncellemesi gerekiyor: `qr_code` kolonu eksik.");
+          setAssetsLoadError("Veritabanı sürümü güncellemesi gerekiyor: `qr_code` kolonu eksik.");
           return;
         }
 
         if (errorMessage) {
-          setFeedback(errorMessage);
+          setAssetsLoadError(errorMessage);
           return;
         }
 
@@ -461,6 +472,7 @@ export function useAssetsData({ supabase, setAssetCount, userId, listQueryOption
 
         setState((prev) => ({
           ...prev,
+          assetsLoadError: "",
           hasMoreAssets: pageData.hasMore,
           assetsCursor: pageData.nextCursor,
           assets: append ? [...prev.assets, ...rows] : rows,
@@ -477,7 +489,7 @@ export function useAssetsData({ supabase, setAssetCount, userId, listQueryOption
         if (!isActiveQueryVersion(queryVersion)) {
           return;
         }
-        setFeedback("Varlıklar yüklenemedi.");
+        setAssetsLoadError("Varlıklar yüklenemedi.");
       } finally {
         if (!append && replaceRequestAbortRef.current === requestAbortController) {
           replaceRequestAbortRef.current = null;
@@ -492,7 +504,7 @@ export function useAssetsData({ supabase, setAssetCount, userId, listQueryOption
         }
       }
     },
-    [fetchAssetActivityPreview, isActiveQueryVersion, loadThumbnailsForAssets, setFeedback],
+    [fetchAssetActivityPreview, isActiveQueryVersion, loadThumbnailsForAssets, setAssetsLoadError],
   );
 
   useEffect(() => {
@@ -572,6 +584,7 @@ export function useAssetsData({ supabase, setAssetCount, userId, listQueryOption
     setServiceActivityPreviewByAsset,
     isLoading: state.isLoading,
     setIsLoading,
+    assetsLoadError: state.assetsLoadError,
     feedback: state.feedback,
     setFeedback,
     refreshAssetCount,

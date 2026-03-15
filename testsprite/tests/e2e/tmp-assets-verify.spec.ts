@@ -16,6 +16,9 @@ const getApiPath = (url: string) => {
 const isAssetsCreateRequest = (url: string, method: string) =>
   method.toUpperCase() === "POST" && getApiPath(url) === "/api/assets";
 
+const isAssetsListRequest = (url: string, method: string) =>
+  method.toUpperCase() === "GET" && getApiPath(url) === "/api/assets";
+
 type AssetsApiCursor = {
   value?: string;
   id?: string;
@@ -38,6 +41,23 @@ type CreatedTestAsset = {
   id: string;
   name: string;
 };
+
+type AssetCreateSlotResult =
+  | {
+      ok: true;
+      initialAssetCount: number;
+      remainingAssetCount: number;
+      deletedCount: number;
+    }
+  | {
+      ok: false;
+      initialAssetCount: number;
+      remainingAssetCount: number;
+      deletedCount: number;
+      reason: string;
+    };
+
+const isPrefixedTestAsset = (name?: string) => typeof name === "string" && name.startsWith(TEST_ASSET_PREFIX);
 
 const resolveTmpAssetsVerifyCredentials = () => {
   const email = String(tmpAssetsVerifyEnv.E2E_EMAIL ?? "").trim();
@@ -130,6 +150,15 @@ const login = async (page: Page, email: string, password: string) => {
   ]).catch(() => "timeout" as const);
 
   if (outcome === "authed" || /\/(dashboard|assets)(?:\?.*)?$/.test(page.url())) {
+    await expect
+      .poll(
+        async () => {
+          const response = await page.request.get("/api/assets?pageSize=1&sort=updated");
+          return response.status();
+        },
+        { timeout: 30000 },
+      )
+      .toBe(200);
     return;
   }
 
@@ -235,6 +264,86 @@ const listAllAssets = async (page: Page) => {
   return [...entries.values()];
 };
 
+const ensureAssetCreateSlot = async (page: Page, maxBeforeCreate = 2): Promise<AssetCreateSlotResult> => {
+  const assets = await listAllAssets(page);
+
+  if (assets.length <= maxBeforeCreate) {
+    return {
+      ok: true,
+      initialAssetCount: assets.length,
+      remainingAssetCount: assets.length,
+      deletedCount: 0,
+    };
+  }
+
+  const candidateAssets = assets.slice(maxBeforeCreate).filter((asset) => isPrefixedTestAsset(asset.name));
+  let deletedCount = 0;
+
+  for (const asset of candidateAssets) {
+    const response = await page.request.delete("/api/assets", {
+      data: { id: asset.id },
+    });
+
+    if (response.status() === 200 || response.status() === 404) {
+      deletedCount += 1;
+      continue;
+    }
+
+    const body = await response.text().catch(() => "(empty body)");
+    throw new Error(`asset pre-cleanup delete failed: assetId=${asset.id} status=${response.status()} body=${body}`);
+  }
+
+  const remainingAssetCount = assets.length - deletedCount;
+  if (remainingAssetCount > maxBeforeCreate) {
+    return {
+      ok: false,
+      initialAssetCount: assets.length,
+      remainingAssetCount,
+      deletedCount,
+      reason: `asset create blocked before request: account has ${assets.length} assets and only ${TEST_ASSET_PREFIX}* assets are safe to delete`,
+    };
+  }
+
+  return {
+    ok: true,
+    initialAssetCount: assets.length,
+    remainingAssetCount,
+    deletedCount,
+  };
+};
+
+const openAssetsPage = async (
+  page: Page,
+  credentials?: { email: string; password: string },
+  retryCount = 0,
+) => {
+  const assetsListResponsePromise = page
+    .waitForResponse(
+      (response) => {
+        const request = response.request();
+        return isAssetsListRequest(request.url(), request.method());
+      },
+      { timeout: 45000 },
+    )
+    .catch(() => null);
+
+  await page.goto("/assets", { waitUntil: "domcontentloaded" });
+  await assetsListResponsePromise;
+
+  if (/\/login(?:\?.*)?$/.test(page.url())) {
+    if (!credentials || retryCount > 0) {
+      throw new Error(`assets page redirected to login: url=${page.url()}`);
+    }
+
+    await login(page, credentials.email, credentials.password);
+    await openAssetsPage(page, credentials, retryCount + 1);
+    return;
+  }
+
+  await expect(page.getByTestId("assets-list-section")).toBeVisible({ timeout: 45000 });
+  await waitForHydratedAssetCreateForm(page);
+};
+
 const createTestAsset = async (page: Page, name: string): Promise<CreatedTestAsset> => {
   await expect(page.getByTestId("asset-create-form")).toBeVisible({ timeout: 45000 });
   await waitForHydratedAssetCreateForm(page);
@@ -283,6 +392,26 @@ const waitForHydratedAssetCreateForm = async (page: Page) => {
     await expect(nameInput).toBeEnabled({ timeout: 30000 });
     await expect(categorySelect).toBeEnabled({ timeout: 30000 });
     await expect(submitButton).toBeEnabled({ timeout: 30000 });
+    await page.waitForFunction(
+      () => {
+        const form = document.querySelector("[data-testid='asset-create-form']");
+        const nameField = document.querySelector("[data-testid='asset-name-input']");
+        const categoryField = document.querySelector("[data-testid='asset-category-select']");
+
+        if (
+          !(form instanceof HTMLFormElement) ||
+          !(nameField instanceof HTMLInputElement) ||
+          !(categoryField instanceof HTMLSelectElement)
+        ) {
+          return false;
+        }
+
+        const reactKeys = [...Object.keys(form), ...Object.keys(nameField), ...Object.keys(categoryField)];
+        const hydrated = reactKeys.some((key) => key.startsWith("__reactFiber$") || key.startsWith("__reactProps$"));
+        return hydrated && nameField.isConnected && categoryField.isConnected;
+      },
+      { timeout: 15000 },
+    );
   } catch {
     const [
       createFormVisible,
@@ -391,8 +520,7 @@ test.describe("assets visibility verification", () => {
     await login(page, email, password);
 
     try {
-      await page.goto("/assets", { waitUntil: "domcontentloaded" });
-      await expect(page.getByTestId("assets-list-section")).toBeVisible({ timeout: 45000 });
+      await openAssetsPage(page, { email, password });
 
       const ensured = await ensurePrefixedAssetForListGrid(page);
       if (ensured.created) {
@@ -422,12 +550,19 @@ test.describe("assets visibility verification", () => {
     await login(page, email, password);
 
     try {
-      await page.goto("/assets", { waitUntil: "domcontentloaded" });
-      await expect(page.getByTestId("asset-create-form")).toBeVisible({ timeout: 45000 });
+      await openAssetsPage(page, { email, password });
 
       const runId = Date.now();
       const createdName = `${TEST_ASSET_PREFIX}${runId}`;
       const updatedName = `${createdName}-Updated`;
+
+      const slotResult = await ensureAssetCreateSlot(page);
+      if (!slotResult.ok) {
+        test.skip(
+          true,
+          `${slotResult.reason}. Use an isolated E2E account with at most 2 existing assets before create.`,
+        );
+      }
 
       const createdAsset = await createTestAsset(page, createdName);
       createdAssets.push(createdAsset);

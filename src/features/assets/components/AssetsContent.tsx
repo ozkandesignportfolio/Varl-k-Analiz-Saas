@@ -11,6 +11,7 @@ type AssetsContentProps = {
     avgScore: number;
   };
   isLoading: boolean;
+  assetsLoadError: string;
   viewMode: AssetViewMode;
   dashboardRows: AssetDashboardRow[];
   hasActiveFilters: boolean;
@@ -30,6 +31,7 @@ export const AssetsContent = memo(function AssetsContent({
   totalAssetCount,
   summary,
   isLoading,
+  assetsLoadError,
   viewMode,
   dashboardRows,
   hasActiveFilters,
@@ -55,6 +57,7 @@ export const AssetsContent = memo(function AssetsContent({
 
       <AssetListTable
         isLoading={isLoading}
+        requestError={assetsLoadError}
         viewMode={viewMode}
         assets={dashboardRows}
         hasActiveFilters={hasActiveFilters}

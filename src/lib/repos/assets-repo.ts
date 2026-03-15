@@ -92,6 +92,24 @@ const normalizePageSize = (value: number | undefined, fallback: number, max = 20
   return Math.min(max, parsed);
 };
 
+const coerceNullableNumber = (value: unknown) => {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+};
+
 const isListAssetsSignatureError = (error: PostgrestError | null) => {
   if (!error) return false;
   const normalized = error.message.toLowerCase();
@@ -279,12 +297,7 @@ export function listAssets(
       serial_number: (row.serial_number as string | null) ?? null,
       brand: (row.brand as string | null) ?? null,
       model: (row.model as string | null) ?? null,
-      purchase_price:
-        typeof row.purchase_price === "number"
-          ? row.purchase_price
-          : row.purchase_price === null
-            ? null
-            : null,
+      purchase_price: coerceNullableNumber(row.purchase_price),
       purchase_date: (row.purchase_date as string | null) ?? null,
       warranty_end_date: (row.warranty_end_date as string | null) ?? null,
       photo_path: (row.photo_path as string | null) ?? null,

@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { logApiError, logApiRequest, logAuditEvent } from "@/lib/api/logging";
+import { toPublicErrorBody } from "@/lib/api/public-error";
 import { enqueueUiNotification } from "@/features/notifications/lib/enqueue-ui-notification";
 import { enforceUserRateLimit } from "@/lib/api/rate-limit";
 import type { Update as TableUpdate } from "@/lib/repos/_shared";
@@ -133,6 +134,24 @@ const parsePurchasePrice = (value: unknown) => {
   return { value: parsed };
 };
 
+const normalizePurchasePrice = (value: unknown) => {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+};
+
 export async function GET(request: Request) {
   let userId: string | null = null;
   try {
@@ -199,7 +218,18 @@ export async function GET(request: Request) {
     });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      logApiError({
+        route: "/api/assets",
+        method: "GET",
+        status: 400,
+        userId: auth.user.id,
+        error,
+        message: "Assets list query failed",
+      });
+      return NextResponse.json(
+        toPublicErrorBody("ASSETS_LIST_FAILED", "Varlik listesi alinamadi."),
+        { status: 400 },
+      );
     }
 
     const responseData = data ?? { rows: [], nextCursor: null, hasMore: false };
@@ -216,23 +246,41 @@ export async function GET(request: Request) {
       .eq("user_id", auth.user.id);
 
     if (purchasePriceError) {
-      return NextResponse.json({ error: purchasePriceError.message }, { status: 400 });
-    }
+      logApiError({
+        route: "/api/assets",
+        method: "GET",
+        userId: auth.user.id,
+        error: purchasePriceError,
+        message: "Assets purchase price enrichment failed",
+      });
 
-    const purchasePriceByAssetId = new Map(
-      (purchasePriceRows ?? []).map((row) => [row.id, row.purchase_price ?? null]),
-    );
-
-    return NextResponse.json(
+      return NextResponse.json(
         {
           ...responseData,
           rows: responseData.rows.map((row) => ({
             ...row,
-            purchase_price:
-              purchasePriceByAssetId.get(row.id) ??
-              ("purchase_price" in row ? (row.purchase_price ?? null) : null),
+            purchase_price: normalizePurchasePrice(row.purchase_price),
           })),
+          warnings: ["purchase_price_unavailable"],
         },
+        { status: 200 },
+      );
+    }
+
+    const purchasePriceByAssetId = new Map(
+      (purchasePriceRows ?? []).map((row) => [row.id, normalizePurchasePrice(row.purchase_price)]),
+    );
+
+    return NextResponse.json(
+      {
+        ...responseData,
+        rows: responseData.rows.map((row) => ({
+          ...row,
+          purchase_price: purchasePriceByAssetId.has(row.id)
+            ? (purchasePriceByAssetId.get(row.id) ?? null)
+            : normalizePurchasePrice(row.purchase_price),
+        })),
+      },
       { status: 200 },
     );
   } catch (error) {
@@ -386,7 +434,19 @@ export async function POST(request: Request) {
       .single();
 
     if (error || !data?.id) {
-      return NextResponse.json({ error: error?.message ?? "Varlık oluşturulamadı." }, { status: 400 });
+      logApiError({
+        route: "/api/assets",
+        method: "POST",
+        requestId,
+        status: 400,
+        userId: auth.user.id,
+        error: error ?? new Error("Asset insert returned without an id."),
+        message: "Asset create query failed",
+      });
+      return NextResponse.json(
+        toPublicErrorBody("ASSET_CREATE_FAILED", "Varlik olusturulamadi."),
+        { status: 400 },
+      );
     }
 
     logAuditEvent({
@@ -596,7 +656,18 @@ export async function PATCH(request: Request) {
       .maybeSingle();
 
     if (existingAssetError) {
-      return NextResponse.json({ error: existingAssetError.message }, { status: 400 });
+      logApiError({
+        route: "/api/assets",
+        method: "PATCH",
+        status: 400,
+        userId: auth.user.id,
+        error: existingAssetError,
+        message: "Asset update lookup query failed",
+      });
+      return NextResponse.json(
+        toPublicErrorBody("ASSET_LOOKUP_FAILED", "Varlik bilgisi su anda dogrulanamadi."),
+        { status: 400 },
+      );
     }
 
     if (!existingAsset?.id) {
@@ -621,7 +692,18 @@ export async function PATCH(request: Request) {
       .maybeSingle();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      logApiError({
+        route: "/api/assets",
+        method: "PATCH",
+        status: 400,
+        userId: auth.user.id,
+        error,
+        message: "Asset update query failed",
+      });
+      return NextResponse.json(
+        toPublicErrorBody("ASSET_UPDATE_FAILED", "Varlik guncellenemedi."),
+        { status: 400 },
+      );
     }
 
     if (!data?.id) {
@@ -711,7 +793,18 @@ export async function DELETE(request: Request) {
       .maybeSingle();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      logApiError({
+        route: "/api/assets",
+        method: "DELETE",
+        status: 400,
+        userId: auth.user.id,
+        error,
+        message: "Asset delete query failed",
+      });
+      return NextResponse.json(
+        toPublicErrorBody("ASSET_DELETE_FAILED", "Varlik silinemedi."),
+        { status: 400 },
+      );
     }
 
     if (!data?.id) {

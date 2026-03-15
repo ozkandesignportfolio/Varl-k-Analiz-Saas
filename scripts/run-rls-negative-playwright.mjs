@@ -1,10 +1,15 @@
 import { spawn } from "node:child_process";
 import { createWriteStream, mkdirSync } from "node:fs";
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { loadEnvLocal } from "./_load-env-local.mjs";
 import { resolvePlaywrightCliPath } from "./_resolve-playwright-cli.mjs";
 
+const require = createRequire(import.meta.url);
+const { loadTestEnv } = require("./load-test-env.cjs");
+
 loadEnvLocal();
+loadTestEnv();
 process.env.APP_ENV = process.env.APP_ENV || "test";
 process.env.NODE_ENV = process.env.NODE_ENV || "test";
 process.env.RATE_LIMIT_STRICT_IN_TEST = process.env.RATE_LIMIT_STRICT_IN_TEST || "1";

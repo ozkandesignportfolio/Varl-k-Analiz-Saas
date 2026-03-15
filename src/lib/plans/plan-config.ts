@@ -23,6 +23,9 @@ export type PlanConfig = {
   features: PlanFeatures;
 };
 
+// UI-facing plan metadata mirrors the backend-enforced free invoice cap.
+const STARTER_INVOICE_UPLOAD_LIMIT = 3;
+
 const PLAN_CONFIGS: Record<PlanCode, PlanConfig> = {
   starter: {
     code: "starter",
@@ -31,7 +34,7 @@ const PLAN_CONFIGS: Record<PlanCode, PlanConfig> = {
       assetsLimit: 3,
       documentsLimit: 5,
       subscriptionsLimit: 3,
-      invoiceUploadsLimit: 3,
+      invoiceUploadsLimit: STARTER_INVOICE_UPLOAD_LIMIT,
     },
     features: {
       canExportPdfReports: false,

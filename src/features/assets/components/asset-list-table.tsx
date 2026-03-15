@@ -8,6 +8,7 @@ type AssetListTableProps = {
   isLoading: boolean;
   viewMode: AssetViewMode;
   assets: AssetDashboardRow[];
+  requestError?: string;
   hasActiveFilters: boolean;
   thumbnailUrls: Record<string, string>;
   onSelectAsset: (asset: AssetDashboardRow) => void;
@@ -171,6 +172,7 @@ export const AssetListTable = memo(function AssetListTable({
   isLoading,
   viewMode,
   assets,
+  requestError,
   hasActiveFilters,
   thumbnailUrls,
   onSelectAsset,
@@ -184,11 +186,24 @@ export const AssetListTable = memo(function AssetListTable({
     <section className="premium-card p-5" data-testid="assets-list-section">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-xl font-semibold text-white">Varlık Listesi</h2>
-        <p className="text-xs text-slate-400">{assets.length} kayıt</p>
+        <p className="text-xs text-slate-400">
+          {requestError && assets.length === 0 ? "Liste hatası" : `${assets.length} kayıt`}
+        </p>
       </div>
 
       {isLoading ? (
         <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
+      ) : requestError && assets.length === 0 ? (
+        <div
+          className="mt-4 rounded-xl border border-amber-300/25 bg-amber-300/10 p-8 text-center"
+          data-testid="assets-list-error-state"
+        >
+          <p className="text-lg font-semibold text-white">Varlık listesi yüklenemedi</p>
+          <p className="mt-1 text-sm text-slate-200">{requestError}</p>
+          <p className="mt-3 text-xs text-slate-300">
+            Bu durum gerçek boş liste anlamına gelmez. Lütfen tekrar deneyin.
+          </p>
+        </div>
       ) : assets.length === 0 ? (
         <div className="mt-4 rounded-xl border border-dashed border-white/25 bg-white/[0.03] p-8 text-center">
           {hasActiveFilters ? (
@@ -287,6 +302,15 @@ export const AssetListTable = memo(function AssetListTable({
           ))}
         </div>
       )}
+
+      {requestError && assets.length > 0 ? (
+        <p
+          className="mt-4 rounded-xl border border-amber-300/25 bg-amber-300/10 px-4 py-3 text-sm text-amber-50"
+          data-testid="assets-list-warning"
+        >
+          {requestError}
+        </p>
+      ) : null}
     </section>
   );
 });

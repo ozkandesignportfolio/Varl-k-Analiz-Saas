@@ -30,7 +30,7 @@ const TABLE_BY_RESOURCE: Record<
   invoices: "billing_invoices",
 };
 
-const FREE_LIMIT_BY_RESOURCE: Record<LimitResource, number> = {
+export const FREE_LIMIT_BY_RESOURCE: Readonly<Record<LimitResource, number>> = {
   assets: 3,
   documents: 5,
   subscriptions: 3,

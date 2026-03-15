@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { DbClient } from "@/lib/repos/_shared";
-import { enforceLimit, isPlanLimitError, toPlanLimitErrorBody } from "./limit-enforcer";
+import { FREE_LIMIT_BY_RESOURCE, enforceLimit, isPlanLimitError, toPlanLimitErrorBody } from "./limit-enforcer";
 
 type CountTable = "assets" | "documents" | "billing_subscriptions" | "billing_invoices";
 
@@ -41,6 +41,10 @@ function createMockClient(params: {
     },
   } as unknown as DbClient;
 }
+
+test("backend free invoice limit is exactly 3", () => {
+  assert.equal(FREE_LIMIT_BY_RESOURCE.invoices, 3);
+});
 
 test("enforceLimit blocks assets creation when free limit is reached", async () => {
   const client = createMockClient({ counts: { assets: 3 } });
@@ -124,7 +128,7 @@ test("enforceLimit blocks subscriptions creation when free limit is reached", as
 });
 
 test("enforceLimit blocks invoices creation when free limit is reached", async () => {
-  const client = createMockClient({ counts: { billing_invoices: 3 } });
+  const client = createMockClient({ counts: { billing_invoices: FREE_LIMIT_BY_RESOURCE.invoices } });
 
   await assert.rejects(
     () =>
@@ -151,7 +155,7 @@ test("enforceLimit blocks invoices creation when free limit is reached", async (
 });
 
 test("enforceLimit allows creating the third invoice on free plan", async () => {
-  const client = createMockClient({ counts: { billing_invoices: 2 } });
+  const client = createMockClient({ counts: { billing_invoices: FREE_LIMIT_BY_RESOURCE.invoices - 1 } });
 
   await assert.doesNotReject(() =>
     enforceLimit({
@@ -161,6 +165,29 @@ test("enforceLimit allows creating the third invoice on free plan", async () => 
       resource: "invoices",
       delta: 1,
     }),
+  );
+});
+
+test("enforceLimit blocks creating the fourth invoice on free plan", async () => {
+  const client = createMockClient({ counts: { billing_invoices: FREE_LIMIT_BY_RESOURCE.invoices } });
+
+  await assert.rejects(
+    () =>
+      enforceLimit({
+        client,
+        userId: "user-1",
+        profilePlan: "free",
+        resource: "invoices",
+        delta: 1,
+      }),
+    (error: unknown) => {
+      assert.equal(isPlanLimitError(error), true);
+      if (!isPlanLimitError(error)) return false;
+      assert.equal(error.limit, FREE_LIMIT_BY_RESOURCE.invoices);
+      assert.equal(error.current, FREE_LIMIT_BY_RESOURCE.invoices);
+      assert.equal(error.delta, 1);
+      return true;
+    },
   );
 });
 

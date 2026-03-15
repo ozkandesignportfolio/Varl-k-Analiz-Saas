@@ -1,5 +1,6 @@
 ﻿import { NextResponse } from "next/server";
 import { logApiError } from "@/lib/api/logging";
+import { toPublicErrorBody } from "@/lib/api/public-error";
 import { enforceRateLimit, getRequestIp } from "@/lib/api/rate-limit";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
 
@@ -107,7 +108,10 @@ export async function GET(request: Request) {
       },
     });
 
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json(
+      toPublicErrorBody("AUDIT_LOGS_QUERY_FAILED", "Denetim kayitlari su anda alinamadi."),
+      { status: 400 },
+    );
   }
 
   return NextResponse.json({ logs: data ?? [] }, { status: 200 });

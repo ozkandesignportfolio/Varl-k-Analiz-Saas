@@ -254,6 +254,8 @@ export default function AssetDetailPage() {
       badge="Varlık Detayı"
       title={asset?.name ?? "Varlık"}
       subtitle="Varlık bilgileri, medya galerisi ve paylaşılabilir QR burada."
+      pageRootTestId="asset-detail-root"
+      pageContentTestId="asset-detail-content"
       actions={
         <div className="flex flex-wrap gap-2">
           <button

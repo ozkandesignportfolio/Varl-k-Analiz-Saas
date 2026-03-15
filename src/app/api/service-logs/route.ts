@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { calculateNextDueDate } from "@/lib/maintenance/next-due";
 import { logApiError, logAuditEvent } from "@/lib/api/logging";
+import { toPublicErrorBody } from "@/lib/api/public-error";
 import { enforceRateLimit, getRequestIp } from "@/lib/api/rate-limit";
 import type { DbClient } from "@/lib/repos/_shared";
 import { existsById } from "@/lib/repos/assets-repo";
@@ -67,6 +68,7 @@ const parseServiceLogsPagination = paginationSchema(
   { fallback: 50, max: 100 },
 );
 const parseLogsDateRange = dateRange();
+const SERVICE_LOG_SYNC_WARNING = "Bakim kurali tarihleri senkronize edilemedi.";
 
 export async function GET(request: Request) {
   let userId: string | null = null;
@@ -121,7 +123,18 @@ export async function GET(request: Request) {
     });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      logApiError({
+        route: "/api/service-logs",
+        method: "GET",
+        status: 400,
+        userId: auth.user.id,
+        error,
+        message: "Service logs list query failed",
+      });
+      return NextResponse.json(
+        toPublicErrorBody("SERVICE_LOGS_LIST_FAILED", "Servis kayitlari listelenemedi."),
+        { status: 400 },
+      );
     }
 
     return NextResponse.json(data ?? { rows: [], nextCursor: null, hasMore: false }, { status: 200 });
@@ -160,11 +173,29 @@ const syncRuleSchedulesFromLatestLogs = async (params: {
   ]);
 
   if (rulesRes.error) {
-    return [rulesRes.error.message];
+    logApiError({
+      route: "/api/service-logs",
+      method: "SYNC",
+      status: 400,
+      userId,
+      error: rulesRes.error,
+      message: "Service log rule sync failed while loading rules",
+      meta: { ruleIds: targetRuleIds },
+    });
+    return ["Bakim kurali bilgileri alinamadi."];
   }
 
   if (latestLogsRes.error) {
-    return [latestLogsRes.error.message];
+    logApiError({
+      route: "/api/service-logs",
+      method: "SYNC",
+      status: 400,
+      userId,
+      error: latestLogsRes.error,
+      message: "Service log rule sync failed while loading latest logs",
+      meta: { ruleIds: targetRuleIds },
+    });
+    return ["Son servis kaydi bilgileri alinamadi."];
   }
 
   const rules = rulesRes.data ?? [];
@@ -180,7 +211,9 @@ const syncRuleSchedulesFromLatestLogs = async (params: {
     }
   }
 
-  const updateTasks: Array<Promise<{ ruleId: string; error: string | null }>> = [];
+  const updateTasks: Array<
+    Promise<{ ruleId: string; error: Awaited<ReturnType<typeof updateRuleById>>["error"] }>
+  > = [];
   for (const rule of rules) {
     const latestServiceDate = latestLogsByRuleId.get(rule.id);
     if (!latestServiceDate) {
@@ -195,7 +228,15 @@ const syncRuleSchedulesFromLatestLogs = async (params: {
         intervalUnit: rule.interval_unit,
       });
     } catch (error) {
-      syncErrors.push((error as Error).message);
+      logApiError({
+        route: "/api/service-logs",
+        method: "SYNC",
+        userId,
+        error,
+        message: "Service log rule sync failed while calculating next due date",
+        meta: { ruleId: rule.id },
+      });
+      syncErrors.push("Bakim kurali sonraki tarih hesabi yapilamadi.");
       continue;
     }
 
@@ -209,7 +250,7 @@ const syncRuleSchedulesFromLatestLogs = async (params: {
         },
       }).then((result) => ({
         ruleId: rule.id,
-        error: result.error?.message ?? null,
+        error: result.error ?? null,
       })),
     );
   }
@@ -217,7 +258,16 @@ const syncRuleSchedulesFromLatestLogs = async (params: {
   const updateResults = await Promise.all(updateTasks);
   for (const result of updateResults) {
     if (result.error) {
-      syncErrors.push(`Kural ${result.ruleId}: ${result.error}`);
+      logApiError({
+        route: "/api/service-logs",
+        method: "SYNC",
+        status: 400,
+        userId,
+        error: result.error,
+        message: "Service log rule sync failed while updating rule schedule",
+        meta: { ruleId: result.ruleId },
+      });
+      syncErrors.push(`Kural ${result.ruleId}: guncellenemedi.`);
     }
   }
 
@@ -315,7 +365,19 @@ export async function POST(request: Request) {
     });
 
     if (assetError) {
-      return NextResponse.json({ error: assetError.message }, { status: 400 });
+      logApiError({
+        route: "/api/service-logs",
+        method: "POST",
+        status: 400,
+        userId: user.id,
+        error: assetError,
+        message: "Service log create asset lookup failed",
+        meta: { assetId },
+      });
+      return NextResponse.json(
+        toPublicErrorBody("SERVICE_LOG_ASSET_LOOKUP_FAILED", "Varlik erisimi su anda dogrulanamadi."),
+        { status: 400 },
+      );
     }
 
     if (!assetExists) {
@@ -329,7 +391,19 @@ export async function POST(request: Request) {
       });
 
       if (ruleError) {
-        return NextResponse.json({ error: ruleError.message }, { status: 400 });
+        logApiError({
+          route: "/api/service-logs",
+          method: "POST",
+          status: 400,
+          userId: user.id,
+          error: ruleError,
+          message: "Service log create rule lookup failed",
+          meta: { ruleId, assetId },
+        });
+        return NextResponse.json(
+          toPublicErrorBody("SERVICE_LOG_RULE_LOOKUP_FAILED", "Bakim kurali erisimi su anda dogrulanamadi."),
+          { status: 400 },
+        );
       }
 
       if (!rule || rule.asset_id !== assetId) {
@@ -354,7 +428,19 @@ export async function POST(request: Request) {
     });
 
     if (error || !data) {
-      return NextResponse.json({ error: error?.message ?? "Servis kaydı oluşturulamadı." }, { status: 400 });
+      logApiError({
+        route: "/api/service-logs",
+        method: "POST",
+        status: 400,
+        userId: user.id,
+        error: error ?? new Error("Service log insert returned without a row."),
+        message: "Service log create query failed",
+        meta: { assetId, ruleId },
+      });
+      return NextResponse.json(
+        toPublicErrorBody("SERVICE_LOG_CREATE_FAILED", "Servis kaydi olusturulamadi."),
+        { status: 400 },
+      );
     }
 
     let warning: string | undefined;
@@ -365,7 +451,7 @@ export async function POST(request: Request) {
         ruleId: data.rule_id,
       });
       if (syncError) {
-        warning = `Bakım kuralı tarihleri senkronize edilemedi: ${syncError}`;
+        warning = `${SERVICE_LOG_SYNC_WARNING} ${syncError}`;
       }
     }
 
@@ -463,7 +549,19 @@ export async function PATCH(request: Request) {
       });
 
       if (assetError) {
-        return NextResponse.json({ error: assetError.message }, { status: 400 });
+        logApiError({
+          route: "/api/service-logs",
+          method: "PATCH",
+          status: 400,
+          userId: user.id,
+          error: assetError,
+          message: "Service log update asset lookup failed",
+          meta: { assetId: nextAssetId, serviceLogId },
+        });
+        return NextResponse.json(
+          toPublicErrorBody("SERVICE_LOG_ASSET_LOOKUP_FAILED", "Varlik erisimi su anda dogrulanamadi."),
+          { status: 400 },
+        );
       }
 
       if (!assetExists) {
@@ -549,7 +647,19 @@ export async function PATCH(request: Request) {
       });
 
       if (ruleError) {
-        return NextResponse.json({ error: ruleError.message }, { status: 400 });
+        logApiError({
+          route: "/api/service-logs",
+          method: "PATCH",
+          status: 400,
+          userId: user.id,
+          error: ruleError,
+          message: "Service log update rule lookup failed",
+          meta: { ruleId: targetRuleId, serviceLogId },
+        });
+        return NextResponse.json(
+          toPublicErrorBody("SERVICE_LOG_RULE_LOOKUP_FAILED", "Bakim kurali erisimi su anda dogrulanamadi."),
+          { status: 400 },
+        );
       }
 
       if (!rule || rule.asset_id !== targetAssetId) {
@@ -564,7 +674,19 @@ export async function PATCH(request: Request) {
     });
 
     if (updateError || !updatedLog) {
-      return NextResponse.json({ error: updateError?.message ?? "Servis kaydı güncellenemedi." }, { status: 400 });
+      logApiError({
+        route: "/api/service-logs",
+        method: "PATCH",
+        status: 400,
+        userId: user.id,
+        error: updateError ?? new Error("Service log update returned without a row."),
+        message: "Service log update query failed",
+        meta: { serviceLogId },
+      });
+      return NextResponse.json(
+        toPublicErrorBody("SERVICE_LOG_UPDATE_FAILED", "Servis kaydi guncellenemedi."),
+        { status: 400 },
+      );
     }
 
     logAuditEvent({
@@ -592,7 +714,7 @@ export async function PATCH(request: Request) {
 
     if (syncErrors.length > 0) {
       return NextResponse.json(
-        { ok: true, id: updatedLog.id, warning: `Bakım senkronizasyon uyarısı: ${syncErrors.join(" | ")}` },
+        { ok: true, id: updatedLog.id, warning: `${SERVICE_LOG_SYNC_WARNING} ${syncErrors.join(" | ")}` },
         { status: 200 },
       );
     }

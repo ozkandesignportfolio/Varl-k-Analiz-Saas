@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { logApiError } from "@/lib/api/logging";
+import { toPublicErrorBody } from "@/lib/api/public-error";
 import { enforceRateLimit, getRequestIp } from "@/lib/api/rate-limit";
 import { listReports } from "@/lib/repos/reports-repo";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
@@ -138,7 +139,18 @@ export async function GET(request: Request) {
     });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      logApiError({
+        route: "/api/reports",
+        method: "GET",
+        status: 400,
+        userId: auth.user.id,
+        error,
+        message: "Reports repository query failed",
+      });
+      return NextResponse.json(
+        toPublicErrorBody("REPORTS_LIST_FAILED", "Rapor satirlari su anda alinamadi."),
+        { status: 400 },
+      );
     }
 
     return NextResponse.json(

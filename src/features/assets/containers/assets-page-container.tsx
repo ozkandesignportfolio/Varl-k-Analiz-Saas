@@ -80,6 +80,7 @@ export function AssetsPageContainer() {
     setServiceActivityPreviewByAsset,
     isLoading,
     setIsLoading,
+    assetsLoadError,
     feedback,
     setFeedback,
     refreshAssetCount,
@@ -338,6 +339,7 @@ export function AssetsPageContainer() {
         totalAssetCount={totalAssetCount}
         summary={summary}
         isLoading={isLoading}
+        assetsLoadError={assetsLoadError}
         dashboardRows={dashboardRows}
         hasActiveFilters={hasActiveFilters}
         thumbnailUrls={thumbnailUrls}

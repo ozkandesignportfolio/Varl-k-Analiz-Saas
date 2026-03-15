@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { logApiError } from "@/lib/api/logging";
+import { toPublicErrorBody } from "@/lib/api/public-error";
 import {
   extractBillingMissingTables,
   isBillingMissingTableError,
@@ -115,7 +116,18 @@ export async function DELETE(request: Request) {
         markBillingTablesMissing(missingTables);
         return NextResponse.json(toBillingFeatureDisabledErrorBody(missingTables), { status: 503 });
       }
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      logApiError({
+        route: "/api/billing/invoices",
+        method: "DELETE",
+        status: 400,
+        userId: auth.user.id,
+        error,
+        message: "Billing invoice delete query failed",
+      });
+      return NextResponse.json(
+        toPublicErrorBody("BILLING_INVOICE_DELETE_FAILED", "Fatura silinemedi."),
+        { status: 400 },
+      );
     }
 
     if (!data?.id) {

@@ -7,6 +7,8 @@ import {
   toBillingFeatureDisabledErrorBody,
   type BillingTableName,
 } from "@/lib/billing/schema-guard";
+import { logApiError } from "@/lib/api/logging";
+import { toPublicErrorBody } from "@/lib/api/public-error";
 import { getBillingSchemaState } from "@/lib/billing/schema-guard.server";
 import {
   create as createBillingInvoiceRecord,
@@ -72,11 +74,18 @@ const toBillingDisabledResponse = (missingTables: readonly BillingTableName[]): 
   body: toBillingFeatureDisabledErrorBody(missingTables),
 });
 
-const mapRepoError = (
-  error: { message?: string } | null,
-  fallbackMessage: string,
-  fallbackTables: readonly BillingTableName[],
-): BillingServiceResponse | null => {
+const mapRepoError = (params: {
+  error: { message?: string; code?: string } | null;
+  fallbackTables: readonly BillingTableName[];
+  publicMessage: string;
+  publicCode: string;
+  route: string;
+  method: string;
+  userId: string;
+  logMessage: string;
+  meta?: Record<string, unknown>;
+}): BillingServiceResponse | null => {
+  const { error, fallbackTables, publicMessage, publicCode, route, method, userId, logMessage, meta } = params;
   if (!error) {
     return null;
   }
@@ -87,7 +96,20 @@ const mapRepoError = (
     return toBillingDisabledResponse(missingTables);
   }
 
-  return { status: 400, body: { error: error.message ?? fallbackMessage } };
+  logApiError({
+    route,
+    method,
+    status: 400,
+    userId,
+    error,
+    message: logMessage,
+    meta: {
+      ...meta,
+      code: error.code ?? null,
+    },
+  });
+
+  return { status: 400, body: toPublicErrorBody(publicCode, publicMessage) };
 };
 
 const ensureBillingTables = async (
@@ -126,6 +148,29 @@ const readRequiredText = (value: unknown, maxLength: number) => {
 };
 
 const readDateText = (value: unknown) => optionalText(10)(value);
+const parseUuid = uuid();
+
+const readOptionalUuid = (value: unknown) => {
+  if (value === null || value === undefined) {
+    return { value: null };
+  }
+
+  if (typeof value !== "string") {
+    return { value: null, invalidType: true as const };
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return { value: null };
+  }
+
+  const normalized = parseUuid(trimmed);
+  if (!normalized) {
+    return { value: trimmed };
+  }
+
+  return { value: normalized };
+};
 
 const readBoolean = (value: unknown, defaultValue: boolean) => {
   if (value === null || value === undefined) {
@@ -149,7 +194,6 @@ const readBoolean = (value: unknown, defaultValue: boolean) => {
   return { value: defaultValue, invalidType: true };
 };
 
-const parseUuid = uuid();
 const normalizeUuid = (value: string) => parseUuid(value);
 
 const toDateOnly = (value: Date) =>
@@ -222,7 +266,7 @@ export async function createBillingSubscription(
   const planNameResult = readOptionalText(payload.planName, MAX_PLAN_NAME_LENGTH);
   const notesResult = readOptionalText(payload.notes, MAX_NOTES_LENGTH);
   const nextBillingDateResult = readDateText(payload.nextBillingDate);
-  const maintenanceRuleIdResult = readDateText(payload.maintenanceRuleId);
+  const maintenanceRuleIdResult = readOptionalUuid(payload.maintenanceRuleId);
   const billingCycleRaw =
     typeof payload.billingCycle === "string" ? payload.billingCycle.trim() : "monthly";
   const statusRaw = typeof payload.status === "string" ? payload.status.trim() : "active";
@@ -290,10 +334,26 @@ export async function createBillingSubscription(
     });
 
     if (ruleError) {
-      const mappedError = mapRepoError(ruleError, "Bakım kuralı kontrolü başarısız.", [
-        "billing_subscriptions",
-      ]);
-      return mappedError ?? { status: 400, body: { error: ruleError.message } };
+      const mappedError = mapRepoError({
+        error: ruleError,
+        fallbackTables: ["billing_subscriptions"],
+        publicMessage: "Bakim kurali erisimi su anda dogrulanamadi.",
+        publicCode: "BILLING_SUBSCRIPTION_RULE_LOOKUP_FAILED",
+        route: "/api/billing/subscriptions",
+        method: "POST",
+        userId,
+        logMessage: "Billing subscription maintenance rule lookup failed",
+        meta: { maintenanceRuleId },
+      });
+      return (
+        mappedError ?? {
+          status: 400,
+          body: toPublicErrorBody(
+            "BILLING_SUBSCRIPTION_RULE_LOOKUP_FAILED",
+            "Bakim kurali erisimi su anda dogrulanamadi.",
+          ),
+        }
+      );
     }
 
     if (!rule) {
@@ -329,8 +389,22 @@ export async function createBillingSubscription(
   });
 
   if (error || !data) {
-    const mappedError = mapRepoError(error, "Abonelik oluşturulamadı.", ["billing_subscriptions"]);
-    return mappedError ?? { status: 400, body: { error: "Abonelik oluşturulamadı." } };
+    const mappedError = mapRepoError({
+      error,
+      fallbackTables: ["billing_subscriptions"],
+      publicMessage: "Abonelik olusturulamadi.",
+      publicCode: "BILLING_SUBSCRIPTION_CREATE_FAILED",
+      route: "/api/billing/subscriptions",
+      method: "POST",
+      userId,
+      logMessage: "Billing subscription create query failed",
+    });
+    return (
+      mappedError ?? {
+        status: 400,
+        body: toPublicErrorBody("BILLING_SUBSCRIPTION_CREATE_FAILED", "Abonelik olusturulamadi."),
+      }
+    );
   }
 
   return { status: 201, body: { ok: true, id: data.id } };
@@ -435,10 +509,26 @@ export async function createBillingInvoice(
   });
 
   if (subscriptionError) {
-    const mappedError = mapRepoError(subscriptionError, "Abonelik bilgisi okunamadi.", [
-      "billing_subscriptions",
-    ]);
-    return mappedError ?? { status: 400, body: { error: subscriptionError.message } };
+    const mappedError = mapRepoError({
+      error: subscriptionError,
+      fallbackTables: ["billing_subscriptions"],
+      publicMessage: "Abonelik bilgisi su anda alinamadi.",
+      publicCode: "BILLING_INVOICE_SUBSCRIPTION_LOOKUP_FAILED",
+      route: "/api/billing/invoices",
+      method: "POST",
+      userId,
+      logMessage: "Billing invoice subscription lookup failed",
+      meta: { subscriptionId },
+    });
+    return (
+      mappedError ?? {
+        status: 400,
+        body: toPublicErrorBody(
+          "BILLING_INVOICE_SUBSCRIPTION_LOOKUP_FAILED",
+          "Abonelik bilgisi su anda alinamadi.",
+        ),
+      }
+    );
   }
 
   if (!subscription) {
@@ -464,8 +554,23 @@ export async function createBillingInvoice(
   });
 
   if (error || !data) {
-    const mappedError = mapRepoError(error, "Fatura oluşturulamadı.", ["billing_invoices"]);
-    return mappedError ?? { status: 400, body: { error: "Fatura oluşturulamadı." } };
+    const mappedError = mapRepoError({
+      error,
+      fallbackTables: ["billing_invoices"],
+      publicMessage: "Fatura olusturulamadi.",
+      publicCode: "BILLING_INVOICE_CREATE_FAILED",
+      route: "/api/billing/invoices",
+      method: "POST",
+      userId,
+      logMessage: "Billing invoice create query failed",
+      meta: { subscriptionId },
+    });
+    return (
+      mappedError ?? {
+        status: 400,
+        body: toPublicErrorBody("BILLING_INVOICE_CREATE_FAILED", "Fatura olusturulamadi."),
+      }
+    );
   }
 
   const hasValidBillingCycle = billingCycles.includes(subscription.billing_cycle as BillingCycle);
@@ -496,12 +601,22 @@ export async function createBillingInvoice(
           return toBillingDisabledResponse(missingTables);
         }
 
+        logApiError({
+          route: "/api/billing/invoices",
+          method: "POST",
+          status: 201,
+          userId,
+          error: subscriptionUpdateError,
+          message: "Billing invoice created but subscription renewal date update failed",
+          meta: { subscriptionId, invoiceId: data.id },
+        });
+
         return {
           status: 201,
           body: {
             ok: true,
             id: data.id,
-            warning: `Yenileme tarihi güncellenemedi: ${subscriptionUpdateError.message}`,
+            warning: "Yenileme tarihi guncellenemedi.",
           },
         };
       }
@@ -510,4 +625,3 @@ export async function createBillingInvoice(
 
   return { status: 201, body: { ok: true, id: data.id } };
 }
-
