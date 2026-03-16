@@ -5,6 +5,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { GuidedEmptyState } from "@/components/shared/guided-empty-state";
 import { usePlanContext } from "@/contexts/PlanContext";
+import { BillingSummaryCards } from "@/features/billing/components/billing-summary-cards";
 import { BillingInvoiceForm } from "@/features/billing/components/billing-invoice-form";
 import {
   BillingInvoiceTable,
@@ -18,92 +19,38 @@ import {
   BillingSubscriptionTable,
   type BillingSubscriptionTableRow,
 } from "@/features/billing/components/billing-subscription-table";
+import {
+  billingInvoiceSelectFallback,
+  billingInvoiceSelectFull,
+  billingSetupHint,
+  buildSubscriptionLabelById,
+  calculateMonthlyEquivalent,
+  calculateNextThirtyDaysCount,
+  calculatePaidThisYear,
+  calculateUnpaidInvoiceCount,
+  getActiveSubscriptions,
+  inputClassName,
+  isMissingColumnError,
+  isMissingTableError,
+  normalizeInvoiceRow,
+  toDateInput,
+  toOptionalText,
+  type BillingCycle,
+  type InvoiceReadRow,
+  type InvoiceStatus,
+  type SubscriptionStatus,
+} from "@/features/billing/lib/billing-page-utils";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
-type SubscriptionStatus = "active" | "paused" | "cancelled";
-type BillingCycle = "monthly" | "yearly";
-type InvoiceStatus = "pending" | "paid" | "overdue" | "cancelled";
-type InvoiceReadRow = Partial<BillingInvoiceTableRow>;
-
 type SubscriptionRow = BillingSubscriptionTableRow;
-
 type InvoiceRow = BillingInvoiceTableRow;
 type MaintenanceRuleOption = BillingSubscriptionFormRuleOption;
-
-const inputClassName =
-  "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
 
 const currencyFormatter = new Intl.NumberFormat("tr-TR", {
   style: "currency",
   currency: "TRY",
   maximumFractionDigits: 2,
 });
-
-const billingSetupHint =
-  "Fatura tabloları veritabanında bulunamadı. 'supabase/migrations/20260217090000_repair_billing_invoices.sql' migrasyonunu çalıştırıp Supabase schema cache yenilemesi yapın.";
-const billingInvoiceSelectFull =
-  "id,subscription_id,invoice_no,issued_at,due_date,paid_at,amount,tax_amount,total_amount,status,created_at";
-const billingInvoiceSelectFallback = "id,subscription_id,issued_at,amount,status,created_at";
-
-const toOptionalText = (value: FormDataEntryValue | null) => {
-  const text = String(value ?? "").trim();
-  return text || null;
-};
-
-const toDateInput = (date: Date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-const isMissingTableError = (errorMessage: string, tableName: string) => {
-  const normalized = errorMessage.toLowerCase();
-  return (
-    normalized.includes(`public.${tableName}`.toLowerCase()) &&
-    (normalized.includes("schema cache") || normalized.includes("does not exist"))
-  );
-};
-
-const isMissingColumnError = (errorMessage: string, tableName: string) => {
-  const normalized = errorMessage.toLowerCase();
-  return (
-    normalized.includes(tableName.toLowerCase()) &&
-    normalized.includes("column") &&
-    (normalized.includes("does not exist") || normalized.includes("schema cache"))
-  );
-};
-
-const normalizeInvoiceStatus = (value: unknown): InvoiceStatus => {
-  if (value === "pending" || value === "paid" || value === "overdue" || value === "cancelled") {
-    return value;
-  }
-  return "pending";
-};
-
-const normalizeInvoiceRow = (row: InvoiceReadRow): InvoiceRow => {
-  const amount = Number(row.amount ?? 0);
-  const taxAmount = Number(row.tax_amount ?? 0);
-  const totalAmountRaw = Number(row.total_amount ?? Number.NaN);
-  const safeAmount = Number.isFinite(amount) ? amount : 0;
-  const safeTaxAmount = Number.isFinite(taxAmount) ? taxAmount : 0;
-  const createdAt = row.created_at ?? row.issued_at ?? new Date().toISOString();
-  const issuedAt = row.issued_at ?? createdAt;
-
-  return {
-    id: String(row.id ?? ""),
-    subscription_id: String(row.subscription_id ?? ""),
-    invoice_no: row.invoice_no ?? null,
-    issued_at: issuedAt,
-    due_date: row.due_date ?? null,
-    paid_at: row.paid_at ?? null,
-    amount: safeAmount,
-    tax_amount: safeTaxAmount,
-    total_amount: Number.isFinite(totalAmountRaw) ? totalAmountRaw : safeAmount + safeTaxAmount,
-    status: normalizeInvoiceStatus(row.status),
-    created_at: createdAt,
-  };
-};
 
 export function BillingPageContainer() {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
@@ -226,56 +173,19 @@ export function BillingPageContainer() {
     if (!userId) throw new Error("auth required");
   };
 
-  const subscriptionLabelById = useMemo(() => {
-    return new Map(
-      subscriptions.map((subscription) => [
-        subscription.id,
-        `${subscription.provider_name} - ${subscription.subscription_name}`,
-      ]),
-    );
-  }, [subscriptions]);
-
-  const activeSubscriptions = useMemo(
-    () => subscriptions.filter((subscription) => subscription.status === "active"),
-    [subscriptions],
-  );
-
+  const subscriptionLabelById = useMemo(() => buildSubscriptionLabelById(subscriptions), [subscriptions]);
+  const activeSubscriptions = useMemo(() => getActiveSubscriptions(subscriptions), [subscriptions]);
   const activeSubscriptionCount = activeSubscriptions.length;
-
-  const monthlyEquivalent = useMemo(() => {
-    return activeSubscriptions.reduce((sum, subscription) => {
-      const amount = Number(subscription.amount ?? 0);
-      return sum + (subscription.billing_cycle === "yearly" ? amount / 12 : amount);
-    }, 0);
-  }, [activeSubscriptions]);
-
-  const nextThirtyDaysCount = useMemo(() => {
-    const now = new Date();
-    const maxDate = new Date(now);
-    maxDate.setDate(now.getDate() + 30);
-
-    return activeSubscriptions.filter((subscription) => {
-      if (!subscription.next_billing_date) return false;
-      const nextDate = new Date(subscription.next_billing_date);
-      return nextDate >= now && nextDate <= maxDate;
-    }).length;
-  }, [activeSubscriptions]);
-
-  const unpaidInvoiceCount = useMemo(
-    () => invoices.filter((invoice) => invoice.status === "pending" || invoice.status === "overdue").length,
-    [invoices],
+  const monthlyEquivalent = useMemo(
+    () => calculateMonthlyEquivalent(activeSubscriptions),
+    [activeSubscriptions],
   );
-
-  const paidThisYear = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    return invoices
-      .filter((invoice) => {
-        if (invoice.status !== "paid") return false;
-        if (!invoice.paid_at) return false;
-        return new Date(invoice.paid_at).getFullYear() === currentYear;
-      })
-      .reduce((sum, invoice) => sum + Number(invoice.total_amount ?? 0), 0);
-  }, [invoices]);
+  const nextThirtyDaysCount = useMemo(
+    () => calculateNextThirtyDaysCount(activeSubscriptions),
+    [activeSubscriptions],
+  );
+  const unpaidInvoiceCount = useMemo(() => calculateUnpaidInvoiceCount(invoices), [invoices]);
+  const paidThisYear = useMemo(() => calculatePaidThisYear(invoices), [invoices]);
 
   const onCreateSubscription = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -394,7 +304,7 @@ export function BillingPageContainer() {
       return;
     }
 
-        const paidAt = status === "paid" ? paidAtRaw ?? toDateInput(new Date()) : null;
+    const paidAt = status === "paid" ? paidAtRaw ?? toDateInput(new Date()) : null;
 
     ensureAuthUser();
     const createResponse = await fetch("/api/billing/invoices", {
@@ -513,15 +423,12 @@ export function BillingPageContainer() {
         </p>
       ) : null}
 
-      <section className="grid gap-3 md:grid-cols-4">
-        <SummaryCard
-          label="Aktif Abonelik"
-          value={String(activeSubscriptionCount)}
-        />
-        <SummaryCard label="Aylık Eşdeğer Toplam" value={currencyFormatter.format(monthlyEquivalent)} />
-        <SummaryCard label="30 Gün İçinde Yenileme" value={String(nextThirtyDaysCount)} />
-        <SummaryCard label="Bu Yıl Ödenen Fatura" value={currencyFormatter.format(paidThisYear)} />
-      </section>
+      <BillingSummaryCards
+        activeSubscriptionCount={activeSubscriptionCount}
+        monthlyEquivalentLabel={currencyFormatter.format(monthlyEquivalent)}
+        nextThirtyDaysCount={nextThirtyDaysCount}
+        paidThisYearLabel={currencyFormatter.format(paidThisYear)}
+      />
 
       <section className="grid gap-3 xl:grid-cols-[1.02fr_0.98fr]">
         <div id="subscription-create-form">
@@ -541,12 +448,12 @@ export function BillingPageContainer() {
           formatCurrency={(value) => currencyFormatter.format(value)}
           emptyState={
             !isLoading ? (
-                <GuidedEmptyState
-                  title="İlk aboneliği ekle"
-                  description="Onboarding adımı olarak önce bir abonelik kaydı oluştur. Sonra bu aboneliğe fatura bağlayabilirsin."
-                  primaryAction={{
-                    label: "Abonelik formuna git",
-                    onClick: focusCreateSubscriptionForm,
+              <GuidedEmptyState
+                title="İlk aboneliği ekle"
+                description="Onboarding adımı olarak önce bir abonelik kaydı oluştur. Sonra bu aboneliğe fatura bağlayabilirsin."
+                primaryAction={{
+                  label: "Abonelik formuna git",
+                  onClick: focusCreateSubscriptionForm,
                 }}
                 secondaryAction={
                   maintenanceRules.length > 0
@@ -604,14 +511,5 @@ export function BillingPageContainer() {
         />
       </section>
     </AppShell>
-  );
-}
-
-function SummaryCard({ label, value }: { label: string; value: string }) {
-  return (
-    <article className="premium-card p-5">
-      <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
-    </article>
   );
 }

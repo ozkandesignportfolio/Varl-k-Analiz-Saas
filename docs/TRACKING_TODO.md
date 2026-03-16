@@ -1,20 +1,29 @@
-# Tracking TODO (Sade)
+# Tracking TODO
 
-Tarih: 23 Şubat 2026
+Bu liste, 2026-03-16 itibariyla repoya gore en yakin teknik ve operasyonel isleri toplar.
 
-## Öncelik 1
-- Playwright ile kritik akışlar için E2E testleri
-- RLS negatif testlerini CI pipeline'a bağlama
+## P0
 
-## Öncelik 2
-- Hata izleme (Sentry veya eşdeğer) ve alarm kuralları
-- PWA gerçek cihaz offline/online test turu
+- Production Supabase, Stripe ve Sentry env'lerini dogrula
+- `automation-dispatcher` ve `media-enrichment` deploy'unu tamamla
+- Backup/PITR ve restore drill yap
+- Release oncesi `test:e2e`, `test:rls:negative` ve `test:abuse:rate-limit` sonuclarini guncelle
 
-## Öncelik 3
-- Veritabanı yedekleme + geri dönüş tatbikatı
-- Canlı sonrası ilk 7 gün P0/P1 takip raporu
+## P1
+
+- PDF export icin plan kurali ile mevcut UI davranisini hizala
+- Stripe webhook akisini canli ortamda uctan uca dogrula
+- Panel health secret ve public visibility kararini netlestir
+- Stable suite seed hesaplarini staging benzeri ortamda periyodik dogrula
+
+## P2
+
+- Sentry alarm ve ekip bildirim kanalini netlestir
+- Edge Function cron izleme ve hata gorunurlugunu operasyonel runbook'a bagla
+- Gercek cihaz responsive/PWA turunu tekrar et
 
 ## Referans
-- Kapsam ve hedefler: `docs/PRD.md`
-- Geçmiş/özet arşiv: `docs/ARCHIVE.md`
 
+- Urun kapsami: [PRD.md](./PRD.md)
+- Release durumu: [release-gate-status.md](./release-gate-status.md)
+- Mimari: [architecture.md](./architecture.md)

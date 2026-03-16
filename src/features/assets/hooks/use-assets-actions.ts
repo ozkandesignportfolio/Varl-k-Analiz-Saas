@@ -8,39 +8,28 @@ import {
 } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AssetActivityItem, AssetDashboardRow } from "@/features/assets/components/assets-view-types";
-import type { UserPlan } from "@/contexts/PlanContext";
+import {
+  EMPTY_DEFAULTS,
+  EMPTY_MEDIA_SELECTION,
+  FALLBACK_CATEGORY_OPTIONS,
+  inputClassName,
+  isMissingAssetMediaTableError,
+  normalizeLabel,
+  parseQrDefaults,
+  summarizeMediaSelection,
+  toPayloadFromForm,
+  type AssetFormDefaults,
+  type AssetMediaRow,
+  type AssetMediaSelection,
+  type EditExistingMediaItem,
+} from "@/features/assets/lib/assets-actions-utils";
 import type { ListAssetsRow } from "@/lib/repos/assets-repo";
 import type { AssetsListQueryOptions } from "@/features/assets/hooks/useAssetsFilters";
 import { ASSET_MEDIA_BUCKET } from "@/lib/assets/media-limits";
 
-type AssetMediaSelection = {
-  images: File[];
-  video: File | null;
-  audio: File | null;
-};
-
-type AssetFormDefaults = {
-  name: string;
-  category: string;
-  serialNumber: string;
-  brand: string;
-  model: string;
-  purchasePrice: string;
-  purchaseDate: string;
-  warrantyEndDate: string;
-};
-
-type EditExistingMediaItem = {
-  id: string;
-  type: "image" | "video" | "audio";
-  label: string;
-  storagePath: string;
-};
-
 type UseAssetsActionsArgs = {
   supabase: SupabaseClient;
   userId: string;
-  plan: UserPlan;
   assetLimit: number | null;
   totalAssetCount: number;
   isPremiumMediaEnabled: boolean;
@@ -62,127 +51,9 @@ type UseAssetsActionsArgs = {
   onAuditRefresh: () => void;
 };
 
-type AssetMediaRow = {
-  id: string;
-  type: "image" | "video" | "audio";
-  storage_path: string;
-  created_at: string;
-};
-
-const inputClassName =
-  "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
-
-const FALLBACK_CATEGORY_OPTIONS = ["Elektronik", "Mobilya", "Arac", "Ofis", "Diger"];
-
-const EMPTY_MEDIA_SELECTION: AssetMediaSelection = {
-  images: [],
-  video: null,
-  audio: null,
-};
-
-const EMPTY_DEFAULTS: AssetFormDefaults = {
-  name: "",
-  category: "Elektronik",
-  serialNumber: "",
-  brand: "",
-  model: "",
-  purchasePrice: "",
-  purchaseDate: "",
-  warrantyEndDate: "",
-};
-
-const isMissingAssetMediaTableError = (message: string | undefined) => {
-  const normalized = (message ?? "").toLowerCase();
-  return (
-    normalized.includes("asset_media") &&
-    (normalized.includes("does not exist") ||
-      normalized.includes("schema cache") ||
-      normalized.includes("could not find the table") ||
-      normalized.includes("not found in schema cache"))
-  );
-};
-
-const toPayloadFromForm = (formData: FormData) => ({
-  name: String(formData.get("name") ?? "").trim(),
-  category: String(formData.get("category") ?? "").trim(),
-  serialNumber: String(formData.get("serialNumber") ?? "").trim(),
-  brand: String(formData.get("brand") ?? "").trim(),
-  model: String(formData.get("model") ?? "").trim(),
-  purchase_price: String(formData.get("purchasePrice") ?? "").trim(),
-  purchaseDate: String(formData.get("purchaseDate") ?? "").trim(),
-  warrantyEndDate: String(formData.get("warrantyEndDate") ?? "").trim(),
-});
-
-const summarizeMediaSelection = (selection: AssetMediaSelection) => {
-  const parts: string[] = [];
-  if (selection.images.length > 0) {
-    parts.push(`${selection.images.length} gorsel`);
-  }
-  if (selection.video) {
-    parts.push("1 video");
-  }
-  if (selection.audio) {
-    parts.push("1 ses");
-  }
-  return parts.length > 0 ? `${parts.join(", ")} secildi.` : "";
-};
-
-const normalizeLabel = (storagePath: string, type: EditExistingMediaItem["type"]) => {
-  const name = storagePath.split("/").filter(Boolean).pop();
-  return name ?? `${type} dosyasi`;
-};
-
-const parseQrDefaults = (rawValue: string): AssetFormDefaults => {
-  const fallbackName = rawValue.trim();
-  if (!fallbackName) {
-    return EMPTY_DEFAULTS;
-  }
-
-  try {
-    const url = new URL(rawValue);
-    const getValue = (...keys: string[]) => {
-      for (const key of keys) {
-        const value = url.searchParams.get(key)?.trim();
-        if (value) {
-          return value;
-        }
-      }
-      return "";
-    };
-
-    const name = getValue("name", "assetName");
-    const category = getValue("category");
-    const serialNumber = getValue("serialNumber", "serial", "serial_no");
-    const brand = getValue("brand");
-    const model = getValue("model");
-
-    if (!name && !category && !serialNumber && !brand && !model) {
-      return {
-        ...EMPTY_DEFAULTS,
-        name: fallbackName,
-      };
-    }
-
-    return {
-      ...EMPTY_DEFAULTS,
-      name: name || fallbackName,
-      category: category || EMPTY_DEFAULTS.category,
-      serialNumber,
-      brand,
-      model,
-    };
-  } catch {
-    return {
-      ...EMPTY_DEFAULTS,
-      name: fallbackName,
-    };
-  }
-};
-
 export function useAssetsActions({
   supabase,
   userId,
-  plan,
   assetLimit,
   totalAssetCount,
   isPremiumMediaEnabled,
@@ -200,7 +71,6 @@ export function useAssetsActions({
   setQrPreviewAssetId,
   onAuditRefresh,
 }: UseAssetsActionsArgs) {
-  void plan;
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [editingAsset, setEditingAsset] = useState<AssetDashboardRow | null>(null);

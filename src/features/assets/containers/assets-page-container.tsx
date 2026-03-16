@@ -126,7 +126,6 @@ export function AssetsPageContainer() {
   } = useAssetsActions({
     supabase,
     userId,
-    plan,
     assetLimit,
     totalAssetCount,
     isPremiumMediaEnabled,

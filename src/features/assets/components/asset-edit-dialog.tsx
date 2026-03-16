@@ -1,13 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ChangeEvent, type FormEventHandler } from "react";
+import type { FormEventHandler } from "react";
+import { AssetForm } from "@/features/assets/components/asset-form";
 import type { AssetDashboardRow } from "@/features/assets/components/assets-view-types";
-
-type AssetMediaSelection = {
-  images: File[];
-  video: File | null;
-  audio: File | null;
-};
+import { useAssetMediaSelection } from "@/features/assets/hooks/useAssetMediaSelection";
+import type { AssetMediaSelection } from "@/features/assets/lib/assets-actions-utils";
 
 type ExistingMediaItem = {
   id: string;
@@ -32,15 +29,6 @@ type AssetEditDialogProps = {
   onRemoveExistingMedia: (mediaId: string) => void;
 };
 
-const EMPTY_MEDIA_SELECTION: AssetMediaSelection = {
-  images: [],
-  video: null,
-  audio: null,
-};
-
-const selectClassName =
-  "w-full rounded-xl border border-white/15 bg-slate-950/70 px-4 py-2.5 text-sm text-slate-100 outline-none transition focus:border-sky-400";
-
 const fileInputClassName =
   "block w-full text-sm text-slate-200 file:mr-3 file:rounded-full file:border-0 file:bg-sky-400/15 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-sky-100 hover:file:bg-sky-400/25";
 
@@ -60,44 +48,7 @@ export function AssetEditDialog({
   removingExistingMediaId,
   onRemoveExistingMedia,
 }: AssetEditDialogProps) {
-  const [selection, setSelection] = useState<AssetMediaSelection>(EMPTY_MEDIA_SELECTION);
-
-  useEffect(() => {
-    setSelection(EMPTY_MEDIA_SELECTION);
-    onMediaSelection(EMPTY_MEDIA_SELECTION);
-  }, [asset.id, onMediaSelection]);
-
-  const effectiveCategoryOptions = useMemo(() => {
-    const values = new Set(["Elektronik", "Mobilya", "Arac", "Ofis", "Diger", ...categoryOptions]);
-    values.add(asset.category);
-    return [...values];
-  }, [asset.category, categoryOptions]);
-
-  const updateSelection = (next: AssetMediaSelection) => {
-    setSelection(next);
-    onMediaSelection(next);
-  };
-
-  const onImagesChange = (event: ChangeEvent<HTMLInputElement>) => {
-    updateSelection({
-      ...selection,
-      images: Array.from(event.currentTarget.files ?? []),
-    });
-  };
-
-  const onVideoChange = (event: ChangeEvent<HTMLInputElement>) => {
-    updateSelection({
-      ...selection,
-      video: event.currentTarget.files?.[0] ?? null,
-    });
-  };
-
-  const onAudioChange = (event: ChangeEvent<HTMLInputElement>) => {
-    updateSelection({
-      ...selection,
-      audio: event.currentTarget.files?.[0] ?? null,
-    });
-  };
+  const { onImagesChange, onVideoChange, onAudioChange } = useAssetMediaSelection(asset.id, onMediaSelection);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
@@ -118,71 +69,18 @@ export function AssetEditDialog({
           </button>
         </div>
 
-        <form onSubmit={onSubmit} className="mt-5 space-y-4" data-testid="asset-edit-form">
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="block">
-              <span className="mb-1.5 block text-sm text-slate-300">Varlik Adi</span>
-              <input name="name" required defaultValue={asset.name} className={inputClassName} />
-            </label>
-
-            <label className="block">
-              <span className="mb-1.5 block text-sm text-slate-300">Kategori</span>
-              <select name="category" required defaultValue={asset.category} className={selectClassName}>
-                {effectiveCategoryOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block">
-              <span className="mb-1.5 block text-sm text-slate-300">Marka</span>
-              <input name="brand" defaultValue={asset.brand ?? ""} className={inputClassName} />
-            </label>
-
-            <label className="block">
-              <span className="mb-1.5 block text-sm text-slate-300">Model</span>
-              <input name="model" defaultValue={asset.model ?? ""} className={inputClassName} />
-            </label>
-
-            <label className="block">
-              <span className="mb-1.5 block text-sm text-slate-300">Seri Numarasi</span>
-              <input name="serialNumber" defaultValue={asset.serial_number ?? ""} className={inputClassName} />
-            </label>
-
-            <label className="block">
-              <span className="mb-1.5 block text-sm text-slate-300">Satin Alma Fiyati</span>
-              <input
-                name="purchasePrice"
-                type="number"
-                min="0"
-                step="0.01"
-                defaultValue={asset.purchase_price?.toString() ?? ""}
-                className={inputClassName}
-              />
-            </label>
-
-            <label className="block">
-              <span className="mb-1.5 block text-sm text-slate-300">Satin Alma Tarihi</span>
-              <input
-                name="purchaseDate"
-                type="date"
-                defaultValue={asset.purchase_date ?? ""}
-                className={inputClassName}
-              />
-            </label>
-
-            <label className="block">
-              <span className="mb-1.5 block text-sm text-slate-300">Garanti Bitis Tarihi</span>
-              <input
-                name="warrantyEndDate"
-                type="date"
-                defaultValue={asset.warranty_end_date ?? ""}
-                className={inputClassName}
-              />
-            </label>
-          </div>
+        <div className="mt-5 space-y-4">
+          <AssetForm
+            mode="edit"
+            asset={asset}
+            formId="asset-edit-form"
+            formTestId="asset-edit-form"
+            onSubmit={onSubmit}
+            isSubmitting={isSubmitting}
+            categoryOptions={categoryOptions}
+            inputClassName={inputClassName}
+            footer={<></>}
+          />
 
           <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
             <div className="flex items-center justify-between gap-3">
@@ -257,13 +155,14 @@ export function AssetEditDialog({
             </button>
             <button
               type="submit"
+              form="asset-edit-form"
               disabled={isSubmitting}
               className="rounded-full bg-gradient-to-r from-sky-400 to-fuchsia-500 px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isSubmitting ? "Kaydediliyor..." : "Kaydet"}
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

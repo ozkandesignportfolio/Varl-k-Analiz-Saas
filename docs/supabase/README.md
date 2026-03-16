@@ -1,70 +1,76 @@
-# Supabase Kurulum Notlari
+# Supabase Model Referansi
 
-## 1) Proje ayarlari
-- Supabase Dashboard'da yeni proje olusturun.
-- `Project Settings > API` ekranindan URL ve `anon` key degerlerini alin.
-- Degerleri `.env.local` dosyasina yazin (`.env.example` referans).
+Bu belge, repoda gorulen Supabase veri modelini yuksek seviyede ozetler.
 
-## 2) SQL migration calistirma
-- Sorunsuz kurulum icin tek seferlik script:
-  `supabase/migrations/20260215201500_bootstrap_all.sql`
-  Ardindan audit log migrationini ayrica calistirin:
-  `supabase/migrations/20260216124500_audit_logs.sql`
+## Auth ve Plan
 
-- Alternatif olarak parca parca:
-- Dashboard > SQL Editor ekraninda
-  `supabase/migrations/20260215183000_init.sql` dosyasini calistirin.
-- Sonra storage policy icin
-  `supabase/migrations/20260215183500_storage.sql` dosyasini calistirin.
-- Sonra abonelik talep tablosu icin
-  `supabase/migrations/20260215193000_subscription_requests.sql` dosyasini calistirin.
-- Sonra audit log tablosu + triggerlar icin
-  `supabase/migrations/20260216124500_audit_logs.sql` dosyasini calistirin.
-- Otomasyon trigger/action motoru icin
-  `supabase/migrations/20260216130000_automation_events.sql`
-  dosyasini da calistirin.
-- Premium medya tablolari/bucket policy'leri icin
-  `supabase/migrations/20260222153000_asset_media_premium_uploads.sql`
-  dosyasini da calistirin.
-- Dashboard snapshot RPC icin
-  `supabase/migrations/20260228150000_dashboard_snapshot_rpc.sql`
-  dosyasini da calistirin.
-- Dashboard snapshot RPC overload cakismasini temizlemek icin
-  `supabase/migrations/20260228155000_dashboard_snapshot_rpc_remove_ambiguous_overload.sql`
-  dosyasini da calistirin.
-- Assets list RPC imza uyumlulugu icin
-  `supabase/migrations/202603040001_assets_list_assets_page_rpc.sql`
-  dosyasini da calistirin.
-- Assets tablosuna satin alma fiyati alani eklemek icin
-  `supabase/migrations/202603150001_assets_purchase_price.sql`
-  dosyasini da calistirin.
+- Uygulama Supabase Auth kullanir.
+- Korunmali sayfa ve API'ler dogrulanmis kullanici bekler.
+- Profil plani `profiles.plan` alaninda `free` veya `premium` olarak tutulur.
+- Metadata tarafinda `starter`, `pro` ve `elite` kodlari normalize edilir.
 
-Not: Bu migration calismadiysa API tarafinda
-"Could not find the table 'public.asset_media' in the schema cache" hatasi alinabilir.
-Not: Dashboard migrationlari eksikse su hata gorulebilir:
-"Could not find the function public.get_dashboard_snapshot(p_from, p_to, p_user_id) in the schema cache"
-Not: Eger asagidaki hata gorulurse overload cakismasi vardir ve
-`20260228155000_dashboard_snapshot_rpc_remove_ambiguous_overload.sql`
-calistirilmalidir:
-"Could not choose the best candidate function between: public.get_dashboard_snapshot(...)"
-Not: Eger asagidaki hata gorulurse assets RPC migrationi eksiktir ve
-`202603040001_assets_list_assets_page_rpc.sql`
-calistirilmalidir:
-"Could not find the function public.list_assets_page(...) in the schema cache"
-Not: Eger asagidaki hata gorulurse assets tablosunda satin alma fiyati kolonu eksiktir ve
-`202603150001_assets_purchase_price.sql`
-calistirilmalidir:
-"column assets.purchase_price does not exist"
+## Ana Tablolar
 
-## 2.1) Dogrulama
-- Kurulum sonrasi su dosyayi calistirin:
-  `supabase/verify_setup.sql`
+### Cekirdek uygulama
 
-## 3) Storage bucket
-- `documents-private` adinda bucket olusturun.
-- Bucket ayarini private yapin.
-- Dosya path formati: `<user_id>/<asset_id>/<filename>`
+- `assets`
+- `maintenance_rules`
+- `service_logs`
+- `documents`
+- `expenses`
+- `audit_logs`
 
-## 4) Otomasyon setup
-- Kurulum adimlari icin:
-  `docs/setup/supabase-automation.md`
+### Billing
+
+- `billing_subscriptions`
+- `billing_invoices`
+- `profiles`
+- `subscription_requests`
+- `stripe_webhook_events`
+
+### Otomasyon ve bildirim
+
+- `automation_events`
+- `push_subscriptions`
+- `dismissed_alerts`
+
+### Performans ve queue
+
+- `media_enrichment_jobs`
+- `global_metrics_cache`
+- `api_rate_limit_tokens`
+
+## Storage Modeli
+
+### Dokumanlar
+
+- Bucket: `documents-private`
+- Path: `<user_id>/<asset_id>/<filename>`
+
+### Varlik medyasi
+
+- Bucket: `asset-media`
+- Path: `<org_id>/<user_id>/<asset_id>/<type>/<file>`
+
+## RPC ve Yardimci Katman
+
+Repo, asagidaki turde DB yardimcilari bekler:
+
+- dashboard snapshot
+- panel health
+- global metrics cache refresh
+- assets listeleme ve sayfalama
+- API rate limit token alma
+
+## Davranis Notlari
+
+- Billing tabloları eksikse billing API'leri kontrollu sekilde disable olabilir.
+- Rate limit, production'da DB agirlikli; testte daha siki davranabilir.
+- Migration drift olursa reports, assets, dashboard veya health endpoint'lerinde RPC/schema cache hatalari gorulebilir.
+
+## Manual Verification Gerekenler
+
+- Backup/PITR aktifligi
+- Edge Function deploy durumu
+- Cron schedule'lar
+- Production bucket policy gorunurlugu

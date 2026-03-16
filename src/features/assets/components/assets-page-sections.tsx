@@ -5,7 +5,7 @@ import { QuotaExceededModal } from "@/components/ui/QuotaExceededModal";
 import { AssetQrPreviewModal } from "@/features/assets/components/asset-qr-preview-modal";
 import { AssetQuickPreviewDrawer } from "@/features/assets/components/asset-quick-preview-drawer";
 import { AssetsContent } from "@/features/assets/components/AssetsContent";
-import { AssetsToolbar } from "@/features/assets/components/AssetsToolbar";
+import { AssetsFilterBar } from "@/features/assets/components/assets-filter-bar";
 import type {
   AssetActivityItem,
   AssetDashboardRow,
@@ -132,7 +132,7 @@ export function AssetsDialogsSection({
 export function AssetsListingSection(props: AssetsListingSectionProps) {
   return (
     <div className="space-y-6">
-      <AssetsToolbar
+      <AssetsFilterBar
         searchTerm={props.searchTerm}
         onSearchTermChange={props.onSearchTermChange}
         categoryFilter={props.categoryFilter}

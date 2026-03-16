@@ -1,36 +1,36 @@
-﻿# Supabase Automation (Trigger + Action)
+# Supabase Automation ve Worker Kurulumu
 
-Bu setup ile su trigger'lar event uretir:
-- `warranty_30_days` (`assets.warranty_end_date = current_date + 30`)
-- `maintenance_7_days` (`maintenance_rules.next_due_date = current_date + 7`)
-- `service_log_created` (`service_logs` insert sonrasi)
+Bu projede iki ayri asenkron yuzey vardir:
 
-Bu event'ler su action'lari calistirir:
-- `email`
-- `push_notification` (geriye uyumlu olarak `push` de desteklenir)
-- `pdf_report`
+- `automation-dispatcher`
+- `media-enrichment`
 
-## 1) SQL migration
+Ana uygulama bunlar olmadan da acilir, fakat otomasyon ve medya enrichment akislarinin bir kismi eksik kalir.
 
-Supabase SQL Editor'da calistirin:
+## Gerekli Temel Migrationlar
 
-`supabase/migrations/20260216130000_automation_events.sql`
-`supabase/migrations/20260218150000_notification_flow_cron_due_and_rule_crud.sql`
+Tum guncel migrationlar uygulanmalidir. Worker tarafini dogrudan etkileyen gruplar:
 
-Not:
-- Migration, due event taramasini cron penceresine uyumlu sekilde calistirir.
-- `automation_events.dedupe_key` ve `on conflict do nothing` ile tekilleme korunur.
+- `automation_events`
+- `notification_flow_cron_due_and_rule_crud`
+- `performance_queue_and_aggregates`
+- `media_enrichment_jobs_queue_refactor`
 
-## 2) Edge Function deploy
+## Deploy Komutlari
 
 ```bash
 supabase functions deploy automation-dispatcher
+supabase functions deploy media-enrichment
 ```
 
-Dosya:
-- `supabase/functions/automation-dispatcher/index.ts`
+Kaynak klasorler:
 
-## 3) Function secret'lari
+- `supabase/functions/automation-dispatcher`
+- `supabase/functions/media-enrichment`
+
+## Secret'lar
+
+### automation-dispatcher
 
 ```bash
 supabase secrets set AUTOMATION_CRON_SECRET=CHANGE_ME
@@ -39,11 +39,17 @@ supabase secrets set AUTOMATION_FROM_EMAIL=no-reply@your-domain.com
 supabase secrets set EXPO_ACCESS_TOKEN=YOUR_EXPO_TOKEN
 ```
 
-## 4) Dispatcher schedule (Supabase event)
+### media-enrichment
 
-Secenek A (onerilen): Supabase Dashboard > Edge Functions > Schedules ile
-`automation-dispatcher` function'ini `* * * * *` cron ile her dakika calistirin.
-Dispatcher cagrisi `emit_due_automation_events` fonksiyonunu da tetikleyebilir:
+- Function runtime icinde `OPENAI_API_KEY` gerekir
+- Service role erisimi gerekir
+- Uygulama tarafinda `SERVICE_MEDIA_JOB_SECRET` gerekir
+
+## Schedule
+
+Onerilen yol: Supabase Dashboard uzerinden `automation-dispatcher` icin schedule tanimlamak.
+
+Ornek body:
 
 ```json
 {
@@ -53,36 +59,18 @@ Dispatcher cagrisi `emit_due_automation_events` fonksiyonunu da tetikleyebilir:
 }
 ```
 
-Secenek B (`pg_cron + pg_net`):
+## Service Media Job Trigger
 
-```sql
-create extension if not exists pg_net;
+`/api/service-media/jobs` endpoint'i:
 
-select cron.schedule(
-  'automation_dispatcher_every_minute',
-  '* * * * *',
-  $$
-  select net.http_post(
-    url := 'https://<PROJECT_REF>.supabase.co/functions/v1/automation-dispatcher',
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'Authorization', 'Bearer <SERVICE_ROLE_KEY>',
-      'x-cron-secret', '<AUTOMATION_CRON_SECRET>'
-    ),
-    body := jsonb_build_object('batch_size', 25)
-  );
-  $$
-);
-```
+- `x-job-secret` header'i bekler
+- `SERVICE_MEDIA_JOB_SECRET` ile eslesme ister
+- DB tabanli service rate limit uygular
+- `media-enrichment` function'ini tetikler
 
-## 5) Push token kaydı (client snippet)
+## Manual Verification Gerekenler
 
-```ts
-await supabase.from("push_subscriptions").upsert({
-  user_id: user.id,
-  token: expoPushToken,
-  platform: "ios",
-  is_active: true,
-});
-```
-
+- Function deploy'leri basarili mi
+- Cron aktif mi
+- Resend ve Expo secret'lari gecerli mi
+- Medya enrichment gercek dosyalarla tamamlanabiliyor mu

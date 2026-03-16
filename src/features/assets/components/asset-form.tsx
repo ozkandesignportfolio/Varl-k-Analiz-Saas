@@ -1,12 +1,6 @@
-import type { FormEventHandler } from "react";
+import type { FormEventHandler, ReactNode } from "react";
 import type { AssetDashboardRow } from "@/features/assets/components/assets-view-types";
-
-export type AssetFormExistingMediaItem = {
-  id: string;
-  type: "image" | "video" | "audio";
-  label: string;
-  storagePath?: string;
-};
+import { FALLBACK_CATEGORY_OPTIONS } from "@/features/assets/lib/assets-actions-utils";
 
 export type CreateAssetFormDefaults = {
   name: string;
@@ -19,19 +13,10 @@ export type CreateAssetFormDefaults = {
   warrantyEndDate: string;
 };
 
-type AssetFormMediaSelection = {
-  images: File[];
-  video: File | null;
-  audio: File | null;
-};
-
 type AssetFormBaseProps = {
   categoryOptions: string[];
   inputClassName: string;
-  isPremiumMediaEnabled: boolean;
-  mediaErrorMessage: string;
-  mediaSummary: string;
-  onMediaSelection: (selection: AssetFormMediaSelection) => void;
+  footer?: ReactNode;
 };
 
 type AssetFormCreateProps = AssetFormBaseProps & {
@@ -59,26 +44,7 @@ export type AssetFormProps = AssetFormCreateProps | AssetFormEditProps;
 const selectClassName =
   "w-full rounded-xl border border-white/15 bg-slate-950/70 px-4 py-2.5 text-sm text-slate-100 outline-none transition focus:border-sky-400";
 
-const fallbackCategoryOptions = ["Elektronik", "Mobilya", "Arac", "Ofis", "Diger"];
-
 export function AssetForm(props: AssetFormProps) {
-  const categorySet = new Set(fallbackCategoryOptions);
-  for (const option of props.categoryOptions) {
-    const normalized = option.trim();
-    if (normalized) {
-      categorySet.add(normalized);
-    }
-  }
-
-  if (props.mode === "create" && props.defaults.category.trim()) {
-    categorySet.add(props.defaults.category.trim());
-  }
-
-  if (props.mode === "edit" && props.asset.category.trim()) {
-    categorySet.add(props.asset.category.trim());
-  }
-
-  const categoryOptions = [...categorySet];
   const values =
     props.mode === "create"
       ? props.defaults
@@ -92,6 +58,27 @@ export function AssetForm(props: AssetFormProps) {
           purchaseDate: props.asset.purchase_date ?? "",
           warrantyEndDate: props.asset.warranty_end_date ?? "",
         };
+  const currentCategory = values.category.trim();
+  const categoryOptions = [
+    ...new Set(
+      [...FALLBACK_CATEGORY_OPTIONS, ...props.categoryOptions]
+        .map((option) => option.trim())
+        .filter(Boolean)
+        .concat(currentCategory ? [currentCategory] : []),
+    ),
+  ];
+  const footer = props.footer ?? (
+    <div className="flex justify-end">
+      <button
+        type="submit"
+        disabled={props.isSubmitting}
+        data-testid={props.mode === "create" ? "asset-submit" : undefined}
+        className="rounded-full bg-gradient-to-r from-sky-400 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+      >
+        {props.isSubmitting ? "Kaydediliyor..." : (props.submitLabel ?? "Kaydet")}
+      </button>
+    </div>
+  );
 
   return (
     <form
@@ -182,16 +169,7 @@ export function AssetForm(props: AssetFormProps) {
         </label>
       </div>
 
-      <div className="flex justify-end">
-        <button
-          type="submit"
-          disabled={props.isSubmitting}
-          data-testid={props.mode === "create" ? "asset-submit" : undefined}
-          className="rounded-full bg-gradient-to-r from-sky-400 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          {props.isSubmitting ? "Kaydediliyor..." : (props.submitLabel ?? "Kaydet")}
-        </button>
-      </div>
+      {footer}
     </form>
   );
 }

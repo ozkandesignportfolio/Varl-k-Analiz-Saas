@@ -1,13 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ChangeEvent, type FormEventHandler } from "react";
+import type { FormEventHandler } from "react";
 import { AssetForm, type CreateAssetFormDefaults } from "@/features/assets/components/asset-form";
-
-type AssetMediaSelection = {
-  images: File[];
-  video: File | null;
-  audio: File | null;
-};
+import { useAssetMediaSelection } from "@/features/assets/hooks/useAssetMediaSelection";
+import type { AssetMediaSelection } from "@/features/assets/lib/assets-actions-utils";
 
 type AssetCreateDialogProps = {
   createFormKey: number;
@@ -21,12 +17,6 @@ type AssetCreateDialogProps = {
   mediaSummary: string;
   onMediaSelection: (selection: AssetMediaSelection) => void;
   onUpgradeToPremium: () => void;
-};
-
-const EMPTY_MEDIA_SELECTION: AssetMediaSelection = {
-  images: [],
-  video: null,
-  audio: null,
 };
 
 const fileInputClassName =
@@ -45,46 +35,7 @@ export function AssetCreateDialog({
   onMediaSelection,
   onUpgradeToPremium,
 }: AssetCreateDialogProps) {
-  const [selection, setSelection] = useState<AssetMediaSelection>(EMPTY_MEDIA_SELECTION);
-
-  useEffect(() => {
-    setSelection(EMPTY_MEDIA_SELECTION);
-    onMediaSelection(EMPTY_MEDIA_SELECTION);
-  }, [createFormKey, onMediaSelection]);
-
-  const effectiveCategoryOptions = useMemo(() => {
-    const values = new Set(["Elektronik", "Mobilya", "Arac", "Ofis", "Diger", ...categoryOptions]);
-    if (defaults.category.trim()) {
-      values.add(defaults.category.trim());
-    }
-    return [...values];
-  }, [categoryOptions, defaults.category]);
-
-  const updateSelection = (next: AssetMediaSelection) => {
-    setSelection(next);
-    onMediaSelection(next);
-  };
-
-  const onImagesChange = (event: ChangeEvent<HTMLInputElement>) => {
-    updateSelection({
-      ...selection,
-      images: Array.from(event.currentTarget.files ?? []),
-    });
-  };
-
-  const onVideoChange = (event: ChangeEvent<HTMLInputElement>) => {
-    updateSelection({
-      ...selection,
-      video: event.currentTarget.files?.[0] ?? null,
-    });
-  };
-
-  const onAudioChange = (event: ChangeEvent<HTMLInputElement>) => {
-    updateSelection({
-      ...selection,
-      audio: event.currentTarget.files?.[0] ?? null,
-    });
-  };
+  const { onImagesChange, onVideoChange, onAudioChange } = useAssetMediaSelection(createFormKey, onMediaSelection);
 
   return (
     <section className="premium-card p-5" key={createFormKey}>
@@ -115,12 +66,8 @@ export function AssetCreateDialog({
           submitLabel="Varlik Kaydet"
           onSubmit={onSubmit}
           isSubmitting={isSubmitting}
-          categoryOptions={effectiveCategoryOptions}
+          categoryOptions={categoryOptions}
           inputClassName={inputClassName}
-          isPremiumMediaEnabled={false}
-          mediaErrorMessage=""
-          mediaSummary=""
-          onMediaSelection={() => undefined}
         />
       </div>
 

@@ -1,7 +1,17 @@
 begin;
 
-alter function public.take_api_rate_limit_token(text, text, integer, numeric, integer, integer)
-  rename to take_api_rate_limit_token_internal;
+do $$
+begin
+  if to_regprocedure('public.take_api_rate_limit_token_internal(text, text, integer, numeric, integer, integer)') is null then
+    if to_regprocedure('public.take_api_rate_limit_token(text, text, integer, numeric, integer, integer)') is not null then
+      alter function public.take_api_rate_limit_token(text, text, integer, numeric, integer, integer)
+        rename to take_api_rate_limit_token_internal;
+    end if;
+  elsif to_regprocedure('public.take_api_rate_limit_token(text, text, integer, numeric, integer, integer)') is not null then
+    drop function public.take_api_rate_limit_token(text, text, integer, numeric, integer, integer);
+  end if;
+end
+$$;
 
 create or replace function public.take_api_rate_limit_token(
   p_scope text,
