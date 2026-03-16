@@ -115,9 +115,9 @@ export function ScoreAnalysisSection() {
           <span className="text-xs tracking-widest text-chart-3">Skor Analizi</span>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className={`${inView ? "animate-slide-up" : "opacity-0"}`}>
-            <div className="glass-card rounded-3xl border border-border/60 bg-background/70 p-8 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)]">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className={`min-w-0 w-full ${inView ? "animate-slide-up" : "opacity-0"}`}>
+            <div className="glass-card min-w-0 w-full rounded-3xl border border-border/60 bg-background/70 p-8 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)]">
               <h2 className="text-3xl font-bold text-foreground sm:text-4xl">Skor nasıl hesaplanır?</h2>
               <p className="mt-2 text-base font-medium text-chart-3">3 adımda net bir puan</p>
               <p className="mt-5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
@@ -167,8 +167,8 @@ export function ScoreAnalysisSection() {
             </div>
           </div>
 
-          <div className={`${inView ? "animate-slide-in-left" : "opacity-0"}`} style={{ animationDelay: "0.15s" }}>
-            <div className="glass-card rounded-3xl border border-border/60 bg-background/70 p-8 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)]">
+          <div className={`min-w-0 w-full ${inView ? "animate-slide-in-left" : "opacity-0"}`} style={{ animationDelay: "0.15s" }}>
+            <div className="glass-card min-w-0 w-full rounded-3xl border border-border/60 bg-background/70 p-8 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)]">
               <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1">
                 <Sparkles className="h-3.5 w-3.5 text-primary" />
                 <span className="text-[11px] font-semibold tracking-wide text-primary">Gerçekçi Örnek</span>
@@ -228,9 +228,9 @@ export function ScoreAnalysisSection() {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1fr_0.75fr]">
-          <div className={`${inView ? "animate-slide-up" : "opacity-0"}`} style={{ animationDelay: "0.2s" }}>
-            <div className="glass-card h-full rounded-3xl border border-border/60 bg-background/70 p-6 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)]">
+        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1fr_0.75fr]">
+          <div className={`min-w-0 w-full ${inView ? "animate-slide-up" : "opacity-0"}`} style={{ animationDelay: "0.2s" }}>
+            <div className="glass-card h-full min-w-0 w-full rounded-3xl border border-border/60 bg-background/70 p-6 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)]">
               <h3 className="text-sm font-semibold text-foreground">Skor Dağılımı</h3>
               <div className="mt-4 space-y-3">
                 {scoreBreakdown.map((item) => (
@@ -240,8 +240,8 @@ export function ScoreAnalysisSection() {
             </div>
           </div>
 
-          <div className={`${inView ? "animate-slide-up" : "opacity-0"}`} style={{ animationDelay: "0.28s" }}>
-            <div className="glass-card h-full rounded-3xl border border-border/60 bg-background/70 p-6 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)]">
+          <div className={`min-w-0 w-full ${inView ? "animate-slide-up" : "opacity-0"}`} style={{ animationDelay: "0.28s" }}>
+            <div className="glass-card h-full min-w-0 w-full overflow-hidden rounded-3xl border border-border/60 bg-background/70 p-6 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)]">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-foreground">Trend</h3>
                 <div className="inline-flex items-center gap-1 text-xs text-primary">
@@ -249,14 +249,14 @@ export function ScoreAnalysisSection() {
                   Son 6 ay
                 </div>
               </div>
-              <div className="mt-3 h-[180px]">
-                <Line data={trendData} options={trendOptions} />
+              <div className="mt-3 h-[180px] w-full min-w-0 max-w-full overflow-hidden">
+                <Line className="!h-full !w-full" data={trendData} options={trendOptions} />
               </div>
             </div>
           </div>
 
-          <div className={`${inView ? "animate-slide-up" : "opacity-0"}`} style={{ animationDelay: "0.36s" }}>
-            <div className="glass-card h-full rounded-3xl border border-border/60 bg-background/70 p-6 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)]">
+          <div className={`min-w-0 w-full ${inView ? "animate-slide-up" : "opacity-0"}`} style={{ animationDelay: "0.36s" }}>
+            <div className="glass-card h-full min-w-0 w-full rounded-3xl border border-border/60 bg-background/70 p-6 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)]">
               <h3 className="text-sm font-semibold text-foreground">Maliyet Verimliliği</h3>
               <div className="mt-4 rounded-2xl border border-primary/25 bg-primary/10 p-4">
                 <p className="text-xs text-primary">Değer / Maliyet Oranı</p>

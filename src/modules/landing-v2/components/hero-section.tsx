@@ -1,7 +1,7 @@
 ﻿"use client"
 
 import Link from "next/link"
-import { ArrowRight, Play } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export function HeroSection() {
@@ -64,17 +64,6 @@ export function HeroSection() {
             <Link href="/register">
               Ücretsiz Başla
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </Link>
-          </Button>
-          <Button
-            asChild
-            size="lg"
-            variant="outline"
-            className="border-border px-8 py-6 text-base text-foreground hover:bg-secondary/50 focus-visible:ring-primary/60"
-          >
-            <Link href="/demo">
-              <Play className="mr-2 h-4 w-4" />
-              Demo İzle
             </Link>
           </Button>
         </div>
