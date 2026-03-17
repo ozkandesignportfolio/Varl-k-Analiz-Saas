@@ -1,6 +1,8 @@
+import Stripe from "stripe";
 import { NextResponse } from "next/server";
 import { logApiError } from "@/lib/api/logging";
 import { enforceRateLimit, getRequestIp } from "@/lib/api/rate-limit";
+import { PREMIUM_MONTHLY_PRICE_KURUS } from "@/lib/plans/pricing";
 import { getStripeSecretKeyValidationError, stripe } from "@/lib/stripe";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
 
@@ -42,6 +44,63 @@ const readMissingEnvVars = () => {
     missing,
     premiumPriceId,
   };
+};
+
+const PREMIUM_CHECKOUT_CURRENCY = "try";
+
+const buildFallbackPremiumLineItem = (
+  productId?: string,
+): Stripe.Checkout.SessionCreateParams.LineItem => ({
+  quantity: 1,
+  price_data: {
+    currency: PREMIUM_CHECKOUT_CURRENCY,
+    unit_amount: PREMIUM_MONTHLY_PRICE_KURUS,
+    recurring: {
+      interval: "month",
+      interval_count: 1,
+    },
+    ...(productId
+      ? { product: productId }
+      : {
+          product_data: {
+            name: "Assetly Premium",
+          },
+        }),
+  },
+});
+
+const resolvePremiumCheckoutLineItem = async (
+  configuredPriceId: string | undefined,
+): Promise<Stripe.Checkout.SessionCreateParams.LineItem> => {
+  if (!stripe || !configuredPriceId) {
+    return buildFallbackPremiumLineItem();
+  }
+
+  try {
+    const configuredPrice = await stripe.prices.retrieve(configuredPriceId);
+    const usesExpectedMonthlyPremiumPrice =
+      configuredPrice.active &&
+      configuredPrice.currency === PREMIUM_CHECKOUT_CURRENCY &&
+      configuredPrice.unit_amount === PREMIUM_MONTHLY_PRICE_KURUS &&
+      configuredPrice.recurring?.interval === "month" &&
+      configuredPrice.recurring?.interval_count === 1;
+
+    if (usesExpectedMonthlyPremiumPrice) {
+      return {
+        price: configuredPriceId,
+        quantity: 1,
+      };
+    }
+
+    const fallbackProductId =
+      typeof configuredPrice.product === "string" && configuredPrice.product.trim().length > 0
+        ? configuredPrice.product
+        : undefined;
+
+    return buildFallbackPremiumLineItem(fallbackProductId);
+  } catch {
+    return buildFallbackPremiumLineItem();
+  }
 };
 
 export async function POST(request: Request) {
@@ -93,18 +152,15 @@ export async function POST(request: Request) {
   }
 
   try {
+    const premiumLineItem = await resolvePremiumCheckoutLineItem(priceId);
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
+      line_items: [premiumLineItem],
       client_reference_id: user.id,
       customer_email: user.email ?? undefined,
       metadata: {
         userId: user.id,
+        premiumPriceTl: String(PREMIUM_MONTHLY_PRICE_KURUS / 100),
       },
       success_url: `${appUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/billing/cancel`,

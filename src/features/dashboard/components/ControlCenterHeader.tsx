@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { memo, useCallback } from "react";
-import { CalendarDays, ChevronDown, Clock3, Plus, ShieldCheck, Wrench, X } from "lucide-react";
+import { CalendarDays, ChevronDown, Clock3, Plus, Wrench, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -98,10 +98,15 @@ export const ControlCenterHeader = memo(function ControlCenterHeader({
     <section className="rounded-3xl border border-[#24344F] bg-[linear-gradient(145deg,rgba(8,20,45,0.92),rgba(9,17,33,0.84))] p-5 shadow-[0_20px_45px_rgba(3,8,20,0.42)] sm:p-6">
       <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
         <div className="space-y-3">
-          <p className="inline-flex items-center gap-2 rounded-full border border-[#314B6D] bg-[#0E2039]/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.15em] text-slate-300">
-            <ShieldCheck className="size-3.5 text-emerald-300" aria-hidden />
-            Kontrol Merkezi
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="inline-flex items-center gap-2 rounded-full border border-[#314B6D] bg-[#0E2039]/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.15em] text-slate-200">
+              <img src="/assetly-mark.svg" alt="" aria-hidden="true" className="size-4" />
+              Assetly OS
+            </p>
+            <span className="inline-flex items-center rounded-full border border-[#29425F] bg-[#0B1730]/80 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-[#8FA6C7]">
+              Kontrol Merkezi
+            </span>
+          </div>
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-[#F8FAFC] sm:text-3xl">Kontrol Merkezi</h1>
             <p className="mt-2 max-w-2xl text-sm text-[#9FB2CE]">

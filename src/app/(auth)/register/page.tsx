@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -15,6 +15,7 @@ import {
   emailVerificationPromptMessage,
   getEmailVerificationRedirectUrl,
 } from "@/lib/supabase/email-verification";
+import { PREMIUM_MONTHLY_PRICE_LABEL } from "@/lib/plans/pricing";
 
 const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
@@ -43,17 +44,17 @@ export default function RegisterPage() {
     const passwordConfirm = String(formData.get("passwordConfirm") ?? "");
 
     if (!fullName || !email || !password) {
-      setMessage("Ad soyad, e-posta ve şifre zorunludur.");
+      setMessage("Ad soyad, e-posta ve ÅŸifre zorunludur.");
       return;
     }
 
     if (password.length < 6) {
-      setMessage("Şifre en az 6 karakter olmalıdır.");
+      setMessage("Åifre en az 6 karakter olmalÄ±dÄ±r.");
       return;
     }
 
     if (password !== passwordConfirm) {
-      setMessage("Şifreler eşleşmiyor.");
+      setMessage("Åifreler eÅŸleÅŸmiyor.");
       return;
     }
 
@@ -74,7 +75,7 @@ export default function RegisterPage() {
 
       if (error) {
         if (isEmailRateLimitError(error)) {
-          setMessage("E-posta limiti aşıldı. Lütfen kısa bir süre sonra tekrar deneyin.");
+          setMessage("E-posta limiti aÅŸÄ±ldÄ±. LÃ¼tfen kÄ±sa bir sÃ¼re sonra tekrar deneyin.");
           return;
         }
 
@@ -84,7 +85,7 @@ export default function RegisterPage() {
           return;
         }
 
-        setMessage(error.message || "Kayıt sırasında bir hata oluştu. Lütfen tekrar deneyin.");
+        setMessage(error.message || "KayÄ±t sÄ±rasÄ±nda bir hata oluÅŸtu. LÃ¼tfen tekrar deneyin.");
         return;
       }
 
@@ -103,10 +104,10 @@ export default function RegisterPage() {
         return;
       }
 
-      setMessage("Kayıt tamamlandı ancak oturum başlatılamadı. Lütfen giriş yapmayı deneyin.");
+      setMessage("KayÄ±t tamamlandÄ± ancak oturum baÅŸlatÄ±lamadÄ±. LÃ¼tfen giriÅŸ yapmayÄ± deneyin.");
       router.push("/login");
     } catch {
-      setMessage("Kayıt sırasında beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.");
+      setMessage("KayÄ±t sÄ±rasÄ±nda beklenmeyen bir hata oluÅŸtu. LÃ¼tfen tekrar deneyin.");
     } finally {
       setIsSubmitting(false);
     }
@@ -126,16 +127,16 @@ export default function RegisterPage() {
           >
             Assetly
           </Link>
-          <h1 className="mt-5 text-4xl font-semibold leading-[1.1] text-white">Hesabınızı oluşturun</h1>
+          <h1 className="mt-5 text-4xl font-semibold leading-[1.1] text-white">HesabÄ±nÄ±zÄ± oluÅŸturun</h1>
           <p className="mt-4 text-sm leading-7 text-slate-300">
-            Deneme planında {trialAssetLimit} varlık, {trialDocumentLimit} belge, {trialSubscriptionLimit} abonelik ve{" "}
-            {trialInvoiceUploadLimit} fatura yükleme ile başlayın. İstediğiniz zaman 149 TL premium plana geçin.
+            Deneme planÄ±nda {trialAssetLimit} varlÄ±k, {trialDocumentLimit} belge, {trialSubscriptionLimit} abonelik ve{" "}
+            {trialInvoiceUploadLimit} fatura yükleme ile başlayın. İstediğiniz zaman {PREMIUM_MONTHLY_PRICE_LABEL} premium plana geçin.
           </p>
         </section>
 
         <section className="premium-panel p-6">
-          <h2 className="text-2xl font-semibold text-white">Kayıt Ol</h2>
-          <p className="mt-2 text-sm text-slate-300">Yeni hesabınızı oluşturun.</p>
+          <h2 className="text-2xl font-semibold text-white">KayÄ±t Ol</h2>
+          <p className="mt-2 text-sm text-slate-300">Yeni hesabÄ±nÄ±zÄ± oluÅŸturun.</p>
 
           <form onSubmit={onSubmit} className="mt-6 space-y-4" data-testid="register-form">
             <label className="block">
@@ -145,7 +146,7 @@ export default function RegisterPage() {
                 type="text"
                 required
                 className={inputClassName}
-                placeholder="Örnek: Osman Yılmaz"
+                placeholder="Ã–rnek: Osman YÄ±lmaz"
                 data-testid="register-fullname-input"
               />
             </label>
@@ -163,7 +164,7 @@ export default function RegisterPage() {
             </label>
 
             <label className="block">
-              <span className="mb-1.5 block text-sm text-slate-300">Şifre</span>
+              <span className="mb-1.5 block text-sm text-slate-300">Åifre</span>
               <input
                 name="password"
                 type="password"
@@ -176,14 +177,14 @@ export default function RegisterPage() {
             </label>
 
             <label className="block">
-              <span className="mb-1.5 block text-sm text-slate-300">Şifre Tekrar</span>
+              <span className="mb-1.5 block text-sm text-slate-300">Åifre Tekrar</span>
               <input
                 name="passwordConfirm"
                 type="password"
                 required
                 minLength={6}
                 className={inputClassName}
-                placeholder="Şifrenizi tekrar girin"
+                placeholder="Åifrenizi tekrar girin"
                 data-testid="register-password-confirm-input"
               />
             </label>
@@ -194,7 +195,7 @@ export default function RegisterPage() {
               data-testid="register-submit"
               className="w-full rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {isSubmitting ? "Kayıt oluşturuluyor..." : "Kayıt Ol"}
+              {isSubmitting ? "KayÄ±t oluÅŸturuluyor..." : "KayÄ±t Ol"}
             </button>
 
             {message ? (
@@ -205,9 +206,9 @@ export default function RegisterPage() {
           </form>
 
           <p className="mt-5 text-sm text-slate-300">
-            Hesabınız var mı?{" "}
+            HesabÄ±nÄ±z var mÄ±?{" "}
             <Link href="/login" className="font-semibold text-sky-200">
-              Giriş yap
+              GiriÅŸ yap
             </Link>
           </p>
         </section>
@@ -215,3 +216,5 @@ export default function RegisterPage() {
     </main>
   );
 }
+
+

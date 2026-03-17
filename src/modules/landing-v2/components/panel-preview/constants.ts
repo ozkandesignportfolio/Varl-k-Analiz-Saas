@@ -22,6 +22,21 @@ import type {
   RowItem,
 } from "@/modules/landing-v2/components/panel-preview/types";
 
+const LANDING_PREVIEW_MENU_KEYS: PreviewMenuKey[] = [
+  "dashboard",
+  "assets",
+  "maintenance",
+  "services",
+  "documents",
+  "timeline",
+  "expenses",
+  "notifications",
+  "billing",
+  "invoices",
+  "costs",
+  "reports",
+];
+
 export const previewThemeVars: PreviewTheme = {
   ["--auth-bg" as string]: "#050a18",
   ["--auth-sidebar-bg" as string]: "#070e20",
@@ -66,7 +81,7 @@ const previewContentByMenuKey: Record<PreviewMenuKey, Pick<PreviewMenuItem, "tit
     subtitle: "Bakım kuralları ve yaklaşan tarihler",
   },
   services: {
-    title: "Servisler",
+    title: "Servis Kayıtları",
     subtitle: "Servis kayıtları, tarih ve tutar",
   },
   documents: {
@@ -107,13 +122,15 @@ const previewContentByMenuKey: Record<PreviewMenuKey, Pick<PreviewMenuItem, "tit
   },
 };
 
-export const previewMenuItems = SIDEBAR_NAV_ITEMS.map((item) => ({
-  key: item.key,
-  label: item.label,
-  badge: item.shortCode,
-  icon: iconBySidebarKey[item.iconKey],
-  ...previewContentByMenuKey[item.key],
-}));
+export const previewMenuItems = SIDEBAR_NAV_ITEMS.filter((item) => LANDING_PREVIEW_MENU_KEYS.includes(item.key)).map(
+  (item) => ({
+    key: item.key,
+    label: item.label,
+    badge: item.shortCode,
+    icon: iconBySidebarKey[item.iconKey],
+    ...previewContentByMenuKey[item.key],
+  }),
+);
 
 export const rowDataByMenu: Record<PreviewListMenuKey, RowItem[]> = {
   assets: [
@@ -152,7 +169,7 @@ export const rowDataByMenu: Record<PreviewListMenuKey, RowItem[]> = {
     { title: "Skor artışı", detail: "Bu hafta genel sağlık skoru +5", badge: "Bilgi", date: "Dün 16:40", amount: "+5" },
   ],
   billing: [
-    { title: "Premium Yıllık", detail: "Aktif Plan", badge: "Yıllık", date: "12 Nisan 2026", amount: "14.400 TL" },
+    { title: "Premium Aylık", detail: "Aktif Plan", badge: "Aylık", date: "12 Nisan 2026", amount: "199 TL" },
     { title: "SMS Paketi", detail: "Ek Paket", badge: "Yenileme", date: "01 Mart 2026", amount: "1.250 TL" },
     { title: "Bulut Yedekleme", detail: "Ek Paket", badge: "Yenileme", date: "06 Mart 2026", amount: "890 TL" },
   ],
@@ -173,7 +190,7 @@ export const rowDataByMenu: Record<PreviewListMenuKey, RowItem[]> = {
   ],
   settings: [
     { title: "Profil Bilgileri", detail: "Osman Yılmaz", badge: "Güncel", date: "21 Şubat 2026", amount: "Profil" },
-    { title: "Plan Yönetimi", detail: "Premium Yıllık", badge: "Aktif", date: "18 Şubat 2026", amount: "Plan" },
+    { title: "Plan Yönetimi", detail: "Premium Aylık", badge: "Aktif", date: "18 Şubat 2026", amount: "Plan" },
     { title: "Güvenlik", detail: "2FA Aktif", badge: "Güvenli", date: "17 Şubat 2026", amount: "Ayar" },
   ],
 };

@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useInView } from "@/modules/landing-v2/hooks/use-in-view";
 import {
@@ -44,20 +43,29 @@ export function DashboardPreview() {
         </div>
 
         <div className={cn(inView ? "animate-slide-up" : "opacity-0")}>
-          <div className="overflow-hidden rounded-[28px] bg-[rgb(7_14_32_/_66%)] shadow-[0_24px_70px_rgb(5_10_24_/_56%),inset_0_1px_0_rgb(255_255_255_/_0.05),inset_0_0_42px_rgb(16_239_181_/_0.04)]">
+          <div className="overflow-hidden rounded-[28px] border border-[rgba(53,80,113,0.72)] bg-[rgb(7_14_32_/_72%)] shadow-[0_24px_70px_rgb(5_10_24_/_56%),inset_0_1px_0_rgb(255_255_255_/_0.05),inset_0_0_42px_rgb(16_239_181_/_0.04)]">
             <div
-              className="flex h-[560px] max-h-[72vh] min-h-[500px] flex-col md:h-[640px] md:min-h-[560px] md:flex-row"
+              className="auth-shell-theme flex h-[560px] max-h-[72vh] min-h-[500px] flex-col md:h-[640px] md:min-h-[560px] md:flex-row"
               style={previewThemeVars}
             >
               <aside className="auth-shell-sidebar hidden w-[var(--auth-sidebar-width)] shrink-0 border-r border-[var(--auth-border)] p-4 md:flex md:flex-col">
                 <div className="mb-6 flex-none">
-                  <div className="auth-shell-brand flex items-center gap-3 rounded-xl px-2 py-2">
-                    <span className="auth-brand-mark flex h-9 w-9 items-center justify-center rounded-xl">
-                      <Shield className="h-4 w-4" />
+                  <div className="auth-shell-brand flex items-center gap-3 rounded-2xl border-[#2F4569] bg-[linear-gradient(145deg,rgba(10,17,40,0.92),rgba(9,18,34,0.82))] px-3 py-3 shadow-[0_18px_34px_rgba(2,8,20,0.34)]">
+                    <span className="auth-brand-mark flex h-11 w-11 items-center justify-center rounded-2xl border-[#36547B] bg-[linear-gradient(160deg,rgba(16,239,181,0.16),rgba(44,247,255,0.18))] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_12px_22px_rgba(5,10,24,0.35)]">
+                      <img src="/assetly-mark.svg" alt="" aria-hidden="true" className="h-6 w-6" />
                     </span>
-                    <div>
-                      <p className="text-xs font-bold tracking-tight text-[var(--auth-foreground)]">ASSETLY</p>
-                      <p className="text-[9px] text-[var(--auth-muted)]">Premium Kontrol Paneli</p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-[11px] font-semibold tracking-[0.28em] text-[var(--auth-foreground)]">
+                          ASSETLY
+                        </p>
+                        <span className="inline-flex shrink-0 rounded-full border border-[#355071] bg-[rgba(16,239,181,0.08)] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[var(--auth-primary)]">
+                          Premium
+                        </span>
+                      </div>
+                      <p className="mt-1 truncate text-[10px] uppercase tracking-[0.18em] text-[#8FA6C7]">
+                        Operasyon paneli
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -109,16 +117,35 @@ export function DashboardPreview() {
 
               <div className="flex min-h-0 flex-1 flex-col bg-[rgb(10_17_40_/_58%)]">
                 {activeMenu === "dashboard" ? null : (
-                  <header className="border-b border-[var(--auth-border-soft)] px-5 py-4">
-                    <div className="mb-1 inline-flex items-center rounded-lg border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] tracking-[0.16em] text-primary">
-                      {activeItem.label}
-                    </div>
-                    <h3 className="text-base font-semibold text-[var(--auth-foreground)]">{activeItem.title}</h3>
-                    <p className="text-xs text-[var(--auth-muted)]">{activeItem.subtitle}</p>
+                  <header className="px-5 pt-5">
+                    <section className="auth-shell-card auth-shell-intro rounded-2xl p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="auth-section-chip">{activeItem.label}</span>
+                            <span className="inline-flex rounded-full border border-[#345073] bg-[#102643] px-2.5 py-1 text-xs font-semibold text-[#C3D7F4]">
+                              {activeItem.badge}
+                            </span>
+                          </div>
+                          <div>
+                            <h3 className="text-base font-semibold text-[var(--auth-foreground)]">{activeItem.title}</h3>
+                            <p className="mt-1 text-xs text-[var(--auth-muted)]">{activeItem.subtitle}</p>
+                          </div>
+                        </div>
+                        <span className="inline-flex h-fit rounded-full border border-[#29425F] bg-[#0B1730]/80 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-[#8FA6C7]">
+                          Demo görünüm
+                        </span>
+                      </div>
+                    </section>
                   </header>
                 )}
 
-                <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 hide-scrollbar">
+                <div
+                  className={cn(
+                    "min-h-0 flex-1 overflow-y-auto px-5 hide-scrollbar",
+                    activeMenu === "dashboard" ? "py-5" : "pb-5 pt-4",
+                  )}
+                >
                   <ActiveView rows={rows} />
                 </div>
               </div>

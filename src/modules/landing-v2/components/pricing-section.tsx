@@ -1,10 +1,12 @@
 ﻿"use client";
 
+import Link from "next/link";
 import { Check, Sparkles, ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PAYMENT_TEXT } from "@/constants/ui-text";
 import { getPlanConfig } from "@/lib/plans/plan-config";
+import { PREMIUM_MONTHLY_PRICE_TL } from "@/lib/plans/pricing";
 import { useInView } from "@/modules/landing-v2/hooks/use-in-view";
 
 const trialPlan = getPlanConfig("starter");
@@ -31,9 +33,9 @@ const plans = [
   },
   {
     name: "Premium",
-    price: "149",
+    price: String(PREMIUM_MONTHLY_PRICE_TL),
     period: "/ay",
-    description: "Varlıklarınızı profesyonel yönetin",
+    description: "Kredi kartı ile anında Premium erişim",
     features: [
       "Sınırsız varlık takibi",
       "Sınırsız belge yükleme",
@@ -41,11 +43,12 @@ const plans = [
       "Skor analizi",
       "Gelişmiş bildirimler",
       "PDF raporlama",
-      "QR/Barkod erişimi",
+      "QR/Barkod erişim",
+      "Deneme bölümü",
       "Otomasyon motoru",
       "Öncelikli destek",
     ],
-    cta: "Premium Başla",
+    cta: "Premium'a Geç",
     popular: true,
   },
 ];
@@ -168,6 +171,18 @@ export function PricingSection() {
               ) : null}
             </div>
           ))}
+        </div>
+
+        <div className="mt-8 flex justify-center">
+          <Button
+            asChild
+            variant="outline"
+            className="border-border/70 bg-background/40 text-foreground hover:bg-background/60"
+          >
+            <Link href="/" data-testid="landing-pricing-dashboard-action">
+              Ana Menüye Dön
+            </Link>
+          </Button>
         </div>
       </div>
     </section>

@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Shield } from "lucide-react";
 import { PlanContext } from "@/contexts/PlanContext";
 import { SIDEBAR_TEXT } from "@/constants/ui-text";
 import { sidebarNavItems } from "@/components/layout/sidebar/nav-items";
@@ -93,17 +92,22 @@ export function Sidebar({ collapsed = false, brand, footer, className, onNavigat
             onClick={onNavigate}
             aria-label="Assetly ana sayfa"
             className={cn(
-              "auth-shell-brand auth-focus-ring flex items-center gap-3 rounded-xl px-2 py-2",
+              "auth-shell-brand auth-focus-ring flex items-center gap-3 rounded-2xl border-[#2F4569] bg-[linear-gradient(145deg,rgba(10,17,40,0.92),rgba(9,18,34,0.82))] px-3 py-3 shadow-[0_18px_34px_rgba(2,8,20,0.34)]",
               collapsed && "justify-center px-2",
             )}
           >
-            <span className="auth-brand-mark flex h-9 w-9 items-center justify-center rounded-xl">
-              <Shield className="h-4 w-4" />
+            <span className="auth-brand-mark flex h-11 w-11 items-center justify-center rounded-2xl border-[#36547B] bg-[linear-gradient(160deg,rgba(16,239,181,0.16),rgba(44,247,255,0.18))] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_12px_22px_rgba(5,10,24,0.35)]">
+              <img src="/assetly-mark.svg" alt="" aria-hidden="true" className="h-6 w-6" />
             </span>
             {!collapsed ? (
-              <div>
-                <p className="text-xs font-bold tracking-tight text-[var(--auth-foreground)]">ASSETLY</p>
-                <p className="text-[9px] text-[var(--auth-muted)]">{sidebarPlanLabel}</p>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="truncate text-[11px] font-semibold tracking-[0.28em] text-[var(--auth-foreground)]">ASSETLY</p>
+                  <span className="inline-flex shrink-0 rounded-full border border-[#355071] bg-[rgba(16,239,181,0.08)] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[var(--auth-primary)]">
+                    {sidebarPlanLabel}
+                  </span>
+                </div>
+                <p className="mt-1 truncate text-[10px] uppercase tracking-[0.18em] text-[#8FA6C7]">Operasyon paneli</p>
               </div>
             ) : null}
           </Link>

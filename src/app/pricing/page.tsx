@@ -2,12 +2,10 @@
 
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
-import { getPlanConfig } from "@/lib/plans/plan-config";
-import { cn } from "@/lib/utils";
-import { PricingCard } from "@/modules/landing-v2/components/pricing/PricingCard";
 import { PAYMENT_TEXT } from "@/constants/ui-text";
-
-type BillingCycle = "monthly" | "annual";
+import { getPlanConfig } from "@/lib/plans/plan-config";
+import { PREMIUM_MONTHLY_PRICE_LABEL } from "@/lib/plans/pricing";
+import { PricingCard } from "@/modules/landing-v2/components/pricing/PricingCard";
 
 type FeatureRow = {
   feature: string;
@@ -15,10 +13,6 @@ type FeatureRow = {
   premium: string;
 };
 
-const MONTHLY_PREMIUM_PRICE = 149;
-const ANNUAL_REGULAR_PRICE = 12 * MONTHLY_PREMIUM_PRICE;
-const ANNUAL_DISCOUNTED_PRICE = 1490;
-const TL_NUMBER_FORMATTER = new Intl.NumberFormat("tr-TR");
 const TRIAL_PLAN = getPlanConfig("starter");
 const trialAssetLimit = TRIAL_PLAN.limits.assetsLimit ?? 0;
 const trialDocumentLimit = TRIAL_PLAN.limits.documentsLimit ?? 0;
@@ -34,22 +28,22 @@ const featureRows: FeatureRow[] = [
   { feature: "Servis geçmişi", free: "Evet", premium: "Evet" },
   { feature: "PDF rapor export", free: "Hayır", premium: "Evet" },
   { feature: "Otomasyon (bildirim/email)", free: "Hayır", premium: "Evet" },
-  { feature: "QR kod erişimi", free: "Evet", premium: "Evet" },
+  { feature: "QR/Barkod erişim", free: "Evet", premium: "Evet" },
+  { feature: "Deneme bölümü", free: "Hayır", premium: "Evet" },
   { feature: "Öncelikli destek", free: "Hayır", premium: "Evet" },
 ];
 
-const toTl = (amount: number) => `${TL_NUMBER_FORMATTER.format(amount)} TL`;
-
 export default function PricingPage() {
-  const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
-  const isAnnual = billingCycle === "annual";
+
   const redirectToLogin = () => {
     const nextPath = `${window.location.pathname}${window.location.search}`;
     window.location.href = `/login?next=${encodeURIComponent(nextPath)}`;
   };
+
   const trialSummary = useMemo(
-    () => `${trialAssetLimit} varlık, ${trialDocumentLimit} belge, ${trialSubscriptionLimit} abonelik, ${trialInvoiceUploadLimit} fatura yükleme`,
+    () =>
+      `${trialAssetLimit} varlık, ${trialDocumentLimit} belge, ${trialSubscriptionLimit} abonelik, ${trialInvoiceUploadLimit} fatura yükleme`,
     [],
   );
 
@@ -112,31 +106,22 @@ export default function PricingPage() {
           <div className="mt-5 inline-flex rounded-full border border-white/15 bg-white/5 p-1" data-testid="pricing-cycle-toggle">
             <button
               type="button"
-              onClick={() => setBillingCycle("monthly")}
               data-testid="pricing-cycle-monthly"
-              className={cn(
-                "rounded-full px-4 py-2 text-sm font-semibold transition",
-                billingCycle === "monthly" ? "bg-white text-slate-900" : "text-slate-200 hover:text-white",
-              )}
+              className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition"
             >
               Aylık
             </button>
-            <button
-              type="button"
-              onClick={() => setBillingCycle("annual")}
-              data-testid="pricing-cycle-annual"
-              className={cn(
-                "rounded-full px-4 py-2 text-sm font-semibold transition",
-                isAnnual ? "bg-white text-slate-900" : "text-slate-200 hover:text-white",
-              )}
-            >
-              Yıllık %17
-            </button>
           </div>
 
-          {isAnnual ? (
-            <p className="mt-3 text-sm font-medium text-emerald-200">{`${toTl(ANNUAL_REGULAR_PRICE)} -> ${toTl(ANNUAL_DISCOUNTED_PRICE)} yıllık %17 indirim`}</p>
-          ) : null}
+          <div className="mt-5">
+            <Link
+              href="/"
+              data-testid="pricing-dashboard-action"
+              className="inline-flex items-center justify-center rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
+            >
+              Ana Menüye Dön
+            </Link>
+          </div>
         </header>
 
         <section className="grid gap-4 lg:grid-cols-2" data-testid="pricing-plans-section">
@@ -167,16 +152,16 @@ export default function PricingPage() {
             topBadge="En Çok Tercih Edilen"
             featured
             style={{ boxShadow: "0 0 30px rgba(99,102,241,0.3)" }}
-            price={isAnnual ? toTl(ANNUAL_DISCOUNTED_PRICE) : toTl(MONTHLY_PREMIUM_PRICE)}
-            periodText={isAnnual ? "Yıllık Ödeme" : "Aylık Ödeme"}
-            description={
-              isAnnual ? (
-                <span className="text-xs text-emerald-200">{toTl(ANNUAL_REGULAR_PRICE)} yerine yıllık avantajlı fiyat</span>
-              ) : (
-                <span />
-              )
-            }
-            highlights={["Sınırsız varlık", "Sınırsız belge", "Sınırsız abonelik/fatura", "PDF rapor export + otomasyon"]}
+            price={PREMIUM_MONTHLY_PRICE_LABEL}
+            periodText="Aylık Ödeme"
+            description={<span className="text-xs text-emerald-200">Kredi kartı ile hemen Premium erişimi açın.</span>}
+            highlights={[
+              "Sınırsız varlık",
+              "Sınırsız belge",
+              "Sınırsız abonelik/fatura",
+              "PDF rapor export + otomasyon",
+              "QR/Barkod erişim + deneme bölümü",
+            ]}
             action={
               <button
                 type="button"
@@ -185,7 +170,7 @@ export default function PricingPage() {
                 data-testid="pricing-premium-action"
                 className="inline-flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-400 px-4 py-2.5 text-sm font-semibold text-white transition hover:shadow-[0_0_22px_rgba(99,102,241,0.5)] disabled:cursor-not-allowed disabled:opacity-70"
               >
-                {isStartingCheckout ? "Yönlendiriliyor..." : "Premium'u Başlat"}
+                {isStartingCheckout ? "Yönlendiriliyor..." : "Premium'a Geç"}
               </button>
             }
             footnote={PAYMENT_TEXT.stripeCollectionNotice}

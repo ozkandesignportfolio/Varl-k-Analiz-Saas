@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useRef, useState, type MouseEvent } from "react"
-import { Menu, Shield, X } from "lucide-react"
+import { Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { LANDING_NAV_SECTIONS, isLandingSectionHash } from "@/modules/landing-v2/components/section-nav"
 
@@ -169,7 +169,7 @@ export function Navbar() {
       <div className="relative z-[60] mx-auto flex max-w-7xl items-center justify-between px-6">
         <a href="#" className="group flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 transition-all group-hover:border-primary/40 group-hover:bg-primary/20">
-            <Shield className="h-5 w-5 text-primary" />
+            <img src="/assetly-mark.svg" alt="" aria-hidden="true" className="h-6 w-6" />
           </div>
           <div className="flex flex-col">
             <span className="text-lg font-bold tracking-tight text-foreground">ASSETLY</span>

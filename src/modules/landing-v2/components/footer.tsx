@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Shield } from "lucide-react";
 import { PAYMENT_TEXT } from "@/constants/ui-text";
 
 type FooterLink = {
@@ -53,7 +52,7 @@ export function Footer() {
           <div>
             <div className="mb-4 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
-                <Shield className="h-5 w-5 text-primary" />
+                <img src="/assetly-mark.svg" alt="" aria-hidden="true" className="h-6 w-6" />
               </div>
               <div>
                 <div className="text-sm font-bold tracking-tight text-foreground">ASSETLY</div>

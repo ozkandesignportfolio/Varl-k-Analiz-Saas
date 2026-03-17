@@ -1,128 +1,403 @@
-﻿import { memo } from "react";
-import { AlertTriangle, FileText, Package, Plus, TrendingUp, Wrench } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { memo } from "react";
+import {
+  ArrowDownRight,
+  ArrowRight,
+  ArrowUpRight,
+  CalendarDays,
+  ChevronDown,
+  Clock3,
+  FileText,
+  Package,
+  Plus,
+  ShieldAlert,
+  Timer,
+  TrendingUp,
+  WalletCards,
+  Wrench,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 
-const DASHBOARD_FILTERS = ["Son 7 gün", "Son 30 gün", "Son 90 gün"];
+type TrendDirection = "up" | "down" | "flat";
+type RowTone = "critical" | "warning" | "info";
+
+const DASHBOARD_FILTERS = [7, 30, 90];
+
+const TREND_META: Record<
+  TrendDirection,
+  {
+    icon: LucideIcon;
+    textClass: string;
+    sparklineClass: string;
+    symbol: string;
+  }
+> = {
+  up: {
+    icon: ArrowUpRight,
+    textClass: "text-emerald-200",
+    sparklineClass: "stroke-emerald-300",
+    symbol: "+",
+  },
+  down: {
+    icon: ArrowDownRight,
+    textClass: "text-rose-200",
+    sparklineClass: "stroke-rose-300",
+    symbol: "-",
+  },
+  flat: {
+    icon: ArrowRight,
+    textClass: "text-slate-200",
+    sparklineClass: "stroke-slate-300",
+    symbol: "0",
+  },
+};
 
 const KPI_ITEMS = [
-  { label: "Toplam Varlık", value: "8", sub: "2 yeni varlık", icon: Package },
-  { label: "Aktif Bakım Kuralı", value: "12", sub: "3 kritik kural", icon: Wrench },
-  { label: "Toplam Servis Maliyeti", value: "4.850 TL", sub: "Geçen aya göre -15%", icon: TrendingUp, accent: true },
-  { label: "Belge Sayısı", value: "47", sub: "5 onay bekliyor", icon: FileText },
+  {
+    title: "Toplam Varlık",
+    value: "128",
+    trend: { direction: "up" as const, percentage: 12, sparkline: [18, 24, 28, 31, 36, 41] },
+    icon: Package,
+    hrefLabel: "Varlıkları aç",
+  },
+  {
+    title: "Aktif Bakım Kuralı",
+    value: "24",
+    trend: { direction: "up" as const, percentage: 8, sparkline: [10, 11, 13, 14, 16, 18] },
+    icon: Wrench,
+    hrefLabel: "Bakımı aç",
+  },
+  {
+    title: "Toplam Servis Maliyeti",
+    value: "₺48.250",
+    trend: { direction: "down" as const, percentage: 6, sparkline: [44, 40, 38, 35, 34, 31] },
+    icon: TrendingUp,
+    hrefLabel: "Maliyetleri aç",
+  },
+  {
+    title: "Belge Sayısı",
+    value: "312",
+    trend: { direction: "up" as const, percentage: 19, sparkline: [62, 70, 76, 88, 97, 108] },
+    icon: FileText,
+    hrefLabel: "Belgeleri aç",
+  },
 ];
 
-const RISK_ITEMS = [
+const PRIORITY_ROWS = [
   {
-    title: "Klima B3 bakım tarihi yaklaşıyor",
-    level: "Yüksek",
-    due: "03 Mart 2026",
-    amount: "1.250 TL",
-    tone: "border-rose-300/35 bg-rose-300/10 text-rose-100",
+    title: "Klima B3 - Aylık filtre değişimi",
+    dateLabel: "2 gün gecikti · 16 Mar 2026",
+    actionLabel: "Aksiyon al",
+    tone: "critical" as const,
+    icon: Wrench,
   },
   {
-    title: "Jeneratör A1 için belge yenileme",
-    level: "Orta",
-    due: "07 Mart 2026",
-    amount: "850 TL",
-    tone: "border-amber-300/35 bg-amber-300/10 text-amber-100",
+    title: "Jeneratör A1 garantisi bitiyor",
+    dateLabel: "4 gün kaldı · 20 Mar 2026",
+    actionLabel: "Detayı aç",
+    tone: "warning" as const,
+    icon: ShieldAlert,
   },
   {
-    title: "Pompa C7 servis onayı bekliyor",
-    level: "Düşük",
-    due: "12 Mart 2026",
-    amount: "420 TL",
-    tone: "border-cyan-300/35 bg-cyan-300/10 text-cyan-100",
+    title: "Elektrik aboneliği ödeme vadesi",
+    dateLabel: "6 gün kaldı · ₺3.420 · 22 Mar 2026",
+    actionLabel: "Ödemeyi aç",
+    tone: "info" as const,
+    icon: WalletCards,
   },
 ];
+
+const UPCOMING_ROWS = [
+  {
+    title: "Pompa C7 - Titreşim kontrolü",
+    dateLabel: "1 gün sonra · 17 Mar 2026",
+    actionLabel: "Servis kaydı",
+    tone: "warning" as const,
+    icon: Timer,
+  },
+  {
+    title: "UPS kabin sigorta kontrolü",
+    dateLabel: "3 gün sonra · 19 Mar 2026",
+    actionLabel: "Kurala git",
+    tone: "info" as const,
+    icon: Timer,
+  },
+  {
+    title: "Su arıtma ünitesi garanti uyarısı",
+    dateLabel: "7 gün sonra · 23 Mar 2026",
+    actionLabel: "Detayı aç",
+    tone: "warning" as const,
+    icon: ShieldAlert,
+  },
+];
+
+const toneClass: Record<RowTone, string> = {
+  critical: "border-rose-300/35 bg-rose-300/10 text-rose-100",
+  warning: "border-amber-300/35 bg-amber-300/10 text-amber-100",
+  info: "border-sky-300/35 bg-sky-300/10 text-sky-100",
+};
 
 function DashboardViewComponent() {
   return (
     <div className="space-y-4">
-      <article className="rounded-2xl border border-[var(--auth-border-soft)] bg-[rgb(17_29_58_/_38%)] p-4 shadow-[0_12px_24px_rgb(5_10_24_/_28%)]">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div>
-            <p className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[10px] font-semibold tracking-[0.15em] text-primary">
-              Kontrol Merkezi
-            </p>
-            <h3 className="mt-2 text-xl font-semibold tracking-tight text-[var(--auth-foreground)]">Kontrol Merkezi</h3>
-            <p className="mt-1 text-xs text-[var(--auth-muted)]">Özet metrikleri ve kritik riskleri tek panelde yönetin.</p>
+      <section className="rounded-3xl border border-[#24344F] bg-[linear-gradient(145deg,rgba(8,20,45,0.92),rgba(9,17,33,0.84))] p-5 shadow-[0_20px_45px_rgba(3,8,20,0.42)]">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="inline-flex items-center gap-2 rounded-full border border-[#314B6D] bg-[#0E2039]/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.15em] text-slate-200">
+                <img src="/assetly-mark.svg" alt="" aria-hidden="true" className="size-4" />
+                Assetly OS
+              </p>
+              <span className="inline-flex items-center rounded-full border border-[#29425F] bg-[#0B1730]/80 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-[#8FA6C7]">
+                Kontrol Merkezi
+              </span>
+            </div>
+            <div>
+              <h3 className="text-2xl font-semibold tracking-tight text-[#F8FAFC]">Kontrol Merkezi</h3>
+              <p className="mt-2 max-w-2xl text-sm text-[#9FB2CE]">
+                Operasyon görünümünü tek panelde izleyin, riskleri önceliklendirin ve kritik aksiyonları hızlıca yönetin.
+              </p>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex items-center gap-1 rounded-xl border border-[var(--auth-border-soft)] bg-[rgb(10_17_40_/_72%)] p-1">
-              {DASHBOARD_FILTERS.map((filter, index) => (
-                <button
-                  key={filter}
-                  type="button"
-                  className={cn(
-                    "rounded-lg px-2.5 py-1 text-[11px] font-semibold transition",
-                    index === 1
-                      ? "border border-[var(--auth-border-soft)] bg-[rgb(17_29_58_/_90%)] text-[var(--auth-foreground)]"
-                      : "text-[var(--auth-muted)] hover:bg-[rgb(17_29_58_/_64%)] hover:text-[var(--auth-foreground)]",
-                  )}
-                >
-                  {filter}
-                </button>
-              ))}
+            <div className="inline-flex items-center gap-1 rounded-xl border border-[#2A3E5F] bg-[#0D1B33]/70 p-1.5">
+              <CalendarDays className="mx-1 size-4 text-[#86A3C8]" aria-hidden />
+              {DASHBOARD_FILTERS.map((range) => {
+                const isActive = range === 30;
+
+                return (
+                  <button
+                    key={range}
+                    type="button"
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                      isActive
+                        ? "border border-[#42608A] bg-[#173155] text-[#EAF2FF]"
+                        : "text-[#9CB0CE] hover:bg-[#132A4A] hover:text-[#F1F5F9]"
+                    }`}
+                  >
+                    Son {range} gün
+                  </button>
+                );
+              })}
             </div>
+
             <button
               type="button"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-primary/35 bg-primary/12 px-3 py-2 text-xs font-semibold text-primary"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#2F4569] bg-[#10243F] px-4 py-2 text-sm font-semibold text-[#E2E8F0] transition hover:bg-[#143158]"
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="size-4" aria-hidden />
               Hızlı Ekle
+              <ChevronDown className="size-4" aria-hidden />
             </button>
           </div>
         </div>
-      </article>
 
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-semibold text-[var(--auth-foreground)]">Özet Metrikler</h4>
-          <span className="text-[11px] text-[var(--auth-muted)]">Son 30 gün trendi</span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {KPI_ITEMS.map((kpi) => (
-            <article key={kpi.label} className="rounded-xl border border-[var(--auth-border-soft)] bg-[rgb(17_29_58_/_42%)] p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <span className="text-[10px] uppercase tracking-[0.14em] text-[var(--auth-muted)]">{kpi.label}</span>
-                <kpi.icon className="h-4 w-4 text-[var(--auth-muted)]/80" />
+        <div className="mt-5 rounded-2xl border border-amber-300/35 bg-amber-300/10 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-start gap-3">
+              <span className="mt-1 inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-amber-300" />
+              <div>
+                <p className="text-xs uppercase tracking-[0.16em] text-[#90A6C4]">Sistem Durumu</p>
+                <h4 className="mt-1 text-lg font-semibold text-[#F8FAFC]">3 kritik kayıt için aksiyon bekleniyor</h4>
+                <p className="mt-1 text-sm text-[#CBD5E1]">
+                  İki bakım gecikmesi ve bir yaklaşan ödeme uyarısı şu anda kontrol merkezinde öne çıkıyor.
+                </p>
               </div>
-              <p className="text-2xl font-semibold text-[var(--auth-foreground)]">{kpi.value}</p>
-              <p className={cn("mt-1 text-[11px] text-[var(--auth-muted)]", kpi.accent && "text-primary")}>{kpi.sub}</p>
-            </article>
-          ))}
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <span className="inline-flex h-fit rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1 text-xs font-semibold text-amber-100">
+                3 aktif kayıt
+              </span>
+              <button
+                type="button"
+                className="inline-flex size-7 items-center justify-center rounded-md border border-amber-300/40 bg-amber-300/10 text-amber-100 transition hover:bg-amber-300/20"
+                aria-label="Görmezden gel"
+              >
+                <X className="size-3.5" aria-hidden />
+              </button>
+              <button
+                type="button"
+                className="inline-flex size-7 items-center justify-center rounded-md border border-amber-300/40 bg-amber-300/10 text-amber-100 transition hover:bg-amber-300/20"
+                aria-label="Sonra hatırlat"
+              >
+                <Clock3 className="size-3.5" aria-hidden />
+              </button>
+              <button
+                type="button"
+                className="inline-flex size-7 items-center justify-center rounded-md border border-amber-300/40 bg-amber-300/10 text-amber-100 transition hover:bg-amber-300/20"
+                aria-label="Düzelt"
+              >
+                <Wrench className="size-3.5" aria-hidden />
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
-      <article className="rounded-2xl border border-[var(--auth-border-soft)] bg-[rgb(17_29_58_/_38%)] p-4 shadow-[0_12px_24px_rgb(5_10_24_/_28%)]">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-amber-300" />
-            <span className="text-sm font-semibold text-[var(--auth-foreground)]">Risk Paneli</span>
-          </div>
-          <span className="text-[11px] text-[var(--auth-muted)]">3 aktif kayıt</span>
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h4 className="text-lg font-semibold text-[#F8FAFC]">Özet Metrikler</h4>
+          <p className="text-xs uppercase tracking-[0.14em] text-[#8DA6C8]">Son 30 gün trendi</p>
         </div>
-        <div className="space-y-2">
-          {RISK_ITEMS.map((risk) => (
-            <div
-              key={risk.title}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--auth-border-soft)] bg-[rgb(10_17_40_/_58%)] px-3 py-2"
-            >
-              <div>
-                <p className="text-xs font-medium text-[var(--auth-foreground)]">{risk.title}</p>
-                <p className="text-[11px] text-[var(--auth-muted)]">{risk.due}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={cn("rounded-md border px-2 py-0.5 text-[11px]", risk.tone)}>{risk.level}</span>
-                <span className="text-xs font-semibold text-primary">{risk.amount}</span>
-              </div>
-            </div>
-          ))}
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {KPI_ITEMS.map((card) => {
+            const trendMeta = TREND_META[card.trend.direction];
+            const TrendIcon = trendMeta.icon;
+            const Icon = card.icon;
+
+            return (
+              <article
+                key={card.title}
+                className="rounded-2xl border border-[#273955] bg-[linear-gradient(160deg,rgba(10,22,44,0.92),rgba(11,19,33,0.84))] p-4 shadow-[0_16px_34px_rgba(2,8,20,0.36)]"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-xs uppercase tracking-[0.16em] text-[#89A2C5]">{card.title}</p>
+                  <span className="inline-flex rounded-lg border border-[#2E4467] bg-[#10223E] p-2 text-[#9AB2D1]">
+                    <Icon className="size-4" aria-hidden />
+                  </span>
+                </div>
+
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-[#F8FAFC]">{card.value}</p>
+
+                <div className={`mt-3 inline-flex items-center gap-1 text-xs font-semibold ${trendMeta.textClass}`}>
+                  <TrendIcon className="size-3.5" aria-hidden />
+                  <span>
+                    {trendMeta.symbol}
+                    {card.trend.percentage}%
+                  </span>
+                </div>
+
+                <div className="mt-3 rounded-lg border border-[#2A3D5B] bg-[#0A162A]/70 p-2">
+                  <Sparkline points={card.trend.sparkline} pathClass={trendMeta.sparklineClass} />
+                </div>
+
+                <button
+                  type="button"
+                  className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#B8CEF0] transition hover:text-[#E2ECFF]"
+                >
+                  {card.hrefLabel}
+                  <ArrowRight className="size-3.5" aria-hidden />
+                </button>
+              </article>
+            );
+          })}
         </div>
-      </article>
+      </section>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <RiskRowsPanel title="Öncelikli Riskler" rows={PRIORITY_ROWS} showSettingsAction />
+        <RiskRowsPanel title="Yaklaşanlar (7 gün)" rows={UPCOMING_ROWS} />
+      </div>
     </div>
+  );
+}
+
+function RiskRowsPanel({
+  title,
+  rows,
+  showSettingsAction = false,
+}: {
+  title: string;
+  rows: Array<{
+    title: string;
+    dateLabel: string;
+    actionLabel: string;
+    tone: RowTone;
+    icon: LucideIcon;
+  }>;
+  showSettingsAction?: boolean;
+}) {
+  return (
+    <article className="rounded-2xl border border-[#2B3F5D] bg-[linear-gradient(150deg,rgba(10,22,44,0.92),rgba(11,18,35,0.84))] p-5 shadow-[0_16px_34px_rgba(2,8,20,0.34)]">
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <h4 className="text-lg font-semibold text-[#F8FAFC]">{title}</h4>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full border border-[#345073] bg-[#102643] px-2.5 py-1 text-xs font-semibold text-[#C3D7F4]">
+            {rows.length} kayıt
+          </span>
+          {showSettingsAction ? (
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 rounded-lg border border-[#3C587C] bg-[#143258] px-2.5 py-1.5 text-xs font-semibold text-[#E4EEFF] transition hover:bg-[#1A3E6D]"
+            >
+              Düzenle
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      <ul className="space-y-2.5">
+        {rows.map((row) => {
+          const Icon = row.icon;
+
+          return (
+            <li key={row.title} className="rounded-xl border border-[#314866] bg-[#0E1E37]/75 p-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <span className={`inline-flex rounded-lg border p-2 ${toneClass[row.tone]}`}>
+                    <Icon className="size-4" aria-hidden />
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-[#EAF2FF]">{row.title}</p>
+                    <p className="mt-1 text-xs text-[#9FB2CE]">{row.dateLabel}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="inline-flex h-fit items-center rounded-lg border border-[#3C587C] bg-[#143258] px-3 py-1.5 text-xs font-semibold text-[#E4EEFF] transition hover:bg-[#1A3E6D]"
+                  >
+                    {row.actionLabel}
+                  </button>
+
+                  <button
+                    type="button"
+                    className="inline-flex size-8 items-center justify-center rounded-lg border border-[#3C587C] bg-[#102643] text-[#D7E6FC] transition hover:bg-[#18365B]"
+                    aria-label="Görmezden gel"
+                  >
+                    <X className="size-4" aria-hidden />
+                  </button>
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </article>
+  );
+}
+
+function Sparkline({ points, pathClass }: { points: number[]; pathClass: string }) {
+  const safePoints = points.length > 0 ? points : [10, 10, 10, 10, 10, 10];
+  const max = Math.max(...safePoints, 1);
+  const min = Math.min(...safePoints, 0);
+  const range = Math.max(1, max - min);
+  const xStep = 100 / Math.max(1, safePoints.length - 1);
+
+  const polylinePoints = safePoints
+    .map((point, index) => {
+      const x = index * xStep;
+      const normalized = (point - min) / range;
+      const y = 90 - normalized * 70;
+      return `${x},${y}`;
+    })
+    .join(" ");
+
+  return (
+    <svg viewBox="0 0 100 100" className="h-10 w-full" preserveAspectRatio="none">
+      <polyline
+        points={polylinePoints}
+        fill="none"
+        strokeWidth="6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={pathClass}
+      />
+    </svg>
   );
 }
 

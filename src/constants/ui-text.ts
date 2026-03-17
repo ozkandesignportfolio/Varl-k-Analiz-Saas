@@ -31,7 +31,7 @@ export const SIDEBAR_TEXT = {
 } as const;
 
 export const PAYMENT_TEXT = {
-  stripeCollectionNotice: "Ödemeler Planicas LLC adına Stripe üzerinden güvenle tahsil edilir.",
+  stripeCollectionNotice: "Kredi kartı ile güvenli ödeme Stripe üzerinden Planicas LLC adına tahsil edilir.",
 } as const;
 
 export const EXPENSES_TEXT = {

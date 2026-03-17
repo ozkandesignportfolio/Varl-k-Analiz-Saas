@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
 import { Building2 } from "lucide-react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
@@ -17,6 +18,8 @@ import { ProfileForm, type ProfileFormValues } from "@/features/settings/compone
 import { SecuritySection } from "@/features/settings/components/SecuritySection";
 import { SettingsTabs } from "@/features/settings/components/SettingsTabs";
 import { resolveSettingsTab } from "@/features/settings/utils/resolve-settings-tab";
+import { PAYMENT_TEXT } from "@/constants/ui-text";
+import { PREMIUM_MONTHLY_PRICE_LABEL } from "@/lib/plans/pricing";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const defaultProfile: ProfileFormValues = {
@@ -32,10 +35,10 @@ const defaultNotificationPrefs: NotificationPrefsState = {
   system: true,
   inApp: true,
   email: false,
-  frequency: "Anında" as NotificationPrefsState["frequency"],
+  frequency: "AnÄ±nda" as NotificationPrefsState["frequency"],
 };
 
-const ACCOUNT_DELETE_CONFIRM_KEYWORD = "SİL";
+const ACCOUNT_DELETE_CONFIRM_KEYWORD = "SÄ°L";
 const INPUT_CLASS_NAME =
   "w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-400 focus:border-sky-300 disabled:opacity-70";
 
@@ -138,7 +141,7 @@ export function SettingsPageContainer() {
   const [isSavingNotificationPrefs, setIsSavingNotificationPrefs] = useState(false);
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [isConfirmingCheckout, setIsConfirmingCheckout] = useState(false);
-  const [organizationName, setOrganizationName] = useState("Kişisel Çalışma Alanı");
+  const [organizationName, setOrganizationName] = useState("KiÅŸisel Ã‡alÄ±ÅŸma AlanÄ±");
   const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [deleteFeedback, setDeleteFeedback] = useState("");
@@ -172,7 +175,7 @@ export function SettingsPageContainer() {
       setOrganizationName(
         typeof metadata.organization_name === "string" && metadata.organization_name.trim().length > 0
           ? metadata.organization_name
-          : "Kişisel Çalışma Alanı",
+          : "KiÅŸisel Ã‡alÄ±ÅŸma AlanÄ±",
       );
       setIsLoading(false);
     };
@@ -197,7 +200,7 @@ export function SettingsPageContainer() {
       }
 
       if (getUserError || !user) {
-        setFeedback("Oturum doğrulanamadı. Lütfen tekrar giriş yapın.");
+        setFeedback("Oturum doÄŸrulanamadÄ±. LÃ¼tfen tekrar giriÅŸ yapÄ±n.");
         setIsSavingNotificationPrefs(false);
         router.replace("/login?next=/settings");
         return;
@@ -218,12 +221,12 @@ export function SettingsPageContainer() {
       }
 
       if (updateError) {
-        setFeedback("Bildirim tercihleri kaydedilemedi. Lütfen tekrar deneyin.");
+        setFeedback("Bildirim tercihleri kaydedilemedi. LÃ¼tfen tekrar deneyin.");
         setIsSavingNotificationPrefs(false);
         return;
       }
 
-      setFeedback("Bildirim tercihleri güncellendi.");
+      setFeedback("Bildirim tercihleri gÃ¼ncellendi.");
       setIsSavingNotificationPrefs(false);
     },
     [router, supabase.auth],
@@ -239,10 +242,10 @@ export function SettingsPageContainer() {
 
   const usageItems = useMemo(
     () => [
-      { id: "assets", label: "Varlıklar", used: assetCount, limit: assetLimit },
+      { id: "assets", label: "VarlÄ±klar", used: assetCount, limit: assetLimit },
       { id: "documents", label: "Belgeler", used: documentCount, limit: documentLimit },
       { id: "subscriptions", label: "Abonelikler", used: subscriptionCount, limit: subscriptionLimit },
-      { id: "invoiceUploads", label: "Fatura yükleme", used: invoiceUploadCount, limit: invoiceUploadLimit },
+      { id: "invoiceUploads", label: "Fatura yÃ¼kleme", used: invoiceUploadCount, limit: invoiceUploadLimit },
     ],
     [
       assetCount,
@@ -273,7 +276,7 @@ export function SettingsPageContainer() {
 
       if (!res.ok) {
         const responseText = await res.text();
-        const checkoutError = responseText || "Stripe checkout başlatılamadı.";
+        const checkoutError = responseText || "Stripe checkout baÅŸlatÄ±lamadÄ±.";
         console.error("Stripe checkout failed:", res.status, checkoutError);
         alert(checkoutError);
         setFeedback(checkoutError);
@@ -284,7 +287,7 @@ export function SettingsPageContainer() {
       const data = (await res.json().catch(() => null)) as { url?: string } | null;
 
       if (!data?.url) {
-        const missingUrlError = "Checkout URL dönmedi.";
+        const missingUrlError = "Checkout URL dÃ¶nmedi.";
         console.error("Stripe checkout failed:", missingUrlError);
         alert(missingUrlError);
         setFeedback(missingUrlError);
@@ -294,7 +297,7 @@ export function SettingsPageContainer() {
 
       window.location.href = data.url;
     } catch (error) {
-      const networkError = "Stripe yanıtı okunamadı.";
+      const networkError = "Stripe yanÄ±tÄ± okunamadÄ±.";
       console.error("Stripe checkout request failed:", error);
       alert(networkError);
       setFeedback(networkError);
@@ -323,16 +326,16 @@ export function SettingsPageContainer() {
       const payload = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
 
       if (!response.ok || !payload?.ok) {
-        setFeedback(payload?.error ?? "Premium planı aktifleştirilemedi.");
+        setFeedback(payload?.error ?? "Premium planÄ± aktifleÅŸtirilemedi.");
         setIsConfirmingCheckout(false);
         return;
       }
 
       await refreshPlanState();
-      setFeedback("Premium planınız aktifleştirildi.");
+      setFeedback("Premium planÄ±nÄ±z aktifleÅŸtirildi.");
       router.replace("/settings?checkout=confirmed");
     } catch {
-      setFeedback("Premium planı aktifleştirilemedi.");
+      setFeedback("Premium planÄ± aktifleÅŸtirilemedi.");
       setIsConfirmingCheckout(false);
       return;
     }
@@ -356,7 +359,7 @@ export function SettingsPageContainer() {
       const payload = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
 
       if (!response.ok || !payload?.ok) {
-        const message = payload?.error ?? "Hesap silinemedi. Lütfen tekrar deneyin.";
+        const message = payload?.error ?? "Hesap silinemedi. LÃ¼tfen tekrar deneyin.";
         setDeleteFeedback(message);
         alert(message);
         setIsDeletingAccount(false);
@@ -365,14 +368,14 @@ export function SettingsPageContainer() {
 
       const { error: signOutError } = await supabase.auth.signOut();
       if (signOutError) {
-        alert(signOutError.message || "Oturum kapatılırken bir sorun oluştu.");
+        alert(signOutError.message || "Oturum kapatÄ±lÄ±rken bir sorun oluÅŸtu.");
       }
 
       router.replace("/login");
       router.refresh();
     } catch (error) {
       console.error("Account delete failed:", error);
-      const message = "Hesap silme isteği başarısız oldu.";
+      const message = "Hesap silme isteÄŸi baÅŸarÄ±sÄ±z oldu.";
       setDeleteFeedback(message);
       alert(message);
       setIsDeletingAccount(false);
@@ -384,7 +387,7 @@ export function SettingsPageContainer() {
       <section className="premium-card border-white/10 bg-white/[0.02] p-5">
         <h2 className="text-2xl font-semibold tracking-tight text-white">Ayarlar</h2>
         <p className="mt-2 max-w-3xl text-sm text-slate-300">
-          Profil bilgilerinizi, bildirim tercihlerinizi, plan kullanımınızı ve güvenlik ayarlarınızı tek ekrandan yönetin.
+          Profil bilgilerinizi, bildirim tercihlerinizi, plan kullanÄ±mÄ±nÄ±zÄ± ve gÃ¼venlik ayarlarÄ±nÄ±zÄ± tek ekrandan yÃ¶netin.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           {plan !== "premium" ? (
@@ -392,11 +395,20 @@ export function SettingsPageContainer() {
               type="button"
               onClick={startCheckout}
               disabled={isStartingCheckout}
-              className="bg-white/10 text-white hover:bg-white/15"
+              className="bg-gradient-to-r from-indigo-500 to-indigo-400 text-white hover:opacity-95"
             >
-              {isStartingCheckout ? "Yönlendiriliyor..." : "Premium’a Geç"}
+              {isStartingCheckout ? "Y\u00f6nlendiriliyor..." : "Premium'a Ge\u00e7"}
             </Button>
           ) : null}
+
+          <Button
+            asChild
+            type="button"
+            variant="outline"
+            className="border-white/15 bg-white/5 text-white hover:bg-white/10"
+          >
+            <Link href="/">Landing sayfasına dön</Link>
+          </Button>
 
           {checkoutState === "success" && checkoutSessionId ? (
             <Button
@@ -405,10 +417,16 @@ export function SettingsPageContainer() {
               disabled={isConfirmingCheckout}
               className="bg-emerald-500/20 text-emerald-100 hover:bg-emerald-500/30"
             >
-              {isConfirmingCheckout ? "Aktifleştiriliyor..." : "Premium’u Aktif Et"}
+              {isConfirmingCheckout ? "Aktifle\u015ftiriliyor..." : "Premium'u Aktif Et"}
             </Button>
           ) : null}
         </div>
+        {plan !== "premium" ? (
+          <p className="mt-3 text-sm text-slate-300">Premium aylık plan: {PREMIUM_MONTHLY_PRICE_LABEL}</p>
+        ) : null}
+        {plan !== "premium" ? (
+          <p className="mt-3 text-sm text-slate-300">{PAYMENT_TEXT.stripeCollectionNotice}</p>
+        ) : null}
       </section>
 
       {feedback ? (
@@ -447,14 +465,14 @@ export function SettingsPageContainer() {
                   isDeletingAccount ? "opacity-80" : ""
                 }`}
               >
-                <h3 className="text-lg font-semibold text-white">Hesabı Sil</h3>
+                <h3 className="text-lg font-semibold text-white">HesabÄ± Sil</h3>
                 <p className="mt-1 text-sm text-slate-200">
-                  Bu işlem geri alınamaz. Tüm verileriniz silinir.
+                  Bu iÅŸlem geri alÄ±namaz. TÃ¼m verileriniz silinir.
                 </p>
 
                 <label className="mt-4 block space-y-1.5">
                   <span className="text-xs uppercase tracking-[0.16em] text-rose-200/90">
-                    Onay için {ACCOUNT_DELETE_CONFIRM_KEYWORD} yazın
+                    Onay iÃ§in {ACCOUNT_DELETE_CONFIRM_KEYWORD} yazÄ±n
                   </span>
                   <input
                     type="text"
@@ -477,7 +495,7 @@ export function SettingsPageContainer() {
                   disabled={!isDeleteConfirmationValid || isDeletingAccount}
                   className="mt-4"
                 >
-                  {isDeletingAccount ? "Hesap siliniyor..." : "Hesabı Sil"}
+                  {isDeletingAccount ? "Hesap siliniyor..." : "HesabÄ± Sil"}
                 </Button>
               </article>
             </section>
@@ -489,11 +507,11 @@ export function SettingsPageContainer() {
                 <div>
                   <h3 className="text-lg font-semibold text-white">Organizasyon</h3>
                   <p className="mt-1 text-sm text-slate-300">
-                    Ekip ve çalışma alanı bilgilerini bu bölümden yönetebilirsiniz.
+                    Ekip ve Ã§alÄ±ÅŸma alanÄ± bilgilerini bu bÃ¶lÃ¼mden yÃ¶netebilirsiniz.
                   </p>
                 </div>
                 <Badge variant="outline" className="border-white/20 bg-white/5 text-slate-300">
-                  Tekli yapı
+                  Tekli yapÄ±
                 </Badge>
               </div>
 
@@ -504,7 +522,7 @@ export function SettingsPageContainer() {
                   </span>
                   <div>
                     <p className="text-sm font-semibold text-white">{organizationName}</p>
-                    <p className="text-xs text-slate-400">Bu hesap tek organizasyonlu çalışma düzeninde çalışıyor.</p>
+                    <p className="text-xs text-slate-400">Bu hesap tek organizasyonlu Ã§alÄ±ÅŸma dÃ¼zeninde Ã§alÄ±ÅŸÄ±yor.</p>
                   </div>
                 </div>
               </article>
