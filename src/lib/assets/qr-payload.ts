@@ -1,4 +1,6 @@
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const LEGACY_ASSETCARE_QR_PREFIX = "assetcare://asset?";
+const ASSETLY_QR_PREFIX = "assetly://asset?";
 
 type OptionalText = string | null;
 
@@ -20,6 +22,10 @@ export type AssetQrPayloadSource = {
   serialNumber?: string | null;
   brand?: string | null;
   model?: string | null;
+};
+
+export type AssetQrPayloadRecord = AssetQrPayloadSource & {
+  qrCode?: string | null;
 };
 
 const toOptionalText = (value: unknown) => {
@@ -80,8 +86,13 @@ export function parseAssetQrPayload(rawValue: string): AssetQrPrefill | null {
       return hasMeaningfulPrefill(normalized) ? normalized : null;
     }
 
-    if (raw.toLowerCase().startsWith("assetcare://asset?")) {
-      const normalizedUrl = raw.replace(/^assetcare:\/\//i, "https://assetcare.local/");
+    if (
+      raw.toLowerCase().startsWith(LEGACY_ASSETCARE_QR_PREFIX) ||
+      raw.toLowerCase().startsWith(ASSETLY_QR_PREFIX)
+    ) {
+      const normalizedUrl = raw
+        .replace(/^assetcare:\/\//i, "https://assetly.local/")
+        .replace(/^assetly:\/\//i, "https://assetly.local/");
       const url = new URL(normalizedUrl);
       const params = url.searchParams;
 
@@ -127,5 +138,17 @@ export function buildAssetQrPayload(source: AssetQrPayloadSource) {
     params.set("model", source.model.trim());
   }
 
-  return `assetcare://asset?${params.toString()}`;
+  return `${ASSETLY_QR_PREFIX}${params.toString()}`;
+}
+
+export function resolveAssetQrPayload(source: AssetQrPayloadRecord) {
+  const storedQrCode = source.qrCode?.trim() ?? "";
+  if (storedQrCode) {
+    const parsed = parseAssetQrPayload(storedQrCode);
+    if (parsed?.assetId === source.assetId) {
+      return storedQrCode;
+    }
+  }
+
+  return buildAssetQrPayload(source);
 }

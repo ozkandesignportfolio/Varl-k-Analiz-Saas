@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { Building2 } from "lucide-react";
 import Link from "next/link";
@@ -27,20 +27,60 @@ const defaultProfile: ProfileFormValues = {
   email: "",
 };
 
+type OrganizationSettingsValues = {
+  name: string;
+  industry: string;
+  usageType: string;
+  teamType: string;
+  defaultCurrency: string;
+  contactEmail: string;
+  note: string;
+};
+
+const defaultOrganization: OrganizationSettingsValues = {
+  name: "Kişisel Çalışma Alanı",
+  industry: "",
+  usageType: "",
+  teamType: "",
+  defaultCurrency: "TRY",
+  contactEmail: "",
+  note: "",
+};
+
 const defaultNotificationPrefs: NotificationPrefsState = {
   maintenance: true,
   warranty: true,
   document: true,
+  documentExpiry: true,
+  service: true,
   payment: true,
   system: true,
   inApp: true,
   email: false,
-  frequency: "AnÄ±nda" as NotificationPrefsState["frequency"],
+  frequency: "Anında",
 };
 
-const ACCOUNT_DELETE_CONFIRM_KEYWORD = "SÄ°L";
+const ACCOUNT_DELETE_CONFIRM_KEYWORD = "SİL";
 const INPUT_CLASS_NAME =
   "w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-400 focus:border-sky-300 disabled:opacity-70";
+const SELECT_CLASS_NAME = `${INPUT_CLASS_NAME} appearance-none`;
+const TEXTAREA_CLASS_NAME = `${INPUT_CLASS_NAME} min-h-24 resize-y`;
+const ORGANIZATION_INDUSTRY_OPTIONS = [
+  "Genel işletme",
+  "Apartman / site yönetimi",
+  "Servis operasyonu",
+  "Üretim / depo",
+  "Ofis / mağaza",
+  "Diğer",
+] as const;
+const ORGANIZATION_USAGE_OPTIONS = [
+  "Genel varlık takibi",
+  "Bakım planlama",
+  "Belge ve garanti takibi",
+  "Abonelik / fatura takibi",
+] as const;
+const ORGANIZATION_TEAM_TYPE_OPTIONS = ["Bireysel kullanım", "Küçük ekip", "İşletme / şube"] as const;
+const ORGANIZATION_CURRENCY_OPTIONS = ["TRY", "USD", "EUR"] as const;
 
 const toBoolean = (value: unknown, fallback: boolean) =>
   typeof value === "boolean" ? value : fallback;
@@ -53,7 +93,45 @@ const toNotificationFrequency = (
     return fallback;
   }
 
-  return value as NotificationPrefsState["frequency"];
+  const normalized = value.trim().toLocaleLowerCase("tr-TR");
+
+  if (normalized === "anında" || normalized === "aninda") {
+    return "Anında";
+  }
+
+  if (normalized === "günlük özet" || normalized === "gunluk ozet") {
+    return "Günlük özet";
+  }
+
+  if (normalized === "haftalık özet" || normalized === "haftalik ozet") {
+    return "Haftalık özet";
+  }
+
+  return fallback;
+};
+
+const toTrimmedString = (value: unknown, fallback = "") => {
+  if (typeof value !== "string") {
+    return fallback;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : fallback;
+};
+
+const getMetadataString = (
+  metadata: Record<string, unknown> | undefined,
+  keys: string[],
+  fallback = "",
+) => {
+  for (const key of keys) {
+    const value = toTrimmedString(metadata?.[key]);
+    if (value) {
+      return value;
+    }
+  }
+
+  return fallback;
 };
 
 const toFullName = (metadata: Record<string, unknown> | undefined, fallbackEmail: string) => {
@@ -73,18 +151,100 @@ const toFullName = (metadata: Record<string, unknown> | undefined, fallbackEmail
   return "";
 };
 
+const normalizeProfileValues = (values: ProfileFormValues): ProfileFormValues => ({
+  fullName: values.fullName.trim(),
+  email: values.email.trim(),
+});
+
+const areProfileValuesEqual = (left: ProfileFormValues, right: ProfileFormValues) =>
+  JSON.stringify(normalizeProfileValues(left)) === JSON.stringify(normalizeProfileValues(right));
+
+const normalizeOrganizationValues = (
+  values: OrganizationSettingsValues,
+): OrganizationSettingsValues => {
+  const normalizedCurrency = values.defaultCurrency.trim().toUpperCase();
+
+  return {
+    name: values.name.trim(),
+    industry: values.industry.trim(),
+    usageType: values.usageType.trim(),
+    teamType: values.teamType.trim(),
+    defaultCurrency: ORGANIZATION_CURRENCY_OPTIONS.includes(
+      normalizedCurrency as (typeof ORGANIZATION_CURRENCY_OPTIONS)[number],
+    )
+      ? normalizedCurrency
+      : defaultOrganization.defaultCurrency,
+    contactEmail: values.contactEmail.trim(),
+    note: values.note.trim(),
+  };
+};
+
+const areOrganizationValuesEqual = (
+  left: OrganizationSettingsValues,
+  right: OrganizationSettingsValues,
+) => JSON.stringify(normalizeOrganizationValues(left)) === JSON.stringify(normalizeOrganizationValues(right));
+
+const getMetadataOrganization = (
+  metadata: Record<string, unknown> | undefined,
+  fallbackEmail: string,
+): OrganizationSettingsValues =>
+  normalizeOrganizationValues({
+    name: getMetadataString(metadata, ["organization_name", "organizationName"], defaultOrganization.name),
+    industry: getMetadataString(metadata, ["organization_industry", "organizationIndustry", "sector"]),
+    usageType: getMetadataString(metadata, ["organization_usage_type", "organizationUsageType", "usage_type"]),
+    teamType: getMetadataString(
+      metadata,
+      ["organization_team_type", "organizationTeamType", "team_type", "business_type"],
+    ),
+    defaultCurrency: getMetadataString(metadata, ["default_currency", "defaultCurrency"], defaultOrganization.defaultCurrency),
+    contactEmail: getMetadataString(
+      metadata,
+      ["organization_contact_email", "organizationContactEmail", "contact_email"],
+      fallbackEmail,
+    ),
+    note: getMetadataString(
+      metadata,
+      ["organization_note", "organizationNote", "organization_description", "organizationDescription"],
+    ),
+  });
+
+const toMetadataOrganization = (values: OrganizationSettingsValues) => ({
+  organization_name: values.name,
+  organizationName: values.name,
+  organization_industry: values.industry,
+  organizationIndustry: values.industry,
+  organization_usage_type: values.usageType,
+  organizationUsageType: values.usageType,
+  organization_team_type: values.teamType,
+  organizationTeamType: values.teamType,
+  default_currency: values.defaultCurrency,
+  defaultCurrency: values.defaultCurrency,
+  organization_contact_email: values.contactEmail,
+  organizationContactEmail: values.contactEmail,
+  organization_note: values.note,
+  organizationNote: values.note,
+});
+
 const toMetadataNotificationPrefs = (prefs: NotificationPrefsState) => ({
   maintenance: prefs.maintenance,
   warranty: prefs.warranty,
   document: prefs.document,
+  documentExpiry: prefs.documentExpiry,
+  document_expiry: prefs.documentExpiry,
+  service: prefs.service,
+  service_logs: prefs.service,
+  service_log: prefs.service,
   payment: prefs.payment,
   system: prefs.system,
   inApp: prefs.inApp,
+  in_app: prefs.inApp,
   email: prefs.email,
   frequency: prefs.frequency,
   maintenance_email: prefs.maintenance,
   warranty_email: prefs.warranty,
   document_email: prefs.document,
+  document_expiry_email: prefs.documentExpiry,
+  service_email: prefs.service,
   subscription_email: prefs.payment,
 });
 
@@ -100,9 +260,20 @@ const getMetadataPrefs = (metadata: Record<string, unknown> | undefined): Notifi
   return {
     maintenance: toBoolean(source.maintenance ?? source.maintenance_email, defaultNotificationPrefs.maintenance),
     warranty: toBoolean(source.warranty ?? source.warranty_email, defaultNotificationPrefs.warranty),
-    document: toBoolean(source.document ?? source.document_email, defaultNotificationPrefs.document),
-    payment: toBoolean(source.payment ?? source.subscription_email, defaultNotificationPrefs.payment),
-    system: toBoolean(source.system, defaultNotificationPrefs.system),
+    document: toBoolean(
+      source.document ?? source.document_missing ?? source.document_email,
+      defaultNotificationPrefs.document,
+    ),
+    documentExpiry: toBoolean(
+      source.documentExpiry ?? source.document_expiry ?? source.document_expiry_email ?? source.document,
+      defaultNotificationPrefs.documentExpiry,
+    ),
+    service: toBoolean(
+      source.service ?? source.service_logs ?? source.service_log ?? source.service_email,
+      defaultNotificationPrefs.service,
+    ),
+    payment: toBoolean(source.payment ?? source.subscription_email ?? source.billing, defaultNotificationPrefs.payment),
+    system: toBoolean(source.system ?? source.general, defaultNotificationPrefs.system),
     inApp: toBoolean(source.inApp ?? source.in_app, defaultNotificationPrefs.inApp),
     email: toBoolean(source.email, defaultNotificationPrefs.email),
     frequency: toNotificationFrequency(source.frequency, defaultNotificationPrefs.frequency),
@@ -134,18 +305,25 @@ export function SettingsPageContainer() {
 
   const [activeTab, setActiveTab] = useState(resolvedInitialTab);
   const [profile, setProfile] = useState<ProfileFormValues>(defaultProfile);
+  const [savedProfile, setSavedProfile] = useState<ProfileFormValues>(defaultProfile);
+  const [organization, setOrganization] = useState<OrganizationSettingsValues>(defaultOrganization);
+  const [savedOrganization, setSavedOrganization] =
+    useState<OrganizationSettingsValues>(defaultOrganization);
   const [notificationPrefs, setNotificationPrefs] =
     useState<NotificationPrefsState>(defaultNotificationPrefs);
   const [feedback, setFeedback] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingNotificationPrefs, setIsSavingNotificationPrefs] = useState(false);
+  const [isSavingOrganization, setIsSavingOrganization] = useState(false);
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [isConfirmingCheckout, setIsConfirmingCheckout] = useState(false);
-  const [organizationName, setOrganizationName] = useState("KiÅŸisel Ã‡alÄ±ÅŸma AlanÄ±");
   const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [deleteFeedback, setDeleteFeedback] = useState("");
   const notificationSaveRequestIdRef = useRef(0);
+  const metadataRef = useRef<Record<string, unknown>>({});
+  const metadataSaveQueueRef = useRef(Promise.resolve());
 
   useEffect(() => {
     setActiveTab(resolvedInitialTab);
@@ -167,21 +345,100 @@ export function SettingsPageContainer() {
       }
 
       const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
-      setProfile({
+      const nextProfile = {
         fullName: toFullName(metadata, user.email ?? ""),
         email: user.email ?? "",
-      });
+      };
+      const nextOrganization = getMetadataOrganization(metadata, user.email ?? "");
+
+      metadataRef.current = metadata;
+      setProfile(nextProfile);
+      setSavedProfile(nextProfile);
       setNotificationPrefs(getMetadataPrefs(metadata));
-      setOrganizationName(
-        typeof metadata.organization_name === "string" && metadata.organization_name.trim().length > 0
-          ? metadata.organization_name
-          : "KiÅŸisel Ã‡alÄ±ÅŸma AlanÄ±",
-      );
+      setOrganization(nextOrganization);
+      setSavedOrganization(nextOrganization);
       setIsLoading(false);
     };
 
     void load();
   }, [router, supabase.auth]);
+
+  const persistMetadataChanges = useCallback(
+    async (changes: Record<string, unknown>, updateErrorMessage: string) => {
+      let errorMessage: string | null = null;
+
+      const run = async () => {
+        const {
+          data: { user },
+          error: getUserError,
+        } = await supabase.auth.getUser();
+
+        if (getUserError || !user) {
+          errorMessage = "Oturum doğrulanamadı. Lütfen tekrar giriş yapın.";
+          router.replace("/login?next=/settings");
+          return;
+        }
+
+        const nextMetadata = {
+          ...((user.user_metadata ?? {}) as Record<string, unknown>),
+          ...metadataRef.current,
+          ...changes,
+        };
+        const { error: updateError } = await supabase.auth.updateUser({
+          data: nextMetadata,
+        });
+
+        if (updateError) {
+          errorMessage = updateErrorMessage;
+          return;
+        }
+
+        metadataRef.current = nextMetadata;
+      };
+
+      const nextQueue = metadataSaveQueueRef.current.then(run, run);
+      metadataSaveQueueRef.current = nextQueue.then(
+        () => undefined,
+        () => undefined,
+      );
+      await nextQueue;
+
+      return { errorMessage };
+    },
+    [router, supabase.auth],
+  );
+
+  const handleProfileSave = useCallback(async () => {
+    const nextProfile = normalizeProfileValues(profile);
+
+    if (nextProfile.fullName.length === 0) {
+      setFeedback("Ad soyad alanı boş bırakılamaz.");
+      return;
+    }
+
+    setIsSavingProfile(true);
+    setFeedback("Profil bilgileriniz kaydediliyor...");
+
+    const { errorMessage } = await persistMetadataChanges(
+      {
+        full_name: nextProfile.fullName,
+        fullName: nextProfile.fullName,
+        name: nextProfile.fullName,
+      },
+      "Profil bilgileri kaydedilemedi. Lütfen tekrar deneyin.",
+    );
+
+    if (errorMessage) {
+      setFeedback(errorMessage);
+      setIsSavingProfile(false);
+      return;
+    }
+
+    setProfile(nextProfile);
+    setSavedProfile(nextProfile);
+    setFeedback("Profil bilgileriniz kaydedildi.");
+    setIsSavingProfile(false);
+  }, [persistMetadataChanges, profile]);
 
   const persistNotificationPrefs = useCallback(
     async (nextPrefs: NotificationPrefsState) => {
@@ -190,46 +447,33 @@ export function SettingsPageContainer() {
       setIsSavingNotificationPrefs(true);
       setFeedback("Bildirim tercihleri kaydediliyor...");
 
-      const {
-        data: { user },
-        error: getUserError,
-      } = await supabase.auth.getUser();
-
       if (requestId !== notificationSaveRequestIdRef.current) {
         return;
       }
 
-      if (getUserError || !user) {
-        setFeedback("Oturum doÄŸrulanamadÄ±. LÃ¼tfen tekrar giriÅŸ yapÄ±n.");
-        setIsSavingNotificationPrefs(false);
-        router.replace("/login?next=/settings");
-        return;
-      }
-
-      const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
       const nextMetadataPrefs = toMetadataNotificationPrefs(nextPrefs);
-      const { error: updateError } = await supabase.auth.updateUser({
-        data: {
-          ...metadata,
+      const { errorMessage } = await persistMetadataChanges(
+        {
           notification_preferences: nextMetadataPrefs,
           notificationPreferences: nextMetadataPrefs,
         },
-      });
+        "Bildirim tercihleri kaydedilemedi. Lütfen tekrar deneyin.",
+      );
 
       if (requestId !== notificationSaveRequestIdRef.current) {
         return;
       }
 
-      if (updateError) {
-        setFeedback("Bildirim tercihleri kaydedilemedi. LÃ¼tfen tekrar deneyin.");
+      if (errorMessage) {
+        setFeedback(errorMessage);
         setIsSavingNotificationPrefs(false);
         return;
       }
 
-      setFeedback("Bildirim tercihleri gÃ¼ncellendi.");
+      setFeedback("Bildirim tercihleri güncellendi.");
       setIsSavingNotificationPrefs(false);
     },
-    [router, supabase.auth],
+    [persistMetadataChanges],
   );
 
   const handleNotificationPrefsChange = useCallback(
@@ -240,12 +484,40 @@ export function SettingsPageContainer() {
     [persistNotificationPrefs],
   );
 
+  const handleOrganizationSave = useCallback(async () => {
+    const nextOrganization = normalizeOrganizationValues(organization);
+
+    if (nextOrganization.name.length === 0) {
+      setFeedback("Organizasyon adı boş bırakılamaz.");
+      return;
+    }
+
+    setIsSavingOrganization(true);
+    setFeedback("Organizasyon ayarları kaydediliyor...");
+
+    const { errorMessage } = await persistMetadataChanges(
+      toMetadataOrganization(nextOrganization),
+      "Organizasyon ayarları kaydedilemedi. Lütfen tekrar deneyin.",
+    );
+
+    if (errorMessage) {
+      setFeedback(errorMessage);
+      setIsSavingOrganization(false);
+      return;
+    }
+
+    setOrganization(nextOrganization);
+    setSavedOrganization(nextOrganization);
+    setFeedback("Organizasyon ayarları kaydedildi.");
+    setIsSavingOrganization(false);
+  }, [organization, persistMetadataChanges]);
+
   const usageItems = useMemo(
     () => [
-      { id: "assets", label: "VarlÄ±klar", used: assetCount, limit: assetLimit },
+      { id: "assets", label: "Varlıklar", used: assetCount, limit: assetLimit },
       { id: "documents", label: "Belgeler", used: documentCount, limit: documentLimit },
       { id: "subscriptions", label: "Abonelikler", used: subscriptionCount, limit: subscriptionLimit },
-      { id: "invoiceUploads", label: "Fatura yÃ¼kleme", used: invoiceUploadCount, limit: invoiceUploadLimit },
+      { id: "invoiceUploads", label: "Fatura yükleme", used: invoiceUploadCount, limit: invoiceUploadLimit },
     ],
     [
       assetCount,
@@ -276,7 +548,7 @@ export function SettingsPageContainer() {
 
       if (!res.ok) {
         const responseText = await res.text();
-        const checkoutError = responseText || "Stripe checkout baÅŸlatÄ±lamadÄ±.";
+        const checkoutError = responseText || "Stripe checkout başlatılamadı.";
         console.error("Stripe checkout failed:", res.status, checkoutError);
         alert(checkoutError);
         setFeedback(checkoutError);
@@ -287,7 +559,7 @@ export function SettingsPageContainer() {
       const data = (await res.json().catch(() => null)) as { url?: string } | null;
 
       if (!data?.url) {
-        const missingUrlError = "Checkout URL dÃ¶nmedi.";
+        const missingUrlError = "Checkout URL dönmedi.";
         console.error("Stripe checkout failed:", missingUrlError);
         alert(missingUrlError);
         setFeedback(missingUrlError);
@@ -297,7 +569,7 @@ export function SettingsPageContainer() {
 
       window.location.href = data.url;
     } catch (error) {
-      const networkError = "Stripe yanÄ±tÄ± okunamadÄ±.";
+      const networkError = "Stripe yanıtı okunamadı.";
       console.error("Stripe checkout request failed:", error);
       alert(networkError);
       setFeedback(networkError);
@@ -326,16 +598,16 @@ export function SettingsPageContainer() {
       const payload = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
 
       if (!response.ok || !payload?.ok) {
-        setFeedback(payload?.error ?? "Premium planÄ± aktifleÅŸtirilemedi.");
+        setFeedback(payload?.error ?? "Premium planı aktifleştirilemedi.");
         setIsConfirmingCheckout(false);
         return;
       }
 
       await refreshPlanState();
-      setFeedback("Premium planÄ±nÄ±z aktifleÅŸtirildi.");
+      setFeedback("Premium planınız aktifleştirildi.");
       router.replace("/settings?checkout=confirmed");
     } catch {
-      setFeedback("Premium planÄ± aktifleÅŸtirilemedi.");
+      setFeedback("Premium planı aktifleştirilemedi.");
       setIsConfirmingCheckout(false);
       return;
     }
@@ -359,7 +631,7 @@ export function SettingsPageContainer() {
       const payload = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
 
       if (!response.ok || !payload?.ok) {
-        const message = payload?.error ?? "Hesap silinemedi. LÃ¼tfen tekrar deneyin.";
+        const message = payload?.error ?? "Hesap silinemedi. Lütfen tekrar deneyin.";
         setDeleteFeedback(message);
         alert(message);
         setIsDeletingAccount(false);
@@ -368,26 +640,37 @@ export function SettingsPageContainer() {
 
       const { error: signOutError } = await supabase.auth.signOut();
       if (signOutError) {
-        alert(signOutError.message || "Oturum kapatÄ±lÄ±rken bir sorun oluÅŸtu.");
+        alert(signOutError.message || "Oturum kapatılırken bir sorun oluştu.");
       }
 
       router.replace("/login");
       router.refresh();
     } catch (error) {
       console.error("Account delete failed:", error);
-      const message = "Hesap silme isteÄŸi baÅŸarÄ±sÄ±z oldu.";
+      const message = "Hesap silme isteği başarısız oldu.";
       setDeleteFeedback(message);
       alert(message);
       setIsDeletingAccount(false);
     }
   }, [isDeleteConfirmationValid, isDeletingAccount, router, supabase.auth]);
 
+  const isProfileSaveDisabled =
+    isLoading ||
+    isSavingProfile ||
+    normalizeProfileValues(profile).fullName.length === 0 ||
+    areProfileValuesEqual(profile, savedProfile);
+  const isOrganizationSaveDisabled =
+    isLoading ||
+    isSavingOrganization ||
+    normalizeOrganizationValues(organization).name.length === 0 ||
+    areOrganizationValuesEqual(organization, savedOrganization);
+
   return (
     <AppShell title="Ayarlar" badge="Hesap ve Tercihler">
       <section className="premium-card border-white/10 bg-white/[0.02] p-5">
         <h2 className="text-2xl font-semibold tracking-tight text-white">Ayarlar</h2>
         <p className="mt-2 max-w-3xl text-sm text-slate-300">
-          Profil bilgilerinizi, bildirim tercihlerinizi, plan kullanÄ±mÄ±nÄ±zÄ± ve gÃ¼venlik ayarlarÄ±nÄ±zÄ± tek ekrandan yÃ¶netin.
+          Profil bilgilerinizi, bildirim tercihlerinizi, plan kullanımınızı ve güvenlik ayarlarınızı tek ekrandan yönetin.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           {plan !== "premium" ? (
@@ -397,7 +680,7 @@ export function SettingsPageContainer() {
               disabled={isStartingCheckout}
               className="bg-gradient-to-r from-indigo-500 to-indigo-400 text-white hover:opacity-95"
             >
-              {isStartingCheckout ? "Y\u00f6nlendiriliyor..." : "Premium'a Ge\u00e7"}
+              {isStartingCheckout ? "Yönlendiriliyor..." : "Premium'a Geç"}
             </Button>
           ) : null}
 
@@ -417,7 +700,7 @@ export function SettingsPageContainer() {
               disabled={isConfirmingCheckout}
               className="bg-emerald-500/20 text-emerald-100 hover:bg-emerald-500/30"
             >
-              {isConfirmingCheckout ? "Aktifle\u015ftiriliyor..." : "Premium'u Aktif Et"}
+              {isConfirmingCheckout ? "Aktifleştiriliyor..." : "Premium'u Aktif Et"}
             </Button>
           ) : null}
         </div>
@@ -440,7 +723,13 @@ export function SettingsPageContainer() {
       ) : (
         <SettingsTabs value={activeTab} onValueChange={setActiveTab}>
           <TabsContent value="profile" className="outline-none">
-            <ProfileForm values={profile} onChange={setProfile} isSaveDisabled />
+            <ProfileForm
+              values={profile}
+              onChange={setProfile}
+              onSave={handleProfileSave}
+              isSaving={isSavingProfile}
+              isSaveDisabled={isProfileSaveDisabled}
+            />
           </TabsContent>
 
           <TabsContent value="notification-preferences" className="outline-none">
@@ -465,14 +754,14 @@ export function SettingsPageContainer() {
                   isDeletingAccount ? "opacity-80" : ""
                 }`}
               >
-                <h3 className="text-lg font-semibold text-white">HesabÄ± Sil</h3>
+                <h3 className="text-lg font-semibold text-white">Hesabı Sil</h3>
                 <p className="mt-1 text-sm text-slate-200">
-                  Bu iÅŸlem geri alÄ±namaz. TÃ¼m verileriniz silinir.
+                  Bu işlem geri alınamaz. Tüm verileriniz silinir.
                 </p>
 
                 <label className="mt-4 block space-y-1.5">
                   <span className="text-xs uppercase tracking-[0.16em] text-rose-200/90">
-                    Onay iÃ§in {ACCOUNT_DELETE_CONFIRM_KEYWORD} yazÄ±n
+                    Onay için {ACCOUNT_DELETE_CONFIRM_KEYWORD} yazın
                   </span>
                   <input
                     type="text"
@@ -495,7 +784,7 @@ export function SettingsPageContainer() {
                   disabled={!isDeleteConfirmationValid || isDeletingAccount}
                   className="mt-4"
                 >
-                  {isDeletingAccount ? "Hesap siliniyor..." : "HesabÄ± Sil"}
+                  {isDeletingAccount ? "Hesap siliniyor..." : "Hesabı Sil"}
                 </Button>
               </article>
             </section>
@@ -507,11 +796,11 @@ export function SettingsPageContainer() {
                 <div>
                   <h3 className="text-lg font-semibold text-white">Organizasyon</h3>
                   <p className="mt-1 text-sm text-slate-300">
-                    Ekip ve Ã§alÄ±ÅŸma alanÄ± bilgilerini bu bÃ¶lÃ¼mden yÃ¶netebilirsiniz.
+                    Çalışma alanınızın adı ve kullanım bilgilerini bu bölümden güncelleyebilirsiniz.
                   </p>
                 </div>
                 <Badge variant="outline" className="border-white/20 bg-white/5 text-slate-300">
-                  Tekli yapÄ±
+                  Tekli yapı
                 </Badge>
               </div>
 
@@ -521,11 +810,169 @@ export function SettingsPageContainer() {
                     <Building2 className="h-4 w-4 text-slate-200" />
                   </span>
                   <div>
-                    <p className="text-sm font-semibold text-white">{organizationName}</p>
-                    <p className="text-xs text-slate-400">Bu hesap tek organizasyonlu Ã§alÄ±ÅŸma dÃ¼zeninde Ã§alÄ±ÅŸÄ±yor.</p>
+                    <p className="text-sm font-semibold text-white">{organization.name || defaultOrganization.name}</p>
+                    <p className="text-xs text-slate-400">
+                      {organization.industry || "Sektör belirtilmedi"} • {organization.teamType || "Tekli yapı"} •{" "}
+                      {organization.defaultCurrency}
+                    </p>
+                    {organization.usageType ? (
+                      <p className="mt-1 text-xs text-slate-500">{organization.usageType}</p>
+                    ) : null}
                   </div>
                 </div>
               </article>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <label className="space-y-1.5 sm:col-span-1">
+                  <span className="text-xs uppercase tracking-[0.16em] text-slate-400">Organizasyon adı</span>
+                  <input
+                    type="text"
+                    value={organization.name}
+                    onChange={(event) =>
+                      setOrganization((current) => ({
+                        ...current,
+                        name: event.target.value,
+                      }))
+                    }
+                    className={INPUT_CLASS_NAME}
+                    placeholder="Örnek: Yılmaz Teknik Hizmetler"
+                  />
+                </label>
+
+                <label className="space-y-1.5 sm:col-span-1">
+                  <span className="text-xs uppercase tracking-[0.16em] text-slate-400">Sektör / kullanım alanı</span>
+                  <select
+                    value={organization.industry}
+                    onChange={(event) =>
+                      setOrganization((current) => ({
+                        ...current,
+                        industry: event.target.value,
+                      }))
+                    }
+                    className={SELECT_CLASS_NAME}
+                  >
+                    <option value="" className="bg-slate-900">
+                      Seçin
+                    </option>
+                    {ORGANIZATION_INDUSTRY_OPTIONS.map((option) => (
+                      <option key={option} value={option} className="bg-slate-900">
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="space-y-1.5 sm:col-span-1">
+                  <span className="text-xs uppercase tracking-[0.16em] text-slate-400">Kullanım tipi</span>
+                  <select
+                    value={organization.usageType}
+                    onChange={(event) =>
+                      setOrganization((current) => ({
+                        ...current,
+                        usageType: event.target.value,
+                      }))
+                    }
+                    className={SELECT_CLASS_NAME}
+                  >
+                    <option value="" className="bg-slate-900">
+                      Seçin
+                    </option>
+                    {ORGANIZATION_USAGE_OPTIONS.map((option) => (
+                      <option key={option} value={option} className="bg-slate-900">
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="space-y-1.5 sm:col-span-1">
+                  <span className="text-xs uppercase tracking-[0.16em] text-slate-400">Ekip / işletme tipi</span>
+                  <select
+                    value={organization.teamType}
+                    onChange={(event) =>
+                      setOrganization((current) => ({
+                        ...current,
+                        teamType: event.target.value,
+                      }))
+                    }
+                    className={SELECT_CLASS_NAME}
+                  >
+                    <option value="" className="bg-slate-900">
+                      Seçin
+                    </option>
+                    {ORGANIZATION_TEAM_TYPE_OPTIONS.map((option) => (
+                      <option key={option} value={option} className="bg-slate-900">
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="space-y-1.5 sm:col-span-1">
+                  <span className="text-xs uppercase tracking-[0.16em] text-slate-400">Varsayılan para birimi</span>
+                  <select
+                    value={organization.defaultCurrency}
+                    onChange={(event) =>
+                      setOrganization((current) => ({
+                        ...current,
+                        defaultCurrency: event.target.value,
+                      }))
+                    }
+                    className={SELECT_CLASS_NAME}
+                  >
+                    {ORGANIZATION_CURRENCY_OPTIONS.map((option) => (
+                      <option key={option} value={option} className="bg-slate-900">
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="space-y-1.5 sm:col-span-1">
+                  <span className="text-xs uppercase tracking-[0.16em] text-slate-400">İletişim e-postası</span>
+                  <input
+                    type="email"
+                    value={organization.contactEmail}
+                    onChange={(event) =>
+                      setOrganization((current) => ({
+                        ...current,
+                        contactEmail: event.target.value,
+                      }))
+                    }
+                    className={INPUT_CLASS_NAME}
+                    placeholder="iletisim@firma.com"
+                  />
+                </label>
+
+                <label className="space-y-1.5 sm:col-span-2">
+                  <span className="text-xs uppercase tracking-[0.16em] text-slate-400">Kısa not</span>
+                  <textarea
+                    value={organization.note}
+                    onChange={(event) =>
+                      setOrganization((current) => ({
+                        ...current,
+                        note: event.target.value,
+                      }))
+                    }
+                    className={TEXTAREA_CLASS_NAME}
+                    placeholder="Örnek: Teknik servis ve garanti takibi ağırlıklı kullanılıyor."
+                  />
+                </label>
+              </div>
+
+              <div className="mt-5 flex items-center gap-3">
+                <Button
+                  type="button"
+                  onClick={handleOrganizationSave}
+                  disabled={isOrganizationSaveDisabled}
+                  className="bg-white/10 text-white hover:bg-white/15 disabled:bg-white/8"
+                >
+                  {isSavingOrganization ? "Kaydediliyor..." : "Organizasyonu Kaydet"}
+                </Button>
+                {isSavingOrganization ? (
+                  <p className="text-xs text-sky-200">Organizasyon bilgileri güncelleniyor.</p>
+                ) : null}
+              </div>
             </section>
           </TabsContent>
         </SettingsTabs>

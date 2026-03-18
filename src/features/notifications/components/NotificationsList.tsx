@@ -52,4 +52,3 @@ export function NotificationsList({ items, isLoading, onMarkRead, onDelete }: No
     </section>
   );
 }
-

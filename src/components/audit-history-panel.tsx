@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Json } from "@/types/database";
@@ -28,9 +28,9 @@ type AuditHistoryPanelProps = {
 };
 
 const actionLabelByType: Record<AuditAction, string> = {
-  insert: "Oluşturma",
-  update: "Güncelleme",
-  delete: "Silme",
+  insert: "Eklendi",
+  update: "Güncellendi",
+  delete: "Silindi",
 };
 
 const actionToneByType: Record<AuditAction, string> = {
@@ -41,8 +41,8 @@ const actionToneByType: Record<AuditAction, string> = {
 
 const entityLabelByType: Record<AuditEntityType, string> = {
   assets: "Varlık",
-  maintenance_rules: "Bakım Kuralı",
-  service_logs: "Servis Kaydı",
+  maintenance_rules: "Bakım planı",
+  service_logs: "Servis kaydı",
   documents: "Belge",
 };
 
@@ -52,26 +52,27 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3
 const fieldLabelByKey: Record<string, string> = {
   name: "Ad",
   category: "Kategori",
-  serial_number: "Seri No",
+  serial_number: "Seri numarası",
   brand: "Marka",
   model: "Model",
-  purchase_date: "Satın Alma Tarihi",
-  warranty_end_date: "Garanti Bitiş Tarihi",
+  purchase_date: "Satın alma tarihi",
+  purchase_price: "Satın alma bedeli",
+  warranty_end_date: "Garanti bitiş tarihi",
   notes: "Not",
   photo_path: "Fotoğraf",
-  qr_code: "QR Kodu",
+  qr_code: "QR kodu",
   title: "Başlık",
   interval_value: "Periyot",
-  interval_unit: "Periyot Birimi",
-  last_service_date: "Son Servis Tarihi",
-  next_due_date: "Sonraki Bakım Tarihi",
+  interval_unit: "Periyot birimi",
+  last_service_date: "Son servis tarihi",
+  next_due_date: "Sonraki bakım tarihi",
   is_active: "Aktif",
-  service_type: "Servis Türü",
-  service_date: "Servis Tarihi",
+  service_type: "Servis türü",
+  service_date: "Servis tarihi",
   cost: "Tutar",
-  provider: "Servis Sağlayıcı",
-  document_type: "Belge Türü",
-  file_name: "Dosya Adı",
+  provider: "Servis sağlayıcı",
+  document_type: "Belge türü",
+  file_name: "Dosya adı",
 };
 
 const shortenId = (value: string) => {
@@ -90,7 +91,44 @@ const toObject = (value: Json | null): Record<string, Json> => {
 const formatDateLikeText = (value: string) => {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return null;
-  return value.includes("T") ? parsed.toLocaleString("tr-TR") : parsed.toLocaleDateString("tr-TR");
+
+  if (value.includes("T")) {
+    return new Intl.DateTimeFormat("tr-TR", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(parsed);
+  }
+
+  return new Intl.DateTimeFormat("tr-TR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(parsed);
+};
+
+const formatCurrencyIfPossible = (value: Json | undefined) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value.toLocaleString("tr-TR", {
+      style: "currency",
+      currency: "TRY",
+      maximumFractionDigits: 2,
+    });
+  }
+
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.trim().replace(/\./g, "").replace(",", ".");
+  if (!normalized) return null;
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed)) return null;
+
+  return parsed.toLocaleString("tr-TR", {
+    style: "currency",
+    currency: "TRY",
+    maximumFractionDigits: 2,
+  });
 };
 
 const normalizeValue = (value: Json | undefined) => {
@@ -100,9 +138,13 @@ const normalizeValue = (value: Json | undefined) => {
     if (!trimmed) return "-";
     if (UUID_PATTERN.test(trimmed)) return shortenId(trimmed);
     const formattedDate = formatDateLikeText(trimmed);
-    return formattedDate ?? trimmed;
+    if (formattedDate) return formattedDate;
+    return trimmed;
   }
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (typeof value === "number") {
+    return value.toLocaleString("tr-TR");
+  }
+  if (typeof value === "boolean") return value ? "Evet" : "Hayır";
   return JSON.stringify(value);
 };
 
@@ -112,26 +154,46 @@ const truncateText = (value: string, limit = 80) =>
 const toFieldLabel = (field: string) =>
   fieldLabelByKey[field] ?? field.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toLocaleUpperCase("tr-TR"));
 
-const renderChangeText = (log: AuditLogRow, oldValue: string, newValue: string) => {
-  if (log.action === "insert") return newValue;
-  if (log.action === "delete") return oldValue;
-  return `${oldValue} → ${newValue}`;
-};
-
-const summarizeLog = (log: AuditLogRow, fieldCount: number) => {
-  if (fieldCount === 0) {
-    if (log.action === "insert") return "Yeni kayıt eklendi.";
-    if (log.action === "delete") return "Kayıt silindi.";
-    return "Kayıt güncellendi.";
+const formatFieldValue = (field: string, value: Json | undefined) => {
+  if (field === "purchase_price" || field === "cost") {
+    return formatCurrencyIfPossible(value) ?? normalizeValue(value);
   }
 
-  if (log.action === "insert") return `${fieldCount} bilgi eklendi.`;
-  if (log.action === "delete") return `${fieldCount} bilgi silindi.`;
-  return `${fieldCount} bilgi güncellendi.`;
+  return normalizeValue(value);
+};
+
+const renderChangeText = (log: AuditLogRow, field: string, oldValue: Json | undefined, newValue: Json | undefined) => {
+  const oldText = truncateText(formatFieldValue(field, oldValue), 60);
+  const newText = truncateText(formatFieldValue(field, newValue), 60);
+
+  if (log.action === "insert") return newText;
+  if (log.action === "delete") return oldText;
+  if (oldText === newText) return newText;
+  return `${oldText} yerine ${newText}`;
+};
+
+const summarizeLog = (log: AuditLogRow, visibleFields: string[]) => {
+  const entityLabel = entityLabelByType[log.entity_type];
+  if (log.action === "insert") {
+    return `${entityLabel} eklendi.`;
+  }
+  if (log.action === "delete") {
+    return `${entityLabel} silindi.`;
+  }
+
+  if (visibleFields.length === 0) {
+    return `${entityLabel} kaydı güncellendi.`;
+  }
+
+  if (visibleFields.length === 1) {
+    return `${toFieldLabel(visibleFields[0])} bilgisi güncellendi.`;
+  }
+
+  return `${visibleFields.length} bilgi güncellendi.`;
 };
 
 export function AuditHistoryPanel({
-  title = "Değişim Geçmişi",
+  title = "İşlem Geçmişi",
   subtitle = "Son işlemleri sade bir şekilde takip edin.",
   entityTypes = [],
   limit = 12,
@@ -162,12 +224,13 @@ export function AuditHistoryPanel({
       | null;
 
     if (!response.ok) {
-      setFeedback(result?.error ?? "Audit kayıtları yüklenemedi.");
+      setFeedback(result?.error ?? "İşlem geçmişi yüklenemedi.");
       setIsLoading(false);
       return;
     }
 
-    setLogs(result?.logs ?? []);
+    const nextLogs = [...(result?.logs ?? [])].sort((left, right) => right.created_at.localeCompare(left.created_at));
+    setLogs(nextLogs);
     setIsLoading(false);
   }, [queryString]);
 
@@ -204,7 +267,7 @@ export function AuditHistoryPanel({
       {isLoading ? (
         <p className="mt-4 text-sm text-slate-300">Yükleniyor...</p>
       ) : logs.length === 0 ? (
-        <p className="mt-4 text-sm text-slate-300">Henüz audit kaydı bulunmuyor.</p>
+        <p className="mt-4 text-sm text-slate-300">Henüz işlem kaydı bulunmuyor.</p>
       ) : (
         <div className="mt-4 space-y-3">
           {logs.map((log) => {
@@ -217,13 +280,11 @@ export function AuditHistoryPanel({
 
             return (
               <article key={log.id} className="rounded-xl border border-white/15 bg-white/[0.04] p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-white">{entityLabelByType[log.entity_type]}</p>
-                    <p className="mt-1 text-xs text-slate-400">
-                      {new Date(log.created_at).toLocaleString("tr-TR")}
-                    </p>
-                    <p className="mt-2 text-sm text-slate-200">{summarizeLog(log, visibleFields.length)}</p>
+                    <p className="mt-1 text-xs text-slate-400">{formatDateLikeText(log.created_at) ?? log.created_at}</p>
+                    <p className="mt-2 text-sm text-slate-200">{summarizeLog(log, visibleFields)}</p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span
@@ -232,42 +293,36 @@ export function AuditHistoryPanel({
                       {actionLabelByType[log.action]}
                     </span>
                     <span className="rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] text-slate-200">
-                      {currentUserId && log.user_id === currentUserId ? "Sen" : shortenId(log.user_id)}
+                      {currentUserId && log.user_id === currentUserId ? "Siz" : shortenId(log.user_id)}
                     </span>
                   </div>
                 </div>
 
                 {previewFields.length > 0 ? (
                   <div className="mt-3 space-y-2 rounded-lg border border-white/10 bg-slate-950/35 p-3">
-                    {previewFields.map((field) => {
-                      const oldText = truncateText(normalizeValue(oldValues[field]), 50);
-                      const newText = truncateText(normalizeValue(newValues[field]), 50);
-                      return (
-                        <p key={`${log.id}-${field}-preview`} className="text-sm text-slate-100">
-                          <span className="font-medium text-white">{toFieldLabel(field)}:</span>{" "}
-                          <span className="text-slate-300">{renderChangeText(log, oldText, newText)}</span>
-                        </p>
-                      );
-                    })}
+                    {previewFields.map((field) => (
+                      <p key={`${log.id}-${field}-preview`} className="text-sm text-slate-100">
+                        <span className="font-medium text-white">{toFieldLabel(field)}:</span>{" "}
+                        <span className="text-slate-300">
+                          {renderChangeText(log, field, oldValues[field], newValues[field])}
+                        </span>
+                      </p>
+                    ))}
                   </div>
                 ) : null}
 
                 {visibleFields.length > previewFields.length ? (
                   <details className="mt-3">
                     <summary className="cursor-pointer text-xs font-semibold text-slate-300 hover:text-slate-100">
-                      Daha fazla detay göster ({visibleFields.length - previewFields.length})
+                      Diğer değişiklikleri göster ({visibleFields.length - previewFields.length})
                     </summary>
                     <div className="mt-2 space-y-1 rounded-lg border border-white/10 bg-slate-950/35 p-3">
-                      {visibleFields.slice(3).map((field) => {
-                        const oldText = truncateText(normalizeValue(oldValues[field]), 60);
-                        const newText = truncateText(normalizeValue(newValues[field]), 60);
-                        return (
-                          <p key={`${log.id}-${field}-detail`} className="text-xs text-slate-200">
-                            <span className="font-medium text-slate-100">{toFieldLabel(field)}:</span>{" "}
-                            {renderChangeText(log, oldText, newText)}
-                          </p>
-                        );
-                      })}
+                      {visibleFields.slice(3).map((field) => (
+                        <p key={`${log.id}-${field}-detail`} className="text-xs text-slate-200">
+                          <span className="font-medium text-slate-100">{toFieldLabel(field)}:</span>{" "}
+                          {renderChangeText(log, field, oldValues[field], newValues[field])}
+                        </p>
+                      ))}
                     </div>
                   </details>
                 ) : null}
@@ -279,4 +334,3 @@ export function AuditHistoryPanel({
     </section>
   );
 }
-

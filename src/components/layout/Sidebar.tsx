@@ -92,7 +92,7 @@ export function Sidebar({ collapsed = false, brand, footer, className, onNavigat
             onClick={onNavigate}
             aria-label="Assetly ana sayfa"
             className={cn(
-              "auth-shell-brand auth-focus-ring flex items-center gap-3 rounded-2xl border-[#2F4569] bg-[linear-gradient(145deg,rgba(10,17,40,0.92),rgba(9,18,34,0.82))] px-3 py-3 shadow-[0_18px_34px_rgba(2,8,20,0.34)]",
+              "auth-shell-brand auth-focus-ring flex min-w-0 items-center gap-3 overflow-hidden rounded-2xl border-[#2F4569] bg-[linear-gradient(145deg,rgba(10,17,40,0.92),rgba(9,18,34,0.82))] px-3 py-3 shadow-[0_18px_34px_rgba(2,8,20,0.34)]",
               collapsed && "justify-center px-2",
             )}
           >
@@ -101,13 +101,15 @@ export function Sidebar({ collapsed = false, brand, footer, className, onNavigat
             </span>
             {!collapsed ? (
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="truncate text-[11px] font-semibold tracking-[0.28em] text-[var(--auth-foreground)]">ASSETLY</p>
-                  <span className="inline-flex shrink-0 rounded-full border border-[#355071] bg-[rgba(16,239,181,0.08)] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[var(--auth-primary)]">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <p className="max-w-full whitespace-nowrap text-[10px] font-semibold tracking-[0.22em] text-[var(--auth-foreground)]">
+                    ASSETLY
+                  </p>
+                  <span className="inline-flex shrink-0 rounded-full border border-[#355071] bg-[rgba(16,239,181,0.08)] px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.12em] text-[var(--auth-primary)]">
                     {sidebarPlanLabel}
                   </span>
                 </div>
-                <p className="mt-1 truncate text-[10px] uppercase tracking-[0.18em] text-[#8FA6C7]">Operasyon paneli</p>
+                <p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-[#8FA6C7]">Operasyon paneli</p>
               </div>
             ) : null}
           </Link>

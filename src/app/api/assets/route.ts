@@ -170,7 +170,7 @@ export async function GET(request: Request) {
     });
     if (!rateLimit.allowed) {
       return NextResponse.json(
-        { error: "Cok fazla varlik listeleme istegi gonderildi. Lutfen tekrar deneyin." },
+        { error: "Çok fazla varlık listeleme isteği gönderildi. Lütfen tekrar deneyin." },
         {
           status: 429,
           headers: {
@@ -227,58 +227,19 @@ export async function GET(request: Request) {
         message: "Assets list query failed",
       });
       return NextResponse.json(
-        toPublicErrorBody("ASSETS_LIST_FAILED", "Varlik listesi alinamadi."),
+        toPublicErrorBody("ASSETS_LIST_FAILED", "Varlık listesi alınamadı."),
         { status: 400 },
       );
     }
 
     const responseData = data ?? { rows: [], nextCursor: null, hasMore: false };
-    const assetIds = responseData.rows.map((row) => row.id).filter(Boolean);
-
-    if (assetIds.length === 0) {
-      return NextResponse.json(responseData, { status: 200 });
-    }
-
-    const { data: purchasePriceRows, error: purchasePriceError } = await auth.supabase
-      .from("assets")
-      .select("id,purchase_price")
-      .in("id", assetIds)
-      .eq("user_id", auth.user.id);
-
-    if (purchasePriceError) {
-      logApiError({
-        route: "/api/assets",
-        method: "GET",
-        userId: auth.user.id,
-        error: purchasePriceError,
-        message: "Assets purchase price enrichment failed",
-      });
-
-      return NextResponse.json(
-        {
-          ...responseData,
-          rows: responseData.rows.map((row) => ({
-            ...row,
-            purchase_price: normalizePurchasePrice(row.purchase_price),
-          })),
-          warnings: ["purchase_price_unavailable"],
-        },
-        { status: 200 },
-      );
-    }
-
-    const purchasePriceByAssetId = new Map(
-      (purchasePriceRows ?? []).map((row) => [row.id, normalizePurchasePrice(row.purchase_price)]),
-    );
 
     return NextResponse.json(
       {
         ...responseData,
         rows: responseData.rows.map((row) => ({
           ...row,
-          purchase_price: purchasePriceByAssetId.has(row.id)
-            ? (purchasePriceByAssetId.get(row.id) ?? null)
-            : normalizePurchasePrice(row.purchase_price),
+          purchase_price: normalizePurchasePrice(row.purchase_price),
         })),
       },
       { status: 200 },
@@ -291,7 +252,7 @@ export async function GET(request: Request) {
       error,
       message: "Assets list request failed unexpectedly",
     });
-    return NextResponse.json({ error: "Varlik listesi yuklenemedi." }, { status: 500 });
+    return NextResponse.json({ error: "Varlık listesi yüklenemedi." }, { status: 500 });
   }
 }
 
@@ -330,7 +291,7 @@ export async function POST(request: Request) {
     });
     if (!rateLimit.allowed) {
       return NextResponse.json(
-        { error: "Cok fazla varlik olusturma istegi gonderildi. Lutfen tekrar deneyin." },
+        { error: "Çok fazla varlık oluşturma isteği gönderildi. Lütfen tekrar deneyin." },
         {
           status: 429,
           headers: {
@@ -372,7 +333,7 @@ export async function POST(request: Request) {
     }
 
     if (nameResult.missing || categoryResult.missing) {
-      return NextResponse.json({ error: "Varlik adi ve kategori zorunludur." }, { status: 400 });
+      return NextResponse.json({ error: "Varlık adı ve kategori zorunludur." }, { status: 400 });
     }
 
     if (
@@ -390,7 +351,7 @@ export async function POST(request: Request) {
     const name = nameResult.value;
     const category = categoryResult.value;
     if (!name || !category) {
-      return NextResponse.json({ error: "Varlik adi ve kategori zorunludur." }, { status: 400 });
+      return NextResponse.json({ error: "Varlık adı ve kategori zorunludur." }, { status: 400 });
     }
 
     const purchaseDate = purchaseDateResult.value;
@@ -444,7 +405,7 @@ export async function POST(request: Request) {
         message: "Asset create query failed",
       });
       return NextResponse.json(
-        toPublicErrorBody("ASSET_CREATE_FAILED", "Varlik olusturulamadi."),
+        toPublicErrorBody("ASSET_CREATE_FAILED", "Varlık oluşturulamadı."),
         { status: 400 },
       );
     }
@@ -520,7 +481,7 @@ export async function PATCH(request: Request) {
     });
     if (!rateLimit.allowed) {
       return NextResponse.json(
-        { error: "Cok fazla varlik guncelleme istegi gonderildi. Lutfen tekrar deneyin." },
+        { error: "Çok fazla varlık güncelleme isteği gönderildi. Lütfen tekrar deneyin." },
         {
           status: 429,
           headers: {
@@ -665,7 +626,7 @@ export async function PATCH(request: Request) {
         message: "Asset update lookup query failed",
       });
       return NextResponse.json(
-        toPublicErrorBody("ASSET_LOOKUP_FAILED", "Varlik bilgisi su anda dogrulanamadi."),
+        toPublicErrorBody("ASSET_LOOKUP_FAILED", "Varlık bilgisi şu anda doğrulanamadı."),
         { status: 400 },
       );
     }
@@ -701,7 +662,7 @@ export async function PATCH(request: Request) {
         message: "Asset update query failed",
       });
       return NextResponse.json(
-        toPublicErrorBody("ASSET_UPDATE_FAILED", "Varlik guncellenemedi."),
+        toPublicErrorBody("ASSET_UPDATE_FAILED", "Varlık güncellenemedi."),
         { status: 400 },
       );
     }
@@ -764,7 +725,7 @@ export async function DELETE(request: Request) {
     });
     if (!rateLimit.allowed) {
       return NextResponse.json(
-        { error: "Cok fazla varlik silme istegi gonderildi. Lutfen tekrar deneyin." },
+        { error: "Çok fazla varlık silme isteği gönderildi. Lütfen tekrar deneyin." },
         {
           status: 429,
           headers: {
@@ -802,7 +763,7 @@ export async function DELETE(request: Request) {
         message: "Asset delete query failed",
       });
       return NextResponse.json(
-        toPublicErrorBody("ASSET_DELETE_FAILED", "Varlik silinemedi."),
+        toPublicErrorBody("ASSET_DELETE_FAILED", "Varlık silinemedi."),
         { status: 400 },
       );
     }

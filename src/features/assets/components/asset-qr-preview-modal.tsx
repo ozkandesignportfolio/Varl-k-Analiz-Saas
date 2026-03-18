@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import QRCode from "qrcode";
 import { X } from "lucide-react";
-import { buildAssetQrPayload } from "@/lib/assets/qr-payload";
+import { resolveAssetQrPayload } from "@/lib/assets/qr-payload";
 
 type QrPreviewAsset = {
   id: string;
@@ -29,16 +29,15 @@ export function AssetQrPreviewModal({ asset, isOpen, onClose }: AssetQrPreviewMo
   useEffect(() => {
     if (!isOpen || !asset) return;
 
-    const nextPayload =
-      asset.qr_code?.trim() ||
-      buildAssetQrPayload({
-        assetId: asset.id,
-        name: asset.name,
-        category: asset.category,
-        serialNumber: asset.serial_number,
-        brand: asset.brand,
-        model: asset.model,
-      });
+    const nextPayload = resolveAssetQrPayload({
+      assetId: asset.id,
+      name: asset.name,
+      category: asset.category,
+      serialNumber: asset.serial_number,
+      brand: asset.brand,
+      model: asset.model,
+      qrCode: asset.qr_code,
+    });
 
     let isCancelled = false;
 
@@ -77,7 +76,7 @@ export function AssetQrPreviewModal({ asset, isOpen, onClose }: AssetQrPreviewMo
       <div className="w-full max-w-lg rounded-2xl border border-white/15 bg-slate-950 p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-white">Varlık QR</h2>
+            <h2 className="text-lg font-semibold text-white">Varlık QR Kodu</h2>
             <p className="mt-1 text-sm text-slate-300">{asset.name}</p>
           </div>
           <button
@@ -94,19 +93,19 @@ export function AssetQrPreviewModal({ asset, isOpen, onClose }: AssetQrPreviewMo
           {qrDataUrl ? (
             <Image
               src={qrDataUrl}
-              alt={`${asset.name} QR`}
+              alt={`${asset.name} QR kodu`}
               width={320}
               height={320}
               unoptimized
               className="mx-auto h-64 w-64 object-contain"
             />
           ) : (
-            <p className="py-12 text-center text-sm text-slate-600">QR oluşturulamadı.</p>
+            <p className="py-12 text-center text-sm text-slate-600">QR kodu oluşturulamadı.</p>
           )}
         </div>
 
         <p className="mt-3 rounded-lg border border-white/12 bg-slate-900/70 p-2 text-xs text-slate-300">
-          {payload || "QR payload hazırlanıyor..."}
+          {payload || "QR içeriği hazırlanıyor..."}
         </p>
       </div>
     </div>

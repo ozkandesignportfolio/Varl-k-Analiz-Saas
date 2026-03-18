@@ -28,7 +28,6 @@ const featureRows: FeatureRow[] = [
   { feature: "Servis geçmişi", free: "Evet", premium: "Evet" },
   { feature: "PDF rapor export", free: "Hayır", premium: "Evet" },
   { feature: "Otomasyon (bildirim/email)", free: "Hayır", premium: "Evet" },
-  { feature: "QR/Barkod erişim", free: "Evet", premium: "Evet" },
   { feature: "Deneme bölümü", free: "Hayır", premium: "Evet" },
   { feature: "Öncelikli destek", free: "Hayır", premium: "Evet" },
 ];
@@ -135,6 +134,7 @@ export default function PricingPage() {
               `${trialDocumentLimit} belge limiti`,
               `${trialSubscriptionLimit} abonelik limiti`,
               `${trialInvoiceUploadLimit} fatura yükleme limiti`,
+              "QR/Barkod erişim",
             ]}
             action={
               <Link
@@ -160,7 +160,7 @@ export default function PricingPage() {
               "Sınırsız belge",
               "Sınırsız abonelik/fatura",
               "PDF rapor export + otomasyon",
-              "QR/Barkod erişim + deneme bölümü",
+              "Deneme bölümü",
             ]}
             action={
               <button

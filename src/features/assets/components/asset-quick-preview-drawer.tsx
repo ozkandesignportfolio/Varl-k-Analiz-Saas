@@ -23,7 +23,7 @@ const formatCurrency = (amount: number) =>
   });
 
 const maintenanceLabel: Record<AssetDashboardRow["maintenanceState"], string> = {
-  none: "Tanımsız",
+  none: "Yok",
   scheduled: "Planlı",
   upcoming: "Yaklaşan",
   overdue: "Gecikmiş",
@@ -70,24 +70,24 @@ export function AssetQuickPreviewDrawer({ asset, activities, onClose }: AssetQui
             <dl className="mt-2 space-y-2 text-sm text-slate-200">
               <Row label="Seri No" value={asset.serial_number ?? "Yok"} />
               <Row label="Marka / Model" value={[asset.brand, asset.model].filter(Boolean).join(" / ") || "Yok"} />
-              <Row label="Son Güncelleme" value={formatDate(asset.updated_at)} />
+              <Row label="Son güncelleme" value={formatDate(asset.updated_at)} />
             </dl>
           </article>
 
           <article className="rounded-xl border border-white/12 bg-white/[0.03] p-3">
-            <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Garanti & Bakım</p>
+            <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Garanti ve Bakım</p>
             <dl className="mt-2 space-y-2 text-sm text-slate-200">
               <Row label="Garanti" value={warrantyLabel[asset.warrantyState]} />
               <Row label="Bakım" value={maintenanceLabel[asset.maintenanceState]} />
-              <Row label="Yaklaşan Bakım" value={formatDate(asset.nextMaintenanceDate)} />
-              <Row label="Son Servis" value={formatDate(asset.lastServiceDate)} />
+              <Row label="Yaklaşan bakım" value={formatDate(asset.nextMaintenanceDate)} />
+              <Row label="Son servis" value={formatDate(asset.lastServiceDate)} />
             </dl>
           </article>
 
           <article className="rounded-xl border border-white/12 bg-white/[0.03] p-3">
-            <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Son Aktiviteler</p>
+            <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Son İşlemler</p>
             {activities.length === 0 ? (
-              <p className="mt-2 text-sm text-slate-300">Bu varlık için son servis aktivitesi yok.</p>
+              <p className="mt-2 text-sm text-slate-300">Bu varlık için yakın tarihte servis kaydı bulunmuyor.</p>
             ) : (
               <div className="mt-2 space-y-2">
                 {activities.map((item) => (

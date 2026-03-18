@@ -126,6 +126,7 @@ export function AssetsPageContainer() {
   } = useAssetsActions({
     supabase,
     userId,
+    categories,
     assetLimit,
     totalAssetCount,
     isPremiumMediaEnabled,
@@ -396,8 +397,8 @@ export function AssetsPageContainer() {
       ) : null}
 
       <AuditHistoryPanel
-        title="Varlık Değişim Geçmişi"
-        subtitle="Varlık kayıtlarındaki oluşturma, güncelleme ve silme hareketlerini izleyin."
+        title="Varlık İşlem Geçmişi"
+        subtitle="Varlıklarla ilgili son işlemleri en yeniden eskiye kolayca takip edin."
         entityTypes={["assets"]}
         limit={15}
         refreshKey={auditRefreshKey}
@@ -406,3 +407,4 @@ export function AssetsPageContainer() {
     </AppShell>
   );
 }
+

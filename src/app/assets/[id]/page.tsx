@@ -3,11 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
 import { AppShell } from "@/components/app-shell";
 import { ASSET_MEDIA_BUCKET } from "@/lib/assets/media-limits";
-import { buildAssetQrPayload } from "@/lib/assets/qr-payload";
+import { resolveAssetQrPayload } from "@/lib/assets/qr-payload";
 import { createClient } from "@/lib/supabase/client";
 
 type AssetDetail = {
@@ -219,17 +219,18 @@ export default function AssetDetailPage() {
   const videoItems = mediaItems.filter((item) => item.type === "video");
   const audioItems = mediaItems.filter((item) => item.type === "audio");
 
-  const onGenerateQr = async () => {
+  const onGenerateQr = useCallback(async () => {
     if (!asset) return;
 
     try {
-      const payload = buildAssetQrPayload({
+      const payload = resolveAssetQrPayload({
         assetId: asset.id,
         name: asset.name,
         category: asset.category,
         serialNumber: asset.serial_number,
         brand: asset.brand,
         model: asset.model,
+        qrCode: asset.qr_code,
       });
 
       setQrPayload(payload);
@@ -247,7 +248,12 @@ export default function AssetDetailPage() {
     } catch {
       setFeedback("QR kodu oluşturulamadı.");
     }
-  };
+  }, [asset]);
+
+  useEffect(() => {
+    if (!asset) return;
+    void onGenerateQr();
+  }, [asset, onGenerateQr]);
 
   return (
     <AppShell
@@ -265,7 +271,7 @@ export default function AssetDetailPage() {
             }}
             className="rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-4 py-2 text-sm font-semibold text-white"
           >
-            QR Oluştur
+            QR'ı Yenile
           </button>
           <Link
             href="/assets"
@@ -305,7 +311,7 @@ export default function AssetDetailPage() {
                 <DetailItem label="Model" value={asset.model ?? "-"} />
                 <DetailItem label="Satın Alma Tarihi" value={formatDate(asset.purchase_date)} />
                 <DetailItem label="Garanti Bitiş Tarihi" value={formatDate(asset.warranty_end_date)} />
-                <DetailItem label="QR Kod" value={asset.qr_code ?? "-"} />
+                <DetailItem label="QR durumu" value={qrDataUrl ? "Hazır" : "Hazırlanıyor"} />
                 <DetailItem label="Oluşturulma" value={formatDate(asset.created_at)} />
               </dl>
             </article>
@@ -329,7 +335,7 @@ export default function AssetDetailPage() {
                   </p>
                 </div>
               ) : (
-                <p className="mt-4 text-sm text-slate-300">QR kodu ekranda göstermek için “QR Oluştur” butonuna basın.</p>
+                <p className="mt-4 text-sm text-slate-300">Bu varlık için QR kodu hazırlanıyor.</p>
               )}
             </article>
           </section>

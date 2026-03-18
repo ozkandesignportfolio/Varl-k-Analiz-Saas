@@ -33,6 +33,8 @@ const formatCurrency = (amount: number) =>
     maximumFractionDigits: 2,
   });
 
+const formatOptionalCurrency = (amount: number | null) => (amount === null ? "Belirtilmedi" : formatCurrency(amount));
+
 const warrantyBadgeClass: Record<WarrantyState, string> = {
   active: "border-emerald-300/35 bg-emerald-300/15 text-emerald-100",
   expiring: "border-amber-300/40 bg-amber-300/15 text-amber-100",
@@ -118,7 +120,7 @@ const AssetRow = memo(function AssetRow({
             <div className="h-12 w-16 overflow-hidden rounded-lg border border-white/12">
               <Image
                 src={thumbnailUrl}
-                alt={`${asset.name} thumbnail`}
+                alt={`${asset.name} küçük görseli`}
                 width={160}
                 height={120}
                 unoptimized
@@ -136,6 +138,7 @@ const AssetRow = memo(function AssetRow({
           </div>
         </div>
       </td>
+      <td className="px-3 py-3 text-sm text-slate-100">{formatOptionalCurrency(asset.purchase_price)}</td>
       <td className="px-3 py-3">
         <span
           className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${warrantyBadgeClass[asset.warrantyState]}`}
@@ -186,9 +189,7 @@ export const AssetListTable = memo(function AssetListTable({
     <section className="premium-card p-5" data-testid="assets-list-section">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-xl font-semibold text-white">Varlık Listesi</h2>
-        <p className="text-xs text-slate-400">
-          {requestError && assets.length === 0 ? "Liste hatası" : `${assets.length} kayıt`}
-        </p>
+        <p className="text-xs text-slate-400">{requestError && assets.length === 0 ? "Liste hatası" : `${assets.length} kayıt`}</p>
       </div>
 
       {isLoading ? (
@@ -200,9 +201,7 @@ export const AssetListTable = memo(function AssetListTable({
         >
           <p className="text-lg font-semibold text-white">Varlık listesi yüklenemedi</p>
           <p className="mt-1 text-sm text-slate-200">{requestError}</p>
-          <p className="mt-3 text-xs text-slate-300">
-            Bu durum gerçek boş liste anlamına gelmez. Lütfen tekrar deneyin.
-          </p>
+          <p className="mt-3 text-xs text-slate-300">Bu durum listenin boş olduğu anlamına gelmez. Lütfen tekrar deneyin.</p>
         </div>
       ) : assets.length === 0 ? (
         <div className="mt-4 rounded-xl border border-dashed border-white/25 bg-white/[0.03] p-8 text-center">
@@ -221,13 +220,13 @@ export const AssetListTable = memo(function AssetListTable({
           ) : (
             <>
               <p className="text-lg font-semibold text-white">Henüz varlık eklenmedi</p>
-              <p className="mt-1 text-sm text-slate-300">İlk varlığınızı ekleyerek envanterinizi başlatın.</p>
+              <p className="mt-1 text-sm text-slate-300">İlk varlığınızı ekleyerek listenizi oluşturmaya başlayın.</p>
               <button
                 type="button"
                 onClick={onFocusCreateAsset}
                 className="mt-4 rounded-full bg-gradient-to-r from-sky-400 to-fuchsia-500 px-4 py-2 text-sm font-semibold text-white"
               >
-                Varlık Ekle
+                Yeni Varlık
               </button>
             </>
           )}
@@ -238,12 +237,13 @@ export const AssetListTable = memo(function AssetListTable({
             <thead>
               <tr className="border-b border-white/10 bg-white/5 text-slate-300">
                 <th className="px-3 py-2">Varlık</th>
+                <th className="px-3 py-2">Satın Alma Bedeli</th>
                 <th className="px-3 py-2">Garanti Durumu</th>
                 <th className="px-3 py-2">Yaklaşan Bakım</th>
                 <th className="px-3 py-2">Son Servis</th>
                 <th className="px-3 py-2">Belge Sayısı</th>
                 <th className="px-3 py-2">Toplam Maliyet</th>
-                <th className="px-3 py-2">Aksiyonlar</th>
+                <th className="px-3 py-2">İşlemler</th>
               </tr>
             </thead>
             <tbody>
@@ -284,6 +284,7 @@ export const AssetListTable = memo(function AssetListTable({
               </div>
 
               <dl className="mt-3 space-y-1 text-sm text-slate-200">
+                <Row label="Satın alma bedeli" value={formatOptionalCurrency(asset.purchase_price)} />
                 <Row label="Yaklaşan bakım" value={formatDate(asset.nextMaintenanceDate)} />
                 <Row label="Son servis" value={formatDate(asset.lastServiceDate)} />
                 <Row label="Belge sayısı" value={String(asset.documentCount)} />
@@ -359,7 +360,7 @@ const ActionButtons = memo(function ActionButtons({ asset, onStartEdit, onShowQr
         onClick={handleShowQr}
         className={`${actionButtonClass} border-violet-300/35 bg-violet-300/10 text-violet-100 hover:bg-violet-300/20`}
       >
-        QR
+        QR Göster
       </button>
       <AssetDeleteDialog
         className={`${actionButtonClass} border-red-300/35 bg-red-300/10 text-red-100 hover:bg-red-300/20`}

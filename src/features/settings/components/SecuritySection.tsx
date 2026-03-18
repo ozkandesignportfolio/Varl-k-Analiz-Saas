@@ -11,7 +11,7 @@ export function SecuritySection() {
         <h3 className="text-lg font-semibold text-white">Güvenlik</h3>
         <p className="mt-1 text-sm text-slate-300">Hesabınızın güvenliğini artırmak için şifre yönetimini kullanın.</p>
         <Button asChild className="mt-4 bg-white/10 text-white hover:bg-white/15">
-          <Link href="/reset-password">Şifre değiştir</Link>
+          <Link href="/reset-password">Şifre Değiştir</Link>
         </Button>
       </article>
 

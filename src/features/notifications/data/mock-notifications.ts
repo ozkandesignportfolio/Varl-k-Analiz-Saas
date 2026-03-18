@@ -6,9 +6,12 @@ export type NotificationRecord = {
   type: NotificationType;
   title: string;
   description: string;
+  detail?: string;
   createdAt: string;
   status: NotificationStatus;
   source: "automation" | "mock";
+  actionHref?: string;
+  actionLabel?: string;
 };
 
 const toIsoDaysAgo = (daysAgo: number) => {
@@ -21,47 +24,54 @@ export const mockNotifications: NotificationRecord[] = [
   {
     id: "mock-1",
     type: "Bakım",
-    title: "Kombi yıllık bakım zamanı yaklaşıyor",
-    description: "Salon Kombi için planlı bakım tarihine 7 gün kaldı.",
+    title: "Bakım zamanı yaklaşıyor",
+    description: "Salon Kombi varlığınız için planlı bakım tarihine 7 gün kaldı.",
     createdAt: toIsoDaysAgo(1),
     status: "Okunmadı",
     source: "mock",
+    actionHref: "/maintenance",
+    actionLabel: "Detaylara Bak",
   },
   {
     id: "mock-2",
     type: "Garanti",
-    title: "Buzdolabı garantisi yakında bitiyor",
-    description: "Arçelik 5786 model cihaz için garanti bitiş tarihine 30 gün kaldı.",
+    title: "Garanti bitiş tarihi yaklaşıyor",
+    description: "Arçelik 5786 model varlığınız için garanti bitiş tarihine 30 gün kaldı.",
     createdAt: toIsoDaysAgo(3),
     status: "Okunmadı",
     source: "mock",
+    actionHref: "/assets",
+    actionLabel: "Detaylara Bak",
   },
   {
     id: "mock-3",
     type: "Belge",
-    title: "Belge yükleme hatırlatması",
-    description: "Kombi servis raporu belgesi eksik görünüyor. Dosya yükleyerek kaydı tamamlayın.",
+    title: "Belgeyle ilgili bir işlem bekliyor",
+    description: "Kombi varlığınız için servis formu belgesi gözden geçirilmeyi bekliyor.",
     createdAt: toIsoDaysAgo(4),
     status: "Okundu",
     source: "mock",
+    actionHref: "/documents",
+    actionLabel: "Detaylara Bak",
   },
   {
     id: "mock-4",
     type: "Ödeme",
-    title: "Abonelik ödemesi bugün",
-    description: "Doğalgaz Plus aboneliğinin tahsilat tarihi bugün. Gecikme yaşamamak için kontrol edin.",
+    title: "Ödeme tarihi yaklaşıyor",
+    description: "Doğalgaz Plus aboneliğiniz için tahsilat tarihi bugün.",
     createdAt: toIsoDaysAgo(2),
     status: "Okunmadı",
     source: "mock",
+    actionHref: "/billing",
+    actionLabel: "Detaylara Bak",
   },
   {
     id: "mock-5",
     type: "Sistem",
-    title: "Otomasyon kuralı güncellendi",
-    description: "Bakım tetikleyicisi başarıyla güncellendi. Yeni eşik ayarları aktif edildi.",
+    title: "Sistem bildirimi",
+    description: "Takip etmeniz gereken yeni bir gelişme var.",
     createdAt: toIsoDaysAgo(7),
     status: "Okundu",
     source: "mock",
   },
 ];
-

@@ -162,5 +162,3 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
-
-

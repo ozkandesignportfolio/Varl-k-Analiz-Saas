@@ -21,9 +21,8 @@ import {
 import { NotificationsList } from "@/features/notifications/components/NotificationsList";
 import {
   type NotificationRecord,
-  type NotificationStatus,
-  type NotificationType,
 } from "@/features/notifications/data/mock-notifications";
+import { mapAutomationEventToNotification } from "@/features/notifications/lib/notification-presenter";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type SupabaseError = {
@@ -32,6 +31,7 @@ type SupabaseError = {
 
 type AutomationEventRow = {
   id: string;
+  asset_id: string | null;
   trigger_type: string;
   payload: Record<string, unknown> | null;
   status: string;
@@ -70,139 +70,15 @@ type LooseSupabaseAutomationClient = {
   };
 };
 
-const toSafeString = (value: unknown, fallback = "") => {
-  if (typeof value === "string") {
-    const normalized = value.trim();
-    if (normalized.length > 0) {
-      return normalized;
-    }
-  }
-
-  return fallback;
-};
-
-const toSafeStringArray = (value: unknown) => {
-  if (!Array.isArray(value)) {
-    return [] as string[];
-  }
-
-  return value
-    .filter((item): item is string => typeof item === "string")
-    .map((item) => item.trim())
-    .filter(Boolean);
-};
-
-const resolveTypeFromEvent = (triggerType: string, payload: Record<string, unknown> | null): NotificationType => {
-  if (triggerType === "maintenance_7_days") {
-    return "Bakım";
-  }
-
-  if (triggerType === "warranty_30_days") {
-    return "Garanti";
-  }
-
-  if (triggerType === "subscription_due" || triggerType === "expense_threshold") {
-    return "Ödeme";
-  }
-
-  if (toSafeString(payload?.document_type).length > 0) {
-    return "Belge";
-  }
-
-  return "Sistem";
-};
-
-const resolveTitleAndDescription = (
-  triggerType: string,
-  payload: Record<string, unknown> | null,
-): { title: string; description: string } => {
-  const assetName = toSafeString(payload?.asset_name, "Varlık");
-  const notificationKind = toSafeString(payload?.notification_kind);
-  const ruleTitle = toSafeString(payload?.rule_title, "Bakım kuralı");
-  const warrantyDate = toSafeString(payload?.warranty_end_date, "-");
-  const nextDueDate = toSafeString(payload?.next_due_date, "-");
-  const serviceType = toSafeString(payload?.service_type, "Servis");
-  const subscriptionName = toSafeString(payload?.subscription_name, "Abonelik");
-  const providerName = toSafeString(payload?.provider_name, "Sağlayıcı");
-  const nextBillingDate = toSafeString(payload?.next_billing_date, "-");
-
-  if (notificationKind === "asset_created") {
-    return {
-      title: "Yeni varlık oluşturuldu",
-      description: `${assetName} varlığı sisteme eklendi.`,
-    };
-  }
-
-  if (notificationKind === "asset_updated") {
-    const changedFields = toSafeStringArray(payload?.changed_fields);
-    const changedFieldsText = changedFields.length > 0 ? ` Güncellenen alanlar: ${changedFields.join(", ")}.` : "";
-    return {
-      title: "Varlık güncellendi",
-      description: `${assetName} varlığı güncellendi.${changedFieldsText}`,
-    };
-  }
-
-  if (triggerType === "warranty_30_days") {
-    return {
-      title: "Garanti bitişi yaklaşıyor",
-      description: `${assetName} için garanti bitiş tarihi: ${warrantyDate}.`,
-    };
-  }
-
-  if (triggerType === "maintenance_7_days") {
-    return {
-      title: "Bakım hatırlatması",
-      description: `${assetName} için ${ruleTitle} planının hedef tarihi ${nextDueDate}.`,
-    };
-  }
-
-  if (triggerType === "subscription_due") {
-    return {
-      title: "Ödeme günü geldi",
-      description: `${providerName} / ${subscriptionName} için tahsilat tarihi ${nextBillingDate}.`,
-    };
-  }
-
-  if (triggerType === "service_log_created") {
-    return {
-      title: "Yeni servis kaydı",
-      description: `${assetName} için ${serviceType} kaydı başarıyla oluşturuldu.`,
-    };
-  }
-
-  if (triggerType === "expense_threshold") {
-    return {
-      title: "Yüksek tutarlı gider uyarısı",
-      description: "Tanımlı eşik üzerinde bir gider kaydı algılandı. Kontrol etmeniz önerilir.",
-    };
-  }
-
-  return {
-    title: "Sistem bildirimi",
-    description: "Otomasyon akışında yeni bir olay işlendi.",
-  };
-};
-
-const resolveReadStatusFromEvent = (status: string): NotificationStatus => {
-  if (status === "completed") {
-    return "Okundu";
-  }
-
-  return "Okunmadı";
-};
-
 const toNotificationRecord = (row: AutomationEventRow): NotificationRecord => {
-  const type = resolveTypeFromEvent(row.trigger_type, row.payload);
-  const text = resolveTitleAndDescription(row.trigger_type, row.payload);
-  return {
+  return mapAutomationEventToNotification({
     id: row.id,
-    type,
-    title: text.title,
-    description: text.description,
+    assetId: row.asset_id,
+    triggerType: row.trigger_type,
+    payload: row.payload,
+    status: row.status,
     createdAt: row.created_at,
-    status: resolveReadStatusFromEvent(row.status),
-    source: "automation",
-  };
+  });
 };
 
 export function NotificationsPageContainer() {
@@ -242,7 +118,7 @@ export function NotificationsPageContainer() {
 
       const response = await automationClient
         .from("automation_events")
-        .select("id,trigger_type,payload,status,created_at")
+        .select("id,asset_id,trigger_type,payload,status,created_at")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(200);
@@ -290,7 +166,7 @@ export function NotificationsPageContainer() {
         return true;
       }
 
-      const searchable = `${item.title} ${item.description}`.toLocaleLowerCase("tr-TR");
+      const searchable = `${item.title} ${item.description} ${item.detail ?? ""}`.toLocaleLowerCase("tr-TR");
       return searchable.includes(normalizedQuery);
     });
   }, [dateRange, dateRangeAnchorMs, notifications, query, status, type]);
@@ -376,7 +252,7 @@ export function NotificationsPageContainer() {
           <div>
             <h2 className="text-2xl font-semibold tracking-tight text-white">Bildirimler</h2>
             <p className="mt-2 max-w-2xl text-sm text-slate-300">
-              Bakım, garanti, belge ve ödeme hatırlatmalarını buradan takip edin.
+              Bakım, garanti, belge ve ödeme hatırlatmalarını buradan sade ve anlaşılır bir şekilde takip edin.
             </p>
           </div>
           <div className="flex w-full flex-wrap gap-2 md:w-auto md:justify-end">
@@ -388,7 +264,7 @@ export function NotificationsPageContainer() {
               className="border-white/20 bg-white/5 text-slate-100 hover:bg-white/10"
             >
               <CheckCheck className="h-4 w-4" />
-              Tümünü Okundu İşaretle
+              Tümünü okundu olarak işaretle
             </Button>
             <Button
               type="button"
@@ -432,7 +308,7 @@ export function NotificationsPageContainer() {
           <DialogHeader>
             <DialogTitle>Filtreler</DialogTitle>
             <DialogDescription className="text-slate-300">
-              Tür, durum ve tarih filtresiyle listeni hızlıca daralt.
+              Tür, durum ve tarih filtresiyle listenizi hızlıca daraltın.
             </DialogDescription>
           </DialogHeader>
           <NotificationsFilters

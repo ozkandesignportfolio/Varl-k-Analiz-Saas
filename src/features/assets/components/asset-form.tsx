@@ -1,6 +1,11 @@
-import type { FormEventHandler, ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEventHandler, type ReactNode } from "react";
+import { AssetFormSelect } from "@/features/assets/components/asset-form-select";
 import type { AssetDashboardRow } from "@/features/assets/components/assets-view-types";
-import { FALLBACK_CATEGORY_OPTIONS } from "@/features/assets/lib/assets-actions-utils";
+import {
+  CUSTOM_CATEGORY_LABEL,
+  CUSTOM_CATEGORY_VALUE,
+  FALLBACK_CATEGORY_OPTIONS,
+} from "@/features/assets/lib/assets-actions-utils";
 
 export type CreateAssetFormDefaults = {
   name: string;
@@ -41,9 +46,6 @@ type AssetFormEditProps = AssetFormBaseProps & {
 
 export type AssetFormProps = AssetFormCreateProps | AssetFormEditProps;
 
-const selectClassName =
-  "w-full rounded-xl border border-white/15 bg-slate-950/70 px-4 py-2.5 text-sm text-slate-100 outline-none transition focus:border-sky-400";
-
 export function AssetForm(props: AssetFormProps) {
   const values =
     props.mode === "create"
@@ -59,14 +61,41 @@ export function AssetForm(props: AssetFormProps) {
           warrantyEndDate: props.asset.warranty_end_date ?? "",
         };
   const currentCategory = values.category.trim();
-  const categoryOptions = [
-    ...new Set(
-      [...FALLBACK_CATEGORY_OPTIONS, ...props.categoryOptions]
-        .map((option) => option.trim())
-        .filter(Boolean)
-        .concat(currentCategory ? [currentCategory] : []),
-    ),
-  ];
+  const categoryOptions = useMemo(
+    () => [
+      ...new Set(
+        [...FALLBACK_CATEGORY_OPTIONS, ...props.categoryOptions]
+          .map((option) => option.trim())
+          .filter(Boolean)
+          .concat(currentCategory ? [currentCategory] : []),
+      ),
+    ],
+    [currentCategory, props.categoryOptions],
+  );
+  const hasPresetCategory = currentCategory ? categoryOptions.includes(currentCategory) : false;
+  const [selectedCategory, setSelectedCategory] = useState(
+    hasPresetCategory ? currentCategory || categoryOptions[0] || FALLBACK_CATEGORY_OPTIONS[0] : CUSTOM_CATEGORY_VALUE,
+  );
+  const [customCategory, setCustomCategory] = useState(hasPresetCategory ? "" : currentCategory);
+  const categoryLabelId = `${props.formId ?? props.mode}-category-label`;
+  const categorySelectOptions = useMemo(
+    () => [
+      ...categoryOptions.map((option) => ({ label: option, value: option })),
+      { label: CUSTOM_CATEGORY_LABEL, value: CUSTOM_CATEGORY_VALUE },
+    ],
+    [categoryOptions],
+  );
+
+  useEffect(() => {
+    const nextHasPresetCategory = currentCategory ? categoryOptions.includes(currentCategory) : false;
+    setSelectedCategory(
+      nextHasPresetCategory
+        ? currentCategory || categoryOptions[0] || FALLBACK_CATEGORY_OPTIONS[0]
+        : CUSTOM_CATEGORY_VALUE,
+    );
+    setCustomCategory(nextHasPresetCategory ? "" : currentCategory);
+  }, [categoryOptions, currentCategory]);
+
   const footer = props.footer ?? (
     <div className="flex justify-end">
       <button
@@ -89,7 +118,7 @@ export function AssetForm(props: AssetFormProps) {
     >
       <div className="grid gap-4 md:grid-cols-2">
         <label className="block">
-          <span className="mb-1.5 block text-sm text-slate-300">Varlik Adi</span>
+          <span className="mb-1.5 block text-sm text-slate-300">Varlık Adı</span>
           <input
             name="name"
             required
@@ -100,21 +129,32 @@ export function AssetForm(props: AssetFormProps) {
         </label>
 
         <label className="block">
-          <span className="mb-1.5 block text-sm text-slate-300">Kategori</span>
-          <select
-            name="category"
-            required
-            defaultValue={values.category || "Elektronik"}
-            className={selectClassName}
-            data-testid={props.mode === "create" ? "asset-category-select" : undefined}
-          >
-            {categoryOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+          <span id={categoryLabelId} className="mb-1.5 block text-sm text-slate-300">
+            Kategori
+          </span>
+          <input type="hidden" name="category" value={selectedCategory} required readOnly />
+          <AssetFormSelect
+            value={selectedCategory}
+            onValueChange={setSelectedCategory}
+            options={categorySelectOptions}
+            ariaLabelledBy={categoryLabelId}
+            dataTestId={props.mode === "create" ? "asset-category-select" : undefined}
+          />
         </label>
+
+        {selectedCategory === CUSTOM_CATEGORY_VALUE ? (
+          <label className="block">
+            <span className="mb-1.5 block text-sm text-slate-300">Özel kategori</span>
+            <input
+              name="customCategory"
+              required
+              value={customCategory}
+              onChange={(event) => setCustomCategory(event.target.value)}
+              placeholder="Örn. Kamera sistemi"
+              className={props.inputClassName}
+            />
+          </label>
+        ) : null}
 
         <label className="block">
           <span className="mb-1.5 block text-sm text-slate-300">Marka</span>
@@ -137,12 +177,12 @@ export function AssetForm(props: AssetFormProps) {
         </label>
 
         <label className="block">
-          <span className="mb-1.5 block text-sm text-slate-300">Seri Numarasi</span>
+          <span className="mb-1.5 block text-sm text-slate-300">Seri Numarası</span>
           <input name="serialNumber" defaultValue={values.serialNumber} className={props.inputClassName} />
         </label>
 
         <label className="block">
-          <span className="mb-1.5 block text-sm text-slate-300">Satin Alma Fiyati</span>
+          <span className="mb-1.5 block text-sm text-slate-300">Satın Alma Bedeli</span>
           <input
             name="purchasePrice"
             type="number"
@@ -154,12 +194,12 @@ export function AssetForm(props: AssetFormProps) {
         </label>
 
         <label className="block">
-          <span className="mb-1.5 block text-sm text-slate-300">Satin Alma Tarihi</span>
+          <span className="mb-1.5 block text-sm text-slate-300">Satın Alma Tarihi</span>
           <input name="purchaseDate" type="date" defaultValue={values.purchaseDate} className={props.inputClassName} />
         </label>
 
         <label className="block">
-          <span className="mb-1.5 block text-sm text-slate-300">Garanti Bitis Tarihi</span>
+          <span className="mb-1.5 block text-sm text-slate-300">Garanti Bitiş Tarihi</span>
           <input
             name="warrantyEndDate"
             type="date"

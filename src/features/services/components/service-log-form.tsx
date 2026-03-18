@@ -97,7 +97,7 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
               </option>
               {activeRulesForSelectedAsset.map((rule) => (
                 <option key={rule.id} value={rule.id} className="bg-slate-900">
-                  {rule.title} (due: {rule.next_due_date})
+                  {rule.title} (hedef tarih: {rule.next_due_date})
                 </option>
               ))}
             </select>
@@ -246,7 +246,7 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
             </option>
             {activeRulesForSelectedAsset.map((rule) => (
               <option key={rule.id} value={rule.id} className="bg-slate-900">
-                {rule.title} (due: {rule.next_due_date})
+                {rule.title} (hedef tarih: {rule.next_due_date})
               </option>
             ))}
           </select>
@@ -315,4 +315,3 @@ export function ServiceLogForm(props: ServiceLogFormProps) {
     </section>
   );
 }
-

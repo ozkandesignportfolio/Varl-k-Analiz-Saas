@@ -15,7 +15,7 @@
   --auth-shadow: 0 16px 34px rgb(5 10 24 / 52%);
   --auth-shadow-soft: 0 10px 22px rgb(5 10 24 / 42%);
   --auth-shadow-glow: 0 0 34px rgb(16 239 181 / 12%);
-  --auth-sidebar-width: 16rem;
+  --auth-sidebar-width: 16.5rem;
   background:
     radial-gradient(circle at 14% 6%, rgb(16 239 181 / 14%), transparent 34%),
     radial-gradient(circle at 86% 4%, rgb(44 247 255 / 10%), transparent 32%),

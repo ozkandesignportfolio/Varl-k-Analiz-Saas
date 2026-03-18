@@ -51,7 +51,7 @@ export const AssetsContent = memo(function AssetsContent({
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="assets-summary">
         <SummaryItem label="Toplam Varlık" value={String(totalAssetCount)} />
         <SummaryItem label="Yaklaşan Bakım" value={String(summary.upcomingCount)} />
-        <SummaryItem label="Riskli Garanti" value={String(summary.expiringWarrantyCount)} />
+        <SummaryItem label="Garanti Takibi" value={String(summary.expiringWarrantyCount)} />
         <SummaryItem label="Ortalama Skor" value={`${summary.avgScore}`} accent={summary.overdueCount > 0 ? "warn" : "ok"} />
       </section>
 

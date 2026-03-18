@@ -10,13 +10,21 @@ export type ProfileFormValues = {
 type ProfileFormProps = {
   values: ProfileFormValues;
   onChange: (nextValues: ProfileFormValues) => void;
+  onSave: () => void;
+  isSaving?: boolean;
   isSaveDisabled?: boolean;
 };
 
 const INPUT_CLASS_NAME =
   "w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-400 focus:border-sky-300";
 
-export function ProfileForm({ values, onChange, isSaveDisabled = true }: ProfileFormProps) {
+export function ProfileForm({
+  values,
+  onChange,
+  onSave,
+  isSaving = false,
+  isSaveDisabled = true,
+}: ProfileFormProps) {
   return (
     <section className="premium-card border-white/10 bg-white/[0.02] p-5">
       <h3 className="text-lg font-semibold text-white">Profil</h3>
@@ -50,12 +58,13 @@ export function ProfileForm({ values, onChange, isSaveDisabled = true }: Profile
       <div className="mt-5 flex items-center gap-3">
         <Button
           type="button"
+          onClick={onSave}
           disabled={isSaveDisabled}
           className="bg-white/10 text-white hover:bg-white/15 disabled:bg-white/8"
         >
-          Kaydet
+          {isSaving ? "Kaydediliyor..." : "Kaydet"}
         </Button>
-        {isSaveDisabled ? <p className="text-xs text-slate-400">Profil kaydetme adımı MVP’de pasif.</p> : null}
+        {isSaving ? <p className="text-xs text-sky-200">Profil bilgileriniz güncelleniyor.</p> : null}
       </div>
     </section>
   );

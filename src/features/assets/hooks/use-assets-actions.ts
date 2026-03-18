@@ -30,6 +30,7 @@ import { ASSET_MEDIA_BUCKET } from "@/lib/assets/media-limits";
 type UseAssetsActionsArgs = {
   supabase: SupabaseClient;
   userId: string;
+  categories: string[];
   assetLimit: number | null;
   totalAssetCount: number;
   isPremiumMediaEnabled: boolean;
@@ -54,6 +55,7 @@ type UseAssetsActionsArgs = {
 export function useAssetsActions({
   supabase,
   userId,
+  categories,
   assetLimit,
   totalAssetCount,
   isPremiumMediaEnabled,
@@ -86,7 +88,10 @@ export function useAssetsActions({
   const [isEditMediaLoading, setIsEditMediaLoading] = useState(false);
   const [removingEditMediaId, setRemovingEditMediaId] = useState<string | null>(null);
 
-  const categoryOptions = useMemo(() => FALLBACK_CATEGORY_OPTIONS, []);
+  const categoryOptions = useMemo(
+    () => [...new Set([...FALLBACK_CATEGORY_OPTIONS, ...categories].map((option) => option.trim()).filter(Boolean))],
+    [categories],
+  );
   const mediaSummary = useMemo(() => summarizeMediaSelection(createMediaSelection), [createMediaSelection]);
   const editMediaSummary = useMemo(() => summarizeMediaSelection(editMediaSelection), [editMediaSelection]);
 
@@ -135,7 +140,7 @@ export function useAssetsActions({
 
       const payload = (await response.json().catch(() => null)) as { error?: string } | null;
       if (!response.ok) {
-        return payload?.error ?? "Medya yukleme tamamlanamadi.";
+        return payload?.error ?? "Medya yükleme tamamlanamadı.";
       }
 
       return null;
@@ -188,19 +193,19 @@ export function useAssetsActions({
       setMediaErrorMessage("");
 
       if (!userId) {
-        setFeedback("Oturum bulunamadi. Lutfen tekrar giris yapin.");
+        setFeedback("Oturum bulunamadı. Lütfen tekrar giriş yapın.");
         return;
       }
 
       if (assetLimit !== null && totalAssetCount >= assetLimit) {
         setIsQuotaModalOpen(true);
-        setFeedback("Varlik limiti doldu. Yeni kayit icin planinizi yukseltin.");
+        setFeedback("Varlık limiti doldu. Yeni kayıt için planınızı yükseltin.");
         return;
       }
 
       const payload = toPayloadFromForm(new FormData(event.currentTarget));
       if (!payload.name || !payload.category) {
-        setFeedback("Varlik adi ve kategori zorunludur.");
+        setFeedback("Varlık adı ve kategori zorunludur.");
         return;
       }
 
@@ -216,7 +221,7 @@ export function useAssetsActions({
 
         const body = (await response.json().catch(() => null)) as { id?: string; error?: string } | null;
         if (!response.ok || !body?.id) {
-          const errorMessage = body?.error ?? "Varlik kaydi olusturulamadi.";
+          const errorMessage = body?.error ?? "Varlık kaydı oluşturulamadı.";
           if (response.status === 403) {
             setIsQuotaModalOpen(true);
           }
@@ -236,7 +241,7 @@ export function useAssetsActions({
         onAuditRefresh();
         setFeedback(`${payload.name} eklendi.`);
       } catch {
-        setFeedback("Varlik kaydi olusturulamadi.");
+        setFeedback("Varlık kaydı oluşturulamadı.");
       } finally {
         setIsSaving(false);
       }
@@ -282,7 +287,7 @@ export function useAssetsActions({
 
       const payload = toPayloadFromForm(new FormData(event.currentTarget));
       if (!payload.name || !payload.category) {
-        setFeedback("Varlik adi ve kategori zorunludur.");
+        setFeedback("Varlık adı ve kategori zorunludur.");
         return;
       }
 
@@ -301,7 +306,7 @@ export function useAssetsActions({
 
         const body = (await response.json().catch(() => null)) as { id?: string; error?: string } | null;
         if (!response.ok || !body?.id) {
-          setFeedback(body?.error ?? "Varlik kaydi guncellenemedi.");
+          setFeedback(body?.error ?? "Varlık kaydı güncellenemedi.");
           return;
         }
 
@@ -312,10 +317,10 @@ export function useAssetsActions({
 
         await refreshAssetsView();
         onAuditRefresh();
-        setFeedback(`${payload.name} guncellendi.`);
+        setFeedback(`${payload.name} güncellendi.`);
         onCancelEdit();
       } catch {
-        setFeedback("Varlik kaydi guncellenemedi.");
+        setFeedback("Varlık kaydı güncellenemedi.");
       } finally {
         setIsUpdating(false);
       }
@@ -345,7 +350,7 @@ export function useAssetsActions({
 
         const body = (await response.json().catch(() => null)) as { error?: string } | null;
         if (!response.ok) {
-          setFeedback(body?.error ?? "Varlik silinemedi.");
+          setFeedback(body?.error ?? "Varlık silinemedi.");
           return;
         }
 
@@ -371,7 +376,7 @@ export function useAssetsActions({
         onAuditRefresh();
         setFeedback(`${asset.name} silindi.`);
       } catch {
-        setFeedback("Varlik silinemedi.");
+        setFeedback("Varlık silinemedi.");
       }
     },
     [
@@ -393,7 +398,7 @@ export function useAssetsActions({
       const nextDefaults = parseQrDefaults(value);
       setCreateFormDefaults(nextDefaults);
       setCreateFormKey((current) => current + 1);
-      setFeedback("QR verisi forma aktarildi.");
+      setFeedback("QR bilgileri forma aktarıldı.");
     },
     [setFeedback],
   );

@@ -34,7 +34,23 @@ export type AssetMediaRow = {
 export const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
 
-export const FALLBACK_CATEGORY_OPTIONS = ["Elektronik", "Mobilya", "Arac", "Ofis", "Diger"];
+export const CUSTOM_CATEGORY_VALUE = "__custom__";
+export const CUSTOM_CATEGORY_LABEL = "Özel kategori ekle";
+
+export const FALLBACK_CATEGORY_OPTIONS = [
+  "Bilgisayar",
+  "Telefon",
+  "Tablet",
+  "Yazıcı",
+  "Ağ Ekipmanı",
+  "Ofis Ekipmanı",
+  "Ofis Mobilyası",
+  "Ev Eşyası",
+  "Beyaz Eşya",
+  "Elektronik",
+  "Yazılım Lisansı",
+  "Abonelik",
+];
 
 export const EMPTY_MEDIA_SELECTION: AssetMediaSelection = {
   images: [],
@@ -66,7 +82,13 @@ export const isMissingAssetMediaTableError = (message: string | undefined) => {
 
 export const toPayloadFromForm = (formData: FormData) => ({
   name: String(formData.get("name") ?? "").trim(),
-  category: String(formData.get("category") ?? "").trim(),
+  category: (() => {
+    const selectedCategory = String(formData.get("category") ?? "").trim();
+    if (selectedCategory === CUSTOM_CATEGORY_VALUE) {
+      return String(formData.get("customCategory") ?? "").trim();
+    }
+    return selectedCategory;
+  })(),
   serialNumber: String(formData.get("serialNumber") ?? "").trim(),
   brand: String(formData.get("brand") ?? "").trim(),
   model: String(formData.get("model") ?? "").trim(),
@@ -78,7 +100,7 @@ export const toPayloadFromForm = (formData: FormData) => ({
 export const summarizeMediaSelection = (selection: AssetMediaSelection) => {
   const parts: string[] = [];
   if (selection.images.length > 0) {
-    parts.push(`${selection.images.length} gorsel`);
+    parts.push(`${selection.images.length} görsel`);
   }
   if (selection.video) {
     parts.push("1 video");
@@ -86,12 +108,12 @@ export const summarizeMediaSelection = (selection: AssetMediaSelection) => {
   if (selection.audio) {
     parts.push("1 ses");
   }
-  return parts.length > 0 ? `${parts.join(", ")} secildi.` : "";
+  return parts.length > 0 ? `${parts.join(", ")} seçildi.` : "";
 };
 
 export const normalizeLabel = (storagePath: string, type: EditExistingMediaItem["type"]) => {
   const name = storagePath.split("/").filter(Boolean).pop();
-  return name ?? `${type} dosyasi`;
+  return name ?? `${type} dosyası`;
 };
 
 export const parseQrDefaults = (rawValue: string): AssetFormDefaults => {

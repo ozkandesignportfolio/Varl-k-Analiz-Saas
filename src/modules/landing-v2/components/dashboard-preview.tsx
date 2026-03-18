@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Bell, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useInView } from "@/modules/landing-v2/hooks/use-in-view";
 import {
@@ -24,6 +25,8 @@ export function DashboardPreview() {
 
   const ActiveView = viewByMenu[activeMenu];
   const rows = activeMenu === "dashboard" ? [] : rowDataByMenu[activeMenu];
+  const topbarTitle = activeMenu === "dashboard" ? activeItem.title : activeItem.label;
+  const topbarBreadcrumb = `Panel / ${activeItem.label}`;
 
   return (
     <section id="panel" className="relative isolate py-32" ref={ref}>
@@ -48,7 +51,7 @@ export function DashboardPreview() {
               className="auth-shell-theme flex h-[560px] max-h-[72vh] min-h-[500px] flex-col md:h-[640px] md:min-h-[560px] md:flex-row"
               style={previewThemeVars}
             >
-              <aside className="auth-shell-sidebar hidden w-[var(--auth-sidebar-width)] shrink-0 border-r border-[var(--auth-border)] p-4 md:flex md:flex-col">
+              <aside className="auth-shell-sidebar hidden w-[var(--auth-sidebar-width)] shrink-0 overflow-hidden p-4 md:flex md:flex-col">
                 <div className="mb-6 flex-none">
                   <div className="auth-shell-brand flex items-center gap-3 rounded-2xl border-[#2F4569] bg-[linear-gradient(145deg,rgba(10,17,40,0.92),rgba(9,18,34,0.82))] px-3 py-3 shadow-[0_18px_34px_rgba(2,8,20,0.34)]">
                     <span className="auth-brand-mark flex h-11 w-11 items-center justify-center rounded-2xl border-[#36547B] bg-[linear-gradient(160deg,rgba(16,239,181,0.16),rgba(44,247,255,0.18))] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_12px_22px_rgba(5,10,24,0.35)]">
@@ -70,55 +73,99 @@ export function DashboardPreview() {
                   </div>
                 </div>
 
-                <nav aria-label="Ana menü" className="auth-nav-list min-h-0 flex-1 overflow-y-auto pr-1 hide-scrollbar">
-                  {menuItems.map((item) => {
-                    const isActive = activeMenu === item.key;
-                    const Icon = item.icon;
+                <div className="relative mt-3 flex min-h-0 flex-1">
+                  <div className="hide-scrollbar flex-1 min-h-0 overflow-y-auto pb-2 pr-1 overscroll-contain">
+                    <nav aria-label="Ana menü" className="auth-nav-list">
+                      {menuItems.map((item) => {
+                        const isActive = activeMenu === item.key;
+                        const Icon = item.icon;
 
-                    return (
-                      <button
-                        key={item.key}
-                        type="button"
-                        onClick={() => setActiveMenu(item.key)}
-                        aria-current={isActive ? "page" : undefined}
-                        data-state={isActive ? "active" : "inactive"}
-                        className="auth-nav-item auth-focus-ring flex w-full items-center justify-between gap-3 rounded-lg px-3.5 py-2 text-sm"
-                      >
-                        <span className="relative z-10 flex min-w-0 flex-1 items-center gap-3">
-                          <Icon className="auth-nav-icon h-4 w-4" />
-                          <span className="truncate font-medium">{item.label}</span>
-                        </span>
-                        <span className="auth-nav-short-badge relative z-10">{item.badge}</span>
-                      </button>
-                    );
-                  })}
-                </nav>
+                        return (
+                          <button
+                            key={item.key}
+                            type="button"
+                            onClick={() => setActiveMenu(item.key)}
+                            aria-current={isActive ? "page" : undefined}
+                            data-state={isActive ? "active" : "inactive"}
+                            className="auth-nav-item auth-focus-ring flex w-full items-center justify-between gap-3 rounded-lg px-3.5 py-2 text-sm"
+                          >
+                            <span className="relative z-10 flex min-w-0 flex-1 items-center gap-3">
+                              <Icon className="auth-nav-icon h-4 w-4" />
+                              <span className="truncate font-medium">{item.label}</span>
+                            </span>
+                            <span className="auth-nav-meta relative z-10">
+                              <span className="auth-nav-short-badge">{item.badge}</span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </nav>
+                  </div>
+
+                  <div className="pointer-events-none absolute left-0 right-0 top-0 h-6 bg-gradient-to-b from-background/80 to-transparent" />
+                  <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-background/80 to-transparent" />
+                </div>
               </aside>
 
-              <div className="auth-shell-sidebar flex items-center gap-2 overflow-x-auto border-b border-[var(--auth-border)] px-4 py-3 md:hidden hide-scrollbar">
-                {menuItems.map((item) => {
-                  const isActive = activeMenu === item.key;
-
-                  return (
-                    <button
-                      key={item.key}
-                      type="button"
-                      onClick={() => setActiveMenu(item.key)}
-                      aria-current={isActive ? "page" : undefined}
-                      data-state={isActive ? "active" : "inactive"}
-                      className="auth-shell-chip auth-focus-ring inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs"
-                    >
-                      <span>{item.label}</span>
-                      <span className="auth-nav-short-badge">{item.badge}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
               <div className="flex min-h-0 flex-1 flex-col bg-[rgb(10_17_40_/_58%)]">
-                {activeMenu === "dashboard" ? null : (
-                  <header className="px-5 pt-5">
-                    <section className="auth-shell-card auth-shell-intro rounded-2xl p-4">
+                <header className="auth-shell-topbar h-16 shrink-0">
+                  <div className="auth-topbar-inner flex h-full items-center justify-between gap-3 px-4 sm:px-5">
+                    <div className="min-w-0">
+                      <p className="auth-topbar-breadcrumb truncate text-[11px]">{topbarBreadcrumb}</p>
+                      <h3 className="truncate text-sm font-semibold text-[var(--auth-foreground)] sm:text-base">
+                        {topbarTitle}
+                      </h3>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        aria-label="Bildirimler"
+                        className="auth-topbar-control auth-focus-ring relative inline-flex h-9 w-9 items-center justify-center rounded-lg"
+                      >
+                        <Bell className="h-4 w-4" />
+                        <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[var(--auth-primary)]" />
+                      </button>
+
+                      <span className="auth-topbar-separator" aria-hidden />
+
+                      <button
+                        type="button"
+                        aria-label="Kullanıcı menüsü"
+                        className="auth-topbar-control auth-focus-ring inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[var(--auth-foreground)]"
+                      >
+                        <span className="auth-topbar-avatar inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium">
+                          A
+                        </span>
+                        <ChevronDown className="h-3.5 w-3.5 text-[var(--auth-muted)]" />
+                      </button>
+                    </div>
+                  </div>
+                </header>
+
+                <main className="auth-shell-main flex min-h-0 flex-1 flex-col px-4 py-4 sm:px-5">
+                  <nav aria-label="Mobil menü" className="auth-mobile-nav mb-4 flex gap-2 overflow-x-auto pb-1 md:hidden">
+                    {menuItems.map((item) => {
+                      const isActive = activeMenu === item.key;
+
+                      return (
+                        <button
+                          key={item.key}
+                          type="button"
+                          onClick={() => setActiveMenu(item.key)}
+                          aria-current={isActive ? "page" : undefined}
+                          data-state={isActive ? "active" : "inactive"}
+                          className="auth-shell-chip auth-focus-ring inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs"
+                        >
+                          <span>{item.label}</span>
+                          <span className="auth-nav-short-badge">{item.badge}</span>
+                        </button>
+                      );
+                    })}
+                  </nav>
+
+                  {activeMenu === "dashboard" ? null : (
+                    <section className="auth-shell-card auth-shell-intro mb-5 rounded-2xl p-4">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div className="space-y-2">
                           <div className="flex flex-wrap items-center gap-2">
@@ -137,17 +184,14 @@ export function DashboardPreview() {
                         </span>
                       </div>
                     </section>
-                  </header>
-                )}
-
-                <div
-                  className={cn(
-                    "min-h-0 flex-1 overflow-y-auto px-5 hide-scrollbar",
-                    activeMenu === "dashboard" ? "py-5" : "pb-5 pt-4",
                   )}
-                >
-                  <ActiveView rows={rows} />
-                </div>
+
+                  <div className="auth-shell-content min-h-0 flex-1">
+                    <div className="hide-scrollbar min-h-0 flex-1 overflow-y-auto">
+                      <ActiveView rows={rows} menuItem={activeItem} />
+                    </div>
+                  </div>
+                </main>
               </div>
             </div>
           </div>

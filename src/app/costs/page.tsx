@@ -14,9 +14,19 @@ import {
   type PeriodFilter,
   type ServiceCostLog,
 } from "@/lib/charts";
+import { isBillingMissingTableError } from "@/lib/billing/schema-guard";
 import { getPlanConfigFromProfilePlan } from "@/lib/plans/profile-plan";
+import {
+  listByUser as listBillingInvoicesByUser,
+  type ListBillingInvoicesByUserRow,
+} from "@/lib/repos/billing-invoices-repo";
+import {
+  listByUser as listBillingSubscriptionsByUser,
+  type ListBillingSubscriptionsByUserRow,
+} from "@/lib/repos/billing-subscriptions-repo";
+import { listForDocumentsPage, type ListDocumentsForDocumentsPageRow } from "@/lib/repos/documents-repo";
 import { getCostAggregate, listForCosts, type ServiceLogCostAggregate } from "@/lib/repos/service-logs-repo";
-import { calculateRatioScore } from "@/lib/scoring/ratio-score";
+import { calculateScoreAnalysis } from "@/lib/scoring/score-analysis";
 import { createClient } from "@/lib/supabase/client";
 
 type ServiceRow = ServiceCostLog & {
@@ -25,12 +35,15 @@ type ServiceRow = ServiceCostLog & {
 
 type AssetRow = AssetCategory & {
   name: string;
+  purchase_price: number | null;
   warranty_end_date: string | null;
 };
 
 type MaintenanceRuleRow = {
   id: string;
-  next_due_date: string;
+  asset_id: string;
+  next_due_date: string | null;
+  last_service_date: string | null;
   is_active: boolean;
 };
 
@@ -41,6 +54,10 @@ type ExpenseValueRow = {
   note: string | null;
   created_at: string;
 };
+
+type DocumentRow = ListDocumentsForDocumentsPageRow;
+type BillingSubscriptionRow = ListBillingSubscriptionsByUserRow;
+type BillingInvoiceRow = ListBillingInvoicesByUserRow;
 
 type DateRange = {
   sinceDate?: string;
@@ -85,16 +102,6 @@ const toDateInput = (date: Date) => {
   const month = String(date.getUTCMonth() + 1).padStart(2, "0");
   const day = String(date.getUTCDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-};
-
-const parseDateOnly = (value: string | null | undefined) => {
-  if (!value) return null;
-  const [yearRaw, monthRaw, dayRaw] = value.split("-");
-  const year = Number(yearRaw);
-  const month = Number(monthRaw);
-  const day = Number(dayRaw);
-  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null;
-  return new Date(year, month - 1, day);
 };
 
 const getPeriodRange = (period: PeriodFilter, now: Date): DateRange => {
@@ -151,7 +158,10 @@ export default function CostsPage() {
   const [logs, setLogs] = useState<ServiceRow[]>([]);
   const [assets, setAssets] = useState<AssetRow[]>([]);
   const [maintenanceRules, setMaintenanceRules] = useState<MaintenanceRuleRow[]>([]);
+  const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [expenseValues, setExpenseValues] = useState<ExpenseValueRow[]>([]);
+  const [subscriptions, setSubscriptions] = useState<BillingSubscriptionRow[]>([]);
+  const [invoices, setInvoices] = useState<BillingInvoiceRow[]>([]);
   const [period, setPeriod] = useState<PeriodFilter>("12m");
   const [periodAggregate, setPeriodAggregate] = useState<ServiceLogCostAggregate>(emptyCostAggregate);
   const [currentYearAggregate, setCurrentYearAggregate] = useState<ServiceLogCostAggregate>(emptyCostAggregate);
@@ -165,7 +175,10 @@ export default function CostsPage() {
     setLogs((prev) => (prev.length === 0 ? prev : []));
     setAssets((prev) => (prev.length === 0 ? prev : []));
     setMaintenanceRules((prev) => (prev.length === 0 ? prev : []));
+    setDocuments((prev) => (prev.length === 0 ? prev : []));
     setExpenseValues((prev) => (prev.length === 0 ? prev : []));
+    setSubscriptions((prev) => (prev.length === 0 ? prev : []));
+    setInvoices((prev) => (prev.length === 0 ? prev : []));
     setPeriodAggregate((prev) => (isSameCostAggregate(prev, emptyCostAggregate) ? prev : emptyCostAggregate));
     setCurrentYearAggregate((prev) => (isSameCostAggregate(prev, emptyCostAggregate) ? prev : emptyCostAggregate));
     setTrailingTwelveAggregate((prev) =>
@@ -177,10 +190,23 @@ export default function CostsPage() {
     async (currentUserId: string) => {
       setActiveUserId((prev) => (prev === currentUserId ? prev : currentUserId));
 
-      const [logsRes, assetsRes, rulesRes, expensesRes, currentYearRes, trailingTwelveRes] = await Promise.all([
+      const [
+        logsRes,
+        assetsRes,
+        rulesRes,
+        documentsRes,
+        subscriptionsRes,
+        invoicesRes,
+        expensesRes,
+        currentYearRes,
+        trailingTwelveRes,
+      ] = await Promise.all([
         listForCosts(supabase, { userId: currentUserId }),
-        supabase.from("assets").select("id,name,category,warranty_end_date").eq("user_id", currentUserId),
-        supabase.from("maintenance_rules").select("id,next_due_date,is_active").eq("user_id", currentUserId),
+        supabase.from("assets").select("id,name,category,purchase_price,warranty_end_date").eq("user_id", currentUserId),
+        supabase.from("maintenance_rules").select("id,asset_id,next_due_date,last_service_date,is_active").eq("user_id", currentUserId),
+        listForDocumentsPage(supabase, { userId: currentUserId }),
+        listBillingSubscriptionsByUser(supabase, { userId: currentUserId }),
+        listBillingInvoicesByUser(supabase, { userId: currentUserId }),
         supabase.from("expenses").select("asset_id,amount,category,note,created_at").eq("user_id", currentUserId),
         getCostAggregate(supabase, { userId: currentUserId, ...getCurrentYearRange(now) }),
         getCostAggregate(supabase, { userId: currentUserId, ...getTrailingTwelveMonthRange(now) }),
@@ -189,16 +215,34 @@ export default function CostsPage() {
       if (logsRes.error) setFeedback(logsRes.error.message);
       if (assetsRes.error) setFeedback(assetsRes.error.message);
       if (rulesRes.error) setFeedback(rulesRes.error.message);
+      if (documentsRes.error) setFeedback(documentsRes.error.message);
       if (currentYearRes.error) setFeedback(currentYearRes.error.message);
       if (trailingTwelveRes.error) setFeedback(trailingTwelveRes.error.message);
       if (expensesRes.error && !isExpensesTableMissing(expensesRes.error)) {
         setFeedback(expensesRes.error.message);
       }
+      if (subscriptionsRes.error && !isBillingMissingTableError(subscriptionsRes.error, ["billing_subscriptions"])) {
+        setFeedback(subscriptionsRes.error.message);
+      }
+      if (invoicesRes.error && !isBillingMissingTableError(invoicesRes.error, ["billing_invoices"])) {
+        setFeedback(invoicesRes.error.message);
+      }
 
       setLogs((logsRes.data ?? []) as ServiceRow[]);
       setAssets((assetsRes.data ?? []) as AssetRow[]);
       setMaintenanceRules((rulesRes.data ?? []) as MaintenanceRuleRow[]);
+      setDocuments((documentsRes.data ?? []) as DocumentRow[]);
       setExpenseValues(isExpensesTableMissing(expensesRes.error) ? [] : ((expensesRes.data ?? []) as ExpenseValueRow[]));
+      setSubscriptions(
+        isBillingMissingTableError(subscriptionsRes.error, ["billing_subscriptions"])
+          ? []
+          : ((subscriptionsRes.data ?? []) as BillingSubscriptionRow[]),
+      );
+      setInvoices(
+        isBillingMissingTableError(invoicesRes.error, ["billing_invoices"])
+          ? []
+          : ((invoicesRes.data ?? []) as BillingInvoiceRow[]),
+      );
       const nextCurrentYearAggregate = (currentYearRes.data ?? emptyCostAggregate) as ServiceLogCostAggregate;
       const nextTrailingTwelveAggregate = (trailingTwelveRes.data ?? emptyCostAggregate) as ServiceLogCostAggregate;
       setCurrentYearAggregate((prev) =>
@@ -318,134 +362,130 @@ export default function CostsPage() {
     [categorySeries, maxCategoryCost],
   );
 
-  const ratioBreakdown = useMemo(() => {
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const activeRuleCount = maintenanceRules.filter((rule) => rule.is_active).length;
-    const overdueRuleCount = maintenanceRules.filter((rule) => {
-      if (!rule.is_active) return false;
-      const due = parseDateOnly(rule.next_due_date);
-      if (!due) return false;
-      return due < today;
-    }).length;
-
-    return calculateRatioScore({
-      assets: assets.map((asset) => ({ id: asset.id, name: asset.name })),
-      logs: filteredLogs.map((log) => ({ assetId: log.asset_id, cost: Number(log.cost ?? 0) })),
-      expenses: expenseValues.map((expense) => ({
-        assetId: expense.asset_id,
-        amount: Number(expense.amount ?? 0),
-        category: expense.category,
-        note: expense.note,
-      })),
-      rules: {
-        activeRuleCount,
-        overdueRuleCount,
-      },
-    });
-  }, [assets, expenseValues, filteredLogs, maintenanceRules, now]);
+  const scoreAnalysis = useMemo(
+    () =>
+      calculateScoreAnalysis({
+        assets: assets.map((asset) => ({
+          id: asset.id,
+          name: asset.name,
+          purchasePrice: Number(asset.purchase_price ?? 0),
+          warrantyEndDate: asset.warranty_end_date,
+        })),
+        maintenanceRules: maintenanceRules.map((rule) => ({
+          id: rule.id,
+          assetId: rule.asset_id,
+          isActive: rule.is_active,
+          nextDueDate: rule.next_due_date,
+          lastServiceDate: rule.last_service_date,
+        })),
+        serviceLogs: logs.map((log) => ({
+          assetId: log.asset_id,
+          cost: Number(log.cost ?? 0),
+        })),
+        documents: documents.map((document) => ({
+          assetId: document.asset_id,
+        })),
+        expenses: expenseValues.map((expense) => ({
+          assetId: expense.asset_id,
+          amount: Number(expense.amount ?? 0),
+          category: expense.category,
+          note: expense.note,
+        })),
+        subscriptions: subscriptions.map((subscription) => ({
+          id: subscription.id,
+          status: subscription.status,
+          nextBillingDate: subscription.next_billing_date,
+        })),
+        invoices: invoices.map((invoice) => ({
+          id: invoice.id,
+          status: invoice.status,
+          dueDate: invoice.due_date,
+        })),
+        now,
+      }),
+    [assets, documents, expenseValues, invoices, logs, maintenanceRules, now, subscriptions],
+  );
 
   const scoreToneClass =
-    ratioBreakdown.scoreLabel === "iyi"
+    scoreAnalysis.scoreLabel === "iyi"
       ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-100"
-      : ratioBreakdown.scoreLabel === "orta"
+      : scoreAnalysis.scoreLabel === "orta"
         ? "border-amber-300/30 bg-amber-300/10 text-amber-100"
         : "border-rose-300/30 bg-rose-300/10 text-rose-100";
 
   const scoreRows = useMemo(() => {
-    const maintenanceShare = ratioBreakdown.totalCost > 0 ? (ratioBreakdown.totalMaintenanceCost / ratioBreakdown.totalCost) * 100 : 0;
-    const expenseShare = ratioBreakdown.totalCost > 0 ? (ratioBreakdown.totalExpenseCost / ratioBreakdown.totalCost) * 100 : 0;
+    const barClassByKey: Record<string, string> = {
+      "asset-data": "bg-gradient-to-r from-indigo-400 to-cyan-400",
+      maintenance: "bg-gradient-to-r from-emerald-400 to-teal-500",
+      warranty: "bg-gradient-to-r from-sky-400 to-blue-500",
+      documents: "bg-gradient-to-r from-fuchsia-400 to-violet-500",
+      cost: "bg-gradient-to-r from-amber-400 to-orange-500",
+      billing: "bg-gradient-to-r from-pink-400 to-rose-500",
+    };
 
-    return [
-      {
-        key: "composite",
-        label: "Birleşik Skor",
-        score: toScore(ratioBreakdown.score),
-        barClass: "bg-gradient-to-r from-indigo-400 to-cyan-400",
-      },
-      {
-        key: "ratio",
-        label: "Fiyat / Maliyet Oranı",
-        score: toScore(ratioBreakdown.baseScore),
-        barClass: "bg-gradient-to-r from-sky-400 to-blue-500",
-      },
-      {
-        key: "maintenance-share",
-        label: "Bakım Maliyet Payı",
-        score: toScore(maintenanceShare),
-        barClass: "bg-gradient-to-r from-emerald-400 to-teal-500",
-      },
-      {
-        key: "expense-share",
-        label: "Harcama Maliyet Payı",
-        score: toScore(expenseShare),
-        barClass: "bg-gradient-to-r from-amber-400 to-orange-500",
-      },
-    ];
-  }, [ratioBreakdown.baseScore, ratioBreakdown.score, ratioBreakdown.totalCost, ratioBreakdown.totalExpenseCost, ratioBreakdown.totalMaintenanceCost]);
+    return scoreAnalysis.sections.map((section) => {
+      const isCostInsufficientData =
+        section.key === "cost" && !section.applicable && scoreAnalysis.costBreakdown.hasInsufficientData;
+
+      return {
+        key: section.key,
+        label: section.label,
+        score: toScore(section.score),
+        note: isCostInsufficientData
+          ? "Yeterli gerçek satın alma bedeli verisi olmadığı için bu bölüm şu an hesaplanamıyor."
+          : section.summary,
+        isApplicable: section.applicable,
+        valueLabel: isCostInsufficientData ? "Yetersiz veri" : section.applicable ? undefined : "Uygulanmıyor",
+        barClass: barClassByKey[section.key] ?? "bg-gradient-to-r from-slate-400 to-slate-300",
+      };
+    });
+  }, [scoreAnalysis.costBreakdown.hasInsufficientData, scoreAnalysis.sections]);
 
   const warrantyItems = useMemo(() => {
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const inThirtyDays = new Date(today);
-    inThirtyDays.setDate(today.getDate() + 30);
-
-    let active = 0;
-    let expiring = 0;
-    let expired = 0;
-    let unknown = 0;
-
-    for (const asset of assets) {
-      const warrantyEnd = parseDateOnly(asset.warranty_end_date);
-      if (!warrantyEnd) {
-        unknown += 1;
-        continue;
-      }
-      if (warrantyEnd < today) {
-        expired += 1;
-      } else if (warrantyEnd <= inThirtyDays) {
-        expiring += 1;
-      } else {
-        active += 1;
-      }
-    }
-
-    const total = Math.max(1, assets.length);
+    const total = Math.max(1, scoreAnalysis.assetMetrics.total);
     return [
       {
         key: "active",
         label: "Aktif garanti",
-        count: active,
-        score: toScore((active / total) * 100),
+        count: scoreAnalysis.warrantyMetrics.active,
+        score: toScore((scoreAnalysis.warrantyMetrics.active / total) * 100),
         barClass: "bg-gradient-to-r from-emerald-400 to-teal-400",
       },
       {
         key: "expiring",
         label: "Yakında bitecek",
-        count: expiring,
-        score: toScore((expiring / total) * 100),
+        count: scoreAnalysis.warrantyMetrics.expiring,
+        score: toScore((scoreAnalysis.warrantyMetrics.expiring / total) * 100),
         barClass: "bg-gradient-to-r from-amber-400 to-orange-400",
       },
       {
         key: "expired",
         label: "Süresi dolan",
-        count: expired,
-        score: toScore((expired / total) * 100),
+        count: scoreAnalysis.warrantyMetrics.expired,
+        score: toScore((scoreAnalysis.warrantyMetrics.expired / total) * 100),
         barClass: "bg-gradient-to-r from-rose-400 to-red-400",
       },
       {
         key: "unknown",
         label: "Tarihi girilmemiş",
-        count: unknown,
-        score: toScore((unknown / total) * 100),
+        count: scoreAnalysis.warrantyMetrics.unknown,
+        score: toScore((scoreAnalysis.warrantyMetrics.unknown / total) * 100),
         barClass: "bg-gradient-to-r from-slate-400 to-slate-300",
       },
     ];
-  }, [assets, now]);
+  }, [
+    scoreAnalysis.assetMetrics.total,
+    scoreAnalysis.warrantyMetrics.active,
+    scoreAnalysis.warrantyMetrics.expired,
+    scoreAnalysis.warrantyMetrics.expiring,
+    scoreAnalysis.warrantyMetrics.unknown,
+  ]);
 
   return (
     <AppShell
       badge="Skor Analizi"
       title="Maliyet ve Skor"
-      subtitle="Skor, varlık fiyatı / toplam maliyet (bakım + harcama) oranına göre hesaplanır."
+      subtitle="Genel skor, mevcut varlık, bakım, garanti, belge, maliyet ve varsa fatura kayıtlarından; yalnızca yeterli veri olan alanlar kullanılarak hesaplanır."
     >
       {feedback ? (
         <p className="rounded-xl border border-rose-300/30 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">
@@ -457,7 +497,7 @@ export default function CostsPage() {
         <section className="premium-card p-5">
           <h2 className="text-lg font-semibold text-white">Gelişmiş Analitik Kilidi</h2>
           <p className="mt-2 text-sm text-slate-300">
-            Maliyet trendi, yıllık karşılaştırma ve oran bazlı skor analizi {planConfig.label} planında kapalı.
+            Maliyet trendi, yıllık karşılaştırma ve maliyet/değer skor analizi {planConfig.label} planında kapalı.
             Pro plan ile aktif olur.
           </p>
         </section>
@@ -467,7 +507,9 @@ export default function CostsPage() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-white">Dönem Filtresi</h2>
-                <p className="mt-1 text-sm text-slate-300">Özet metrikler ve skor seçili döneme göre güncellenir.</p>
+                <p className="mt-1 text-sm text-slate-300">
+                  Özet maliyetler seçili döneme göre güncellenir. Genel skor tüm mevcut kayıtlara göre ve yalnızca uygulanabilen alanlarla hesaplanır.
+                </p>
               </div>
               <label className="block w-full sm:w-64">
                 <span className="mb-1.5 block text-xs uppercase tracking-[0.16em] text-slate-400">Dönem</span>
@@ -490,10 +532,7 @@ export default function CostsPage() {
             <SummaryCard label={`${periodLabel} Toplamı`} value={currencyFormatter.format(periodAggregate.total_cost)} />
             <SummaryCard label="Bu Yıl Toplamı" value={currencyFormatter.format(currentYearAggregate.total_cost)} />
             <SummaryCard label="Son 12 Ay Toplamı" value={currencyFormatter.format(trailingTwelveAggregate.total_cost)} />
-            <SummaryCard
-              label={`${periodLabel} Oran Skoru (${periodAggregate.log_count} Kayıt)`}
-              value={`${ratioBreakdown.score}/100`}
-            />
+            <SummaryCard label="Genel Skor" value={`${scoreAnalysis.overallScore}/100`} />
           </section>
 
           <section className="grid gap-3 xl:grid-cols-2">
@@ -502,40 +541,85 @@ export default function CostsPage() {
                 <div>
                   <h2 className="text-lg font-semibold text-white">Skor Hesaplama Özeti</h2>
                   <p className="mt-1 text-sm text-slate-300">
-                    Analiz, varlık fiyatı / toplam maliyet oranını 0-100 bandına normalize eder.
+                    Genel skor, yalnızca hesaplanabilen boyutların ağırlıklı ortalamasıdır. Yeterli veri olmayan boyutlar skora dahil edilmez.
                   </p>
                 </div>
                 <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase ${scoreToneClass}`}>
-                  {ratioBreakdown.scoreLabel}
+                  {scoreAnalysis.scoreLabel}
                 </span>
               </div>
 
               <div className="mt-4 space-y-3">
                 {scoreRows.map((item) => (
-                  <ScoreProgressRow key={item.key} label={item.label} score={item.score} barClass={item.barClass} />
+                  <ScoreProgressRow
+                    key={item.key}
+                    label={item.label}
+                    score={item.score}
+                    barClass={item.barClass}
+                    note={item.note}
+                    valueLabel={item.valueLabel}
+                  />
                 ))}
               </div>
 
+              {scoreAnalysis.costBreakdown.hasInsufficientData ? (
+                <div className="mt-4 rounded-lg border border-amber-300/20 bg-amber-300/10 px-3 py-3 text-sm text-amber-50">
+                  Maliyet / değer bölümü, maliyeti olan varlıklar için yeterli satın alma bedeli bulunmadığında skora dahil edilmez.
+                </div>
+              ) : null}
+
               <div className="mt-5 grid gap-2 sm:grid-cols-2">
-                <SummaryInline label="Toplam Varlık Fiyatı" value={currencyFormatter.format(ratioBreakdown.totalAssetPrice)} />
-                <SummaryInline label="Toplam Bakım Harcaması" value={currencyFormatter.format(ratioBreakdown.totalMaintenanceCost)} />
-                <SummaryInline label="Toplam Harcama" value={currencyFormatter.format(ratioBreakdown.totalExpenseCost)} />
-                <SummaryInline label="Toplam Maliyet" value={currencyFormatter.format(ratioBreakdown.totalCost)} />
+                <SummaryInline label="Varlık Sayısı" value={String(scoreAnalysis.assetMetrics.total)} />
+                <SummaryInline
+                  label="Bedeli Girilen"
+                  value={`${scoreAnalysis.assetMetrics.withPurchasePrice}/${scoreAnalysis.assetMetrics.total}`}
+                />
+                <SummaryInline
+                  label="Belgeli Varlık"
+                  value={`${scoreAnalysis.documentMetrics.documentedAssets}/${scoreAnalysis.assetMetrics.total}`}
+                />
+                <SummaryInline
+                  label="Geciken Bakım / Fatura"
+                  value={`${scoreAnalysis.maintenanceMetrics.overdueRules} / ${scoreAnalysis.billingMetrics.overdueInvoices}`}
+                />
               </div>
 
               <p className="mt-4 text-xs text-slate-400">
-                Eşikler: 1 ve altı 20, 1-2 arası 40, 2-4 arası 60, 4-8 arası 80, 8 üstü 95.
-                {ratioBreakdown.hasNoCost ? " Toplam maliyet 0 olduğunda skor 100 kabul edilir." : ""}
+                {scoreAnalysis.emptyState?.description ??
+                  "Satın alma bedeli, garanti tarihi, belge, bakım kuralı ve fatura durumu gibi kayıtlar ilgili alt skorları doğrudan etkiler."}
               </p>
             </article>
 
             <article className="premium-card p-5">
-              <h2 className="text-lg font-semibold text-white">Garanti Durumu</h2>
-              <p className="mt-1 text-sm text-slate-300">Tüm alt kırılımlar 0-100 bar olarak gösterilir.</p>
+              <h2 className="text-lg font-semibold text-white">İyileştirme Önerileri</h2>
+              <p className="mt-1 text-sm text-slate-300">Skoru gerçek kayıtlara göre en hızlı iyileştirecek alanlar.</p>
 
-              <div className="mt-4 space-y-3">
+              {scoreAnalysis.emptyState ? (
+                <div className="mt-4 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-4">
+                  <p className="text-sm font-semibold text-white">{scoreAnalysis.emptyState.title}</p>
+                  <p className="mt-2 text-sm text-slate-300">{scoreAnalysis.emptyState.description}</p>
+                </div>
+              ) : scoreAnalysis.suggestions.length === 0 ? (
+                <p className="mt-4 text-sm text-slate-300">Kritik iyileştirme önerisi bulunmuyor. Kayıtlar şu an tutarlı görünüyor.</p>
+              ) : (
+                <div className="mt-4 space-y-3">
+                  {scoreAnalysis.suggestions.map((item) => (
+                    <div key={item.key} className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-3 text-sm text-slate-200">
+                      {item.text}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-5 space-y-3">
                 {warrantyItems.map((item) => (
-                  <ScoreProgressRow key={item.key} label={item.label} score={item.score} barClass={item.barClass} />
+                  <ScoreProgressRow
+                    key={item.key}
+                    label={item.label}
+                    score={item.score}
+                    barClass={item.barClass}
+                    note={`${item.count} varlık`}
+                  />
                 ))}
               </div>
             </article>
@@ -620,18 +704,31 @@ const CategoryDistributionCard = memo(function CategoryDistributionCard({
   );
 });
 
-function ScoreProgressRow({ label, score, barClass }: { label: string; score: number; barClass: string }) {
+function ScoreProgressRow({
+  label,
+  score,
+  barClass,
+  note,
+  valueLabel,
+}: {
+  label: string;
+  score: number;
+  barClass: string;
+  note?: string;
+  valueLabel?: string;
+}) {
   const width = score > 0 ? Math.max(4, score) : 0;
   return (
     <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
         <div className="min-w-0">
           <div className="mb-1 text-xs text-slate-300">{label}</div>
+          {note ? <div className="mb-2 text-[11px] text-slate-400">{note}</div> : null}
           <div className="relative z-10 h-2 w-full overflow-hidden rounded-full bg-white/15 ring-1 ring-white/10">
             <div className={`absolute inset-y-0 left-0 z-20 rounded-full ${barClass}`} style={{ width: `${width}%` }} />
           </div>
         </div>
-        <span className="text-xs font-semibold text-white">{score}/100</span>
+        <span className="text-xs font-semibold text-white">{valueLabel ?? `${score}/100`}</span>
       </div>
     </div>
   );

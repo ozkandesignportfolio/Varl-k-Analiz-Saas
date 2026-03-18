@@ -673,7 +673,7 @@ export function ServicesPageContainer() {
             />
           </label>
           <label className="text-sm text-slate-200">
-            <span className="mb-1.5 block text-sm text-slate-300">Biti? Tarihi</span>
+            <span className="mb-1.5 block text-sm text-slate-300">Bitiş Tarihi</span>
             <input
               type="date"
               value={filterEndDate}
@@ -798,5 +798,6 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
     </article>
   );
 }
+
 
 

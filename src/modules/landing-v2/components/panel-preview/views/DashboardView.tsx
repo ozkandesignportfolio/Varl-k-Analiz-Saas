@@ -9,6 +9,7 @@ import {
   FileText,
   Package,
   Plus,
+  Settings,
   ShieldAlert,
   Timer,
   TrendingUp,
@@ -17,6 +18,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
+import type { PanelPreviewViewProps } from "@/modules/landing-v2/components/panel-preview/types";
 
 type TrendDirection = "up" | "down" | "flat";
 type RowTone = "critical" | "warning" | "info";
@@ -55,77 +57,91 @@ const TREND_META: Record<
 const KPI_ITEMS = [
   {
     title: "Toplam Varlık",
-    value: "128",
-    trend: { direction: "up" as const, percentage: 12, sparkline: [18, 24, 28, 31, 36, 41] },
+    value: "148",
+    trend: { direction: "up" as const, percentage: 6, sparkline: [118, 122, 127, 133, 141, 148] },
     icon: Package,
-    hrefLabel: "Varlıkları aç",
+    hrefLabel: "Detaya git",
   },
   {
     title: "Aktif Bakım Kuralı",
-    value: "24",
-    trend: { direction: "up" as const, percentage: 8, sparkline: [10, 11, 13, 14, 16, 18] },
+    value: "26",
+    trend: { direction: "up" as const, percentage: 9, sparkline: [18, 19, 20, 22, 24, 26] },
     icon: Wrench,
-    hrefLabel: "Bakımı aç",
+    hrefLabel: "Detaya git",
   },
   {
     title: "Toplam Servis Maliyeti",
-    value: "₺48.250",
-    trend: { direction: "down" as const, percentage: 6, sparkline: [44, 40, 38, 35, 34, 31] },
+    value: "84.750 TL",
+    trend: { direction: "down" as const, percentage: 4, sparkline: [96, 94, 92, 90, 88, 84] },
     icon: TrendingUp,
-    hrefLabel: "Maliyetleri aç",
+    hrefLabel: "Detaya git",
   },
   {
     title: "Belge Sayısı",
-    value: "312",
-    trend: { direction: "up" as const, percentage: 19, sparkline: [62, 70, 76, 88, 97, 108] },
+    value: "412",
+    trend: { direction: "up" as const, percentage: 11, sparkline: [352, 360, 372, 384, 398, 412] },
     icon: FileText,
-    hrefLabel: "Belgeleri aç",
+    hrefLabel: "Detaya git",
   },
 ];
 
 const PRIORITY_ROWS = [
   {
     title: "Klima B3 - Aylık filtre değişimi",
-    dateLabel: "2 gün gecikti · 16 Mar 2026",
-    actionLabel: "Aksiyon al",
+    dateLabel: "2 gün gecikti · 16 Mart 2026",
+    actionLabel: "Servise git",
     tone: "critical" as const,
     icon: Wrench,
   },
   {
     title: "Jeneratör A1 garantisi bitiyor",
-    dateLabel: "4 gün kaldı · 20 Mar 2026",
+    dateLabel: "4 gün kaldı · 22 Mart 2026",
     actionLabel: "Detayı aç",
     tone: "warning" as const,
     icon: ShieldAlert,
   },
   {
     title: "Elektrik aboneliği ödeme vadesi",
-    dateLabel: "6 gün kaldı · ₺3.420 · 22 Mar 2026",
+    dateLabel: "6 gün kaldı · 3.420 TL · 24 Mart 2026",
     actionLabel: "Ödemeyi aç",
     tone: "info" as const,
     icon: WalletCards,
+  },
+  {
+    title: "Laptop D12 - Teslim tutanağı eksik",
+    dateLabel: "5 gündür belge yok · 13 Mart 2026",
+    actionLabel: "Belge yükle",
+    tone: "critical" as const,
+    icon: FileText,
   },
 ];
 
 const UPCOMING_ROWS = [
   {
     title: "Pompa C7 - Titreşim kontrolü",
-    dateLabel: "1 gün sonra · 17 Mar 2026",
+    dateLabel: "1 gün sonra · 19 Mart 2026",
     actionLabel: "Servis kaydı",
     tone: "warning" as const,
     icon: Timer,
   },
   {
-    title: "UPS kabin sigorta kontrolü",
-    dateLabel: "3 gün sonra · 19 Mar 2026",
+    title: "UPS Kabin 2 - Akü sağlık testi",
+    dateLabel: "3 gün sonra · 21 Mart 2026",
     actionLabel: "Kurala git",
     tone: "info" as const,
     icon: Timer,
   },
   {
-    title: "Su arıtma ünitesi garanti uyarısı",
-    dateLabel: "7 gün sonra · 23 Mar 2026",
-    actionLabel: "Detayı aç",
+    title: "Assetly Premium yenileme",
+    dateLabel: "5 gün sonra · 2.490 TL · 23 Mart 2026",
+    actionLabel: "Faturayı aç",
+    tone: "info" as const,
+    icon: WalletCards,
+  },
+  {
+    title: "Jeneratör A1 - 500 saatlik bakım",
+    dateLabel: "6 gün sonra · 24 Mart 2026",
+    actionLabel: "Planı aç",
     tone: "warning" as const,
     icon: ShieldAlert,
   },
@@ -137,10 +153,10 @@ const toneClass: Record<RowTone, string> = {
   info: "border-sky-300/35 bg-sky-300/10 text-sky-100",
 };
 
-function DashboardViewComponent() {
+function DashboardViewComponent({ menuItem }: PanelPreviewViewProps) {
   return (
-    <div className="space-y-4">
-      <section className="rounded-3xl border border-[#24344F] bg-[linear-gradient(145deg,rgba(8,20,45,0.92),rgba(9,17,33,0.84))] p-5 shadow-[0_20px_45px_rgba(3,8,20,0.42)]">
+    <div className="space-y-6 rounded-2xl bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.13),transparent_56%)] p-2 sm:p-3">
+      <section className="rounded-3xl border border-[#24344F] bg-[linear-gradient(145deg,rgba(8,20,45,0.92),rgba(9,17,33,0.84))] p-5 shadow-[0_20px_45px_rgba(3,8,20,0.42)] sm:p-6">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
@@ -153,9 +169,9 @@ function DashboardViewComponent() {
               </span>
             </div>
             <div>
-              <h3 className="text-2xl font-semibold tracking-tight text-[#F8FAFC]">Kontrol Merkezi</h3>
+              <h3 className="text-2xl font-semibold tracking-tight text-[#F8FAFC] sm:text-3xl">{menuItem.title}</h3>
               <p className="mt-2 max-w-2xl text-sm text-[#9FB2CE]">
-                Operasyon görünümünü tek panelde izleyin, riskleri önceliklendirin ve kritik aksiyonları hızlıca yönetin.
+                Tüm sistemi tek ekrandan yönetin: riskleri izleyin, hızlı aksiyon alın ve kritik alanları takip edin.
               </p>
             </div>
           </div>
@@ -199,16 +215,16 @@ function DashboardViewComponent() {
               <span className="mt-1 inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-amber-300" />
               <div>
                 <p className="text-xs uppercase tracking-[0.16em] text-[#90A6C4]">Sistem Durumu</p>
-                <h4 className="mt-1 text-lg font-semibold text-[#F8FAFC]">3 kritik kayıt için aksiyon bekleniyor</h4>
+                <h4 className="mt-1 text-lg font-semibold text-[#F8FAFC]">4 aktif kayıt için aksiyon bekleniyor</h4>
                 <p className="mt-1 text-sm text-[#CBD5E1]">
-                  İki bakım gecikmesi ve bir yaklaşan ödeme uyarısı şu anda kontrol merkezinde öne çıkıyor.
+                  Bir bakım gecikmesi, bir garanti bitişi, yaklaşan bir ödeme ve eksik bir belge kaydı şu anda öne çıkıyor.
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-1.5">
               <span className="inline-flex h-fit rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1 text-xs font-semibold text-amber-100">
-                3 aktif kayıt
+                4 aktif kayıt
               </span>
               <button
                 type="button"
@@ -242,7 +258,7 @@ function DashboardViewComponent() {
           <p className="text-xs uppercase tracking-[0.14em] text-[#8DA6C8]">Son 30 gün trendi</p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
           {KPI_ITEMS.map((card) => {
             const trendMeta = TREND_META[card.trend.direction];
             const TrendIcon = trendMeta.icon;
@@ -323,6 +339,7 @@ function RiskRowsPanel({
               type="button"
               className="inline-flex items-center gap-1 rounded-lg border border-[#3C587C] bg-[#143258] px-2.5 py-1.5 text-xs font-semibold text-[#E4EEFF] transition hover:bg-[#1A3E6D]"
             >
+              <Settings className="size-3.5" aria-hidden />
               Düzenle
             </button>
           ) : null}

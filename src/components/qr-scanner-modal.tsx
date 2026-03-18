@@ -179,7 +179,7 @@ export function QrScannerModal({ isOpen, onClose, onDetected }: QrScannerModalPr
             <input
               value={manualCode}
               onChange={(event) => setManualCode(event.target.value)}
-              placeholder="Örn: assetcare://asset?name=Kombi&category=Isitma"
+              placeholder="Örn: assetly://asset?name=Kombi&category=Isitma"
               className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
             />
             <button

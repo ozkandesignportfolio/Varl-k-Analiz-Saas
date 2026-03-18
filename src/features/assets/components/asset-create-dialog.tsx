@@ -41,9 +41,9 @@ export function AssetCreateDialog({
     <section className="premium-card p-5" key={createFormKey}>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Olustur</p>
-          <h2 className="mt-1 text-xl font-semibold text-white">Yeni Varlik</h2>
-          <p className="mt-1 text-sm text-slate-300">Kayitlari hizlica olusturun ve envanteri guncel tutun.</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Oluştur</p>
+          <h2 className="mt-1 text-xl font-semibold text-white">Yeni Varlık</h2>
+          <p className="mt-1 text-sm text-slate-300">Yeni kaydı hızlıca ekleyin ve listenizi güncel tutun.</p>
         </div>
 
         {!isPremiumMediaEnabled ? (
@@ -63,7 +63,7 @@ export function AssetCreateDialog({
           defaults={defaults}
           formId="asset-create-form"
           formTestId="asset-create-form"
-          submitLabel="Varlik Kaydet"
+          submitLabel="Varlığı Kaydet"
           onSubmit={onSubmit}
           isSubmitting={isSubmitting}
           categoryOptions={categoryOptions}
@@ -77,8 +77,8 @@ export function AssetCreateDialog({
             <h3 className="text-sm font-semibold text-white">Ek Medya</h3>
             <p className="mt-1 text-xs text-slate-400">
               {isPremiumMediaEnabled
-                ? "Istege bagli olarak gorsel, video ve ses dosyasi ekleyebilirsiniz."
-                : "Ek medya yukleme Premium plana ozeldir."}
+                ? "İsteğe bağlı olarak görsel, video ve ses dosyası ekleyebilirsiniz."
+                : "Ek medya yükleme Premium plana özeldir."}
             </p>
           </div>
           {!isPremiumMediaEnabled ? (
@@ -87,7 +87,7 @@ export function AssetCreateDialog({
               onClick={onUpgradeToPremium}
               className="rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-100 transition hover:bg-white/10"
             >
-              Yukselt
+              Yükselt
             </button>
           ) : null}
         </div>
@@ -95,7 +95,7 @@ export function AssetCreateDialog({
         {isPremiumMediaEnabled ? (
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             <label className="block">
-              <span className="mb-1.5 block text-xs uppercase tracking-[0.16em] text-slate-400">Gorseller</span>
+              <span className="mb-1.5 block text-xs uppercase tracking-[0.16em] text-slate-400">Görseller</span>
               <input
                 type="file"
                 accept="image/*"

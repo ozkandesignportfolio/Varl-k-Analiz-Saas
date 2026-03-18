@@ -57,7 +57,11 @@ export function PlanUsageCard({ plan, items }: PlanUsageCardProps) {
         {items.map((item) => {
           const percent = getPercent(item.used, item.limit);
           return (
-            <article key={item.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3" data-testid={`settings-plan-usage-item-${item.id}`}>
+            <article
+              key={item.id}
+              className="rounded-xl border border-white/10 bg-white/[0.03] p-3"
+              data-testid={`settings-plan-usage-item-${item.id}`}
+            >
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-white">{item.label}</p>
                 <p className="text-xs text-slate-300">{formatRatio(item.used, item.limit)}</p>

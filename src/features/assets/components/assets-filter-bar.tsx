@@ -56,7 +56,7 @@ export function AssetsFilterBar({
           <input
             value={searchTerm}
             onChange={(event) => onSearchTermChange(event.target.value)}
-            placeholder="Varlık adı veya seri no ara"
+            placeholder="Varlık adı veya seri numarası ara"
             className="h-10 w-full bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-500"
           />
         </label>
@@ -66,7 +66,7 @@ export function AssetsFilterBar({
           onChange={(event) => onCategoryFilterChange(event.target.value)}
           className={filterSelectClassName}
         >
-          <option value="all">Kategori: Tümü</option>
+          <option value="all">Tüm kategoriler</option>
           {categories.map((category) => (
             <option key={category} value={category}>
               {category}
@@ -79,7 +79,7 @@ export function AssetsFilterBar({
           onChange={(event) => onAssetFilterChange(event.target.value as AssetFilterMode)}
           className={filterSelectClassName}
         >
-          <option value="all">Durum: Tümü</option>
+          <option value="all">Tüm durumlar</option>
           <option value="active">Aktif</option>
           <option value="passive">Pasif</option>
         </select>
@@ -89,7 +89,7 @@ export function AssetsFilterBar({
           onChange={(event) => onWarrantyFilterChange(event.target.value as WarrantyFilterMode)}
           className={filterSelectClassName}
         >
-          <option value="all">Garanti: Tümü</option>
+          <option value="all">Tüm garanti durumları</option>
           <option value="active">Aktif</option>
           <option value="expiring">Bitiyor</option>
           <option value="expired">Bitti</option>
@@ -100,7 +100,7 @@ export function AssetsFilterBar({
           onChange={(event) => onMaintenanceFilterChange(event.target.value as MaintenanceFilterMode)}
           className={filterSelectClassName}
         >
-          <option value="all">Bakım: Tümü</option>
+          <option value="all">Tüm bakım durumları</option>
           <option value="upcoming">Yaklaşan</option>
           <option value="overdue">Gecikmiş</option>
         </select>
@@ -143,7 +143,7 @@ export function AssetsFilterBar({
             }`}
           >
             <LayoutGrid className="h-4 w-4" />
-            Grid
+            Kartlar
           </button>
         </div>
       </div>

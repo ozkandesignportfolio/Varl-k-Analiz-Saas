@@ -83,7 +83,7 @@ export function AssetsHeaderActions({ onCreateAsset, onOpenScanner }: AssetsHead
         onClick={onCreateAsset}
         className="rounded-full bg-gradient-to-r from-sky-400 to-fuchsia-500 px-4 py-2 text-sm font-semibold text-white"
       >
-        Varlik Ekle
+        Yeni Varlık
       </button>
       <button
         type="button"

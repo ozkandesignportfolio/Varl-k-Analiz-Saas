@@ -22,6 +22,7 @@ export type RowItem = {
 
 export type PanelPreviewViewProps = {
   rows: RowItem[];
+  menuItem: PreviewMenuItem;
 };
 
 export type PreviewTheme = CSSProperties;
