@@ -1,16 +1,19 @@
 import { getAuthRedirectUrl } from "@/lib/supabase/auth-redirect";
 
+export const emailVerificationSentMessage =
+  "E-posta adresinize doğrulama kodu gönderildi";
+
 export const emailVerificationPromptMessage =
-  "E-posta adresinizi dogrulamak icin gelen kutunuzu kontrol edin.";
+  "E-posta adresinizi doğrulamak için gelen kutunuzu kontrol edin.";
 
 export const emailVerificationLoginBlockedMessage =
-  "Giris yapmadan once e-posta adresinizi dogrulamaniz gerekiyor.";
+  "Giriş yapmadan önce e-posta adresinizi doğrulamanız gerekiyor.";
 
 export const emailVerificationResentMessage =
-  "Dogrulama e-postasi tekrar gonderildi.";
+  "Doğrulama e-postası tekrar gönderildi.";
 
 export const emailVerificationCompletedMessage =
-  "E-posta adresiniz dogrulandi. Simdi giris yapabilirsiniz.";
+  "E-posta adresiniz doğrulandı.";
 
 const getSafeNextPath = (candidate?: string | null) => {
   if (!candidate) {
@@ -24,10 +27,15 @@ const getSafeNextPath = (candidate?: string | null) => {
   return candidate;
 };
 
-export const buildEmailVerificationPath = (email?: string | null, next?: string | null) => {
+export const buildEmailVerificationPath = (
+  email?: string | null,
+  next?: string | null,
+  options?: { emailSent?: boolean },
+) => {
   const params = new URLSearchParams();
   const normalizedEmail = email?.trim();
   const normalizedNext = getSafeNextPath(next);
+  const emailSent = options?.emailSent ?? false;
 
   if (normalizedEmail) {
     params.set("email", normalizedEmail);
@@ -37,8 +45,12 @@ export const buildEmailVerificationPath = (email?: string | null, next?: string 
     params.set("next", normalizedNext);
   }
 
+  if (emailSent) {
+    params.set("sent", "1");
+  }
+
   const query = params.toString();
   return query ? `/verify-email?${query}` : "/verify-email";
 };
 
-export const getEmailVerificationRedirectUrl = () => getAuthRedirectUrl("/verify-email");
+export const getEmailVerificationRedirectUrl = () => getAuthRedirectUrl("/dashboard");

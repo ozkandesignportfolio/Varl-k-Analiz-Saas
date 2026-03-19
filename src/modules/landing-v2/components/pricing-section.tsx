@@ -1,6 +1,5 @@
 ﻿"use client";
 
-import Link from "next/link";
 import { Check, Sparkles, ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -173,17 +172,6 @@ export function PricingSection() {
           ))}
         </div>
 
-        <div className="mt-8 flex justify-center">
-          <Button
-            asChild
-            variant="outline"
-            className="border-border/70 bg-background/40 text-foreground hover:bg-background/60"
-          >
-            <Link href="/" data-testid="landing-pricing-dashboard-action">
-              Ana Menüye Dön
-            </Link>
-          </Button>
-        </div>
       </div>
     </section>
   );

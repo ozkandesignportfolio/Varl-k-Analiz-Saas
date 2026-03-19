@@ -4,21 +4,19 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { getPlanConfig } from "@/lib/plans/plan-config";
+import { getAuthRedirectUrl } from "@/lib/supabase/auth-redirect";
 import {
   isEmailNotConfirmedError,
   isEmailRateLimitError,
   isSupabaseUserEmailConfirmed,
 } from "@/lib/supabase/auth-errors";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
-import {
-  buildEmailVerificationPath,
-  emailVerificationPromptMessage,
-  getEmailVerificationRedirectUrl,
-} from "@/lib/supabase/email-verification";
+import { buildEmailVerificationPath } from "@/lib/supabase/email-verification";
 import { PREMIUM_MONTHLY_PRICE_LABEL } from "@/lib/plans/pricing";
 
 const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
+const emailVerificationSentMessage = "E-posta adresinize doğrulama bağlantısı gönderildi";
 const trialPlan = getPlanConfig("starter");
 const trialAssetLimit = trialPlan.limits.assetsLimit ?? 0;
 const trialDocumentLimit = trialPlan.limits.documentsLimit ?? 0;
@@ -61,7 +59,7 @@ export default function RegisterPage() {
     setIsSubmitting(true);
 
     try {
-      const emailRedirectTo = getEmailVerificationRedirectUrl();
+      const emailRedirectTo = getAuthRedirectUrl("/verify-email");
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -80,8 +78,8 @@ export default function RegisterPage() {
         }
 
         if (isEmailNotConfirmedError(error)) {
-          setMessage(emailVerificationPromptMessage);
-          router.push(buildEmailVerificationPath(email));
+          setMessage(emailVerificationSentMessage);
+          router.push(buildEmailVerificationPath(email, null, { emailSent: true }));
           return;
         }
 
@@ -93,8 +91,8 @@ export default function RegisterPage() {
 
       if (requiresEmailVerification) {
         await supabase.auth.signOut();
-        setMessage(emailVerificationPromptMessage);
-        router.push(buildEmailVerificationPath(email));
+        setMessage(emailVerificationSentMessage);
+        router.push(buildEmailVerificationPath(email, null, { emailSent: true }));
         return;
       }
 

@@ -3,14 +3,18 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
+import { getAuthRedirectUrl } from "@/lib/supabase/auth-redirect";
 import {
   emailVerificationCompletedMessage,
   emailVerificationLoginBlockedMessage,
   emailVerificationPromptMessage,
   emailVerificationResentMessage,
-  getEmailVerificationRedirectUrl,
 } from "@/lib/supabase/email-verification";
-import { isEmailNotConfirmedError, isEmailRateLimitError } from "@/lib/supabase/auth-errors";
+import {
+  isEmailNotConfirmedError,
+  isEmailRateLimitError,
+  isSupabaseUserEmailConfirmed,
+} from "@/lib/supabase/auth-errors";
 import { createClient } from "@/lib/supabase/client";
 
 const inputClassName =
@@ -27,9 +31,6 @@ const getSafeNextPath = (candidate: string | null) => {
 
   return candidate;
 };
-
-const isEmailConfirmed = (user: { email_confirmed_at?: string | null; confirmed_at?: string | null } | null | undefined) =>
-  Boolean(user?.email_confirmed_at ?? user?.confirmed_at);
 
 type MessageTone = "error" | "info";
 
@@ -105,7 +106,7 @@ export default function LoginPage() {
         return;
       }
 
-      if (!isEmailConfirmed(data.user)) {
+      if (!isSupabaseUserEmailConfirmed(data.user)) {
         setVerificationEmail(email);
         await supabase.auth.signOut();
         setFeedback({ text: emailVerificationLoginBlockedMessage, tone: "error" });
@@ -123,7 +124,7 @@ export default function LoginPage() {
 
   const onResendVerification = async () => {
     if (!verificationEmail) {
-      setFeedback({ text: "Önce e-posta adresini gir ve giriş dene.", tone: "error" });
+      setFeedback({ text: "Önce e-posta adresini girip giriş yapmayı deneyin.", tone: "error" });
       return;
     }
 
@@ -131,7 +132,7 @@ export default function LoginPage() {
     setFeedback({ text: "", tone: "info" });
 
     try {
-      const emailRedirectTo = getEmailVerificationRedirectUrl();
+      const emailRedirectTo = getAuthRedirectUrl("/verify-email");
       const { error } = await supabase.auth.resend({
         type: "signup",
         email: verificationEmail,

@@ -19,6 +19,7 @@ const protectedRoutes = [
 const authRoutes = ["/login", "/register", "/verify-email"];
 const middlewareBypassPrefixes = ["/api/", "/billing/", "/_next/"] as const;
 const middlewareBypassExactPaths = new Set(["/api", "/billing", "/_next", "/favicon.ico"]);
+const middlewareVerificationTypes = new Set(["signup", "email"]);
 
 function isProtectedRoute(pathname: string) {
   return protectedRoutes.some(
@@ -54,6 +55,25 @@ function copyAuthCookies(from: NextResponse, to: NextResponse) {
   from.cookies.getAll().forEach((cookie) => {
     to.cookies.set(cookie);
   });
+}
+
+function buildEmailVerificationSuccessUrl(request: NextRequest) {
+  const redirectUrl = request.nextUrl.clone();
+  redirectUrl.pathname = "/dashboard";
+  redirectUrl.search = "";
+  redirectUrl.searchParams.set("email_verified", "1");
+  return redirectUrl;
+}
+
+function buildCleanAuthRedirectUrl(request: NextRequest) {
+  const redirectUrl = request.nextUrl.clone();
+  redirectUrl.searchParams.delete("code");
+  redirectUrl.searchParams.delete("token_hash");
+  redirectUrl.searchParams.delete("type");
+  redirectUrl.searchParams.delete("error");
+  redirectUrl.searchParams.delete("error_code");
+  redirectUrl.searchParams.delete("error_description");
+  return redirectUrl;
 }
 
 export async function middleware(request: NextRequest) {
@@ -100,6 +120,43 @@ export async function middleware(request: NextRequest) {
       },
     },
   });
+
+  const authCode = request.nextUrl.searchParams.get("code")?.trim();
+  const tokenHash = request.nextUrl.searchParams.get("token_hash")?.trim();
+  const verificationType = request.nextUrl.searchParams.get("type")?.trim() ?? "";
+
+  if (authCode) {
+    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(authCode);
+
+    if (!exchangeError) {
+      const successRedirect = buildEmailVerificationSuccessUrl(request);
+      const redirectUrl = buildCleanAuthRedirectUrl(request);
+      redirectUrl.pathname = successRedirect.pathname;
+      redirectUrl.search = successRedirect.search;
+
+      const redirectResponse = NextResponse.redirect(redirectUrl);
+      copyAuthCookies(response, redirectResponse);
+      return redirectResponse;
+    }
+  }
+
+  if (tokenHash && middlewareVerificationTypes.has(verificationType)) {
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: verificationType as "signup" | "email",
+    });
+
+    if (!verifyError) {
+      const successRedirect = buildEmailVerificationSuccessUrl(request);
+      const redirectUrl = buildCleanAuthRedirectUrl(request);
+      redirectUrl.pathname = successRedirect.pathname;
+      redirectUrl.search = successRedirect.search;
+
+      const redirectResponse = NextResponse.redirect(redirectUrl);
+      copyAuthCookies(response, redirectResponse);
+      return redirectResponse;
+    }
+  }
 
   const {
     data: { user },

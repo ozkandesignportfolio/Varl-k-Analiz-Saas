@@ -28,11 +28,14 @@ const formatPanelDate = (date: Date) =>
     year: "numeric",
   }).format(date);
 
-const parseRangeParam = async (searchParams?: DashboardPageSearchParams) => {
+const getFirstSearchParam = (value: SearchParamValue) => (Array.isArray(value) ? value[0] : value);
+
+const parseDashboardPageState = async (searchParams?: DashboardPageSearchParams) => {
   const resolved = (await Promise.resolve(searchParams ?? {})) as Record<string, SearchParamValue>;
-  const rawRange = resolved.range;
-  const normalized = Array.isArray(rawRange) ? rawRange[0] : rawRange;
-  return parseDashboardDateRange(normalized);
+  return {
+    selectedRange: parseDashboardDateRange(getFirstSearchParam(resolved.range)),
+    showEmailVerificationSuccess: getFirstSearchParam(resolved.email_verified) === "1",
+  };
 };
 
 export async function DashboardPageContainer({ searchParams }: DashboardPageContainerProps) {
@@ -45,7 +48,7 @@ export async function DashboardPageContainer({ searchParams }: DashboardPageCont
     redirect("/login?next=/dashboard");
   }
 
-  const selectedRange = await parseRangeParam(searchParams);
+  const { selectedRange, showEmailVerificationSuccess } = await parseDashboardPageState(searchParams);
   const dbClient = supabase as unknown as DbClient;
   const [snapshot, profilePlan] = await Promise.all([
     getDashboardSnapshot(dbClient, user.id, { rangeDays: selectedRange }),
@@ -83,6 +86,12 @@ export async function DashboardPageContainer({ searchParams }: DashboardPageCont
   return (
     <AppShell badge="Kontrol Merkezi" title="Kontrol Merkezi" subtitle={formatPanelDate(new Date())}>
       <div className="space-y-6 rounded-2xl bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.13),transparent_56%)] p-2 sm:p-3">
+        {showEmailVerificationSuccess ? (
+          <p className="rounded-xl border border-emerald-300/30 bg-emerald-300/10 px-4 py-3 text-sm text-emerald-100">
+            E-posta adresiniz doğrulandı.
+          </p>
+        ) : null}
+
         {snapshot.warning ? (
           <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
             {snapshot.warning}

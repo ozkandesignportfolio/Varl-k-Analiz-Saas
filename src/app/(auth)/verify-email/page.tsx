@@ -18,8 +18,8 @@ function VerifyEmailFallback() {
         </section>
 
         <section className="premium-panel p-6">
-          <h2 className="text-2xl font-semibold text-white">Doğrulama Kodunu Gir</h2>
-          <p className="mt-2 text-sm text-slate-300">Sayfa hazırlanıyor...</p>
+          <h2 className="text-2xl font-semibold text-white">Bağlantı Hazırlanıyor</h2>
+          <p className="mt-2 text-sm text-slate-300">Doğrulama akışı hazırlanıyor...</p>
         </section>
       </div>
     </main>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Funnel, CheckCheck } from "lucide-react";
+import { BellPlus, CheckCheck, Funnel } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
@@ -19,9 +19,7 @@ import {
   type TypeFilter,
 } from "@/features/notifications/components/NotificationsFilters";
 import { NotificationsList } from "@/features/notifications/components/NotificationsList";
-import {
-  type NotificationRecord,
-} from "@/features/notifications/data/mock-notifications";
+import { type NotificationRecord } from "@/features/notifications/data/mock-notifications";
 import { mapAutomationEventToNotification } from "@/features/notifications/lib/notification-presenter";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -47,6 +45,11 @@ type MutationResponse = {
   error: SupabaseError | null;
 };
 
+type CreateTestNotificationsResponse = {
+  count?: number;
+  error?: string;
+};
+
 type LooseSupabaseAutomationClient = {
   from: (table: string) => {
     select: (columns: string) => {
@@ -70,8 +73,19 @@ type LooseSupabaseAutomationClient = {
   };
 };
 
-const toNotificationRecord = (row: AutomationEventRow): NotificationRecord => {
-  return mapAutomationEventToNotification({
+const fetchNotificationsByUserId = async (
+  automationClient: LooseSupabaseAutomationClient,
+  userId: string,
+) =>
+  automationClient
+    .from("automation_events")
+    .select("id,asset_id,trigger_type,payload,status,created_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+const toNotificationRecord = (row: AutomationEventRow): NotificationRecord =>
+  mapAutomationEventToNotification({
     id: row.id,
     assetId: row.asset_id,
     triggerType: row.trigger_type,
@@ -79,7 +93,6 @@ const toNotificationRecord = (row: AutomationEventRow): NotificationRecord => {
     status: row.status,
     createdAt: row.created_at,
   });
-};
 
 export function NotificationsPageContainer() {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
@@ -91,6 +104,7 @@ export function NotificationsPageContainer() {
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isGeneratingTestNotifications, setIsGeneratingTestNotifications] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -98,6 +112,25 @@ export function NotificationsPageContainer() {
   const [status, setStatus] = useState<StatusFilter>("Tümü");
   const [dateRange, setDateRange] = useState<DateRangeFilter>(30);
   const [dateRangeAnchorMs, setDateRangeAnchorMs] = useState(() => Date.now());
+
+  const loadNotificationsForUser = async (userId: string) => {
+    setIsLoading(true);
+
+    const response = await fetchNotificationsByUserId(automationClient, userId);
+
+    if (response.error) {
+      setNotifications([]);
+      setFeedback(`Bildirimler veritabanından alınamadı. ${response.error.message}`);
+      setIsLoading(false);
+      return false;
+    }
+
+    const nextNotifications = (response.data ?? []).map(toNotificationRecord);
+    setNotifications(nextNotifications);
+    setFeedback(nextNotifications.length === 0 ? "Henüz bildiriminiz yok." : "");
+    setIsLoading(false);
+    return true;
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -115,25 +148,7 @@ export function NotificationsPageContainer() {
       }
 
       setCurrentUserId(user.id);
-
-      const response = await automationClient
-        .from("automation_events")
-        .select("id,asset_id,trigger_type,payload,status,created_at")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(200);
-
-      if (response.error) {
-        setNotifications([]);
-        setFeedback(`Bildirimler veritabanından alınamadı. ${response.error.message}`);
-        setIsLoading(false);
-        return;
-      }
-
-      const nextNotifications = (response.data ?? []).map(toNotificationRecord);
-      setNotifications(nextNotifications);
-      setFeedback(nextNotifications.length === 0 ? "Henüz bildiriminiz yok." : "");
-      setIsLoading(false);
+      await loadNotificationsForUser(user.id);
     };
 
     void load();
@@ -245,6 +260,36 @@ export function NotificationsPageContainer() {
     );
   };
 
+  const onGenerateTestNotifications = async () => {
+    if (!currentUserId) {
+      return;
+    }
+
+    setIsGeneratingTestNotifications(true);
+    setFeedback("");
+
+    try {
+      const response = await fetch("/api/notifications/test", {
+        method: "POST",
+      });
+      const body = (await response.json().catch(() => null)) as CreateTestNotificationsResponse | null;
+
+      if (!response.ok) {
+        setFeedback(body?.error ?? "Test bildirimleri oluşturulamadı.");
+        return;
+      }
+
+      const didReload = await loadNotificationsForUser(currentUserId);
+      if (didReload) {
+        setFeedback(`${body?.count ?? 4} test bildirimi oluşturuldu.`);
+      }
+    } catch {
+      setFeedback("Test bildirimleri oluşturulamadı.");
+    } finally {
+      setIsGeneratingTestNotifications(false);
+    }
+  };
+
   return (
     <AppShell title="Bildirimler" badge="Bildirim Merkezi">
       <section className="premium-card border-white/10 bg-white/[0.02] p-5">
@@ -256,6 +301,16 @@ export function NotificationsPageContainer() {
             </p>
           </div>
           <div className="flex w-full flex-wrap gap-2 md:w-auto md:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onGenerateTestNotifications}
+              disabled={isGeneratingTestNotifications || !currentUserId}
+              className="border-emerald-300/25 bg-emerald-300/10 text-emerald-100 hover:bg-emerald-300/20"
+            >
+              <BellPlus className="h-4 w-4" />
+              {isGeneratingTestNotifications ? "Oluşturuluyor..." : "Test Bildirim Oluştur"}
+            </Button>
             <Button
               type="button"
               variant="outline"

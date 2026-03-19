@@ -19,6 +19,8 @@ type NotificationText = {
   detail?: string;
 };
 
+const notificationTypes = ["Bakım", "Garanti", "Belge", "Ödeme", "Sistem"] as const;
+
 const fieldLabelByKey: Record<string, string> = {
   name: "Varlık adı",
   category: "Kategori",
@@ -37,7 +39,7 @@ const documentTypeLabelByKey: Record<string, string> = {
   fatura: "Fatura",
   servis_formu: "Servis formu",
   diger: "Belge",
-  "diğer": "Belge",
+  diğer: "Belge",
 };
 
 const toSafeString = (value: unknown, fallback = "") => {
@@ -90,10 +92,25 @@ const resolveDocumentTypeLabel = (value: unknown) => {
   return documentTypeLabelByKey[normalized] ?? "Belge";
 };
 
+const resolveCustomType = (value: unknown): NotificationType | null => {
+  const normalized = toSafeString(value);
+
+  if (notificationTypes.includes(normalized as NotificationType)) {
+    return normalized as NotificationType;
+  }
+
+  return null;
+};
+
 const resolveTypeFromEvent = (
   triggerType: string,
   payload: Record<string, unknown> | null,
 ): NotificationType => {
+  const customType = resolveCustomType(payload?.type);
+  if (customType) {
+    return customType;
+  }
+
   if (triggerType === "maintenance_7_days") {
     return "Bakım";
   }
@@ -117,6 +134,16 @@ const resolveText = (
   triggerType: string,
   payload: Record<string, unknown> | null,
 ): NotificationText => {
+  const customTitle = toSafeString(payload?.title);
+  const customMessage = toSafeString(payload?.message);
+  if (customTitle && customMessage) {
+    return {
+      title: customTitle,
+      description: customMessage,
+      detail: toSafeString(payload?.detail) || undefined,
+    };
+  }
+
   const assetName = toSafeString(payload?.asset_name);
   const assetSubject = assetName ? `${assetName} varlığınız` : "Varlığınız";
   const notificationKind = toSafeString(payload?.notification_kind);
@@ -215,6 +242,11 @@ const resolveActionHref = (
   payload: Record<string, unknown> | null,
   assetId: string | null,
 ) => {
+  const customActionHref = toSafeString(payload?.action_href);
+  if (customActionHref) {
+    return customActionHref;
+  }
+
   const notificationKind = toSafeString(payload?.notification_kind);
 
   if (notificationKind === "asset_created" || notificationKind === "asset_updated") {
