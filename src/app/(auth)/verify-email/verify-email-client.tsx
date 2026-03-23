@@ -4,23 +4,39 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
-import { isEmailRateLimitError } from "@/lib/supabase/auth-errors";
-import { getAuthRedirectUrl } from "@/lib/supabase/auth-redirect";
+import { isEmailRateLimitError, isInvalidEmailVerificationError } from "@/lib/supabase/auth-errors";
 import { createClient } from "@/lib/supabase/client";
+import {
+  buildLoginPath,
+  emailVerificationCompletedMessage,
+  emailVerificationPromptMessage,
+  emailVerificationResentMessage,
+  emailVerificationSentMessage,
+  invalidVerificationLinkMessage,
+} from "@/lib/supabase/email-verification";
 
 const allowedVerificationTypes = new Set(["signup", "email"]);
-const emailVerificationSentMessage = "E-posta adresinize doğrulama bağlantısı gönderildi";
-const emailVerificationPromptMessage =
-  "E-posta adresinizi doğrulamak için gelen kutunuzdaki bağlantıya tıklayın.";
-const emailVerificationProcessingMessage = "Doğrulama bağlantısı kontrol ediliyor...";
-const emailVerificationCompletedMessage = "E-posta adresiniz doğrulandı. Yönlendiriliyorsunuz...";
-const emailVerificationResentMessage = "Doğrulama bağlantısı tekrar gönderildi.";
-const invalidVerificationLinkMessage =
-  "Doğrulama bağlantısı geçersiz veya süresi dolmuş. Lütfen yeni bir bağlantı isteyin.";
+const emailVerificationProcessingMessage = "Dogrulama baglantisi kontrol ediliyor...";
 
 type MessageTone = "error" | "info";
 
-export default function VerifyEmailClient() {
+const getSafeNextPath = (candidate: string | null) => {
+  if (!candidate) {
+    return "/dashboard";
+  }
+
+  if (!candidate.startsWith("/") || candidate.startsWith("//")) {
+    return "/dashboard";
+  }
+
+  return candidate;
+};
+
+type VerifyEmailClientProps = {
+  emailRedirectTo: string;
+};
+
+export default function VerifyEmailClient({ emailRedirectTo }: VerifyEmailClientProps) {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -32,6 +48,11 @@ export default function VerifyEmailClient() {
   const tokenHash = (searchParams.get("token_hash") ?? "").trim();
   const verificationType = (searchParams.get("type") ?? "signup").trim();
   const hasSentState = searchParams.get("sent") === "1";
+  const nextPath = useMemo(() => getSafeNextPath(searchParams.get("next")), [searchParams]);
+  const redirectErrorMessage = useMemo(
+    () => (searchParams.get("error_description") ?? searchParams.get("error") ?? "").trim(),
+    [searchParams],
+  );
 
   const [isResendingVerification, setIsResendingVerification] = useState(false);
   const [{ text: message, tone: messageTone }, setFeedback] = useState({
@@ -53,17 +74,17 @@ export default function VerifyEmailClient() {
   useEffect(() => {
     let isActive = true;
 
-    const redirectToDashboard = () => {
+    const redirectToNextPath = () => {
       if (isRedirectingRef.current) {
         return;
       }
 
       isRedirectingRef.current = true;
       setFeedback({
-        text: emailVerificationCompletedMessage,
+        text: `${emailVerificationCompletedMessage} Yonlendiriliyorsunuz...`,
         tone: "info",
       });
-      router.replace("/dashboard");
+      router.replace(nextPath);
       router.refresh();
     };
 
@@ -74,11 +95,31 @@ export default function VerifyEmailClient() {
         return false;
       }
 
-      redirectToDashboard();
+      redirectToNextPath();
       return true;
     };
 
+    const redirectToLoginSuccess = () => {
+      if (isRedirectingRef.current) {
+        return;
+      }
+
+      isRedirectingRef.current = true;
+      router.replace(buildLoginPath(nextPath, { emailVerified: true }));
+      router.refresh();
+    };
+
     const handleVerificationRedirect = async () => {
+      if (redirectErrorMessage) {
+        setFeedback({
+          text: isInvalidEmailVerificationError({ message: redirectErrorMessage })
+            ? invalidVerificationLinkMessage
+            : redirectErrorMessage,
+          tone: "error",
+        });
+        return;
+      }
+
       if (await syncSession()) {
         return;
       }
@@ -102,17 +143,27 @@ export default function VerifyEmailClient() {
 
         if (error) {
           setFeedback({
-            text: error.message || invalidVerificationLinkMessage,
+            text: isInvalidEmailVerificationError(error) ? invalidVerificationLinkMessage : error.message || invalidVerificationLinkMessage,
             tone: "error",
           });
           return;
         }
 
-        await syncSession();
+        if (!(await syncSession())) {
+          redirectToLoginSuccess();
+        }
         return;
       }
 
-      if (tokenHash && allowedVerificationTypes.has(verificationType)) {
+      if (tokenHash) {
+        if (!allowedVerificationTypes.has(verificationType)) {
+          setFeedback({
+            text: invalidVerificationLinkMessage,
+            tone: "error",
+          });
+          return;
+        }
+
         isHandlingRedirectRef.current = true;
         setFeedback({
           text: emailVerificationProcessingMessage,
@@ -130,13 +181,15 @@ export default function VerifyEmailClient() {
 
         if (error) {
           setFeedback({
-            text: error.message || invalidVerificationLinkMessage,
+            text: isInvalidEmailVerificationError(error) ? invalidVerificationLinkMessage : error.message || invalidVerificationLinkMessage,
             tone: "error",
           });
           return;
         }
 
-        await syncSession();
+        if (!(await syncSession())) {
+          redirectToLoginSuccess();
+        }
       }
     };
 
@@ -148,7 +201,7 @@ export default function VerifyEmailClient() {
           return;
         }
 
-        redirectToDashboard();
+        redirectToNextPath();
       },
     );
 
@@ -156,12 +209,12 @@ export default function VerifyEmailClient() {
       isActive = false;
       listener.subscription.unsubscribe();
     };
-  }, [authCode, router, supabase, tokenHash, verificationType]);
+  }, [authCode, nextPath, redirectErrorMessage, router, supabase, tokenHash, verificationType]);
 
   const onResendVerification = async () => {
     if (!email) {
       setFeedback({
-        text: "Yeni bağlantı gönderebilmek için e-posta adresi gerekli.",
+        text: "Yeni baglanti gonderebilmek icin e-posta adresi gerekli.",
         tone: "error",
       });
       return;
@@ -171,26 +224,25 @@ export default function VerifyEmailClient() {
     setFeedback({ text: "", tone: "info" });
 
     try {
-      const emailRedirectTo = getAuthRedirectUrl("/verify-email");
       const { error } = await supabase.auth.resend({
         type: "signup",
         email,
         options: {
-          ...(emailRedirectTo ? { emailRedirectTo } : {}),
+          emailRedirectTo,
         },
       });
 
       if (error) {
         if (isEmailRateLimitError(error)) {
           setFeedback({
-            text: "E-posta limiti aşıldı. Lütfen kısa bir süre sonra tekrar deneyin.",
+            text: "E-posta limiti asildi. Lutfen kisa bir sure sonra tekrar deneyin.",
             tone: "error",
           });
           return;
         }
 
         setFeedback({
-          text: error.message || "Doğrulama bağlantısı gönderilemedi. Lütfen tekrar deneyin.",
+          text: error.message || "Dogrulama baglantisi gonderilemedi. Lutfen tekrar deneyin.",
           tone: "error",
         });
         return;
@@ -202,7 +254,7 @@ export default function VerifyEmailClient() {
       });
     } catch {
       setFeedback({
-        text: "Doğrulama bağlantısı gönderilirken beklenmeyen bir hata oluştu.",
+        text: "Dogrulama baglantisi gonderilirken beklenmeyen bir hata olustu.",
         tone: "error",
       });
     } finally {
@@ -224,20 +276,20 @@ export default function VerifyEmailClient() {
           >
             Assetly
           </Link>
-          <h1 className="mt-5 text-4xl font-semibold leading-[1.1] text-white">E-posta Doğrulama</h1>
+          <h1 className="mt-5 text-4xl font-semibold leading-[1.1] text-white">E-posta Dogrulama</h1>
           <p className="mt-4 text-sm leading-7 text-slate-300">{emailVerificationPromptMessage}</p>
           {email ? (
             <p className="mt-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
-              Bağlantı gönderilen adres: <span className="font-semibold text-white">{email}</span>
+              Baglanti gonderilen adres: <span className="font-semibold text-white">{email}</span>
             </p>
           ) : null}
         </section>
 
         <section className="premium-panel p-6">
-          <h2 className="text-2xl font-semibold text-white">Bağlantıyı Kontrol Edin</h2>
+          <h2 className="text-2xl font-semibold text-white">Baglantiyi Kontrol Edin</h2>
           <p className="mt-2 text-sm text-slate-300">
-            Bu ekranda kod girmeniz gerekmez. E-postanızdaki doğrulama bağlantısına tıkladığınızda
-            hesabınız otomatik olarak açılır ve panelinize yönlendirilirsiniz.
+            Bu ekranda kod girmeniz gerekmez. E-postanizdaki dogrulama baglantisina tikladiginizda
+            hesabiniza guvenli sekilde yonlendirilirsiniz.
           </p>
 
           {message ? (
@@ -257,14 +309,14 @@ export default function VerifyEmailClient() {
             data-testid="verify-email-resend"
           >
             {isResendingVerification
-              ? "Doğrulama bağlantısı gönderiliyor..."
-              : "Doğrulama bağlantısını tekrar gönder"}
+              ? "Dogrulama baglantisi gonderiliyor..."
+              : "Dogrulama baglantisini tekrar gonder"}
           </button>
 
           <p className="mt-5 text-sm text-slate-300">
-            Hesabınız zaten doğrulandıysa{" "}
+            Hesabiniz zaten dogrulandiysa{" "}
             <Link href="/login" className="font-semibold text-sky-200">
-              giriş yapın
+              giris yapin
             </Link>
             .
           </p>

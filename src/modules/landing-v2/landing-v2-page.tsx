@@ -13,7 +13,7 @@ import styles from "@/modules/landing-v2/landing-v2.module.css";
 
 export function LandingV2Page() {
   return (
-    <main className={`${styles.scope} relative min-h-screen overflow-x-hidden bg-background`}>
+    <main className={`${styles.scope} relative min-h-screen min-h-[100svh] overflow-x-hidden bg-background`}>
       <div className="relative z-10">
         <Navbar />
         <HeroSection />

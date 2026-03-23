@@ -16,20 +16,27 @@ const normalizePath = (path: string) => {
   return `/${path}`;
 };
 
+const resolveConfiguredBaseUrl = () =>
+  normalizeBaseUrl(process.env.APP_URL) ??
+  normalizeBaseUrl(process.env.NEXT_PUBLIC_APP_URL);
+
 export const getAuthRedirectUrl = (path: string) => {
   const normalizedPath = normalizePath(path);
-
-  if (typeof window !== "undefined" && window.location?.origin) {
-    return `${window.location.origin}${normalizedPath}`;
-  }
-
-  const envBaseUrl =
-    normalizeBaseUrl(process.env.NEXT_PUBLIC_APP_URL) ??
-    normalizeBaseUrl(process.env.APP_URL);
+  const envBaseUrl = resolveConfiguredBaseUrl();
 
   if (!envBaseUrl) {
     return undefined;
   }
 
   return `${envBaseUrl}${normalizedPath}`;
+};
+
+export const requireAuthRedirectUrl = (path: string) => {
+  const redirectUrl = getAuthRedirectUrl(path);
+
+  if (!redirectUrl) {
+    throw new Error("APP_URL or NEXT_PUBLIC_APP_URL is required for auth email redirects.");
+  }
+
+  return redirectUrl;
 };

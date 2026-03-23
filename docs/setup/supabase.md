@@ -12,8 +12,8 @@ Asgari gereksinim:
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-APP_URL=http://localhost:3000
+NEXT_PUBLIC_APP_URL=https://assetly.network
+APP_URL=https://assetly.network
 ```
 
 Detayli liste icin [environment.md](./environment.md).
@@ -55,7 +55,15 @@ Repo icinde `supabase/config.toml` vardir. Varsayilan lokal portlar:
 - Studio: `54323`
 - Inbucket: `54324`
 
-Bu gorev kapsaminda migration veya config dosyalari degistirilmedi.
+Auth dogrulama akisi icin beklenen config:
+
+- `Authentication > Email > Confirm email`: acik
+- `Authentication > URL Configuration > Site URL`: `https://assetly.network`
+- `Authentication > URL Configuration > Redirect URLs`:
+  `https://assetly.network/verify-email`
+  `https://www.assetly.network/verify-email`
+
+Lokal CLI config'i da ayni dogrultuda `supabase/config.toml` icinde tutulur.
 
 ## 5. Ilgili Belgeler
 

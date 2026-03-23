@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 export type NotificationFrequency = "Anında" | "Günlük özet" | "Haftalık özet";
 
 export type NotificationPrefsState = {
@@ -15,9 +17,20 @@ export type NotificationPrefsState = {
   frequency: NotificationFrequency;
 };
 
+export type NotificationReminderDaysState = {
+  maintenanceDaysBefore: number;
+  warrantyDaysBefore: number;
+  documentDaysBefore: number;
+  billingDaysBefore: number;
+};
+
+type ReminderField = keyof NotificationReminderDaysState;
+
 type NotificationPrefsProps = {
   value: NotificationPrefsState;
+  reminderDays: NotificationReminderDaysState;
   onChange: (nextValue: NotificationPrefsState) => void;
+  onReminderDaysChange: (nextValue: NotificationReminderDaysState) => void;
   isSaving?: boolean;
 };
 
@@ -57,8 +70,117 @@ function ToggleRow({ label, description, checked, disabled, onToggle }: ToggleRo
 }
 
 const FREQUENCY_OPTIONS: NotificationFrequency[] = ["Anında", "Günlük özet", "Haftalık özet"];
+const REMINDER_DAY_MIN = 0;
+const REMINDER_DAY_MAX = 365;
+const REMINDER_FIELDS: Array<{
+  key: ReminderField;
+  label: string;
+  description: string;
+}> = [
+  {
+    key: "maintenanceDaysBefore",
+    label: "Bakim",
+    description: "Planli bakim icin kac gun once hatirlatma gonderilsin.",
+  },
+  {
+    key: "warrantyDaysBefore",
+    label: "Garanti",
+    description: "Garanti bitisi icin kac gun once hatirlatma gonderilsin.",
+  },
+  {
+    key: "documentDaysBefore",
+    label: "Belge",
+    description: "Belge gecerlilik tarihi icin kac gun once hatirlatma gonderilsin.",
+  },
+  {
+    key: "billingDaysBefore",
+    label: "Odeme",
+    description: "Tahsilat veya yenileme tarihi icin kac gun once hatirlatma gonderilsin.",
+  },
+];
 
-export function NotificationPrefs({ value, onChange, isSaving = false }: NotificationPrefsProps) {
+const createReminderDraft = (value: NotificationReminderDaysState): Record<ReminderField, string> => ({
+  maintenanceDaysBefore: String(value.maintenanceDaysBefore),
+  warrantyDaysBefore: String(value.warrantyDaysBefore),
+  documentDaysBefore: String(value.documentDaysBefore),
+  billingDaysBefore: String(value.billingDaysBefore),
+});
+
+const createReminderErrors = (): Record<ReminderField, string> => ({
+  maintenanceDaysBefore: "",
+  warrantyDaysBefore: "",
+  documentDaysBefore: "",
+  billingDaysBefore: "",
+});
+
+const parseReminderInput = (value: string) => {
+  const normalized = value.trim();
+
+  if (!/^\d+$/.test(normalized)) {
+    return { value: null, error: "0 ile 365 arasinda tam sayi girin." };
+  }
+
+  const parsed = Number(normalized);
+  if (!Number.isInteger(parsed) || parsed < REMINDER_DAY_MIN || parsed > REMINDER_DAY_MAX) {
+    return { value: null, error: "0 ile 365 arasinda tam sayi girin." };
+  }
+
+  return { value: parsed, error: "" };
+};
+
+export function NotificationPrefs({
+  value,
+  reminderDays,
+  onChange,
+  onReminderDaysChange,
+  isSaving = false,
+}: NotificationPrefsProps) {
+  const [reminderDraft, setReminderDraft] = useState<Record<ReminderField, string>>(
+    createReminderDraft(reminderDays),
+  );
+  const [reminderErrors, setReminderErrors] = useState<Record<ReminderField, string>>(
+    createReminderErrors(),
+  );
+
+  useEffect(() => {
+    setReminderDraft(createReminderDraft(reminderDays));
+  }, [
+    reminderDays.billingDaysBefore,
+    reminderDays.documentDaysBefore,
+    reminderDays.maintenanceDaysBefore,
+    reminderDays.warrantyDaysBefore,
+  ]);
+
+  const commitReminderField = (field: ReminderField) => {
+    const result = parseReminderInput(reminderDraft[field]);
+
+    if (result.error || result.value === null) {
+      setReminderErrors((current) => ({
+        ...current,
+        [field]: result.error,
+      }));
+      return;
+    }
+
+    setReminderErrors((current) => ({
+      ...current,
+      [field]: "",
+    }));
+    setReminderDraft((current) => ({
+      ...current,
+      [field]: String(result.value),
+    }));
+
+    if (reminderDays[field] === result.value) {
+      return;
+    }
+
+    onReminderDaysChange({
+      ...reminderDays,
+      [field]: result.value,
+    });
+  };
+
   return (
     <section className="space-y-4">
       <article className="premium-card border-white/10 bg-white/[0.02] p-5">
@@ -118,6 +240,56 @@ export function NotificationPrefs({ value, onChange, isSaving = false }: Notific
             disabled={isSaving}
             onToggle={() => onChange({ ...value, system: !value.system })}
           />
+        </div>
+      </article>
+
+      <article className="premium-card border-white/10 bg-white/[0.02] p-5">
+        <h4 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-300">Hatirlatma Gunleri</h4>
+        <p className="mt-1 text-sm text-slate-400">
+          Her bildirim tipi icin kac gun once hatirlatma gonderilecegini belirleyin.
+        </p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          {REMINDER_FIELDS.map((field) => (
+            <label
+              key={field.key}
+              className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3"
+            >
+              <span className="text-sm font-medium text-white">{field.label}</span>
+              <p className="mt-1 text-xs text-slate-400">{field.description}</p>
+              <input
+                type="number"
+                min={REMINDER_DAY_MIN}
+                max={REMINDER_DAY_MAX}
+                step={1}
+                inputMode="numeric"
+                value={reminderDraft[field.key]}
+                disabled={isSaving}
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  setReminderDraft((current) => ({
+                    ...current,
+                    [field.key]: nextValue,
+                  }));
+                  setReminderErrors((current) => ({
+                    ...current,
+                    [field.key]: "",
+                  }));
+                }}
+                onBlur={() => commitReminderField(field.key)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.currentTarget.blur();
+                  }
+                }}
+                className="mt-3 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 text-sm text-white outline-none transition focus:border-sky-300 disabled:opacity-70"
+              />
+              {reminderErrors[field.key] ? (
+                <p className="mt-2 text-xs text-rose-200">{reminderErrors[field.key]}</p>
+              ) : (
+                <p className="mt-2 text-xs text-slate-500">0 sadece vade gunu, 3 varsayilan degerdir.</p>
+              )}
+            </label>
+          ))}
         </div>
       </article>
 

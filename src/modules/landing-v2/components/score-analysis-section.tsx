@@ -1,11 +1,9 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import type { ChartData, ChartOptions } from "chart.js";
-import { Line } from "react-chartjs-2";
+import { useState } from "react";
 import { ArrowRight, BarChart3, ChevronDown, ChevronUp, Sparkles, TrendingUp } from "lucide-react";
-import "@/components/kpi/chartjs-setup";
 import { Button } from "@/components/ui/button";
 import {
   costEfficiencyRatio,
@@ -14,6 +12,14 @@ import {
   scoreTrend,
 } from "@/modules/landing-v2/data/score-analysis-demo";
 import { useInView } from "@/modules/landing-v2/hooks/use-in-view";
+
+const ScoreTrendChart = dynamic(
+  () => import("@/modules/landing-v2/components/score-trend-chart").then((mod) => mod.ScoreTrendChart),
+  {
+    ssr: false,
+    loading: () => <TrendChartPlaceholder />,
+  },
+);
 
 const tlFormatter = new Intl.NumberFormat("tr-TR");
 
@@ -36,78 +42,10 @@ export function ScoreAnalysisSection() {
   const { ref, inView } = useInView();
   const [showFormula, setShowFormula] = useState(false);
 
-  const trendData = useMemo<ChartData<"line">>(
-    () => ({
-      labels: scoreTrend.map((point) => point.month),
-      datasets: [
-        {
-          label: "Skor",
-          data: scoreTrend.map((point) => point.score),
-          borderColor: "#22d3ee",
-          backgroundColor: "rgba(34, 211, 238, 0.16)",
-          pointBackgroundColor: "#67e8f9",
-          pointBorderColor: "#67e8f9",
-          pointRadius: 3,
-          pointHoverRadius: 5,
-          fill: true,
-          tension: 0.34,
-        },
-      ],
-    }),
-    [],
-  );
-
-  const trendOptions = useMemo<ChartOptions<"line">>(
-    () => ({
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: {
-        mode: "index",
-        intersect: false,
-      },
-      plugins: {
-        legend: {
-          display: false,
-        },
-        tooltip: {
-          backgroundColor: "rgba(15, 23, 42, 0.92)",
-          borderColor: "rgba(103, 232, 249, 0.35)",
-          borderWidth: 1,
-          displayColors: false,
-          callbacks: {
-            label: (context) => `Skor: ${Number(context.parsed.y ?? 0)}/100`,
-          },
-        },
-      },
-      scales: {
-        x: {
-          ticks: {
-            color: "#94a3b8",
-          },
-          grid: {
-            color: "rgba(148, 163, 184, 0.08)",
-          },
-        },
-        y: {
-          min: 70,
-          max: 85,
-          ticks: {
-            stepSize: 5,
-            color: "#94a3b8",
-          },
-          grid: {
-            color: "rgba(148, 163, 184, 0.12)",
-          },
-        },
-      },
-    }),
-    [],
-  );
-
   return (
     <section id="skor-analizi" className="relative isolate py-32" ref={ref}>
       <div className="pointer-events-none absolute left-0 right-0 top-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-      <div className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-chart-3/10 blur-[140px]" />
+      <div className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-chart-3/10 blur-[80px] sm:h-96 sm:w-96 sm:blur-[140px]" />
 
       <div className="relative mx-auto max-w-7xl px-6">
         <div className="mb-10 inline-flex items-center gap-2 rounded-full border border-chart-3/20 bg-chart-3/5 px-4 py-1.5">
@@ -250,7 +188,7 @@ export function ScoreAnalysisSection() {
                 </div>
               </div>
               <div className="mt-3 h-[180px] w-full min-w-0 max-w-full overflow-hidden">
-                <Line className="!h-full !w-full" data={trendData} options={trendOptions} />
+                {inView ? <ScoreTrendChart points={scoreTrend} /> : <TrendChartPlaceholder />}
               </div>
             </div>
           </div>
@@ -275,4 +213,8 @@ export function ScoreAnalysisSection() {
       </div>
     </section>
   );
+}
+
+function TrendChartPlaceholder() {
+  return <div className="h-full w-full rounded-2xl bg-white/[0.04]" aria-hidden="true" />;
 }

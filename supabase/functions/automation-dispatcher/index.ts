@@ -72,6 +72,16 @@ Deno.serve(async (request) => {
   const dueWindow = resolveDueWindow(body.due_window);
   const shouldEmitDueEvents = resolveEmitDueEvents(body.emit_due_events);
 
+  console.log(
+    JSON.stringify({
+      event: "automation_dispatcher_request",
+      ts: new Date().toISOString(),
+      batch_size: batchSize,
+      due_window: dueWindow,
+      emit_due_events: shouldEmitDueEvents,
+    }),
+  );
+
   let dueEventSummary: Record<string, number> | null = null;
   if (shouldEmitDueEvents) {
     const { data: dueData, error: dueError } = await supabase.rpc("emit_due_automation_events", {
@@ -120,6 +130,14 @@ Deno.serve(async (request) => {
       await markEventAsFailed(supabase, event.id, error instanceof Error ? error.message : "unknown_error");
     }
   }
+
+  console.log(
+    JSON.stringify({
+      event: "automation_dispatcher_summary",
+      ts: new Date().toISOString(),
+      summary,
+    }),
+  );
 
   return json(summary);
 });

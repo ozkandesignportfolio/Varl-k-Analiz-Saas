@@ -1,12 +1,10 @@
-﻿"use client"
-
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export function HeroSection() {
   return (
-    <section className="relative isolate flex min-h-screen items-center justify-center overflow-x-hidden overflow-y-visible pb-10 pt-20 sm:pb-16">
+    <section className="relative isolate flex min-h-screen min-h-[100svh] items-center justify-center overflow-x-hidden overflow-y-visible pb-10 pt-20 sm:pb-16">
       <div className="hero-glow pointer-events-none absolute inset-0 -z-10" />
 
       <div aria-hidden="true" className="landing-v2-hero-motion pointer-events-none absolute inset-0 -z-10 overflow-hidden">

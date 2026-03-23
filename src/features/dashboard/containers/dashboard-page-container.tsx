@@ -9,6 +9,8 @@ import { RisksAndUpcoming } from "@/features/dashboard/components/RisksAndUpcomi
 import { UsageLimitsCard, type UsageLimitItem } from "@/features/dashboard/components/UsageLimitsCard";
 import { getOrCreateProfilePlan, getPlanConfigFromProfilePlan } from "@/lib/plans/profile-plan";
 import type { DbClient } from "@/lib/repos/_shared";
+import { isSupabaseUserEmailConfirmed } from "@/lib/supabase/auth-errors";
+import { buildLoginPath } from "@/lib/supabase/email-verification";
 import { createClient } from "@/lib/supabase/server";
 
 type SearchParamValue = string | string[] | undefined;
@@ -45,7 +47,16 @@ export async function DashboardPageContainer({ searchParams }: DashboardPageCont
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login?next=/dashboard");
+    redirect(buildLoginPath("/dashboard"));
+  }
+
+  if (!isSupabaseUserEmailConfirmed(user)) {
+    redirect(
+      buildLoginPath("/dashboard", {
+        email: user.email ?? null,
+        emailVerificationRequired: true,
+      }),
+    );
   }
 
   const { selectedRange, showEmailVerificationSuccess } = await parseDashboardPageState(searchParams);

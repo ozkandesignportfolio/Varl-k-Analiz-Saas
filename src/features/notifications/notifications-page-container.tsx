@@ -2,7 +2,7 @@
 
 import { BellPlus, CheckCheck, Funnel } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import {
@@ -84,8 +84,12 @@ const fetchNotificationsByUserId = async (
     .order("created_at", { ascending: false })
     .limit(200);
 
-const toNotificationRecord = (row: AutomationEventRow): NotificationRecord =>
-  mapAutomationEventToNotification({
+const toNotificationRecord = (row: AutomationEventRow): NotificationRecord | null => {
+  if (row.payload && typeof row.payload.email_only === "boolean" && row.payload.email_only) {
+    return null;
+  }
+
+  return mapAutomationEventToNotification({
     id: row.id,
     assetId: row.asset_id,
     triggerType: row.trigger_type,
@@ -93,6 +97,7 @@ const toNotificationRecord = (row: AutomationEventRow): NotificationRecord =>
     status: row.status,
     createdAt: row.created_at,
   });
+};
 
 export function NotificationsPageContainer() {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
@@ -113,7 +118,7 @@ export function NotificationsPageContainer() {
   const [dateRange, setDateRange] = useState<DateRangeFilter>(30);
   const [dateRangeAnchorMs, setDateRangeAnchorMs] = useState(() => Date.now());
 
-  const loadNotificationsForUser = async (userId: string) => {
+  const loadNotificationsForUser = useCallback(async (userId: string) => {
     setIsLoading(true);
 
     const response = await fetchNotificationsByUserId(automationClient, userId);
@@ -125,12 +130,14 @@ export function NotificationsPageContainer() {
       return false;
     }
 
-    const nextNotifications = (response.data ?? []).map(toNotificationRecord);
+    const nextNotifications = (response.data ?? [])
+      .map(toNotificationRecord)
+      .filter((item): item is NotificationRecord => item !== null);
     setNotifications(nextNotifications);
     setFeedback(nextNotifications.length === 0 ? "Henüz bildiriminiz yok." : "");
     setIsLoading(false);
     return true;
-  };
+  }, [automationClient]);
 
   useEffect(() => {
     const load = async () => {
@@ -152,7 +159,7 @@ export function NotificationsPageContainer() {
     };
 
     void load();
-  }, [automationClient, router, supabase.auth]);
+  }, [loadNotificationsForUser, router, supabase.auth]);
 
   const onDateRangeChange = (nextRange: DateRangeFilter) => {
     setDateRange(nextRange);

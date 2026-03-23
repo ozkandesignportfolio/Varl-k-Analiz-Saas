@@ -1,10 +1,37 @@
-﻿"use client";
+"use client";
 
 import { useEffect } from "react";
 
+type IdleCallbackHandle = number;
+
+type IdleDeadline = {
+  didTimeout: boolean;
+  timeRemaining: () => number;
+};
+
+type WindowWithIdleCallback = Window & {
+  requestIdleCallback?: (
+    callback: (deadline: IdleDeadline) => void,
+    options?: { timeout: number },
+  ) => IdleCallbackHandle;
+  cancelIdleCallback?: (handle: IdleCallbackHandle) => void;
+};
+
+const getSessionStorageSafely = () => {
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+};
+
 export function PwaRegister() {
   useEffect(() => {
-    if (!("serviceWorker" in navigator)) return;
+    if (typeof window === "undefined" || typeof navigator === "undefined") return;
+    if (!("serviceWorker" in navigator) || !window.isSecureContext) return;
+
+    const idleWindow = window as WindowWithIdleCallback;
+    const sessionStorageRef = getSessionStorageSafely();
     const devCleanupReloadKey = "__assetcare_dev_sw_cleanup_reload__";
 
     if (process.env.NODE_ENV !== "production") {
@@ -16,19 +43,22 @@ export function PwaRegister() {
 
           if ("caches" in window) {
             const cacheKeys = await caches.keys();
-            const appCacheKeys = cacheKeys.filter((key) => key.startsWith("assetcare-shell-"));
+            const appCacheKeys = cacheKeys.filter(
+              (key) => key.startsWith("assetcare-shell-") || key.startsWith("assetly-static-"),
+            );
             await Promise.all(appCacheKeys.map((key) => caches.delete(key)));
           }
 
           if (hadController) {
-            const hasReloaded = sessionStorage.getItem(devCleanupReloadKey) === "1";
+            const hasReloaded = sessionStorageRef?.getItem(devCleanupReloadKey) === "1";
             if (!hasReloaded) {
-              sessionStorage.setItem(devCleanupReloadKey, "1");
+              sessionStorageRef?.setItem(devCleanupReloadKey, "1");
               window.location.reload();
               return;
             }
           }
-          sessionStorage.removeItem(devCleanupReloadKey);
+
+          sessionStorageRef?.removeItem(devCleanupReloadKey);
         } catch {
           // Geliştirme ortamında cleanup başarısız olsa da uygulama normal çalışmaya devam eder.
         }
@@ -46,7 +76,44 @@ export function PwaRegister() {
       }
     };
 
-    void register();
+    const onLoad = () => {
+      if (idleWindow.requestIdleCallback) {
+        const idleHandle = idleWindow.requestIdleCallback(
+          () => {
+            void register();
+          },
+          { timeout: 1200 },
+        );
+
+        return () => {
+          idleWindow.cancelIdleCallback?.(idleHandle);
+        };
+      }
+
+      const timeoutHandle = window.setTimeout(() => {
+        void register();
+      }, 1);
+
+      return () => {
+        window.clearTimeout(timeoutHandle);
+      };
+    };
+
+    if (document.readyState === "complete") {
+      return onLoad();
+    }
+
+    let cancelDeferredRegister: (() => void) | undefined;
+    const handleLoad = () => {
+      cancelDeferredRegister = onLoad();
+    };
+
+    window.addEventListener("load", handleLoad, { once: true });
+
+    return () => {
+      window.removeEventListener("load", handleLoad);
+      cancelDeferredRegister?.();
+    };
   }, []);
 
   return null;

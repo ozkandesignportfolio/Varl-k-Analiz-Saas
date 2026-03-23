@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import { PAYMENT_TEXT } from "@/constants/ui-text";
 

@@ -48,18 +48,29 @@ export async function enqueueUiNotification(params: EnqueueUiNotificationParams)
     return;
   }
 
-  const { error } = await automationClient.from("automation_events").upsert(
+  const assetCategory =
+    typeof params.payload?.asset_category === "string"
+      ? params.payload.asset_category
+      : typeof params.payload?.category === "string"
+        ? params.payload.category
+        : null;
+
+  const sharedPayload = {
+    asset_name: params.assetName,
+    notification_kind: params.kind,
+    action_href: `/assets/${params.assetId}`,
+    ...(assetCategory ? { asset_category: assetCategory } : {}),
+    ...params.payload,
+  };
+
+  const { error: uiError } = await automationClient.from("automation_events").upsert(
     {
       user_id: params.userId,
       asset_id: params.assetId,
       trigger_type: "service_log_created",
       actions: [],
-      payload: {
-        asset_name: params.assetName,
-        notification_kind: params.kind,
-        ...params.payload,
-      },
-      dedupe_key: params.dedupeKey,
+      payload: sharedPayload,
+      dedupe_key: `${params.dedupeKey}:ui`,
       run_after: UI_NOTIFICATION_RUN_AFTER,
     },
     {
@@ -68,18 +79,55 @@ export async function enqueueUiNotification(params: EnqueueUiNotificationParams)
     },
   );
 
-  if (error) {
+  if (uiError) {
     logApiError({
       route: params.route,
       method: params.method,
       userId: params.userId,
-      error,
+      error: uiError,
       status: 500,
       message: "UI notification enqueue failed",
       meta: {
         assetId: params.assetId,
         dedupeKey: params.dedupeKey,
         kind: params.kind,
+        channel: "in_app",
+      },
+    });
+  }
+
+  const { error: emailError } = await automationClient.from("automation_events").upsert(
+    {
+      user_id: params.userId,
+      asset_id: params.assetId,
+      trigger_type: "service_log_created",
+      actions: ["email"],
+      payload: {
+        ...sharedPayload,
+        email_only: true,
+      },
+      dedupe_key: `${params.dedupeKey}:email`,
+      run_after: new Date().toISOString(),
+    },
+    {
+      onConflict: "dedupe_key",
+      ignoreDuplicates: true,
+    },
+  );
+
+  if (emailError) {
+    logApiError({
+      route: params.route,
+      method: params.method,
+      userId: params.userId,
+      error: emailError,
+      status: 500,
+      message: "Email notification enqueue failed",
+      meta: {
+        assetId: params.assetId,
+        dedupeKey: params.dedupeKey,
+        kind: params.kind,
+        channel: "email",
       },
     });
   }

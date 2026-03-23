@@ -57,3 +57,32 @@ export const isEmailRateLimitError = (error?: SupabaseAuthErrorLike | null) => {
     message.includes("for security purposes you can only request this after")
   );
 };
+
+export const isInvalidEmailVerificationError = (error?: SupabaseAuthErrorLike | null) => {
+  if (!error) return false;
+
+  const code = normalize(error.code);
+  const message = normalize(error.message);
+
+  if (
+    code === "otp_expired" ||
+    code === "flow_state_expired" ||
+    code === "flow_state_not_found" ||
+    code === "bad_code_verifier" ||
+    code === "bad_otp" ||
+    code === "token_expired" ||
+    code === "email_link_invalid"
+  ) {
+    return true;
+  }
+
+  return (
+    message.includes("expired") ||
+    message.includes("invalid") ||
+    message.includes("token has expired") ||
+    message.includes("otp has expired") ||
+    message.includes("flow state") ||
+    message.includes("code verifier") ||
+    message.includes("verification link")
+  );
+};

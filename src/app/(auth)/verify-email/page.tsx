@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { requireAuthRedirectUrl } from "@/lib/supabase/auth-redirect";
 import VerifyEmailClient from "./verify-email-client";
 
 function VerifyEmailFallback() {
@@ -29,7 +30,7 @@ function VerifyEmailFallback() {
 export default function VerifyEmailPage() {
   return (
     <Suspense fallback={<VerifyEmailFallback />}>
-      <VerifyEmailClient />
+      <VerifyEmailClient emailRedirectTo={requireAuthRedirectUrl("/verify-email")} />
     </Suspense>
   );
 }

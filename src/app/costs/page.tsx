@@ -1,9 +1,8 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
-import { CostTrendLineChart } from "@/components/costs/cost-trend-line-chart";
-import { YearlyCostBarChart } from "@/components/costs/yearly-cost-bar-chart";
 import { usePlanContext } from "@/contexts/PlanContext";
 import {
   type AssetCategory,
@@ -63,6 +62,22 @@ type DateRange = {
   sinceDate?: string;
   beforeDate?: string;
 };
+
+const CostTrendLineChart = dynamic(
+  () => import("@/components/costs/cost-trend-line-chart").then((mod) => mod.CostTrendLineChart),
+  {
+    ssr: false,
+    loading: () => <ChartPanelPlaceholder />,
+  },
+);
+
+const YearlyCostBarChart = dynamic(
+  () => import("@/components/costs/yearly-cost-bar-chart").then((mod) => mod.YearlyCostBarChart),
+  {
+    ssr: false,
+    loading: () => <ChartPanelPlaceholder />,
+  },
+);
 
 const periodOptions: { value: PeriodFilter; label: string }[] = [
   { value: "3m", label: "Son 3 Ay" },
@@ -748,6 +763,14 @@ function SummaryInline({ label, value }: { label: string; value: string }) {
     <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
       <p className="text-[11px] uppercase tracking-[0.16em] text-slate-400">{label}</p>
       <p className="mt-1 text-base font-semibold text-white">{value}</p>
+    </div>
+  );
+}
+
+function ChartPanelPlaceholder() {
+  return (
+    <div className="mt-4 h-72 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+      <div className="h-full w-full animate-pulse bg-[linear-gradient(90deg,rgba(255,255,255,0.03),rgba(255,255,255,0.08),rgba(255,255,255,0.03))]" />
     </div>
   );
 }

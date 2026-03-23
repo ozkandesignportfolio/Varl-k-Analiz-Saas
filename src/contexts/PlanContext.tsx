@@ -17,6 +17,7 @@ import { countByUser as countDocumentsByUser } from "@/lib/repos/documents-repo"
 import { getPlanConfig } from "@/lib/plans/plan-config";
 import { ensureProfile, getProfilePlanFromUserMetadata } from "@/lib/plans/profile-plan";
 import type { DbClient } from "@/lib/repos/_shared";
+import { isSupabaseUserEmailConfirmed } from "@/lib/supabase/auth-errors";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export type UserPlan = "free" | "premium";
@@ -87,6 +88,15 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       if (getUserError || !user) {
         if (isDev) {
           setDevPlanWarning(null);
+        }
+        resetToFreePlan();
+        return;
+      }
+
+      if (!isSupabaseUserEmailConfirmed(user)) {
+        await supabase.auth.signOut();
+        if (isDev) {
+          setDevPlanWarning("email verification required");
         }
         resetToFreePlan();
         return;

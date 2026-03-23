@@ -67,9 +67,11 @@ Kontrol noktasi:
 Izle:
 
 - `automation-dispatcher` calisma basarisi
+- `/api/automation/dispatch` 401/429/5xx artisleri
 - Cron tetiklerinin durmasi
 - `media-enrichment` job backlog'u
 - `SERVICE_MEDIA_JOB_SECRET` kaynakli 401/403 hatalari
+- `automation_events.last_error` ve `automation_events.action_results` icindeki email skip/fail nedenleri
 
 ## 6. Alarm oncelikleri
 

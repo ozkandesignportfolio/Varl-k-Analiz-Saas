@@ -15,6 +15,9 @@ const getFocusableElements = (container: HTMLElement) =>
     ),
   )
 
+const canUseSmoothScroll = () =>
+  typeof document !== "undefined" && "scrollBehavior" in document.documentElement.style
+
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -48,35 +51,60 @@ export function Navbar() {
   }, [])
 
   useEffect(() => {
-    const updateActiveSection = () => {
-      const scrollOffset = 128
-      let current: string = DEFAULT_SECTION
+    const sections = LANDING_NAV_SECTIONS.map((link) => document.getElementById(link.href.slice(1))).filter(
+      (section): section is HTMLElement => Boolean(section),
+    )
 
-      for (const link of LANDING_NAV_SECTIONS) {
-        const section = document.getElementById(link.href.slice(1))
-        if (!section) continue
-
-        const top = section.getBoundingClientRect().top
-        if (top - scrollOffset <= 0) {
-          current = link.href
-        }
-      }
-
-      const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2
-      if (atBottom) {
-        current = LANDING_NAV_SECTIONS[LANDING_NAV_SECTIONS.length - 1]?.href ?? current
-      }
-
-      setActiveHref((prev) => (prev === current ? prev : current))
+    if (sections.length === 0) {
+      return
     }
 
-    updateActiveSection()
-    window.addEventListener("scroll", updateActiveSection, { passive: true })
-    window.addEventListener("resize", updateActiveSection)
+    const lastHref = LANDING_NAV_SECTIONS[LANDING_NAV_SECTIONS.length - 1]?.href ?? DEFAULT_SECTION
+    const observer =
+      typeof window.IntersectionObserver === "function"
+        ? new window.IntersectionObserver(
+            (entries) => {
+              const visibleEntries = entries
+                .filter((entry) => entry.isIntersecting)
+                .sort((left, right) => {
+                  if (right.intersectionRatio !== left.intersectionRatio) {
+                    return right.intersectionRatio - left.intersectionRatio
+                  }
+
+                  return left.boundingClientRect.top - right.boundingClientRect.top
+                })
+
+              const nextHref = visibleEntries[0]?.target.id ? `#${visibleEntries[0].target.id}` : null
+              if (!nextHref) {
+                return
+              }
+
+              setActiveHref((prev) => (prev === nextHref ? prev : nextHref))
+            },
+            {
+              rootMargin: "-128px 0px -45% 0px",
+              threshold: [0.12, 0.3, 0.55, 0.8],
+            },
+          )
+        : null
+
+    sections.forEach((section) => observer?.observe(section))
+
+    const syncBottomSection = () => {
+      const isAtBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2
+      if (!isAtBottom) {
+        return
+      }
+
+      setActiveHref((prev) => (prev === lastHref ? prev : lastHref))
+    }
+
+    syncBottomSection()
+    window.addEventListener("scroll", syncBottomSection, { passive: true })
 
     return () => {
-      window.removeEventListener("scroll", updateActiveSection)
-      window.removeEventListener("resize", updateActiveSection)
+      observer?.disconnect()
+      window.removeEventListener("scroll", syncBottomSection)
     }
   }, [])
 
@@ -154,8 +182,19 @@ export function Navbar() {
     const section = document.getElementById(href.slice(1))
     if (!section) return
 
-    section.scrollIntoView({ behavior: "smooth", block: "start" })
-    window.history.replaceState(null, "", href)
+    try {
+      if (canUseSmoothScroll()) {
+        section.scrollIntoView({ behavior: "smooth", block: "start" })
+      } else {
+        section.scrollIntoView()
+      }
+    } catch {
+      section.scrollIntoView()
+    }
+
+    if (typeof window.history.replaceState === "function") {
+      window.history.replaceState(null, "", href)
+    }
     setActiveHref(href)
     setMobileOpen(false)
   }

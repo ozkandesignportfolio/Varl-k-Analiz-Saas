@@ -1,19 +1,10 @@
-const CACHE_NAME = "assetcare-shell-v2";
-const OFFLINE_FALLBACK = "/offline";
-const APP_SHELL = ["/", "/offline", "/login", "/register"];
-const IS_LOCALHOST =
-  self.location.hostname === "localhost" ||
-  self.location.hostname === "127.0.0.1" ||
-  self.location.hostname === "[::1]";
+const CACHE_NAME = "assetly-static-v3";
+const PUBLIC_STATIC_ASSET_REGEX =
+  /\.(?:css|js|mjs|png|jpg|jpeg|webp|avif|svg|gif|ico|woff2?|ttf)$/i;
+const EXCLUDED_PATH_PREFIXES = ["/api/", "/_next/data/", "/_next/image", "/_next/webpack-hmr"];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then((cache) => cache.addAll(APP_SHELL))
-      .then(() => self.skipWaiting())
-      .catch(() => self.skipWaiting()),
-  );
+  event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener("activate", (event) => {
@@ -31,61 +22,43 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+function isStaticAssetRequest(request, url) {
+  if (request.method !== "GET") return false;
+  if (request.mode === "navigate" || request.destination === "document") return false;
+  if (url.origin !== self.location.origin) return false;
+  if (url.pathname === "/sw.js" || url.pathname === "/manifest.webmanifest") return false;
+  if (EXCLUDED_PATH_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))) return false;
+
+  return url.pathname.startsWith("/_next/static/") || PUBLIC_STATIC_ASSET_REGEX.test(url.pathname);
+}
+
+async function fetchAndCache(request) {
+  const response = await fetch(request);
+
+  if (response.ok && response.type === "basic") {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.put(request, response.clone());
+  }
+
+  return response;
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
-
-  if (request.method !== "GET") return;
-
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return;
-  if (IS_LOCALHOST && url.pathname.startsWith("/_next/")) return;
 
-  if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request).catch(async () => {
-          const cachedPage = await caches.match(request);
-          if (cachedPage) return cachedPage;
-          const offlinePage = await caches.match(OFFLINE_FALLBACK);
-          return offlinePage || Response.error();
-        }),
-    );
-    return;
-  }
-
-  const isStaticAsset =
-    url.pathname.startsWith("/_next/static/") ||
-    ["style", "script", "font", "image"].includes(request.destination);
-
-  if (!isStaticAsset) return;
-  const shouldUseNetworkFirst =
-    url.pathname.startsWith("/_next/") ||
-    request.destination === "script" ||
-    request.destination === "style";
-
-  if (shouldUseNetworkFirst) {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
-          return response;
-        })
-        .catch(() => caches.match(request).then((cached) => cached || Response.error())),
-    );
-    return;
-  }
+  if (!isStaticAssetRequest(request, url)) return;
 
   event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
+    caches.match(request).then((cachedResponse) => {
+      const networkResponsePromise = fetchAndCache(request).catch(() => null);
 
-      return fetch(request)
-        .then((response) => {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
-          return response;
-        })
-        .catch(() => Response.error());
+      if (cachedResponse) {
+        event.waitUntil(networkResponsePromise);
+        return cachedResponse;
+      }
+
+      return networkResponsePromise.then((response) => response || Response.error());
     }),
   );
 });

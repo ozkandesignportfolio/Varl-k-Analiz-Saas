@@ -12,6 +12,7 @@ import { usePlanContext } from "@/contexts/PlanContext";
 import {
   NotificationPrefs,
   type NotificationPrefsState,
+  type NotificationReminderDaysState,
 } from "@/features/settings/components/NotificationPrefs";
 import { PlanUsageCard } from "@/features/settings/components/PlanUsageCard";
 import { ProfileForm, type ProfileFormValues } from "@/features/settings/components/ProfileForm";
@@ -59,6 +60,15 @@ const defaultNotificationPrefs: NotificationPrefsState = {
   email: false,
   frequency: "Anında",
 };
+
+const defaultNotificationReminderDays: NotificationReminderDaysState = {
+  maintenanceDaysBefore: 3,
+  warrantyDaysBefore: 3,
+  documentDaysBefore: 3,
+  billingDaysBefore: 3,
+};
+
+const MAX_NOTIFICATION_REMINDER_DAYS = 365;
 
 const ACCOUNT_DELETE_CONFIRM_KEYWORD = "SİL";
 const INPUT_CLASS_NAME =
@@ -118,6 +128,59 @@ const toTrimmedString = (value: unknown, fallback = "") => {
   const normalized = value.trim();
   return normalized.length > 0 ? normalized : fallback;
 };
+
+const toReminderDaysNumber = (value: unknown, fallback: number) => {
+  if (typeof value === "number" && Number.isInteger(value)) {
+    return Math.min(Math.max(value, 0), MAX_NOTIFICATION_REMINDER_DAYS);
+  }
+
+  if (typeof value === "string" && /^\d+$/.test(value.trim())) {
+    const parsed = Number(value.trim());
+    if (Number.isInteger(parsed)) {
+      return Math.min(Math.max(parsed, 0), MAX_NOTIFICATION_REMINDER_DAYS);
+    }
+  }
+
+  return fallback;
+};
+
+const normalizeNotificationReminderDays = (
+  value: Partial<NotificationReminderDaysState>,
+): NotificationReminderDaysState => ({
+  maintenanceDaysBefore: toReminderDaysNumber(
+    value.maintenanceDaysBefore,
+    defaultNotificationReminderDays.maintenanceDaysBefore,
+  ),
+  warrantyDaysBefore: toReminderDaysNumber(
+    value.warrantyDaysBefore,
+    defaultNotificationReminderDays.warrantyDaysBefore,
+  ),
+  documentDaysBefore: toReminderDaysNumber(
+    value.documentDaysBefore,
+    defaultNotificationReminderDays.documentDaysBefore,
+  ),
+  billingDaysBefore: toReminderDaysNumber(
+    value.billingDaysBefore,
+    defaultNotificationReminderDays.billingDaysBefore,
+  ),
+});
+
+const getNotificationReminderDays = (
+  row: Record<string, unknown> | null | undefined,
+): NotificationReminderDaysState =>
+  normalizeNotificationReminderDays({
+    maintenanceDaysBefore: row?.maintenance_days_before as number | string | undefined,
+    warrantyDaysBefore: row?.warranty_days_before as number | string | undefined,
+    documentDaysBefore: row?.document_days_before as number | string | undefined,
+    billingDaysBefore: row?.billing_days_before as number | string | undefined,
+  });
+
+const toNotificationSettingsRecord = (value: NotificationReminderDaysState) => ({
+  maintenance_days_before: value.maintenanceDaysBefore,
+  warranty_days_before: value.warrantyDaysBefore,
+  document_days_before: value.documentDaysBefore,
+  billing_days_before: value.billingDaysBefore,
+});
 
 const getMetadataString = (
   metadata: Record<string, unknown> | undefined,
@@ -311,10 +374,13 @@ export function SettingsPageContainer() {
     useState<OrganizationSettingsValues>(defaultOrganization);
   const [notificationPrefs, setNotificationPrefs] =
     useState<NotificationPrefsState>(defaultNotificationPrefs);
+  const [notificationReminderDays, setNotificationReminderDays] =
+    useState<NotificationReminderDaysState>(defaultNotificationReminderDays);
   const [feedback, setFeedback] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingNotificationPrefs, setIsSavingNotificationPrefs] = useState(false);
+  const [isSavingNotificationReminderDays, setIsSavingNotificationReminderDays] = useState(false);
   const [isSavingOrganization, setIsSavingOrganization] = useState(false);
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [isConfirmingCheckout, setIsConfirmingCheckout] = useState(false);
@@ -322,6 +388,7 @@ export function SettingsPageContainer() {
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [deleteFeedback, setDeleteFeedback] = useState("");
   const notificationSaveRequestIdRef = useRef(0);
+  const notificationReminderSaveRequestIdRef = useRef(0);
   const metadataRef = useRef<Record<string, unknown>>({});
   const metadataSaveQueueRef = useRef(Promise.resolve());
 
@@ -345,16 +412,25 @@ export function SettingsPageContainer() {
       }
 
       const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
+      const { data: notificationSettingsData } = await supabase
+        .from("notification_settings")
+        .select("maintenance_days_before,warranty_days_before,document_days_before,billing_days_before")
+        .eq("user_id", user.id)
+        .maybeSingle();
       const nextProfile = {
         fullName: toFullName(metadata, user.email ?? ""),
         email: user.email ?? "",
       };
       const nextOrganization = getMetadataOrganization(metadata, user.email ?? "");
+      const nextReminderDays = getNotificationReminderDays(
+        notificationSettingsData as Record<string, unknown> | null | undefined,
+      );
 
       metadataRef.current = metadata;
       setProfile(nextProfile);
       setSavedProfile(nextProfile);
       setNotificationPrefs(getMetadataPrefs(metadata));
+      setNotificationReminderDays(nextReminderDays);
       setOrganization(nextOrganization);
       setSavedOrganization(nextOrganization);
       setIsLoading(false);
@@ -482,6 +558,63 @@ export function SettingsPageContainer() {
       void persistNotificationPrefs(nextPrefs);
     },
     [persistNotificationPrefs],
+  );
+
+  const persistNotificationReminderDays = useCallback(
+    async (nextReminderDays: NotificationReminderDaysState) => {
+      const requestId = notificationReminderSaveRequestIdRef.current + 1;
+      notificationReminderSaveRequestIdRef.current = requestId;
+      setIsSavingNotificationReminderDays(true);
+      setFeedback("Bildirim hatirlatma gunleri kaydediliyor...");
+
+      const normalizedReminderDays = normalizeNotificationReminderDays(nextReminderDays);
+      const {
+        data: { user },
+        error: getUserError,
+      } = await supabase.auth.getUser();
+
+      if (requestId !== notificationReminderSaveRequestIdRef.current) {
+        return;
+      }
+
+      if (getUserError || !user) {
+        setFeedback("Oturum doğrulanamadı. Lütfen tekrar giriş yapın.");
+        setIsSavingNotificationReminderDays(false);
+        router.replace("/login?next=/settings");
+        return;
+      }
+
+      const { error } = await supabase.from("notification_settings").upsert(
+        {
+          user_id: user.id,
+          ...toNotificationSettingsRecord(normalizedReminderDays),
+        },
+        { onConflict: "user_id" },
+      );
+
+      if (requestId !== notificationReminderSaveRequestIdRef.current) {
+        return;
+      }
+
+      if (error) {
+        setFeedback("Bildirim hatirlatma gunleri kaydedilemedi. Lütfen tekrar deneyin.");
+        setIsSavingNotificationReminderDays(false);
+        return;
+      }
+
+      setNotificationReminderDays(normalizedReminderDays);
+      setFeedback("Bildirim hatirlatma gunleri güncellendi.");
+      setIsSavingNotificationReminderDays(false);
+    },
+    [router, supabase],
+  );
+
+  const handleNotificationReminderDaysChange = useCallback(
+    (nextReminderDays: NotificationReminderDaysState) => {
+      setNotificationReminderDays(nextReminderDays);
+      void persistNotificationReminderDays(nextReminderDays);
+    },
+    [persistNotificationReminderDays],
   );
 
   const handleOrganizationSave = useCallback(async () => {
@@ -735,8 +868,10 @@ export function SettingsPageContainer() {
           <TabsContent value="notification-preferences" className="outline-none">
             <NotificationPrefs
               value={notificationPrefs}
+              reminderDays={notificationReminderDays}
               onChange={handleNotificationPrefsChange}
-              isSaving={isSavingNotificationPrefs}
+              onReminderDaysChange={handleNotificationReminderDaysChange}
+              isSaving={isSavingNotificationPrefs || isSavingNotificationReminderDays}
             />
           </TabsContent>
 

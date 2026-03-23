@@ -189,6 +189,34 @@ export type Database = {
           file_size?: number | null;
         };
       };
+      notification_settings: {
+        Row: {
+          user_id: string;
+          maintenance_days_before: number;
+          warranty_days_before: number;
+          document_days_before: number;
+          billing_days_before: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          maintenance_days_before?: number;
+          warranty_days_before?: number;
+          document_days_before?: number;
+          billing_days_before?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          maintenance_days_before?: number;
+          warranty_days_before?: number;
+          document_days_before?: number;
+          billing_days_before?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       profiles: {
         Row: {
           id: string;

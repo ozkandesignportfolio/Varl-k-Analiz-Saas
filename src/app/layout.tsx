@@ -1,8 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { JetBrains_Mono } from "next/font/google";
-import { PwaRegister } from "@/components/pwa/register-sw";
-import { PlanProvider } from "@/contexts/PlanContext";
+import { ClientProviders } from "@/components/providers/client-providers";
 import "./globals.css";
 
 const inter = Inter({
@@ -46,10 +45,9 @@ export default function RootLayout({
         <meta charSet="utf-8" />
       </head>
       <body className={inter.className}>
-        <PlanProvider>
-          <PwaRegister />
+        <ClientProviders>
           {children}
-        </PlanProvider>
+        </ClientProviders>
       </body>
     </html>
   );

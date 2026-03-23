@@ -1,17 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isSupabaseUserEmailConfirmed } from "./src/lib/supabase/auth-errors";
-
-const protectedExactRoutes = new Set(["/dashboard", "/app", "/account", "/settings", "/billing"]);
-const protectedRoutePrefixes = ["/dashboard/", "/app/", "/account/", "/settings/"] as const;
-
-function isProtectedRoute(pathname: string) {
-  if (protectedExactRoutes.has(pathname)) {
-    return true;
-  }
-
-  return protectedRoutePrefixes.some((prefix) => pathname.startsWith(prefix));
-}
+import { buildLoginPath } from "./src/lib/supabase/email-verification";
+import { isProtectedAppPath } from "./src/lib/supabase/protected-routes";
 
 function copyAuthCookies(from: NextResponse, to: NextResponse) {
   from.cookies.getAll().forEach((cookie) => {
@@ -23,12 +14,17 @@ function buildLoginRedirectResponse(
   request: NextRequest,
   pathname: string,
   search: string,
+  options?: { email?: string | null; emailVerificationRequired?: boolean },
   responseToCopy?: NextResponse,
 ) {
   const redirectUrl = request.nextUrl.clone();
-  redirectUrl.pathname = "/login";
-  redirectUrl.search = "";
-  redirectUrl.searchParams.set("next", `${pathname}${search}`);
+  const loginPath = buildLoginPath(`${pathname}${search}`, {
+    email: options?.email,
+    emailVerificationRequired: options?.emailVerificationRequired,
+  });
+  const [loginPathname, loginSearch = ""] = loginPath.split("?");
+  redirectUrl.pathname = loginPathname;
+  redirectUrl.search = loginSearch ? `?${loginSearch}` : "";
 
   const redirectResponse = NextResponse.redirect(redirectUrl);
 
@@ -42,7 +38,7 @@ function buildLoginRedirectResponse(
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (!isProtectedRoute(pathname)) {
+  if (!isProtectedAppPath(pathname)) {
     return NextResponse.next();
   }
 
@@ -87,12 +83,36 @@ export async function middleware(request: NextRequest) {
   }
 
   if (userError || !authenticatedUser) {
-    return buildLoginRedirectResponse(request, pathname, search, response);
+    return buildLoginRedirectResponse(
+      request,
+      pathname,
+      search,
+      {
+        email: user?.email ?? null,
+        emailVerificationRequired: Boolean(user) && !authenticatedUser,
+      },
+      response,
+    );
   }
 
   return response;
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/app/:path*", "/account/:path*", "/settings/:path*", "/billing"],
+  matcher: [
+    "/dashboard/:path*",
+    "/assets/:path*",
+    "/maintenance/:path*",
+    "/services/:path*",
+    "/documents/:path*",
+    "/timeline/:path*",
+    "/expenses/:path*",
+    "/notifications/:path*",
+    "/billing/:path*",
+    "/invoices/:path*",
+    "/costs/:path*",
+    "/reports/:path*",
+    "/settings/:path*",
+    "/subscriptions/:path*",
+  ],
 };

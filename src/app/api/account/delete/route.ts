@@ -1,6 +1,7 @@
 import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { logApiError } from "@/lib/api/logging";
+import { isSupabaseUserEmailConfirmed } from "@/lib/supabase/auth-errors";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -86,7 +87,7 @@ export async function POST() {
       error: getUserError,
     } = await supabase.auth.getUser();
 
-    if (getUserError || !user) {
+    if (getUserError || !user || !isSupabaseUserEmailConfirmed(user)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
