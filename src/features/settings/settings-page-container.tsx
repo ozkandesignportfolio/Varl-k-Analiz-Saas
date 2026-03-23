@@ -144,6 +144,21 @@ const toReminderDaysNumber = (value: unknown, fallback: number) => {
   return fallback;
 };
 
+const toOptionalReminderDaysNumber = (value: unknown): number | undefined => {
+  if (typeof value === "number" && Number.isInteger(value)) {
+    return value;
+  }
+
+  if (typeof value === "string" && /^\d+$/.test(value.trim())) {
+    const parsed = Number(value.trim());
+    if (Number.isInteger(parsed)) {
+      return parsed;
+    }
+  }
+
+  return undefined;
+};
+
 const normalizeNotificationReminderDays = (
   value: Partial<NotificationReminderDaysState>,
 ): NotificationReminderDaysState => ({
@@ -169,10 +184,10 @@ const getNotificationReminderDays = (
   row: Record<string, unknown> | null | undefined,
 ): NotificationReminderDaysState =>
   normalizeNotificationReminderDays({
-    maintenanceDaysBefore: row?.maintenance_days_before as number | string | undefined,
-    warrantyDaysBefore: row?.warranty_days_before as number | string | undefined,
-    documentDaysBefore: row?.document_days_before as number | string | undefined,
-    billingDaysBefore: row?.billing_days_before as number | string | undefined,
+    maintenanceDaysBefore: toOptionalReminderDaysNumber(row?.maintenance_days_before),
+    warrantyDaysBefore: toOptionalReminderDaysNumber(row?.warranty_days_before),
+    documentDaysBefore: toOptionalReminderDaysNumber(row?.document_days_before),
+    billingDaysBefore: toOptionalReminderDaysNumber(row?.billing_days_before),
   });
 
 const toNotificationSettingsRecord = (value: NotificationReminderDaysState) => ({
