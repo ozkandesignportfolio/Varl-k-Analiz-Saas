@@ -17,8 +17,19 @@ const protectedRoutes = [
 ];
 
 const authRoutes = ["/login", "/register", "/verify-email"];
-const middlewareBypassPrefixes = ["/api/", "/billing/", "/_next/"] as const;
-const middlewareBypassExactPaths = new Set(["/api", "/billing", "/_next", "/favicon.ico"]);
+const middlewareBypassPrefixes = ["/api/", "/billing/", "/_next/", "/icons/"] as const;
+const middlewareBypassExactPaths = new Set([
+  "/",
+  "/api",
+  "/billing",
+  "/_next",
+  "/icons",
+  "/manifest.webmanifest",
+  "/icon.png",
+  "/apple-icon.png",
+  "/favicon.ico",
+  "/sw.js",
+]);
 const middlewareVerificationTypes = new Set(["signup", "email"]);
 
 function isProtectedRoute(pathname: string) {
@@ -79,16 +90,7 @@ function buildCleanAuthRedirectUrl(request: NextRequest) {
 export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
-  if (
-    pathname.startsWith("/api/") ||
-    pathname.startsWith("/billing/") ||
-    pathname.startsWith("/_next/") ||
-    pathname === "/favicon.ico"
-  ) {
-    return NextResponse.next();
-  }
-
-  // Never run auth redirects for API/static/billing framework paths.
+  // Never run auth/session logic for public entrypoints, framework assets, or PWA files.
   if (isBypassPath(pathname)) {
     return NextResponse.next();
   }
