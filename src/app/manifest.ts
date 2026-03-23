@@ -2,11 +2,12 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
+    id: "/",
     name: "Assetly",
     short_name: "Assetly",
     description:
       "Assetly ile varlık, bakım, servis, belge ve maliyet süreçlerini tek panelde yönetin.",
-    start_url: "/dashboard",
+    start_url: "/",
     scope: "/",
     display: "standalone",
     orientation: "portrait",
@@ -16,21 +17,20 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ["productivity", "business", "utilities"],
     icons: [
       {
-        src: "/pwa-icon-192.png",
+        src: "/icons/icon-192-v2.png",
         sizes: "192x192",
         type: "image/png",
-        purpose: "maskable",
       },
       {
-        src: "/pwa-icon-512.png",
+        src: "/icons/icon-512-v2.png",
+        sizes: "512x512",
+        type: "image/png",
+      },
+      {
+        src: "/icons/icon-512-maskable-v2.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",
-      },
-      {
-        src: "/apple-touch-icon.png?v=2",
-        sizes: "180x180",
-        type: "image/png",
       },
     ],
   };
