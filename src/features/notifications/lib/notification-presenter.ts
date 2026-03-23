@@ -19,18 +19,18 @@ type NotificationText = {
   detail?: string;
 };
 
-const notificationTypes = ["Bakım", "Garanti", "Belge", "Ödeme", "Sistem"] as const;
+const notificationTypes = ["BakÄ±m", "Garanti", "Belge", "Ã–deme", "Sistem"] as const;
 
 const fieldLabelByKey: Record<string, string> = {
-  name: "Varlık adı",
+  name: "Varlik adi",
   category: "Kategori",
-  serial_number: "Seri numarası",
+  serial_number: "Seri numarasi",
   brand: "Marka",
   model: "Model",
-  purchase_price: "Satın alma bedeli",
-  purchase_date: "Satın alma tarihi",
-  warranty_end_date: "Garanti bitiş tarihi",
-  photo_path: "Fotoğraf",
+  purchase_price: "Satin alma bedeli",
+  purchase_date: "Satin alma tarihi",
+  warranty_end_date: "Garanti bitis tarihi",
+  photo_path: "Fotograf",
   qr_code: "QR kodu",
 };
 
@@ -39,7 +39,7 @@ const documentTypeLabelByKey: Record<string, string> = {
   fatura: "Fatura",
   servis_formu: "Servis formu",
   diger: "Belge",
-  diğer: "Belge",
+  "diğer": "Belge",
 };
 
 const toSafeString = (value: unknown, fallback = "") => {
@@ -84,7 +84,7 @@ const resolveChangedFieldsText = (value: unknown) => {
     return "";
   }
 
-  return `Güncellenen bilgiler: ${[...new Set(changedFields)].join(", ")}.`;
+  return `Guncellenen bilgiler: ${[...new Set(changedFields)].join(", ")}.`;
 };
 
 const resolveDocumentTypeLabel = (value: unknown) => {
@@ -95,7 +95,7 @@ const resolveDocumentTypeLabel = (value: unknown) => {
 const resolveCustomType = (value: unknown): NotificationType | null => {
   const normalized = toSafeString(value);
 
-  if (notificationTypes.includes(normalized as NotificationType)) {
+  if ((notificationTypes as readonly string[]).includes(normalized)) {
     return normalized as NotificationType;
   }
 
@@ -105,14 +105,14 @@ const resolveCustomType = (value: unknown): NotificationType | null => {
 const resolveTypeFromEvent = (
   triggerType: string,
   payload: Record<string, unknown> | null,
-): NotificationType => {
+) => {
   const customType = resolveCustomType(payload?.type);
   if (customType) {
     return customType;
   }
 
   if (triggerType === "maintenance_7_days") {
-    return "Bakım";
+    return "BakÄ±m";
   }
 
   if (triggerType === "warranty_30_days") {
@@ -120,10 +120,10 @@ const resolveTypeFromEvent = (
   }
 
   if (triggerType === "subscription_due" || triggerType === "expense_threshold") {
-    return "Ödeme";
+    return "Ã–deme";
   }
 
-  if (toSafeString(payload?.document_type).length > 0) {
+  if (triggerType === "document_expiry_reminder" || toSafeString(payload?.document_type).length > 0) {
     return "Belge";
   }
 
@@ -145,9 +145,9 @@ const resolveText = (
   }
 
   const assetName = toSafeString(payload?.asset_name);
-  const assetSubject = assetName ? `${assetName} varlığınız` : "Varlığınız";
+  const assetSubject = assetName ? `${assetName} varliginiz` : "Varliginiz";
   const notificationKind = toSafeString(payload?.notification_kind);
-  const ruleTitle = toSafeString(payload?.rule_title, "planlı bakım");
+  const ruleTitle = toSafeString(payload?.rule_title, "planli bakim");
   const warrantyDate = formatDate(toSafeString(payload?.warranty_end_date));
   const nextDueDate = formatDate(toSafeString(payload?.next_due_date));
   const serviceType = toSafeString(payload?.service_type, "servis");
@@ -158,83 +158,96 @@ const resolveText = (
 
   if (notificationKind === "asset_created") {
     return {
-      title: "Yeni varlık eklendi",
-      description: `${assetSubject} sisteme başarıyla eklendi.`,
+      title: "Yeni varlik eklendi",
+      description: `${assetSubject} sisteme basariyla eklendi.`,
     };
   }
 
   if (notificationKind === "asset_updated") {
     return {
-      title: "Varlık bilgileri güncellendi",
-      description: `${assetSubject} güncellendi.`,
+      title: "Varlik bilgileri guncellendi",
+      description: `${assetSubject} guncellendi.`,
       detail: changedFieldsText || undefined,
     };
   }
 
   if (triggerType === "warranty_30_days") {
     return {
-      title: "Garanti bitiş tarihi yaklaşıyor",
+      title: "Garanti bitis tarihi yaklasiyor",
       description: warrantyDate
-        ? `${assetSubject} için garanti bitiş tarihi ${warrantyDate}.`
-        : `${assetSubject} için garanti süresi yakında sona eriyor.`,
+        ? `${assetSubject} icin garanti bitis tarihi ${warrantyDate}.`
+        : `${assetSubject} icin garanti suresi yakinda sona eriyor.`,
     };
   }
 
   if (triggerType === "maintenance_7_days") {
     return {
-      title: "Bakım zamanı yaklaşıyor",
+      title: "Bakim zamani yaklasiyor",
       description: nextDueDate
-        ? `${assetSubject} için ${ruleTitle} tarihi ${nextDueDate}.`
-        : `${assetSubject} için yaklaşan bir bakım planı bulunuyor.`,
+        ? `${assetSubject} icin ${ruleTitle} tarihi ${nextDueDate}.`
+        : `${assetSubject} icin yaklasan bir bakim plani bulunuyor.`,
     };
   }
 
   if (triggerType === "subscription_due") {
     const subscriptionLabel = providerName ? `${providerName} - ${subscriptionName}` : subscriptionName;
     return {
-      title: "Ödeme tarihi yaklaşıyor",
+      title: "Odeme tarihi yaklasiyor",
       description: nextBillingDate
-        ? `${subscriptionLabel} için ödeme tarihi ${nextBillingDate}.`
-        : `${subscriptionLabel} için ödeme zamanı yaklaşıyor.`,
+        ? `${subscriptionLabel} icin odeme tarihi ${nextBillingDate}.`
+        : `${subscriptionLabel} icin odeme zamani yaklasiyor.`,
     };
   }
 
   if (triggerType === "service_log_created") {
     return {
-      title: "Yeni servis kaydı eklendi",
-      description: `${assetSubject} için ${serviceType} kaydı oluşturuldu.`,
+      title: "Yeni servis kaydi eklendi",
+      description: `${assetSubject} icin ${serviceType} kaydi olusturuldu.`,
+    };
+  }
+
+  if (triggerType === "document_expiry_reminder") {
+    const documentTypeLabel = resolveDocumentTypeLabel(payload?.document_type);
+    const expiryDate = formatDate(
+      toSafeString(payload?.expiry_date ?? payload?.expires_at ?? payload?.document_expiry_date),
+    );
+    return {
+      title: "Belge suresi dolmak uzere",
+      description: expiryDate
+        ? `${assetSubject} icin ${documentTypeLabel.toLocaleLowerCase("tr-TR")} tarihi ${expiryDate}.`
+        : `${assetSubject} icin bir belgenin suresi yaklasiyor.`,
     };
   }
 
   if (triggerType === "expense_threshold") {
     return {
-      title: "Gider kaydı kontrol gerektiriyor",
-      description: "Belirlediğiniz tutarın üzerinde bir gider kaydı oluştu. Kontrol etmeniz önerilir.",
+      title: "Gider kaydi kontrol gerektiriyor",
+      description: "Belirlediginiz tutarin uzerinde bir gider kaydi olustu. Kontrol etmeniz onerilir.",
     };
   }
 
   if (toSafeString(payload?.document_type)) {
     const documentTypeLabel = resolveDocumentTypeLabel(payload?.document_type);
     return {
-      title: "Belgeyle ilgili bir işlem zamanı geldi",
+      title: "Belgeyle ilgili bir islem zamani geldi",
       description: assetName
-        ? `${assetName} varlığınız için ${documentTypeLabel.toLocaleLowerCase("tr-TR")} ile ilgili bir bildirim var.`
+        ? `${assetName} varliginiz icin ${documentTypeLabel.toLocaleLowerCase("tr-TR")} ile ilgili bir bildirim var.`
         : `${documentTypeLabel} ile ilgili bir bildirim var.`,
     };
   }
 
   return {
     title: "Sistem bildirimi",
-    description: "Takip etmeniz gereken yeni bir gelişme var.",
+    description: "Takip etmeniz gereken yeni bir gelisme var.",
   };
 };
 
-const resolveReadStatusFromEvent = (status: string): NotificationStatus => {
+const resolveReadStatusFromEvent = (status: string) => {
   if (status === "completed") {
     return "Okundu";
   }
 
-  return "Okunmadı";
+    return "OkunmadÄ±";
 };
 
 const resolveActionHref = (
@@ -273,7 +286,7 @@ const resolveActionHref = (
     return "/costs";
   }
 
-  if (toSafeString(payload?.document_type).length > 0) {
+  if (triggerType === "document_expiry_reminder" || toSafeString(payload?.document_type).length > 0) {
     return "/documents";
   }
 
@@ -283,7 +296,7 @@ const resolveActionHref = (
 export function mapAutomationEventToNotification(
   input: AutomationEventNotificationInput,
 ): NotificationRecord {
-  const type = resolveTypeFromEvent(input.triggerType, input.payload);
+  const type = resolveTypeFromEvent(input.triggerType, input.payload) as NotificationType;
   const text = resolveText(input.triggerType, input.payload);
   const actionHref = resolveActionHref(input.triggerType, input.payload, input.assetId);
 
@@ -294,7 +307,7 @@ export function mapAutomationEventToNotification(
     description: text.description,
     detail: text.detail,
     createdAt: input.createdAt,
-    status: resolveReadStatusFromEvent(input.status),
+    status: resolveReadStatusFromEvent(input.status) as NotificationStatus,
     source: "automation",
     actionHref: actionHref || undefined,
     actionLabel: actionHref ? "Detaylara Bak" : undefined,
