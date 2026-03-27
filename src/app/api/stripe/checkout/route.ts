@@ -3,21 +3,9 @@ import { NextResponse } from "next/server";
 import { logApiError } from "@/lib/api/logging";
 import { enforceRateLimit, getRequestIp } from "@/lib/api/rate-limit";
 import { PREMIUM_MONTHLY_PRICE_KURUS } from "@/lib/plans/pricing";
+import { requireConfiguredAppOrigin } from "@/lib/config/app-url";
 import { getStripeSecretKeyValidationError, stripe } from "@/lib/stripe";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
-
-const normalizeBaseUrl = (value: string | undefined) => value?.trim().replace(/\/+$/, "");
-
-const resolveAppUrl = () => {
-  const envAppUrl =
-    normalizeBaseUrl(process.env.NEXT_PUBLIC_APP_URL) ?? normalizeBaseUrl(process.env.APP_URL);
-
-  if (!envAppUrl) {
-    throw new Error("APP_URL is required");
-  }
-
-  return envAppUrl;
-};
 
 const readMissingEnvVars = () => {
   const missing: string[] = [];
@@ -143,10 +131,10 @@ export async function POST(request: Request) {
   const priceId = envCheck.premiumPriceId as string;
   let appUrl: string;
   try {
-    appUrl = resolveAppUrl();
+    appUrl = requireConfiguredAppOrigin();
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "APP_URL is required" },
+      { error: err instanceof Error ? err.message : "APP_URL or NEXT_PUBLIC_APP_URL is required" },
       { status: 500 },
     );
   }

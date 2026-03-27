@@ -57,7 +57,7 @@ const defaultNotificationPrefs: NotificationPrefsState = {
   payment: true,
   system: true,
   inApp: true,
-  email: false,
+  email: true,
   frequency: "Anında",
 };
 

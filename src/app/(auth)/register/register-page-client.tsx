@@ -65,6 +65,29 @@ export default function RegisterPageClient({ emailRedirectTo }: RegisterPageClie
     setIsSubmitting(true);
 
     try {
+      const notificationPreferences = {
+        maintenance: true,
+        maintenance_email: true,
+        warranty: true,
+        warranty_email: true,
+        document: true,
+        document_email: true,
+        documentExpiry: true,
+        document_expiry: true,
+        document_expiry_email: true,
+        service: true,
+        service_logs: true,
+        service_log: true,
+        service_email: true,
+        payment: true,
+        subscription_email: true,
+        system: true,
+        inApp: true,
+        in_app: true,
+        email: true,
+        frequency: "Aninda",
+      };
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -72,6 +95,8 @@ export default function RegisterPageClient({ emailRedirectTo }: RegisterPageClie
           emailRedirectTo,
           data: {
             full_name: fullName,
+            notification_preferences: notificationPreferences,
+            notificationPreferences: notificationPreferences,
           },
         },
       });

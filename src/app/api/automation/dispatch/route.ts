@@ -60,7 +60,9 @@ const getServiceRoleClient = () => {
 const getWorkerInvocation = () => {
   const supabaseUrl = getSupabaseUrl();
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || null;
-  const cronSecret = process.env.AUTOMATION_CRON_SECRET?.trim() || null;
+  // Keep CRON_SECRET aligned with AUTOMATION_CRON_SECRET on Vercel so cron
+  // invocations can authenticate this route and forward the same secret.
+  const cronSecret = process.env.AUTOMATION_CRON_SECRET?.trim() || process.env.CRON_SECRET?.trim() || null;
 
   if (!supabaseUrl || !isConfiguredSecret(serviceRoleKey) || !cronSecret) {
     return null;
@@ -137,7 +139,9 @@ async function invokeCurrentWorker(body: Record<string, unknown>) {
 }
 
 async function handleDispatch(request: Request, body: Record<string, unknown>) {
-  const cronSecret = process.env.AUTOMATION_CRON_SECRET?.trim();
+  // Vercel Cron sends Authorization: Bearer <CRON_SECRET>. Prefer the existing
+  // AUTOMATION_CRON_SECRET and allow CRON_SECRET as a compatible fallback.
+  const cronSecret = process.env.AUTOMATION_CRON_SECRET?.trim() || process.env.CRON_SECRET?.trim();
   if (!cronSecret) {
     return NextResponse.json({ error: "AUTOMATION_CRON_SECRET tanimli degil." }, { status: 503 });
   }

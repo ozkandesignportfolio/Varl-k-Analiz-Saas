@@ -6,6 +6,7 @@ import {
   resolveNotificationPreferenceKey,
   type AutomationEvent,
 } from "./notification.ts";
+import { requireEmailEnv } from "./email-env.ts";
 
 export type EventActionResult = { ok: boolean; results: Record<string, unknown> };
 
@@ -35,7 +36,7 @@ const defaultNotificationPreferences: NotificationPreferences = {
   service: true,
   payment: true,
   system: true,
-  email: false,
+  email: true,
 };
 
 function logAutomation(level: "info" | "error", payload: Record<string, unknown>) {
@@ -94,6 +95,18 @@ function isConfiguredSecret(value: string) {
   ];
 
   return !placeholderPatterns.some((pattern) => pattern.test(normalized));
+}
+
+function maskSecret(value: string) {
+  if (!value) {
+    return "missing";
+  }
+
+  if (value.length <= 8) {
+    return `${value.slice(0, 2)}***`;
+  }
+
+  return `${value.slice(0, 4)}***${value.slice(-4)}`;
 }
 
 function skipEmail(
@@ -263,13 +276,25 @@ async function getAssetContext(
 }
 
 async function sendEmailAction(supabase: SupabaseClient, event: AutomationEvent): Promise<Record<string, unknown>> {
-  const resendApiKey = Deno.env.get("RESEND_API_KEY")?.trim() ?? "";
-  const fromEmail = Deno.env.get("AUTOMATION_FROM_EMAIL")?.trim() ?? "";
+  const requiredEnv = requireEmailEnv();
+  const resendApiKey = requiredEnv.RESEND_API_KEY;
+  const fromEmail = requiredEnv.AUTOMATION_FROM_EMAIL;
   const replyToEmail = Deno.env.get("AUTOMATION_REPLY_TO_EMAIL")?.trim() ?? "";
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim() ?? "";
-  const appUrl = normalizeAppUrl(
-    Deno.env.get("APP_URL")?.trim() ?? Deno.env.get("NEXT_PUBLIC_APP_URL")?.trim() ?? "",
-  );
+  const serviceRoleKey = requiredEnv.SUPABASE_SERVICE_ROLE_KEY;
+  const appUrl = normalizeAppUrl(requiredEnv.APP_URL);
+
+  logAutomation("info", {
+    action: "email_env_validation",
+    event_id: event.id,
+    user_id: event.user_id,
+    trigger_type: event.trigger_type,
+    resend_api_key_configured: isConfiguredSecret(resendApiKey),
+    resend_api_key_masked: maskSecret(resendApiKey),
+    from_email: fromEmail,
+    reply_to_email: replyToEmail || null,
+    app_url: appUrl,
+    service_role_key_configured: isConfiguredSecret(serviceRoleKey),
+  });
 
   if (!isConfiguredSecret(resendApiKey)) {
     failEmail(event, {
@@ -334,6 +359,7 @@ async function sendEmailAction(supabase: SupabaseClient, event: AutomationEvent)
     return skipEmail(event, {
       recipient_email: recipientEmail,
       reason: "email_channel_disabled",
+      preference_key: preferenceKey,
     });
   }
 
@@ -353,6 +379,26 @@ async function sendEmailAction(supabase: SupabaseClient, event: AutomationEvent)
     assetStatus: resolveAssetStatus(event, asset),
     organizationName: resolveOrganizationName(metadata),
     recipientName: resolveRecipientName(metadata, recipientEmail),
+  });
+
+  logAutomation("info", {
+    action: "email_send_attempt",
+    event_id: event.id,
+    user_id: event.user_id,
+    trigger_type: event.trigger_type,
+    recipient_email: recipientEmail,
+    from_email: fromEmail,
+    reply_to_email: replyToEmail || null,
+    preference_key: preferenceKey,
+    subject: emailMessage.subject,
+    app_url: appUrl,
+    payload: {
+      to: [recipientEmail],
+      subject: emailMessage.subject,
+      has_text: Boolean(emailMessage.text),
+      has_html: Boolean(emailMessage.html),
+      cta_url: emailMessage.ctaUrl,
+    },
   });
 
   let response: Response;
