@@ -1,5 +1,0 @@
-[35msrc/components/layout/Sidebar.tsx[m[36m:[m[32m108[m[36m:[m  const isFreePlan = [1;31mplan ===[m "free";
-[35msrc/components/ui/UpgradeGate.tsx[m[36m:[m[32m29[m[36m:[m  if ([1;31mplan ===[m "premium" || dismissed) {
-[35msrc/features/assets/containers/assets-page-container.tsx[m[36m:[m[32m525[m[36m:[m        if (createResponse.status === 403 && [1;31mplan ===[m "free" && trialAssetLimit <= assets.length) {
-[35msrc/features/settings/components/PlanUsageCard.tsx[m[36m:[m[32m31[m[36m:[m  const isPremium = [1;31mplan ===[m "premium";
-[35msrc/lib/plans/premium-media.ts[m[36m:[m[32m31[m[36m:[m  if ([1;31mplan ===[m "premium") {

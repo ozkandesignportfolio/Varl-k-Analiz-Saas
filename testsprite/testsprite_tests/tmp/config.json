@@ -1,8 +1,0 @@
-{
-  "status": "commited",
-  "type": "frontend",
-  "scope": "codebase",
-  "localEndpoint": "http://localhost:3000/",
-  "serverPort": 61406,
-  "proxy": "http://95eb9271-f365-45b5-b3ec-9cc932ce0208:MVwfPrbqiPTA4qSdPFvVSW7XbAtanEqR@tun.testsprite.com:8080"
-}
