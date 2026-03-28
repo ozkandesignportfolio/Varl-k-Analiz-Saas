@@ -46,6 +46,7 @@ Notlar:
 - `AUTOMATION_FROM_EMAIL` Resend tarafinda dogrulanmis bir domain veya sender identity olmali.
 - `APP_URL` email icindeki CTA linkleri icin kullanilir.
 - `AUTOMATION_REPLY_TO_EMAIL` opsiyoneldir.
+- Supabase Edge Function tarafinda `AUTOMATION_CRON_SECRET` gerekir. Vercel tarafinda ise cron'un `/api/automation/dispatch` rotasini imzalayabilmesi icin ayrica `CRON_SECRET` tanimli olmali ve ayni degeri kullanmalidir.
 
 ### media-enrichment
 
@@ -60,7 +61,8 @@ Onerilen yol: scheduler'inizi uygulama icindeki `/api/automation/dispatch` rotas
 `/api/automation/dispatch` icin:
 
 - `GET` veya `POST` kullanabilirsiniz
-- `Authorization: Bearer <AUTOMATION_CRON_SECRET>` veya `x-cron-secret: <AUTOMATION_CRON_SECRET>` gonderin
+- Manual tetiklemelerde `Authorization: Bearer <AUTOMATION_CRON_SECRET>` veya `x-cron-secret: <AUTOMATION_CRON_SECRET>` gonderin
+- Vercel Cron kullaniyorsaniz proje env'inde `CRON_SECRET=<AUTOMATION_CRON_SECRET>` ayarlayin
 - route, current Supabase edge function deployment'ini tetikler
 - route tetiklerinde DB-backed service rate limit de uygulanir
 

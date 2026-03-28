@@ -42,6 +42,11 @@ APP_URL=http://localhost:3000
 
 ## Worker, Health ve Feature Flag
 
+- `AUTOMATION_CRON_SECRET`
+- `CRON_SECRET`
+- `RESEND_API_KEY`
+- `AUTOMATION_FROM_EMAIL`
+- `AUTOMATION_REPLY_TO_EMAIL`
 - `SERVICE_MEDIA_JOB_SECRET`
 - `PANEL_HEALTH_SECRET`
 - `PANEL_HEALTH_PUBLIC_VISIBILITY`
@@ -73,4 +78,5 @@ APP_URL=http://localhost:3000
 ## Not
 
 - `.env.example` temel lokal gelistirme ornegi verir ama tum operasyonel anahtarlari kapsamaz.
+- Vercel Cron kullaniliyorsa `CRON_SECRET`, `AUTOMATION_CRON_SECRET` ile ayni degere sahip olmali. Aksi halde `/api/automation/dispatch` istegi imzalanmadan gelir ve route `401` doner.
 - Stripe checkout route'u fiyat icin `STRIPE_PRICE_PREMIUM` veya `STRIPE_PRICE_PREMIUM_MONTHLY` bekler.

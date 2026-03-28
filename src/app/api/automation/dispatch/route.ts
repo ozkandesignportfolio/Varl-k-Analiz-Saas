@@ -39,9 +39,45 @@ const isConfiguredSecret = (value: string | null | undefined) => {
   );
 };
 
-const getServiceRoleClient = () => {
+const getDispatchConfigState = () => {
   const supabaseUrl = getSupabaseUrl();
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? null;
+  const cronSecret = process.env.AUTOMATION_CRON_SECRET?.trim() || process.env.CRON_SECRET?.trim() || null;
+  const missingEnv: string[] = [];
+
+  if (!supabaseUrl) {
+    missingEnv.push("NEXT_PUBLIC_SUPABASE_URL|SUPABASE_URL");
+  }
+
+  if (!isConfiguredSecret(serviceRoleKey)) {
+    missingEnv.push("SUPABASE_SERVICE_ROLE_KEY");
+  }
+
+  if (!cronSecret) {
+    missingEnv.push("AUTOMATION_CRON_SECRET|CRON_SECRET");
+  }
+
+  return {
+    supabaseUrl,
+    serviceRoleKey,
+    cronSecret,
+    missingEnv,
+  };
+};
+
+type WorkerInvocation =
+  | {
+      url: string;
+      serviceRoleKey: string;
+      cronSecret: string;
+      missingEnv: string[];
+    }
+  | {
+      missingEnv: string[];
+    };
+
+const getServiceRoleClient = () => {
+  const { supabaseUrl, serviceRoleKey } = getDispatchConfigState();
 
   if (!supabaseUrl || !isConfiguredSecret(serviceRoleKey)) {
     return null;
@@ -57,21 +93,18 @@ const getServiceRoleClient = () => {
   });
 };
 
-const getWorkerInvocation = () => {
-  const supabaseUrl = getSupabaseUrl();
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || null;
-  // Keep CRON_SECRET aligned with AUTOMATION_CRON_SECRET on Vercel so cron
-  // invocations can authenticate this route and forward the same secret.
-  const cronSecret = process.env.AUTOMATION_CRON_SECRET?.trim() || process.env.CRON_SECRET?.trim() || null;
+const getWorkerInvocation = (): WorkerInvocation => {
+  const { supabaseUrl, serviceRoleKey, cronSecret, missingEnv } = getDispatchConfigState();
 
   if (!supabaseUrl || !isConfiguredSecret(serviceRoleKey) || !cronSecret) {
-    return null;
+    return { missingEnv };
   }
 
   return {
     url: `${supabaseUrl.replace(/\/+$/, "")}/functions/v1/automation-dispatcher`,
-    serviceRoleKey,
-    cronSecret,
+    serviceRoleKey: serviceRoleKey as string,
+    cronSecret: cronSecret as string,
+    missingEnv,
   };
 };
 
@@ -91,8 +124,14 @@ const readProvidedSecret = (request: Request) => {
 
 async function invokeCurrentWorker(body: Record<string, unknown>) {
   const worker = getWorkerInvocation();
-  if (!worker) {
-    return NextResponse.json({ error: "Automation worker baglantisi kurulamadi." }, { status: 503 });
+  if (!("url" in worker)) {
+    return NextResponse.json(
+      {
+        error: "Automation worker baglantisi kurulamadi.",
+        missing_env: worker.missingEnv,
+      },
+      { status: 503 },
+    );
   }
 
   const response = await fetch(worker.url, {
@@ -141,9 +180,15 @@ async function invokeCurrentWorker(body: Record<string, unknown>) {
 async function handleDispatch(request: Request, body: Record<string, unknown>) {
   // Vercel Cron sends Authorization: Bearer <CRON_SECRET>. Prefer the existing
   // AUTOMATION_CRON_SECRET and allow CRON_SECRET as a compatible fallback.
-  const cronSecret = process.env.AUTOMATION_CRON_SECRET?.trim() || process.env.CRON_SECRET?.trim();
+  const { cronSecret, missingEnv } = getDispatchConfigState();
   if (!cronSecret) {
-    return NextResponse.json({ error: "AUTOMATION_CRON_SECRET tanimli degil." }, { status: 503 });
+    return NextResponse.json(
+      {
+        error: "AUTOMATION_CRON_SECRET tanimli degil.",
+        missing_env: missingEnv,
+      },
+      { status: 503 },
+    );
   }
 
   const providedSecret = readProvidedSecret(request);
@@ -160,8 +205,17 @@ async function handleDispatch(request: Request, body: Record<string, unknown>) {
       error: "invalid_supabase_service_role_key",
       status: 503,
       message: "Automation dispatch route is missing a valid service role configuration",
+      meta: {
+        missingEnv,
+      },
     });
-    return NextResponse.json({ error: "Service role baglantisi kurulamadi." }, { status: 503 });
+    return NextResponse.json(
+      {
+        error: "Service role baglantisi kurulamadi.",
+        missing_env: missingEnv,
+      },
+      { status: 503 },
+    );
   }
 
   const rateLimit = await enforceServiceRateLimit({

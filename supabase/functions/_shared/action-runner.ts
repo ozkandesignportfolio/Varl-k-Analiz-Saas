@@ -6,7 +6,7 @@ import {
   resolveNotificationPreferenceKey,
   type AutomationEvent,
 } from "./notification.ts";
-import { requireEmailEnv } from "./email-env.ts";
+import { getEmailEnvState, requireEmailEnv } from "./email-env.ts";
 
 export type EventActionResult = { ok: boolean; results: Record<string, unknown> };
 
@@ -276,6 +276,23 @@ async function getAssetContext(
 }
 
 async function sendEmailAction(supabase: SupabaseClient, event: AutomationEvent): Promise<Record<string, unknown>> {
+  const emailEnvState = getEmailEnvState();
+  if (emailEnvState.missingEnv.length > 0) {
+    logAutomation("error", {
+      action: "email_env_invalid",
+      event_id: event.id,
+      user_id: event.user_id,
+      trigger_type: event.trigger_type,
+      missing_env: emailEnvState.missingEnv,
+      app_url_source: emailEnvState.appUrlSource,
+    });
+    failEmail(event, {
+      reason: "missing_email_env",
+      missing_env: emailEnvState.missingEnv,
+      app_url_source: emailEnvState.appUrlSource,
+    });
+  }
+
   const requiredEnv = requireEmailEnv();
   const resendApiKey = requiredEnv.RESEND_API_KEY;
   const fromEmail = requiredEnv.AUTOMATION_FROM_EMAIL;
@@ -293,6 +310,8 @@ async function sendEmailAction(supabase: SupabaseClient, event: AutomationEvent)
     from_email: fromEmail,
     reply_to_email: replyToEmail || null,
     app_url: appUrl,
+    app_url_source: emailEnvState.appUrlSource,
+    missing_env: emailEnvState.missingEnv,
     service_role_key_configured: isConfiguredSecret(serviceRoleKey),
   });
 
@@ -360,6 +379,8 @@ async function sendEmailAction(supabase: SupabaseClient, event: AutomationEvent)
       recipient_email: recipientEmail,
       reason: "email_channel_disabled",
       preference_key: preferenceKey,
+      preference_value: false,
+      preferences,
     });
   }
 
@@ -368,6 +389,8 @@ async function sendEmailAction(supabase: SupabaseClient, event: AutomationEvent)
       recipient_email: recipientEmail,
       reason: "notification_type_disabled",
       preference_key: preferenceKey,
+      preference_value: false,
+      preferences,
     });
   }
 
@@ -390,6 +413,8 @@ async function sendEmailAction(supabase: SupabaseClient, event: AutomationEvent)
     from_email: fromEmail,
     reply_to_email: replyToEmail || null,
     preference_key: preferenceKey,
+    preference_value: true,
+    preferences,
     subject: emailMessage.subject,
     app_url: appUrl,
     payload: {

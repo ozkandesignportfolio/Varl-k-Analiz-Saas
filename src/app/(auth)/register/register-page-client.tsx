@@ -65,6 +65,15 @@ export default function RegisterPageClient({ emailRedirectTo }: RegisterPageClie
     setIsSubmitting(true);
 
     try {
+      const browserOrigin = typeof window !== "undefined" ? window.location.origin : null;
+      const redirectOrigin = new URL(emailRedirectTo).origin;
+      console.info("[auth.signup.redirect]", {
+        emailRedirectTo,
+        browserOrigin,
+        redirectOrigin,
+        matchesBrowserOrigin: Boolean(browserOrigin && redirectOrigin && browserOrigin === redirectOrigin),
+      });
+
       const notificationPreferences = {
         maintenance: true,
         maintenance_email: true,

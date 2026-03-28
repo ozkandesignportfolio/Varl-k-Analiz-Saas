@@ -6,15 +6,19 @@ const normalizePath = (path: string) => {
   return `/${path}`;
 };
 
-export const getAuthRedirectUrl = (path: string) => {
+export const describeAuthRedirectUrl = (path: string) => {
   const normalizedPath = normalizePath(path);
-  const envBaseUrl = resolveConfiguredAppOrigin();
+  const configuredOrigin = resolveConfiguredAppOrigin();
 
-  if (!envBaseUrl) {
-    return undefined;
-  }
+  return {
+    path: normalizedPath,
+    configuredOrigin,
+    url: configuredOrigin ? `${configuredOrigin}${normalizedPath}` : undefined,
+  };
+};
 
-  return `${envBaseUrl}${normalizedPath}`;
+export const getAuthRedirectUrl = (path: string) => {
+  return describeAuthRedirectUrl(path).url;
 };
 
 export const requireAuthRedirectUrl = (path: string) => {
