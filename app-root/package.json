@@ -1,0 +1,61 @@
+{
+  "name": "assetcare",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=20 <21"
+  },
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test:e2e": "node scripts/run-e2e.mjs",
+    "test:e2e:playwright": "playwright test testsprite/tests/e2e -c playwright.config.ts",
+    "test:seed": "node scripts/test-seed-users.mjs",
+    "test:results:mkdir": "node -e \"require('node:fs').mkdirSync('testsprite/test-results',{recursive:true});require('node:fs').mkdirSync('testsprite/test-results/artifacts',{recursive:true})\"",
+    "test:rls": "node scripts/run-rls-negative-playwright.mjs",
+    "test:rls:negative": "node scripts/print-supabase-env-check.mjs && npm run test:results:mkdir && node scripts/run-rls-negative-playwright.mjs",
+    "test:rls:negative:debug": "node scripts/print-supabase-env-check.mjs && cross-env DEBUG=pw:api,pw:browser,pw:webserver,pw:test node scripts/run-rls-negative-playwright.mjs",
+    "test:abuse:rate-limit": "node scripts/run-rate-limit-playwright.mjs",
+    "security:check": "node scripts/security-check.mjs",
+    "check:debug-plan-access": "node scripts/check-debug-plan-access.mjs",
+    "check:debug-plan-prod": "node scripts/check-debug-plan-prod.cjs",
+    "security:update": "powershell -ExecutionPolicy Bypass -File scripts/update-security-md.ps1",
+    "test:stable": "node scripts/run-stable-suite.cjs both",
+    "test:stable:trial": "node scripts/run-stable-suite.cjs trial",
+    "test:stable:premium": "node scripts/run-stable-suite.cjs premium"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@sentry/nextjs": "^10.43.0",
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.95.3",
+    "chart.js": "^4.5.1",
+    "core-js": "^3.48.0",
+    "geist": "^1.7.0",
+    "jspdf": "^4.2.0",
+    "lucide-react": "^0.574.0",
+    "next": "16.1.6",
+    "qrcode": "^1.5.4",
+    "radix-ui": "^1.4.3",
+    "react": "19.2.3",
+    "react-chartjs-2": "^5.3.1",
+    "react-dom": "19.2.3",
+    "stripe": "^20.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "cross-env": "^10.1.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.6",
+    "supabase": "^2.76.15",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

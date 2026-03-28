@@ -1,0 +1,13 @@
+
+> assetcare@0.1.0 dev
+> next dev --webpack
+
+▲ Next.js 16.1.6 (webpack)
+- Local:         http://localhost:3001
+- Network:       http://100.76.190.47:3001
+- Environments: .env.local
+
+✓ Starting...
+  Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+
+C:\Users\Osman\Desktop\Varlık Takip Saas>

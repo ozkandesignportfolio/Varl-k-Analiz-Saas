@@ -1,0 +1,6 @@
+[allowlist]
+paths = [
+  "supabase/migrations",
+  "tests",
+  ".github"
+]

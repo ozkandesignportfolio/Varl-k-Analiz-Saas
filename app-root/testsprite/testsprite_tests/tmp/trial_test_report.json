@@ -1,0 +1,1083 @@
+{
+  "startedAt": "2026-02-27T00:00:41.139Z",
+  "baseUrl": "http://localhost:3000",
+  "login": {
+    "attempted": true,
+    "success": true,
+    "finalUrl": "http://localhost:3000/dashboard",
+    "dashboardReached": true,
+    "errorText": null
+  },
+  "ui": {
+    "discoveredRoutes": [
+      "/",
+      "/about",
+      "/assets",
+      "/billing",
+      "/billing/cancel",
+      "/billing/success",
+      "/cerez-politikasi",
+      "/contact",
+      "/cookies",
+      "/costs",
+      "/dashboard",
+      "/data-deletion",
+      "/demo",
+      "/distance-sales",
+      "/documents",
+      "/expenses",
+      "/faq",
+      "/forgot-password",
+      "/gizlilik-politikasi",
+      "/invoices",
+      "/kullanim-kosullari",
+      "/kvkk",
+      "/kvkk-aydinlatma",
+      "/landing-v2",
+      "/legal",
+      "/legal/aup",
+      "/legal/cookies",
+      "/legal/data-retention",
+      "/legal/kvkk",
+      "/legal/notice",
+      "/legal/privacy",
+      "/legal/refund",
+      "/legal/security",
+      "/legal/sla",
+      "/legal/terms",
+      "/login",
+      "/maintenance",
+      "/notifications",
+      "/offline",
+      "/onboarding",
+      "/pricing",
+      "/privacy",
+      "/register",
+      "/reports",
+      "/reset-password",
+      "/security",
+      "/services",
+      "/settings",
+      "/subscriptions",
+      "/terms",
+      "/timeline"
+    ],
+    "routeResults": [
+      {
+        "route": "/",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/about",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/about",
+        "title": "Hakkımızda | AssetCare",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/assets",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/assets",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/billing",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/billing",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/billing/cancel",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/billing/cancel",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/billing/success",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/billing/success",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/cerez-politikasi",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/cerez-politikasi",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/contact",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/contact",
+        "title": "İletişim | AssetCare",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/cookies",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/cookies",
+        "title": "Cookie Policy | AssetCare",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/costs",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/costs",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/dashboard",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/dashboard",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/data-deletion",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/data-deletion",
+        "title": "Data Deletion Policy | AssetCare",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/demo",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/demo",
+        "title": "AssetCare Demo",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/distance-sales",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/distance-sales",
+        "title": "Distance Sales Information | AssetCare",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/documents",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/documents",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/expenses",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/expenses",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/faq",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/faq",
+        "title": "SSS | AssetCare",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/forgot-password",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/forgot-password",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/gizlilik-politikasi",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/gizlilik-politikasi",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/invoices",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/invoices",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/kullanim-kosullari",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/kullanim-kosullari",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/kvkk",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/kvkk",
+        "title": "KVKK Aydınlatma Metni | AssetCare",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/kvkk-aydinlatma",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/kvkk-aydinlatma",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/landing-v2",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/landing-v2",
+        "title": "AssetCare | Landing v2",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/legal",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/legal",
+        "title": "Yasal Metinler | AssetCare",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/legal/aup",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/legal/notice",
+        "title": "Hukuki Bilgilendirme | AssetCare",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/legal/cookies",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/legal/cookies",
+        "title": "Çerez Politikası | AssetCare",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/legal/data-retention",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/legal/notice",
+        "title": "Hukuki Bilgilendirme | AssetCare",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/legal/kvkk",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/legal/kvkk",
+        "title": "KVKK Aydınlatma Metni | AssetCare",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/legal/notice",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/legal/notice",
+        "title": "Hukuki Bilgilendirme | AssetCare",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/legal/privacy",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/legal/privacy",
+        "title": "Gizlilik Politikası | AssetCare",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/legal/refund",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/legal/notice",
+        "title": "Hukuki Bilgilendirme | AssetCare",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/legal/security",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/legal/notice",
+        "title": "Hukuki Bilgilendirme | AssetCare",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/legal/sla",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/legal/notice",
+        "title": "Hukuki Bilgilendirme | AssetCare",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/legal/terms",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/legal/terms",
+        "title": "Kullanım Şartları | AssetCare",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/login",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/login",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/maintenance",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/maintenance",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/notifications",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/notifications",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/offline",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/offline",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/onboarding",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/onboarding",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/pricing",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/pricing",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/privacy",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/privacy",
+        "title": "Gizlilik Politikası | AssetCare",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/register",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/register",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/reports",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/reports",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/reset-password",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/reset-password",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/security",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/security",
+        "title": "Güvenlik | AssetCare",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/services",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/services",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/settings",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/settings",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/subscriptions",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/subscriptions",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/terms",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/terms",
+        "title": "Kullanım Şartları | AssetCare",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      },
+      {
+        "route": "/timeline",
+        "status": 200,
+        "finalUrl": "http://localhost:3000/timeline",
+        "title": "AssetCare | Premium Varlık Takip SaaS",
+        "redirectedToLogin": false,
+        "runtimeErrorLikeText": false,
+        "ok": true,
+        "error": null
+      }
+    ],
+    "flowResults": [
+      {
+        "flow": "Protected route chain",
+        "steps": [
+          "/dashboard",
+          "/assets",
+          "/maintenance",
+          "/services",
+          "/documents",
+          "/reports",
+          "/settings"
+        ],
+        "stepResults": [
+          {
+            "step": "/dashboard",
+            "status": 200,
+            "finalUrl": "http://localhost:3000/dashboard",
+            "ok": true
+          },
+          {
+            "step": "/assets",
+            "status": 200,
+            "finalUrl": "http://localhost:3000/assets",
+            "ok": true
+          },
+          {
+            "step": "/maintenance",
+            "status": 200,
+            "finalUrl": "http://localhost:3000/maintenance",
+            "ok": true
+          },
+          {
+            "step": "/services",
+            "status": 200,
+            "finalUrl": "http://localhost:3000/services",
+            "ok": true
+          },
+          {
+            "step": "/documents",
+            "status": 200,
+            "finalUrl": "http://localhost:3000/documents",
+            "ok": true
+          },
+          {
+            "step": "/reports",
+            "status": 200,
+            "finalUrl": "http://localhost:3000/reports",
+            "ok": true
+          },
+          {
+            "step": "/settings",
+            "status": 200,
+            "finalUrl": "http://localhost:3000/settings",
+            "ok": true
+          }
+        ],
+        "finalUrl": "http://localhost:3000/settings",
+        "ok": true,
+        "error": null
+      },
+      {
+        "flow": "Billing route chain",
+        "steps": [
+          "/billing",
+          "/subscriptions",
+          "/invoices"
+        ],
+        "stepResults": [
+          {
+            "step": "/billing",
+            "status": 200,
+            "finalUrl": "http://localhost:3000/billing",
+            "ok": true
+          },
+          {
+            "step": "/subscriptions",
+            "status": 200,
+            "finalUrl": "http://localhost:3000/subscriptions",
+            "ok": true
+          },
+          {
+            "step": "/invoices",
+            "status": 200,
+            "finalUrl": "http://localhost:3000/invoices",
+            "ok": true
+          }
+        ],
+        "finalUrl": "http://localhost:3000/invoices",
+        "ok": true,
+        "error": null
+      },
+      {
+        "flow": "Insights route chain",
+        "steps": [
+          "/timeline",
+          "/costs",
+          "/expenses",
+          "/notifications"
+        ],
+        "stepResults": [
+          {
+            "step": "/timeline",
+            "status": 200,
+            "finalUrl": "http://localhost:3000/timeline",
+            "ok": true
+          },
+          {
+            "step": "/costs",
+            "status": 200,
+            "finalUrl": "http://localhost:3000/costs",
+            "ok": true
+          },
+          {
+            "step": "/expenses",
+            "status": 200,
+            "finalUrl": "http://localhost:3000/expenses",
+            "ok": true
+          },
+          {
+            "step": "/notifications",
+            "status": 200,
+            "finalUrl": "http://localhost:3000/notifications",
+            "ok": true
+          }
+        ],
+        "finalUrl": "http://localhost:3000/notifications",
+        "ok": true,
+        "error": null
+      },
+      {
+        "flow": "Auth guard for /dashboard",
+        "expected": "redirect to /login when unauthenticated",
+        "initialStatus": 200,
+        "finalUrl": "http://localhost:3000/dashboard",
+        "ok": false,
+        "error": "Unauthenticated user was not redirected to /login."
+      }
+    ]
+  },
+  "api": {
+    "discoveredEndpoints": [
+      {
+        "file": "src/app/api/account/delete/route.ts",
+        "path": "/api/account/delete",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "file": "src/app/api/asset-media/route.ts",
+        "path": "/api/asset-media",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "file": "src/app/api/assets/route.ts",
+        "path": "/api/assets",
+        "methods": [
+          "DELETE",
+          "PATCH",
+          "POST"
+        ]
+      },
+      {
+        "file": "src/app/api/audit-logs/route.ts",
+        "path": "/api/audit-logs",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "file": "src/app/api/billing/invoices/route.ts",
+        "path": "/api/billing/invoices",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "file": "src/app/api/billing/subscriptions/route.ts",
+        "path": "/api/billing/subscriptions",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "file": "src/app/api/dashboard-metrics/route.ts",
+        "path": "/api/dashboard-metrics",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "file": "src/app/api/debug/plan/route.ts",
+        "path": "/api/debug/plan",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "file": "src/app/api/documents/route.ts",
+        "path": "/api/documents",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "file": "src/app/api/maintenance-predictions/route.ts",
+        "path": "/api/maintenance-predictions",
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "file": "src/app/api/maintenance-rules/route.ts",
+        "path": "/api/maintenance-rules",
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "file": "src/app/api/maintenance-rules/[id]/route.ts",
+        "path": "/api/maintenance-rules/00000000-0000-4000-8000-000000000000",
+        "methods": [
+          "DELETE",
+          "GET",
+          "PATCH"
+        ]
+      },
+      {
+        "file": "src/app/api/panel-health/route.ts",
+        "path": "/api/panel-health",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "file": "src/app/api/service-logs/route.ts",
+        "path": "/api/service-logs",
+        "methods": [
+          "PATCH",
+          "POST"
+        ]
+      },
+      {
+        "file": "src/app/api/service-media/route.ts",
+        "path": "/api/service-media",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "file": "src/app/api/stripe/checkout/route.ts",
+        "path": "/api/stripe/checkout",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "file": "src/app/api/stripe/confirm/route.ts",
+        "path": "/api/stripe/confirm",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "file": "src/app/api/stripe/webhook/route.ts",
+        "path": "/api/stripe/webhook",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "file": "src/app/api/subscription-request/route.ts",
+        "path": "/api/subscription-request",
+        "methods": [
+          "POST"
+        ]
+      }
+    ],
+    "results": [
+      {
+        "endpoint": "/api/asset-media",
+        "method": "POST",
+        "status": 403,
+        "ok": false,
+        "bodySnippet": "{\"error\":\"Ek medya özelliği Premium planında aktif.\"}",
+        "error": null
+      },
+      {
+        "endpoint": "/api/assets",
+        "method": "DELETE",
+        "status": 404,
+        "ok": false,
+        "bodySnippet": "{\"error\":\"Varlık bulunamadı.\"}",
+        "error": null
+      },
+      {
+        "endpoint": "/api/assets",
+        "method": "PATCH",
+        "status": 400,
+        "ok": false,
+        "bodySnippet": "{\"error\":\"Güncellenecek alan bulunamadı.\"}",
+        "error": null
+      },
+      {
+        "endpoint": "/api/assets",
+        "method": "POST",
+        "status": 400,
+        "ok": false,
+        "bodySnippet": "{\"error\":\"İstek alanı tipleri geçersiz.\"}",
+        "error": null
+      },
+      {
+        "endpoint": "/api/audit-logs",
+        "method": "GET",
+        "status": 200,
+        "ok": true,
+        "bodySnippet": "{\"logs\":[]}",
+        "error": null
+      },
+      {
+        "endpoint": "/api/billing/invoices",
+        "method": "POST",
+        "status": 400,
+        "ok": false,
+        "bodySnippet": "{\"error\":\"İstek alanı tipleri geçersiz.\"}",
+        "error": null
+      },
+      {
+        "endpoint": "/api/billing/subscriptions",
+        "method": "POST",
+        "status": 400,
+        "ok": false,
+        "bodySnippet": "{\"error\":\"İstek alanı tipleri geçersiz.\"}",
+        "error": null
+      },
+      {
+        "endpoint": "/api/dashboard-metrics",
+        "method": "GET",
+        "status": 200,
+        "ok": true,
+        "bodySnippet": "{\"activeUsers\":1,\"trackedAssets\":0,\"completedTransactions\":0,\"systemHealthRate\":0,\"scope\":\"user\",\"generatedAt\":\"2026-02-27T00:01:08.840Z\"}",
+        "error": null
+      },
+      {
+        "endpoint": "/api/debug/plan",
+        "method": "GET",
+        "status": 200,
+        "ok": true,
+        "bodySnippet": "{\"ok\":true,\"uid\":\"922f7997-6537-4565-83c3-a5230cc4d8fb\",\"plan\":\"free\",\"profileExists\":true,\"error\":null}",
+        "error": null
+      },
+      {
+        "endpoint": "/api/documents",
+        "method": "POST",
+        "status": 400,
+        "ok": false,
+        "bodySnippet": "{\"error\":\"Geçersiz form verisi.\"}",
+        "error": null
+      },
+      {
+        "endpoint": "/api/maintenance-predictions",
+        "method": "GET",
+        "status": 403,
+        "ok": false,
+        "bodySnippet": "{\"error\":\"Deneme planında gelişmiş analitik tahminleri kapalı. Pro plan ile aktif olur.\"}",
+        "error": null
+      },
+      {
+        "endpoint": "/api/maintenance-predictions",
+        "method": "POST",
+        "status": 403,
+        "ok": false,
+        "bodySnippet": "{\"error\":\"Deneme planında gelişmiş analitik tahminleri kapalı. Pro plan ile aktif olur.\"}",
+        "error": null
+      },
+      {
+        "endpoint": "/api/maintenance-rules",
+        "method": "GET",
+        "status": 200,
+        "ok": true,
+        "bodySnippet": "{\"items\":[]}",
+        "error": null
+      },
+      {
+        "endpoint": "/api/maintenance-rules",
+        "method": "POST",
+        "status": 400,
+        "ok": false,
+        "bodySnippet": "{\"error\":\"Varlık, baslik ve baz tarih zorunludur.\"}",
+        "error": null
+      },
+      {
+        "endpoint": "/api/maintenance-rules/00000000-0000-4000-8000-000000000000",
+        "method": "DELETE",
+        "status": 404,
+        "ok": false,
+        "bodySnippet": "{\"error\":\"Kural silinemedi veya bulunamadı.\"}",
+        "error": null
+      },
+      {
+        "endpoint": "/api/maintenance-rules/00000000-0000-4000-8000-000000000000",
+        "method": "GET",
+        "status": 404,
+        "ok": false,
+        "bodySnippet": "{\"error\":\"Kural bulunamadı.\"}",
+        "error": null
+      },
+      {
+        "endpoint": "/api/maintenance-rules/00000000-0000-4000-8000-000000000000",
+        "method": "PATCH",
+        "status": 404,
+        "ok": false,
+        "bodySnippet": "{\"error\":\"Kural bulunamadı.\"}",
+        "error": null
+      },
+      {
+        "endpoint": "/api/panel-health",
+        "method": "GET",
+        "status": 200,
+        "ok": true,
+        "bodySnippet": "{\"score\":100,\"ratio\":0,\"hasNoCost\":true,\"assetPrice\":0,\"totalCost\":0,\"maintenanceCost\":0,\"expenseCost\":0,\"warranty\":{\"score\":100,\"active\":100,\"expiring\":0,\"expired\":0,\"unknown\":0},\"maintenance\":{\"score\":100,\"planned\":0,\"completed\":0,\"onTrack\":0,\"overdue\":0},\"documents\":{\"score\":1",
+        "error": null
+      },
+      {
+        "endpoint": "/api/service-logs",
+        "method": "PATCH",
+        "status": 404,
+        "ok": false,
+        "bodySnippet": "{\"error\":\"Servis kaydı bulunamadı.\"}",
+        "error": null
+      },
+      {
+        "endpoint": "/api/service-logs",
+        "method": "POST",
+        "status": 400,
+        "ok": false,
+        "bodySnippet": "{\"error\":\"Varlık, servis türü ve servis tarihi zorunludur.\"}",
+        "error": null
+      },
+      {
+        "endpoint": "/api/service-media",
+        "method": "POST",
+        "status": 400,
+        "ok": false,
+        "bodySnippet": "{\"error\":\"Geçersiz form verisi.\"}",
+        "error": null
+      },
+      {
+        "endpoint": "/api/stripe/checkout",
+        "method": "POST",
+        "status": 200,
+        "ok": true,
+        "bodySnippet": "{\"url\":\"https://checkout.stripe.com/c/pay/cs_live_a1ogtqA5ebqSROJX7NzQh8o386zcmKDaXXJWEROffAX2tfEDhwam0wpVen#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdkdWxOYHwnPyd1blppbHNgWjA0VF1ESTxEaEtWVFJdUUBOSmY1SHdhaVVLZzxxQ19EQGtiMjU9SlFIQnJ9MVBdNm4xVDFGS0didWBAQDJ%2FX2szQXI3TVNWczF3bERCSHFzakB",
+        "error": null
+      },
+      {
+        "endpoint": "/api/stripe/confirm",
+        "method": "POST",
+        "status": 400,
+        "ok": false,
+        "bodySnippet": "{\"error\":\"session_id zorunludur.\"}",
+        "error": null
+      },
+      {
+        "endpoint": "/api/stripe/webhook",
+        "method": "POST",
+        "status": 400,
+        "ok": false,
+        "bodySnippet": "{\"error\":\"Webhook dogrulanamadi.\"}",
+        "error": null
+      },
+      {
+        "endpoint": "/api/subscription-request",
+        "method": "POST",
+        "status": 400,
+        "ok": false,
+        "bodySnippet": "{\"error\":\"Ad soyad ve e-posta alanları zorunludur.\"}",
+        "error": null
+      }
+    ],
+    "skipped": [
+      {
+        "endpoint": "/api/account/delete",
+        "method": "POST",
+        "reason": "Skipped to avoid destructive account deletion."
+      }
+    ]
+  },
+  "notes": [
+    "Reused existing dev server on localhost:3000."
+  ],
+  "completedAt": "2026-02-27T00:01:17.760Z",
+  "summary": {
+    "loginSuccess": true,
+    "uiRoutePass": "51/51",
+    "uiFlowPass": "3/4",
+    "api2xx": "6/25",
+    "apiSkipped": 1
+  },
+  "auth": {
+    "source": "env"
+  }
+}
