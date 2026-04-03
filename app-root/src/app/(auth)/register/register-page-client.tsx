@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
+import TurnstileWidget from "@/components/auth/turnstile-widget";
 import { getPlanConfig } from "@/lib/plans/plan-config";
 import { PREMIUM_MONTHLY_PRICE_LABEL } from "@/lib/plans/pricing";
 import {
@@ -11,12 +12,16 @@ import {
   emailVerificationSentMessage,
 } from "@/lib/supabase/email-verification";
 import {
+  BOT_DETECTED_ERROR,
   EMAIL_ALREADY_EXISTS_ERROR,
   EMAIL_CONFIRMATION_DISABLED_ERROR,
   EMAIL_RATE_LIMITED_ERROR,
   getSignupCooldownRemainingSeconds,
+  INVALID_EMAIL_ERROR,
+  RATE_LIMITED_ERROR,
   SIGNUP_COOLDOWN_MS,
   SIGNUP_COOLDOWN_STORAGE_KEY,
+  TERMS_NOT_ACCEPTED_ERROR,
 } from "@/lib/supabase/signup";
 
 const inputClassName =
@@ -33,10 +38,13 @@ type RegisterPageClientProps = {
 
 export default function RegisterPageClient({ emailRedirectTo }: RegisterPageClientProps) {
   const router = useRouter();
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? "";
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [cooldownRemainingSeconds, setCooldownRemainingSeconds] = useState(0);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileRefreshNonce, setTurnstileRefreshNonce] = useState(0);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -101,6 +109,7 @@ export default function RegisterPageClient({ emailRedirectTo }: RegisterPageClie
     const email = String(formData.get("email") ?? "").trim();
     const password = String(formData.get("password") ?? "");
     const passwordConfirm = String(formData.get("passwordConfirm") ?? "");
+    const acceptedTerms = formData.get("acceptedTerms") === "on";
 
     if (isCooldownActive) {
       setMessage(`Tekrar deneme: ${cooldownRemainingSeconds}s`);
@@ -119,6 +128,21 @@ export default function RegisterPageClient({ emailRedirectTo }: RegisterPageClie
 
     if (password !== passwordConfirm) {
       setMessage("Sifreler eslesmiyor.");
+      return;
+    }
+
+    if (!acceptedTerms) {
+      setMessage("Devam etmek icin Kullanim Sartlari'ni kabul etmelisiniz.");
+      return;
+    }
+
+    if (!turnstileSiteKey) {
+      setMessage("Bot korumasi su anda kullanilamiyor. Lutfen daha sonra tekrar deneyin.");
+      return;
+    }
+
+    if (!turnstileToken) {
+      setMessage("Lutfen bot dogrulamasini tamamlayin.");
       return;
     }
 
@@ -141,10 +165,12 @@ export default function RegisterPageClient({ emailRedirectTo }: RegisterPageClie
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          acceptedTerms,
           fullName,
           email,
           password,
           emailRedirectTo,
+          turnstileToken,
         }),
       });
 
@@ -156,13 +182,28 @@ export default function RegisterPageClient({ emailRedirectTo }: RegisterPageClie
         | null;
 
       if (!response.ok) {
-        if (result?.error === EMAIL_RATE_LIMITED_ERROR) {
+        if (result?.error === EMAIL_RATE_LIMITED_ERROR || result?.error === RATE_LIMITED_ERROR) {
           setMessage("E-posta limiti asildi. Lutfen kisa bir sure sonra tekrar deneyin.");
           return;
         }
 
         if (result?.error === EMAIL_ALREADY_EXISTS_ERROR) {
           setMessage("Bu e-posta adresi ile zaten bir hesap bulunuyor.");
+          return;
+        }
+
+        if (result?.error === INVALID_EMAIL_ERROR) {
+          setMessage("Gecerli bir e-posta adresi girin.");
+          return;
+        }
+
+        if (result?.error === BOT_DETECTED_ERROR) {
+          setMessage("Bot dogrulamasi gecersiz. Lutfen tekrar deneyin.");
+          return;
+        }
+
+        if (result?.error === TERMS_NOT_ACCEPTED_ERROR) {
+          setMessage("Devam etmek icin Kullanim Sartlari'ni kabul etmelisiniz.");
           return;
         }
 
@@ -181,6 +222,8 @@ export default function RegisterPageClient({ emailRedirectTo }: RegisterPageClie
     } catch {
       setMessage("Kayit sirasinda beklenmeyen bir hata olustu. Lutfen tekrar deneyin.");
     } finally {
+      setTurnstileToken(null);
+      setTurnstileRefreshNonce((current) => current + 1);
       setIsSubmitting(false);
     }
   };
@@ -260,6 +303,36 @@ export default function RegisterPageClient({ emailRedirectTo }: RegisterPageClie
                 data-testid="register-password-confirm-input"
               />
             </label>
+
+            <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
+              <input
+                name="acceptedTerms"
+                type="checkbox"
+                required
+                className="mt-0.5 h-4 w-4 rounded border-white/20 bg-transparent text-sky-400"
+                data-testid="register-accepted-terms-input"
+              />
+              <span>
+                <Link href="/legal/terms" className="font-semibold text-sky-200">
+                  Kullanim Sartlari
+                </Link>{" "}
+                kabul ediyorum.
+              </span>
+            </label>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
+              {turnstileSiteKey ? (
+                <TurnstileWidget
+                  siteKey={turnstileSiteKey}
+                  refreshNonce={turnstileRefreshNonce}
+                  onTokenChange={setTurnstileToken}
+                />
+              ) : (
+                <p className="text-sm text-amber-200">
+                  Turnstile site key eksik. `NEXT_PUBLIC_TURNSTILE_SITE_KEY` tanimlanmali.
+                </p>
+              )}
+            </div>
 
             <button
               type="submit"

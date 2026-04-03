@@ -86,3 +86,16 @@ export const isInvalidEmailVerificationError = (error?: SupabaseAuthErrorLike | 
     message.includes("verification link")
   );
 };
+
+export const isUserAlreadyRegisteredError = (error?: SupabaseAuthErrorLike | null) => {
+  if (!error) return false;
+
+  const code = normalize(error.code);
+  const message = normalize(error.message);
+
+  if (code === "user_already_exists" || code === "email_exists") {
+    return true;
+  }
+
+  return message.includes("user already registered");
+};
