@@ -20,6 +20,7 @@ type TurnstileRenderOptions = {
 };
 
 type TurnstileApi = {
+  reset?: (widgetId?: string) => void;
   render: (container: HTMLElement | string, options: TurnstileRenderOptions) => string;
   remove?: (widgetId: string) => void;
 };
@@ -34,18 +35,12 @@ export default function TurnstileWidget({
   onTokenChange,
   refreshNonce = 0,
   siteKey,
-  theme = "dark",
+  theme = "auto",
 }: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
-  const [scriptReady, setScriptReady] = useState(false);
+  const [scriptReady, setScriptReady] = useState(() => typeof window !== "undefined" && Boolean(window.turnstile));
   const containerId = useId().replaceAll(":", "");
-
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.turnstile) {
-      setScriptReady(true);
-    }
-  }, []);
 
   useEffect(() => {
     if (!scriptReady || !siteKey || !containerRef.current || !window.turnstile || widgetIdRef.current) {
@@ -72,12 +67,28 @@ export default function TurnstileWidget({
     };
   }, [onTokenChange, refreshNonce, scriptReady, siteKey, theme]);
 
+  useEffect(() => {
+    if (!refreshNonce) {
+      return;
+    }
+
+    onTokenChange(null);
+
+    if (widgetIdRef.current && window.turnstile?.reset) {
+      window.turnstile.reset(widgetIdRef.current);
+    }
+  }, [onTokenChange, refreshNonce]);
+
   return (
     <>
       <Script
         src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
         strategy="afterInteractive"
         onLoad={() => setScriptReady(true)}
+        onError={() => {
+          onTokenChange(null);
+          setScriptReady(false);
+        }}
       />
       <div id={containerId} ref={containerRef} />
     </>

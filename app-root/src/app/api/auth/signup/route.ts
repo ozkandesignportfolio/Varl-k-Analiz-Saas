@@ -1,69 +1,84 @@
-import { createHash } from "crypto";
 import { NextResponse } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { assessSignupRisk } from "@/lib/auth/signup-risk";
+import { insertUserConsent, logAuthSecurityEvent } from "@/lib/auth/signup-security";
+import { verifyTurnstileToken } from "@/lib/auth/turnstile";
 import {
-  calculateSignupFraudScore,
-  recordSignupAttempt,
-  recordSignupBotFailure,
-  recordSignupRateLimitTrigger,
-} from "@/lib/auth/fraud-score";
-import { enforceServiceRateLimit, getRequestIp, enforceRateLimit } from "@/lib/api/rate-limit";
+  isUpstashRedisConfigured,
+  takeSlidingWindowRateLimit,
+} from "@/lib/auth/upstash-rate-limit";
+import { getRequestIp } from "@/lib/api/rate-limit";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import {
   isEmailRateLimitError,
   isSupabaseUserEmailConfirmed,
   isUserAlreadyRegisteredError,
 } from "@/lib/supabase/auth-errors";
 import {
-  BOT_DETECTED_ERROR,
   EMAIL_ALREADY_EXISTS_ERROR,
   EMAIL_CONFIRMATION_DISABLED_ERROR,
   EMAIL_RATE_LIMITED_ERROR,
   INVALID_EMAIL_ERROR,
+  INVALID_PASSWORD_ERROR,
+  INVALID_REDIRECT_URL_ERROR,
+  KVKK_CONSENT_REQUIRED_ERROR,
+  normalizeEmail,
+  PRIVACY_POLICY_NOT_ACCEPTED_ERROR,
   RATE_LIMITED_ERROR,
+  RATE_LIMITER_UNAVAILABLE_ERROR,
   SIGNUP_FAILED_ERROR,
   TERMS_NOT_ACCEPTED_ERROR,
+  TURNSTILE_INVALID_ERROR,
+  TURNSTILE_REQUIRED_ERROR,
+  TURNSTILE_UNAVAILABLE_ERROR,
+  type SignupApiErrorResponse,
+  type SignupApiSuccessResponse,
+  type SignupRisk,
 } from "@/lib/supabase/signup";
 
 export const runtime = "nodejs";
 
-const SIGNUP_IP_RATE_LIMIT_CAPACITY = 1;
-const SIGNUP_IP_RATE_LIMIT_REFILL_PER_SECOND = SIGNUP_IP_RATE_LIMIT_CAPACITY / 60;
-const SIGNUP_IP_RATE_LIMIT_WINDOW_MS = 60_000;
-const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+const SIGNUP_IP_RATE_LIMIT_CAPACITY = 5;
+const SIGNUP_EMAIL_RATE_LIMIT_CAPACITY = 3;
+const SIGNUP_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1_000;
+const PASSWORD_MIN_LENGTH = 8;
 
 type SignupRequestBody = {
+  acceptedKvkk?: unknown;
+  acceptedPrivacyPolicy?: unknown;
   acceptedTerms?: unknown;
+  deviceFingerprint?: unknown;
   email?: unknown;
+  emailRedirectTo?: unknown;
   fullName?: unknown;
   password?: unknown;
-  emailRedirectTo?: unknown;
   turnstileToken?: unknown;
 };
 
 const notificationPreferences = {
-  maintenance: true,
-  maintenance_email: true,
-  warranty: true,
-  warranty_email: true,
   document: true,
-  document_email: true,
   documentExpiry: true,
+  document_email: true,
   document_expiry: true,
   document_expiry_email: true,
-  service: true,
-  service_logs: true,
-  service_log: true,
-  service_email: true,
-  payment: true,
-  subscription_email: true,
-  system: true,
-  inApp: true,
-  in_app: true,
   email: true,
   frequency: "Aninda",
+  inApp: true,
+  in_app: true,
+  maintenance: true,
+  maintenance_email: true,
+  payment: true,
+  service: true,
+  service_email: true,
+  service_log: true,
+  service_logs: true,
+  subscription_email: true,
+  system: true,
+  warranty: true,
+  warranty_email: true,
 };
 
-const getRequiredEnv = (key: "NEXT_PUBLIC_SUPABASE_URL" | "NEXT_PUBLIC_SUPABASE_ANON_KEY" | "SUPABASE_SERVICE_ROLE_KEY") => {
+const getRequiredEnv = (key: "NEXT_PUBLIC_SUPABASE_ANON_KEY" | "NEXT_PUBLIC_SUPABASE_URL") => {
   const value = process.env[key]?.trim();
   if (!value) {
     throw new Error(`Missing required env var: ${key}`);
@@ -73,9 +88,6 @@ const getRequiredEnv = (key: "NEXT_PUBLIC_SUPABASE_URL" | "NEXT_PUBLIC_SUPABASE_
 };
 
 const isNonEmptyString = (value: unknown): value is string => typeof value === "string" && value.trim().length > 0;
-
-const getSupabaseUrl = () =>
-  process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || process.env.SUPABASE_URL?.trim() || null;
 
 const getSignUpClient = () => {
   const supabaseUrl = getRequiredEnv("NEXT_PUBLIC_SUPABASE_URL");
@@ -89,272 +101,496 @@ const getSignUpClient = () => {
   });
 };
 
-const getServiceRoleClient = () => {
-  const supabaseUrl = getSupabaseUrl();
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || null;
+const buildRiskMetadata = (risk: SignupRisk) => ({
+  risk_level: risk.level,
+  risk_reasons: risk.reasons,
+  risk_score: risk.score,
+  risk_signals: risk.signals,
+});
 
-  if (!supabaseUrl || !serviceRoleKey) {
-    return null;
-  }
-
-  return createSupabaseClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
+const buildErrorResponse = (
+  error: string,
+  message: string,
+  status: number,
+  risk?: SignupRisk,
+  headers?: HeadersInit,
+) =>
+  NextResponse.json<SignupApiErrorResponse>(
+    {
+      error,
+      message,
+      ok: false,
+      ...(risk ? { risk } : {}),
     },
-  });
-};
-
-const hashIpForRateLimitSubject = (ip: string) => createHash("sha256").update(ip).digest("hex").slice(0, 32);
-
-const logFraudScore = (
-  ipHash: string,
-  fraudScore: Awaited<ReturnType<typeof calculateSignupFraudScore>>,
-  outcome: string,
-) => {
-  console.info(
-    JSON.stringify({
-      event: "auth:signup_fraud_score",
-      ts: new Date().toISOString(),
-      ip_hash: ipHash,
-      outcome,
-      fraud_score: fraudScore.score,
-      fraud_reason: fraudScore.reason,
-      meta: {
-        attempts_last_10m: fraudScore.attemptsLast10m,
-        bot_failures_last_10m: fraudScore.botFailuresLast10m,
-        rapid_retries_last_10m: fraudScore.rapidRetriesLast10m,
-        rate_limit_triggers_last_10m: fraudScore.rateLimitTriggersLast10m,
-        disposable_email: fraudScore.disposableEmail,
-        invalid_email: fraudScore.invalidEmail,
-        email_domain: fraudScore.emailDomain,
-      },
-    }),
+    {
+      headers,
+      status,
+    },
   );
-};
 
-type TurnstileVerifyResponse = {
-  success?: boolean;
-  "error-codes"?: string[];
-};
+const buildSuccessResponse = (risk: SignupRisk) =>
+  NextResponse.json<SignupApiSuccessResponse>(
+    {
+      ok: true,
+      risk,
+    },
+    { status: 200 },
+  );
 
-const verifyTurnstileToken = async (token: string, remoteIp: string) => {
-  const secretKey = process.env.TURNSTILE_SECRET_KEY?.trim();
-  if (!secretKey || !token.trim()) {
-    return false;
-  }
+const getAllowedRedirectOrigins = (request: Request) => {
+  const origins = new Set<string>();
 
-  const body = new URLSearchParams();
-  body.set("secret", secretKey);
-  body.set("response", token.trim());
-
-  if (remoteIp && remoteIp !== "unknown") {
-    body.set("remoteip", remoteIp);
-  }
-
-  try {
-    const response = await fetch(TURNSTILE_VERIFY_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body,
-      cache: "no-store",
-      signal: AbortSignal.timeout(10_000),
-    });
-
-    if (!response.ok) {
-      return false;
+  for (const value of [process.env.APP_URL, process.env.NEXT_PUBLIC_APP_URL, request.url]) {
+    if (!value?.trim()) {
+      continue;
     }
 
-    const payload = (await response.json().catch(() => null)) as TurnstileVerifyResponse | null;
-    return payload?.success === true;
-  } catch (error) {
-    console.error("[auth.signup] Turnstile verification failed.", error);
+    try {
+      origins.add(new URL(value).origin);
+    } catch {
+      // Ignore malformed env values and rely on the request origin.
+    }
+  }
+
+  return origins;
+};
+
+const isAllowedEmailRedirect = (redirectTo: string, request: Request) => {
+  try {
+    const url = new URL(redirectTo);
+    return getAllowedRedirectOrigins(request).has(url.origin);
+  } catch {
     return false;
   }
 };
 
+const isUpstashError = (error: unknown) =>
+  error instanceof Error && error.message.toLowerCase().includes("upstash");
+
 export async function POST(request: Request) {
+  const requestIp = getRequestIp(request);
+  const requestUserAgent = request.headers.get("user-agent")?.trim() || null;
+
   try {
-    const requestIp = getRequestIp(request);
-    const ipSubject = `signup_ip_${hashIpForRateLimitSubject(requestIp)}`;
-    const requestUserAgent = request.headers.get("user-agent");
     const body = (await request.json()) as SignupRequestBody;
     const acceptedTerms = body.acceptedTerms === true;
+    const acceptedPrivacyPolicy = body.acceptedPrivacyPolicy === true;
+    const acceptedKvkk = body.acceptedKvkk === true;
     const fullName = isNonEmptyString(body.fullName) ? body.fullName.trim() : "";
     const email = isNonEmptyString(body.email) ? body.email.trim() : "";
     const password = typeof body.password === "string" ? body.password : "";
     const emailRedirectTo = isNonEmptyString(body.emailRedirectTo) ? body.emailRedirectTo.trim() : "";
     const turnstileToken = isNonEmptyString(body.turnstileToken) ? body.turnstileToken.trim() : "";
-    const serviceRoleClient = getServiceRoleClient();
-    await recordSignupAttempt(requestIp);
+    const deviceFingerprint = isNonEmptyString(body.deviceFingerprint) ? body.deviceFingerprint.trim() : "";
+    const normalizedEmail = email ? normalizeEmail(email) : "";
 
-    const rateLimit = serviceRoleClient
-      ? await enforceServiceRateLimit({
-          client: serviceRoleClient,
-          scope: "api_auth_signup_ip",
-          subject: ipSubject,
-          capacity: SIGNUP_IP_RATE_LIMIT_CAPACITY,
-          refillPerSecond: SIGNUP_IP_RATE_LIMIT_REFILL_PER_SECOND,
-          ttlSeconds: 180,
-        })
-      : enforceRateLimit({
-          scope: "api_auth_signup_ip_memory_fallback",
-          key: ipSubject,
-          limit: SIGNUP_IP_RATE_LIMIT_CAPACITY,
-          windowMs: SIGNUP_IP_RATE_LIMIT_WINDOW_MS,
-        });
+    const securityEventBase = {
+      email: normalizedEmail || null,
+      ip: requestIp,
+      userAgent: requestUserAgent,
+    };
 
-    if (!rateLimit.allowed) {
-      await recordSignupRateLimitTrigger(requestIp);
-      const fraudScore = await calculateSignupFraudScore({
-        email,
+    const buildRisk = async (input: {
+      emailRateLimited?: boolean;
+      ipRateLimited?: boolean;
+      outcome: string;
+      turnstileErrorCodes?: string[];
+      turnstileVerified?: boolean;
+    }) =>
+      assessSignupRisk({
+        deviceFingerprint,
+        email: normalizedEmail,
         ip: requestIp,
-        rateLimitTriggered: true,
-        turnstileToken,
+        outcome: input.outcome,
+        rateLimit: {
+          emailTriggered: input.emailRateLimited ?? false,
+          ipTriggered: input.ipRateLimited ?? false,
+        },
+        turnstile: {
+          errorCodes: input.turnstileErrorCodes ?? [],
+          tokenPresent: Boolean(turnstileToken),
+          verified: input.turnstileVerified ?? Boolean(turnstileToken),
+        },
         userAgent: requestUserAgent,
       });
-      logFraudScore(ipSubject, fraudScore, RATE_LIMITED_ERROR);
-      return NextResponse.json(
-        { error: RATE_LIMITED_ERROR },
-        {
-          status: 429,
-          headers: {
-            "Retry-After": String(Math.max(1, Math.ceil(rateLimit.retryAfterMs / 1_000))),
-          },
+
+    const fail = async (input: {
+      error: string;
+      eventType: string;
+      headers?: HeadersInit;
+      message: string;
+      metadata?: Record<string, unknown>;
+      status: number;
+      turnstileErrorCodes?: string[];
+      turnstileVerified?: boolean;
+      triggeredEmailRateLimit?: boolean;
+      triggeredIpRateLimit?: boolean;
+      userId?: string | null;
+    }) => {
+      const risk = await buildRisk({
+        emailRateLimited: input.triggeredEmailRateLimit,
+        ipRateLimited: input.triggeredIpRateLimit,
+        outcome: input.eventType,
+        turnstileErrorCodes: input.turnstileErrorCodes,
+        turnstileVerified: input.turnstileVerified,
+      });
+
+      await logAuthSecurityEvent({
+        ...securityEventBase,
+        eventType: input.eventType,
+        metadata: {
+          ...(input.metadata ?? {}),
+          ...buildRiskMetadata(risk),
         },
+        userId: input.userId ?? null,
+      });
+
+      return buildErrorResponse(input.error, input.message, input.status, risk, input.headers);
+    };
+
+    if (!isUpstashRedisConfigured()) {
+      await logAuthSecurityEvent({
+        ...securityEventBase,
+        eventType: "signup_rate_limiter_unavailable",
+      });
+
+      return buildErrorResponse(
+        RATE_LIMITER_UNAVAILABLE_ERROR,
+        "Signup is temporarily unavailable. Please try again later.",
+        503,
       );
     }
 
-    const baseFraudScore = await calculateSignupFraudScore({
-      email,
-      ip: requestIp,
-      turnstileToken,
-      userAgent: requestUserAgent,
-    });
-
-    if (baseFraudScore.invalidEmail) {
-      logFraudScore(ipSubject, baseFraudScore, INVALID_EMAIL_ERROR);
-      return NextResponse.json({ error: INVALID_EMAIL_ERROR }, { status: 400 });
+    if (!email || !password || !emailRedirectTo) {
+      return fail({
+        error: SIGNUP_FAILED_ERROR,
+        eventType: "signup_missing_required_fields",
+        message: "Email, password, and email redirect URL are required.",
+        status: 400,
+        turnstileVerified: Boolean(turnstileToken),
+      });
     }
 
-    const isTurnstileValid = await verifyTurnstileToken(turnstileToken, requestIp);
-    if (!isTurnstileValid) {
-      await recordSignupBotFailure(requestIp);
-      const fraudScore = await calculateSignupFraudScore({
-        email,
-        ip: requestIp,
-        turnstileToken,
-        turnstileVerified: false,
-        userAgent: requestUserAgent,
+    if (!isAllowedEmailRedirect(emailRedirectTo, request)) {
+      return fail({
+        error: INVALID_REDIRECT_URL_ERROR,
+        eventType: "signup_invalid_redirect_url",
+        message: "Invalid email redirect URL.",
+        metadata: {
+          email_redirect_to: emailRedirectTo,
+        },
+        status: 400,
+        turnstileVerified: Boolean(turnstileToken),
       });
-      logFraudScore(ipSubject, fraudScore, BOT_DETECTED_ERROR);
-      return NextResponse.json({ error: BOT_DETECTED_ERROR }, { status: 403 });
+    }
+
+    const emailLooksValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i.test(normalizedEmail);
+    if (!emailLooksValid) {
+      return fail({
+        error: INVALID_EMAIL_ERROR,
+        eventType: "signup_invalid_email",
+        message: "Invalid email address.",
+        status: 400,
+        turnstileVerified: Boolean(turnstileToken),
+      });
+    }
+
+    if (password.length < PASSWORD_MIN_LENGTH) {
+      return fail({
+        error: INVALID_PASSWORD_ERROR,
+        eventType: "signup_invalid_password",
+        message: `Password must be at least ${PASSWORD_MIN_LENGTH} characters long.`,
+        status: 400,
+        turnstileVerified: Boolean(turnstileToken),
+      });
     }
 
     if (!acceptedTerms) {
-      const fraudScore = await calculateSignupFraudScore({
-        email,
-        ip: requestIp,
-        turnstileToken,
-        turnstileVerified: true,
-        userAgent: requestUserAgent,
+      return fail({
+        error: TERMS_NOT_ACCEPTED_ERROR,
+        eventType: "signup_missing_terms_consent",
+        message: "Terms of Service consent is required.",
+        status: 400,
+        turnstileVerified: Boolean(turnstileToken),
       });
-      logFraudScore(ipSubject, fraudScore, TERMS_NOT_ACCEPTED_ERROR);
-      return NextResponse.json({ error: TERMS_NOT_ACCEPTED_ERROR }, { status: 400 });
     }
 
-    if (!fullName || !email || !password || !emailRedirectTo) {
-      const fraudScore = await calculateSignupFraudScore({
-        email,
-        ip: requestIp,
-        turnstileToken,
-        turnstileVerified: true,
-        userAgent: requestUserAgent,
+    if (!acceptedPrivacyPolicy) {
+      return fail({
+        error: PRIVACY_POLICY_NOT_ACCEPTED_ERROR,
+        eventType: "signup_missing_privacy_policy_consent",
+        message: "Privacy Policy consent is required.",
+        status: 400,
+        turnstileVerified: Boolean(turnstileToken),
       });
-      logFraudScore(ipSubject, fraudScore, SIGNUP_FAILED_ERROR);
-      return NextResponse.json(
-        {
-          error: SIGNUP_FAILED_ERROR,
-          message: "Missing required signup fields.",
+    }
+
+    if (!acceptedKvkk) {
+      return fail({
+        error: KVKK_CONSENT_REQUIRED_ERROR,
+        eventType: "signup_missing_kvkk_consent",
+        message: "KVKK consent is required.",
+        status: 400,
+        turnstileVerified: Boolean(turnstileToken),
+      });
+    }
+
+    if (!turnstileToken) {
+      return fail({
+        error: TURNSTILE_REQUIRED_ERROR,
+        eventType: "signup_turnstile_missing",
+        message: "Turnstile verification is required.",
+        status: 400,
+        turnstileVerified: false,
+      });
+    }
+
+    const ipRateLimit = await takeSlidingWindowRateLimit({
+      limit: SIGNUP_IP_RATE_LIMIT_CAPACITY,
+      scope: "auth_signup_ip",
+      subject: requestIp,
+      windowMs: SIGNUP_RATE_LIMIT_WINDOW_MS,
+    });
+
+    if (!ipRateLimit.allowed) {
+      return fail({
+        error: RATE_LIMITED_ERROR,
+        eventType: "signup_rate_limited_ip",
+        headers: {
+          "Retry-After": String(Math.max(1, Math.ceil(ipRateLimit.retryAfterMs / 1_000))),
         },
-        { status: 400 },
-      );
+        message: "Too many signup attempts from this IP address.",
+        metadata: {
+          limit: SIGNUP_IP_RATE_LIMIT_CAPACITY,
+          retry_after_ms: ipRateLimit.retryAfterMs,
+          scope: "ip",
+          window_ms: SIGNUP_RATE_LIMIT_WINDOW_MS,
+        },
+        status: 429,
+        triggeredIpRateLimit: true,
+        turnstileVerified: true,
+      });
+    }
+
+    const emailRateLimit = await takeSlidingWindowRateLimit({
+      limit: SIGNUP_EMAIL_RATE_LIMIT_CAPACITY,
+      scope: "auth_signup_email",
+      subject: normalizedEmail,
+      windowMs: SIGNUP_RATE_LIMIT_WINDOW_MS,
+    });
+
+    if (!emailRateLimit.allowed) {
+      return fail({
+        error: EMAIL_RATE_LIMITED_ERROR,
+        eventType: "signup_rate_limited_email",
+        headers: {
+          "Retry-After": String(Math.max(1, Math.ceil(emailRateLimit.retryAfterMs / 1_000))),
+        },
+        message: "Too many signup attempts for this email address.",
+        metadata: {
+          limit: SIGNUP_EMAIL_RATE_LIMIT_CAPACITY,
+          retry_after_ms: emailRateLimit.retryAfterMs,
+          scope: "email",
+          window_ms: SIGNUP_RATE_LIMIT_WINDOW_MS,
+        },
+        status: 429,
+        triggeredEmailRateLimit: true,
+        turnstileVerified: true,
+      });
+    }
+
+    const turnstileVerification = await verifyTurnstileToken({
+      remoteIp: requestIp,
+      token: turnstileToken,
+    });
+
+    if (!turnstileVerification.ok && turnstileVerification.reason !== "invalid") {
+      return fail({
+        error: TURNSTILE_UNAVAILABLE_ERROR,
+        eventType: "signup_turnstile_unavailable",
+        message: "Turnstile verification is currently unavailable.",
+        metadata: {
+          turnstile_error_codes: turnstileVerification.errorCodes,
+        },
+        status: 503,
+        turnstileErrorCodes: turnstileVerification.errorCodes,
+        turnstileVerified: false,
+      });
+    }
+
+    if (!turnstileVerification.ok) {
+      return fail({
+        error: TURNSTILE_INVALID_ERROR,
+        eventType: "signup_turnstile_invalid",
+        message: "Turnstile verification failed.",
+        metadata: {
+          turnstile_error_codes: turnstileVerification.errorCodes,
+        },
+        status: 403,
+        turnstileErrorCodes: turnstileVerification.errorCodes,
+        turnstileVerified: false,
+      });
     }
 
     const signUpClient = getSignUpClient();
+    const consentedAt = new Date().toISOString();
+    const userMetadata: Record<string, unknown> = {
+      legal_consents: {
+        accepted_kvkk: true,
+        accepted_privacy_policy: true,
+        accepted_terms: true,
+        consented_at: consentedAt,
+      },
+      notification_preferences: notificationPreferences,
+    };
+
+    if (fullName) {
+      userMetadata.full_name = fullName;
+    }
+
     const { data, error } = await signUpClient.auth.signUp({
-      email,
+      email: normalizedEmail,
       password,
       options: {
+        data: userMetadata,
         emailRedirectTo,
-        data: {
-          full_name: fullName,
-          notification_preferences: notificationPreferences,
-          notificationPreferences,
-        },
       },
     });
 
     if (error) {
-      const fraudScore = await calculateSignupFraudScore({
-        email,
-        ip: requestIp,
-        turnstileToken,
-        turnstileVerified: true,
-        userAgent: requestUserAgent,
-      });
-
       if (isUserAlreadyRegisteredError(error)) {
-        logFraudScore(ipSubject, fraudScore, EMAIL_ALREADY_EXISTS_ERROR);
-        return NextResponse.json({ error: EMAIL_ALREADY_EXISTS_ERROR }, { status: 409 });
+        return fail({
+          error: EMAIL_ALREADY_EXISTS_ERROR,
+          eventType: "signup_user_already_exists",
+          message: "A user with this email address already exists.",
+          metadata: {
+            auth_error_code: error.code ?? null,
+            auth_error_message: error.message ?? null,
+            auth_error_status: error.status ?? null,
+          },
+          status: 409,
+          turnstileVerified: true,
+        });
       }
 
       if (isEmailRateLimitError(error)) {
-        logFraudScore(ipSubject, fraudScore, EMAIL_RATE_LIMITED_ERROR);
-        return NextResponse.json({ error: EMAIL_RATE_LIMITED_ERROR }, { status: 429 });
+        return fail({
+          error: EMAIL_RATE_LIMITED_ERROR,
+          eventType: "signup_supabase_email_rate_limited",
+          message: "Supabase email rate limit exceeded.",
+          metadata: {
+            auth_error_code: error.code ?? null,
+            auth_error_message: error.message ?? null,
+            auth_error_status: error.status ?? null,
+          },
+          status: 429,
+          triggeredEmailRateLimit: true,
+          turnstileVerified: true,
+        });
       }
 
-      logFraudScore(ipSubject, fraudScore, SIGNUP_FAILED_ERROR);
-      return NextResponse.json(
-        {
-          error: SIGNUP_FAILED_ERROR,
-          message: error.message || "Signup failed.",
+      return fail({
+        error: SIGNUP_FAILED_ERROR,
+        eventType: "signup_supabase_error",
+        message: error.message || "Signup failed.",
+        metadata: {
+          auth_error_code: error.code ?? null,
+          auth_error_message: error.message ?? null,
+          auth_error_status: error.status ?? null,
         },
-        { status: 400 },
-      );
-    }
-
-    if (data.session && data.user && isSupabaseUserEmailConfirmed(data.user)) {
-      const fraudScore = await calculateSignupFraudScore({
-        email,
-        ip: requestIp,
-        turnstileToken,
+        status: 400,
         turnstileVerified: true,
-        userAgent: requestUserAgent,
       });
-      logFraudScore(ipSubject, fraudScore, EMAIL_CONFIRMATION_DISABLED_ERROR);
-      return NextResponse.json({ error: EMAIL_CONFIRMATION_DISABLED_ERROR }, { status: 409 });
     }
 
-    const successFraudScore = await calculateSignupFraudScore({
-      email,
-      ip: requestIp,
-      turnstileToken,
+    if (!data.user?.id) {
+      return fail({
+        error: SIGNUP_FAILED_ERROR,
+        eventType: "signup_missing_user_id",
+        message: "Signup failed to return a valid user record.",
+        status: 500,
+        turnstileVerified: true,
+      });
+    }
+
+    try {
+      await insertUserConsent({
+        acceptedKvkk: true,
+        acceptedPrivacyPolicy: true,
+        acceptedTerms: true,
+        consentedAt,
+        email: normalizedEmail,
+        ip: requestIp,
+        userAgent: requestUserAgent,
+        userId: data.user.id,
+      });
+    } catch (error) {
+      const cleanup = await supabaseAdmin.auth.admin.deleteUser(data.user.id).catch((cleanupError) => ({
+        error: cleanupError,
+      }));
+
+      return fail({
+        error: SIGNUP_FAILED_ERROR,
+        eventType: "signup_consent_log_failed",
+        message: "Failed to record consent.",
+        metadata: {
+          consent_log_error: error instanceof Error ? error.message : "unknown_error",
+          user_cleanup_error:
+            cleanup && "error" in cleanup && cleanup.error instanceof Error ? cleanup.error.message : null,
+        },
+        status: 500,
+        turnstileVerified: true,
+        userId: data.user.id,
+      });
+    }
+
+    if (data.session && isSupabaseUserEmailConfirmed(data.user)) {
+      return fail({
+        error: EMAIL_CONFIRMATION_DISABLED_ERROR,
+        eventType: "signup_email_confirmation_disabled",
+        message: "Email confirmation must remain enabled for this signup flow.",
+        status: 409,
+        turnstileVerified: true,
+        userId: data.user.id,
+      });
+    }
+
+    const risk = await buildRisk({
+      outcome: "signup_success",
       turnstileVerified: true,
-      userAgent: requestUserAgent,
     });
-    logFraudScore(ipSubject, successFraudScore, "signup_started");
-    return NextResponse.json({ ok: true }, { status: 200 });
+
+    await logAuthSecurityEvent({
+      ...securityEventBase,
+      eventType: "signup_success",
+      metadata: {
+        email_confirmation_required: !isSupabaseUserEmailConfirmed(data.user),
+        ...buildRiskMetadata(risk),
+      },
+      userId: data.user.id,
+    });
+
+    return buildSuccessResponse(risk);
   } catch (error) {
     console.error("[auth.signup] Failed to create signup.", error);
-    return NextResponse.json(
-      {
-        error: SIGNUP_FAILED_ERROR,
-        message: "Kayit sirasinda beklenmeyen bir hata olustu.",
+
+    const isRedisFailure = isUpstashError(error);
+    const errorCode = isRedisFailure ? RATE_LIMITER_UNAVAILABLE_ERROR : SIGNUP_FAILED_ERROR;
+    const status = isRedisFailure ? 503 : 500;
+    const message = isRedisFailure
+      ? "Signup is temporarily unavailable. Please try again later."
+      : "Unexpected error while creating signup.";
+
+    await logAuthSecurityEvent({
+      email: null,
+      eventType: isRedisFailure ? "signup_rate_limiter_unavailable" : "signup_unhandled_error",
+      ip: requestIp,
+      metadata: {
+        error_message: error instanceof Error ? error.message : "unknown_error",
       },
-      { status: 500 },
-    );
+      userAgent: requestUserAgent,
+    });
+
+    return buildErrorResponse(errorCode, message, status);
   }
 }
