@@ -1,13 +1,18 @@
-import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
+import { Webhook } from "standardwebhooks";
 
 export const runtime = "nodejs";
 
-type SendEmailHookBody = {
-  email?: unknown;
-  email_type?: unknown;
-  token?: unknown;
-  redirect_to?: unknown;
+type SupportedEmailActionType = "signup" | "recovery";
+
+type SendEmailHookPayload = {
+  user?: {
+    email?: unknown;
+  };
+  email_data?: {
+    token?: unknown;
+    email_action_type?: unknown;
+  };
 };
 
 type EmailContent = {
@@ -16,25 +21,21 @@ type EmailContent = {
   text: string;
 };
 
-type ResendEmailPayload = {
-  from: string;
-  to: string;
-  subject: string;
-  html: string;
-  text: string;
-};
-
 class MissingEnvVarError extends Error {
-  constructor(public readonly envVarName: "RESEND_API_KEY" | "EMAIL_HOOK_SECRET") {
-    super(`[auth.send-email] Missing required env var: ${envVarName}`);
+  constructor(public readonly envVarName: "RESEND_API_KEY" | "SEND_EMAIL_HOOK_SECRET") {
+    super(`Missing required env var: ${envVarName}`);
     this.name = "MissingEnvVarError";
   }
 }
 
 const RESEND_API_URL = "https://api.resend.com/emails";
-const EMAIL_FROM = "Assetly <support@assetly.network>";
+const EMAIL_FROM = "Assetly <onboarding@resend.dev>";
 
-const getRequiredEnv = (name: "RESEND_API_KEY" | "EMAIL_HOOK_SECRET") => {
+const isNonEmptyString = (value: unknown): value is string => {
+  return typeof value === "string" && value.trim().length > 0;
+};
+
+const getRequiredEnv = (name: "RESEND_API_KEY" | "SEND_EMAIL_HOOK_SECRET") => {
   const value = process.env[name]?.trim();
 
   if (!value) {
@@ -44,260 +45,149 @@ const getRequiredEnv = (name: "RESEND_API_KEY" | "EMAIL_HOOK_SECRET") => {
   return value;
 };
 
-const isNonEmptyString = (value: unknown): value is string => {
-  return typeof value === "string" && value.trim().length > 0;
+const normalizeWebhookSecret = (secret: string) => {
+  return secret.trim().replace(/^v1,whsec_/, "").replace(/^whsec_/, "");
 };
 
-const trimToEmpty = (value: unknown) => (typeof value === "string" ? value.trim() : "");
+const getWebhookHeaders = (headers: Headers) => {
+  const normalizedHeaders = Object.fromEntries(headers.entries());
 
-const asJsonObject = (value: unknown): Record<string, unknown> | null => {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (normalizedHeaders["svix-id"] && !normalizedHeaders["webhook-id"]) {
+    normalizedHeaders["webhook-id"] = normalizedHeaders["svix-id"];
+  }
+
+  if (normalizedHeaders["svix-timestamp"] && !normalizedHeaders["webhook-timestamp"]) {
+    normalizedHeaders["webhook-timestamp"] = normalizedHeaders["svix-timestamp"];
+  }
+
+  if (normalizedHeaders["svix-signature"] && !normalizedHeaders["webhook-signature"]) {
+    normalizedHeaders["webhook-signature"] = normalizedHeaders["svix-signature"];
+  }
+
+  return normalizedHeaders;
+};
+
+const parsePayload = (rawBody: string) => {
+  const parsed = JSON.parse(rawBody) as unknown;
+
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     return null;
   }
 
-  return value as Record<string, unknown>;
+  return parsed as SendEmailHookPayload;
 };
 
-const parseJsonSafely = (value: string) => {
-  if (!value.trim()) {
-    return {};
-  }
-
-  return JSON.parse(value) as unknown;
-};
-
-const readHookBody = async (request: Request): Promise<SendEmailHookBody> => {
-  const rawBody = await request.text();
-  const parsedBody = parseJsonSafely(rawBody);
-  const body = asJsonObject(parsedBody) ?? {};
-  return body as SendEmailHookBody;
-};
-
-const sanitizeBodyForLogs = (body: SendEmailHookBody) => ({
-  email: isNonEmptyString(body.email) ? body.email.trim() : null,
-  email_type: isNonEmptyString(body.email_type) ? body.email_type.trim() : null,
-  redirect_to: isNonEmptyString(body.redirect_to) ? body.redirect_to.trim() : null,
-  has_token: isNonEmptyString(body.token),
-});
-
-const readAuthorizationToken = (authorizationHeader: string | null) => {
-  if (!authorizationHeader) {
-    return null;
-  }
-
-  const normalizedHeader = authorizationHeader.trim();
-  if (!normalizedHeader) {
-    return null;
-  }
-
-  if (/^bearer\s+/i.test(normalizedHeader)) {
-    const token = normalizedHeader.slice(normalizedHeader.indexOf(" ") + 1).trim();
-    return token || null;
-  }
-
-  return normalizedHeader;
-};
-
-const isAuthorizedRequest = (authorizationHeader: string | null, expectedSecret: string) => {
-  const providedSecret = readAuthorizationToken(authorizationHeader);
-
-  if (!providedSecret) {
-    return false;
-  }
-
-  const providedBuffer = Buffer.from(providedSecret);
-  const expectedBuffer = Buffer.from(expectedSecret);
-
-  if (providedBuffer.length !== expectedBuffer.length) {
-    return false;
-  }
-
-  return timingSafeEqual(providedBuffer, expectedBuffer);
-};
-
-const escapeHtml = (value: string) =>
-  value
+const getEmailContent = (actionType: SupportedEmailActionType, token: string): EmailContent => {
+  const safeToken = token
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
 
-const buildSignupConfirmUrl = (redirectTo: string, token: string) => {
-  const confirmUrl = new URL(redirectTo);
-  confirmUrl.searchParams.set("token", token);
-  return confirmUrl.toString();
-};
-
-const buildSignupEmailContent = (confirmUrl: string): EmailContent => {
-  const safeConfirmUrl = escapeHtml(confirmUrl);
-
-  return {
-    subject: "Confirm your email",
-    html: `<h2>Confirm your email</h2><p>Click below:</p><a href="${safeConfirmUrl}">Confirm</a>`,
-    text: `Confirm your email: ${confirmUrl}`,
-  };
-};
-
-const buildGenericEmailContent = (): EmailContent => ({
-  subject: "Notification email",
-  html: "<p>Notification email</p>",
-  text: "Notification email",
-});
-
-const ensureValidEmailContent = (content: EmailContent): EmailContent => {
-  let html = trimToEmpty(content.html);
-  let text = trimToEmpty(content.text);
-
-  if (!html && !text) {
-    html = "<p>Fallback email</p>";
-    text = "Fallback email";
-  }
-
-  if (!html) {
-    html = `<p>${escapeHtml(text)}</p>`;
-  }
-
-  if (!text) {
-    text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() || "Fallback email";
+  if (actionType === "signup") {
+    return {
+      subject: "Confirm your account",
+      html: `<p>Your code is <strong>${safeToken}</strong></p>`,
+      text: `Your code is ${token}`,
+    };
   }
 
   return {
-    subject: trimToEmpty(content.subject) || "Notification email",
-    html,
-    text,
+    subject: "Reset your password",
+    html: `<p>Your password reset code is <strong>${safeToken}</strong></p>`,
+    text: `Your password reset code is ${token}`,
   };
-};
-
-const parseResponseBody = (value: string) => {
-  if (!value.trim()) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(value) as unknown;
-  } catch {
-    return value;
-  }
 };
 
 const sendEmail = async (email: string, content: EmailContent, resendApiKey: string) => {
-  let { subject, html, text } = ensureValidEmailContent(content);
-
-  if (!html && !text) {
-    html = "<p>Fallback email</p>";
-    text = "Fallback email";
-  }
-
-  const payload: ResendEmailPayload = {
-    from: EMAIL_FROM,
-    to: email,
-    subject,
-    html,
-    text,
-  };
-
-  const resendResponse = await fetch(RESEND_API_URL, {
+  const response = await fetch(RESEND_API_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${resendApiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      from: EMAIL_FROM,
+      to: email,
+      subject: content.subject,
+      html: content.html,
+      text: content.text,
+    }),
     cache: "no-store",
   });
 
-  const result = await resendResponse.text();
-  console.log("RESEND RESULT:", result);
-  const resendResponseBody = parseResponseBody(result);
-
-  console.log("[auth.send-email] Resend response.", {
-    ok: resendResponse.ok,
-    status: resendResponse.status,
-    body: resendResponseBody,
-  });
-
-  if (!resendResponse.ok) {
-    throw new Error(`Resend request failed with status ${resendResponse.status}`);
+  if (response.ok) {
+    return;
   }
 
-  return resendResponseBody;
-};
-
-const getEmailContent = (body: SendEmailHookBody): EmailContent => {
-  const normalizedEmailType = isNonEmptyString(body.email_type) ? body.email_type.trim().toLowerCase() : "";
-
-  if (normalizedEmailType === "signup") {
-    if (isNonEmptyString(body.token) && isNonEmptyString(body.redirect_to)) {
-      const confirmUrl = buildSignupConfirmUrl(body.redirect_to, body.token);
-      return buildSignupEmailContent(confirmUrl);
-    }
-
-    console.warn("[auth.send-email] Signup payload incomplete. Falling back to generic email.", {
-      has_token: isNonEmptyString(body.token),
-      has_redirect_to: isNonEmptyString(body.redirect_to),
-    });
-    return buildGenericEmailContent();
-  }
-
-  if (!normalizedEmailType) {
-    console.warn("[auth.send-email] Missing email_type. Sending generic email.");
-    return buildGenericEmailContent();
-  }
-
-  console.warn("[auth.send-email] Unknown email type. Sending generic email.", {
-    emailType: normalizedEmailType,
-  });
-  return buildGenericEmailContent();
+  const errorBody = await response.text();
+  throw new Error(`Resend request failed with status ${response.status}: ${errorBody}`);
 };
 
 export async function POST(request: Request) {
   try {
-    const emailHookSecret = getRequiredEnv("EMAIL_HOOK_SECRET");
-    const authorizationHeader = request.headers.get("authorization");
-    const isAuthorized = isAuthorizedRequest(authorizationHeader, emailHookSecret);
+    const rawBody = await request.text();
+    const webhookSecret = getRequiredEnv("SEND_EMAIL_HOOK_SECRET");
+    const webhook = new Webhook(normalizeWebhookSecret(webhookSecret));
 
-    console.log("[auth.send-email] Auth result.", {
-      hasAuthorizationHeader: Boolean(authorizationHeader?.trim()),
-      isAuthorized,
-    });
-
-    if (!isAuthorized) {
+    try {
+      webhook.verify(rawBody, getWebhookHeaders(request.headers));
+    } catch (error) {
+      console.error("[auth.send-email] Webhook verification failed.", error);
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    let body: SendEmailHookBody;
+    let payload: SendEmailHookPayload | null = null;
 
     try {
-      body = await readHookBody(request);
+      payload = parsePayload(rawBody);
     } catch (error) {
-      console.error("[auth.send-email] Failed to parse request body.", error);
+      console.error("[auth.send-email] Invalid JSON body.", error);
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
 
-    console.log("[auth.send-email] Request body.", sanitizeBodyForLogs(body));
+    if (!payload) {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
 
-    if (!isNonEmptyString(body.email)) {
-      return NextResponse.json({ error: "Missing required field: email" }, { status: 400 });
+    const email = payload.user?.email;
+    const token = payload.email_data?.token;
+    const emailActionType = payload.email_data?.email_action_type;
+
+    if (!isNonEmptyString(email)) {
+      return NextResponse.json({ error: "Missing required field: user.email" }, { status: 400 });
+    }
+
+    if (!isNonEmptyString(token)) {
+      return NextResponse.json({ error: "Missing required field: email_data.token" }, { status: 400 });
+    }
+
+    if (!isNonEmptyString(emailActionType)) {
+      return NextResponse.json({ error: "Missing required field: email_data.email_action_type" }, { status: 400 });
+    }
+
+    const normalizedActionType = emailActionType.trim().toLowerCase();
+
+    if (normalizedActionType !== "signup" && normalizedActionType !== "recovery") {
+      return NextResponse.json(
+        { error: "Unsupported email action type", email_action_type: normalizedActionType },
+        { status: 400 },
+      );
     }
 
     const resendApiKey = getRequiredEnv("RESEND_API_KEY");
-    const email = body.email.trim();
-    const emailContent = getEmailContent(body);
+    const emailContent = getEmailContent(normalizedActionType, token.trim());
 
-    await sendEmail(email, emailContent, resendApiKey);
+    await sendEmail(email.trim(), emailContent, resendApiKey);
 
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error) {
     if (error instanceof MissingEnvVarError) {
-      console.error("[auth.send-email] Configuration error.", {
-        missingEnvVar: error.envVarName,
-      });
-
+      console.error("[auth.send-email] Missing env var.", error.envVarName);
       return NextResponse.json(
         {
           error: "Server misconfiguration",
-          code: "MISSING_ENV_VAR",
           missingEnvVar: error.envVarName,
         },
         { status: 500 },
