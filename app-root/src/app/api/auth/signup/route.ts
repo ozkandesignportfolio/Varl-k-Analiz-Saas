@@ -101,7 +101,8 @@ const getSignUpClient = () => {
   });
 };
 
-const buildRiskMetadata = (risk: SignupRisk) => ({
+const buildRiskMetadata = (risk: SignupRisk, deviceFingerprint?: string | null) => ({
+  device_fingerprint: deviceFingerprint?.trim() || null,
   risk_level: risk.level,
   risk_reasons: risk.reasons,
   risk_score: risk.score,
@@ -240,7 +241,7 @@ export async function POST(request: Request) {
         eventType: input.eventType,
         metadata: {
           ...(input.metadata ?? {}),
-          ...buildRiskMetadata(risk),
+          ...buildRiskMetadata(risk, deviceFingerprint),
         },
         userId: input.userId ?? null,
       });
@@ -565,7 +566,7 @@ export async function POST(request: Request) {
       eventType: "signup_success",
       metadata: {
         email_confirmation_required: !isSupabaseUserEmailConfirmed(data.user),
-        ...buildRiskMetadata(risk),
+        ...buildRiskMetadata(risk, deviceFingerprint),
       },
       userId: data.user.id,
     });

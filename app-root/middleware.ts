@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isAdminUser } from "./src/lib/auth/admin-user";
 import { isSupabaseUserEmailConfirmed } from "./src/lib/supabase/auth-errors";
 import { buildLoginPath } from "./src/lib/supabase/email-verification";
 import { isProtectedAppPath } from "./src/lib/supabase/protected-routes";
@@ -37,6 +38,7 @@ function buildLoginRedirectResponse(
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const isFraudDashboardPath = pathname === "/fraud-dashboard" || pathname.startsWith("/fraud-dashboard/");
 
   if (!isProtectedAppPath(pathname)) {
     return NextResponse.next();
@@ -95,6 +97,15 @@ export async function middleware(request: NextRequest) {
     );
   }
 
+  if (isFraudDashboardPath && !isAdminUser(authenticatedUser)) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/dashboard";
+    redirectUrl.search = "";
+    const redirectResponse = NextResponse.redirect(redirectUrl);
+    copyAuthCookies(response, redirectResponse);
+    return redirectResponse;
+  }
+
   return response;
 }
 
@@ -114,5 +125,6 @@ export const config = {
     "/reports/:path*",
     "/settings/:path*",
     "/subscriptions/:path*",
+    "/fraud-dashboard/:path*",
   ],
 };

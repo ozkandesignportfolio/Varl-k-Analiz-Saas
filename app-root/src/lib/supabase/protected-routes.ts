@@ -13,6 +13,7 @@ export const PROTECTED_APP_PATH_PREFIXES = [
   "/reports",
   "/settings",
   "/subscriptions",
+  "/fraud-dashboard",
 ] as const;
 
 export const isProtectedAppPath = (pathname: string) =>

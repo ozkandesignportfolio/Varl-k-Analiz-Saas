@@ -2,13 +2,20 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import Script from "next/script";
+import {
+  TURNSTILE_SITE_KEY_MISSING_MESSAGE,
+  readPublicTurnstileSiteKey,
+} from "@/lib/env/turnstile";
 
 type TurnstileWidgetProps = {
+  onStatusChange?: (status: TurnstileWidgetStatus) => void;
   onTokenChange: (token: string | null) => void;
   refreshNonce?: number;
-  siteKey: string;
+  siteKey?: string | null;
   theme?: "auto" | "light" | "dark";
 };
+
+export type TurnstileWidgetStatus = "idle" | "verified" | "expired" | "error" | "unsupported";
 
 type TurnstileRenderOptions = {
   sitekey: string;
@@ -32,6 +39,7 @@ declare global {
 }
 
 export default function TurnstileWidget({
+  onStatusChange,
   onTokenChange,
   refreshNonce = 0,
   siteKey,
@@ -40,22 +48,46 @@ export default function TurnstileWidget({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
   const [scriptReady, setScriptReady] = useState(() => typeof window !== "undefined" && Boolean(window.turnstile));
+  const [scriptFailed, setScriptFailed] = useState(false);
   const containerId = useId().replaceAll(":", "");
+  const resolvedSiteKey = siteKey?.trim() || readPublicTurnstileSiteKey().siteKey;
 
   useEffect(() => {
-    if (!scriptReady || !siteKey || !containerRef.current || !window.turnstile || widgetIdRef.current) {
+    if (resolvedSiteKey) {
       return;
     }
 
     onTokenChange(null);
+    onStatusChange?.("unsupported");
+  }, [onStatusChange, onTokenChange, resolvedSiteKey]);
+
+  useEffect(() => {
+    if (!scriptReady || !resolvedSiteKey || !containerRef.current || !window.turnstile || widgetIdRef.current) {
+      return;
+    }
+
+    onTokenChange(null);
+    onStatusChange?.("idle");
 
     widgetIdRef.current = window.turnstile.render(containerRef.current, {
-      sitekey: siteKey,
+      sitekey: resolvedSiteKey,
       theme,
-      callback: (token) => onTokenChange(token),
-      "error-callback": () => onTokenChange(null),
-      "expired-callback": () => onTokenChange(null),
-      "timeout-callback": () => onTokenChange(null),
+      callback: (token) => {
+        onTokenChange(token);
+        onStatusChange?.("verified");
+      },
+      "error-callback": () => {
+        onTokenChange(null);
+        onStatusChange?.("error");
+      },
+      "expired-callback": () => {
+        onTokenChange(null);
+        onStatusChange?.("expired");
+      },
+      "timeout-callback": () => {
+        onTokenChange(null);
+        onStatusChange?.("expired");
+      },
     });
 
     return () => {
@@ -65,7 +97,7 @@ export default function TurnstileWidget({
       }
       widgetIdRef.current = null;
     };
-  }, [onTokenChange, refreshNonce, scriptReady, siteKey, theme]);
+  }, [onStatusChange, onTokenChange, refreshNonce, resolvedSiteKey, scriptReady, theme]);
 
   useEffect(() => {
     if (!refreshNonce) {
@@ -73,20 +105,42 @@ export default function TurnstileWidget({
     }
 
     onTokenChange(null);
+    onStatusChange?.("idle");
 
     if (widgetIdRef.current && window.turnstile?.reset) {
       window.turnstile.reset(widgetIdRef.current);
     }
-  }, [onTokenChange, refreshNonce]);
+  }, [onStatusChange, onTokenChange, refreshNonce]);
+
+  if (!resolvedSiteKey) {
+    return (
+      <p className="text-sm text-amber-200" role="alert">
+        {TURNSTILE_SITE_KEY_MISSING_MESSAGE}
+      </p>
+    );
+  }
+
+  if (scriptFailed) {
+    return (
+      <p className="text-sm text-amber-200" role="alert">
+        Turnstile could not be loaded. Please refresh the page and try again.
+      </p>
+    );
+  }
 
   return (
     <>
       <Script
         src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
         strategy="afterInteractive"
-        onLoad={() => setScriptReady(true)}
+        onLoad={() => {
+          setScriptFailed(false);
+          setScriptReady(true);
+        }}
         onError={() => {
           onTokenChange(null);
+          onStatusChange?.("error");
+          setScriptFailed(true);
           setScriptReady(false);
         }}
       />

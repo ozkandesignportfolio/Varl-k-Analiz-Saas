@@ -115,15 +115,19 @@ export const assessSignupRisk = async (input: SignupRiskInput): Promise<SignupRi
   const ipEmailsKey = `risk:signup:links:ip_emails:${ipHash}`;
   const ipRiskScoreKey = `risk:signup:score:ip:${ipHash}`;
   const ipRiskDetailsKey = `risk:signup:details:ip:${ipHash}`;
+  const ipPublicRiskScoreKey = normalizedIp !== "unknown" ? `risk:ip:${normalizedIp}` : null;
 
   const emailAttemptsKey = emailHash ? `risk:signup:attempts:email:${emailHash}` : null;
   const emailIpsKey = emailHash ? `risk:signup:links:email_ips:${emailHash}` : null;
   const emailDevicesKey = emailHash ? `risk:signup:links:email_devices:${emailHash}` : null;
   const emailRiskScoreKey = emailHash ? `risk:signup:score:email:${emailHash}` : null;
   const emailRiskDetailsKey = emailHash ? `risk:signup:details:email:${emailHash}` : null;
+  const emailPublicRiskScoreKey = hasEmail ? `risk:email:${normalizedEmail}` : null;
 
   const deviceAttemptsKey = fingerprintHash ? `risk:signup:attempts:device:${fingerprintHash}` : null;
   const deviceFirstSeenKey = fingerprintHash ? `risk:signup:first_seen:device:${fingerprintHash}` : null;
+  const deviceRiskScoreKey = fingerprintHash ? `risk:signup:score:device:${fingerprintHash}` : null;
+  const devicePublicRiskScoreKey = normalizedFingerprint ? `risk:device:${normalizedFingerprint}` : null;
 
   const commands: string[][] = [
     ["ZREMRANGEBYSCORE", ipAttemptsKey, "-inf", String(windowFloor)],
@@ -336,6 +340,10 @@ export const assessSignupRisk = async (input: SignupRiskInput): Promise<SignupRi
     ],
   ];
 
+  if (ipPublicRiskScoreKey) {
+    persistCommands.push(["SET", ipPublicRiskScoreKey, String(risk.score), "EX", String(RISK_STATE_TTL_SECONDS)]);
+  }
+
   if (emailRiskScoreKey && emailRiskDetailsKey) {
     persistCommands.push(
       ["SET", emailRiskScoreKey, String(risk.score), "EX", String(RISK_STATE_TTL_SECONDS)],
@@ -351,6 +359,18 @@ export const assessSignupRisk = async (input: SignupRiskInput): Promise<SignupRi
         String(RISK_STATE_TTL_SECONDS),
       ],
     );
+  }
+
+  if (emailPublicRiskScoreKey) {
+    persistCommands.push(["SET", emailPublicRiskScoreKey, String(risk.score), "EX", String(RISK_STATE_TTL_SECONDS)]);
+  }
+
+  if (deviceRiskScoreKey) {
+    persistCommands.push(["SET", deviceRiskScoreKey, String(risk.score), "EX", String(RISK_STATE_TTL_SECONDS)]);
+  }
+
+  if (devicePublicRiskScoreKey) {
+    persistCommands.push(["SET", devicePublicRiskScoreKey, String(risk.score), "EX", String(RISK_STATE_TTL_SECONDS)]);
   }
 
   await runUpstashCommands(persistCommands);

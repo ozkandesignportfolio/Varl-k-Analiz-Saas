@@ -49,6 +49,7 @@ const TITLE_MAP: Record<string, string> = {
   settings: SIDEBAR_LABEL_BY_KEY.settings,
   subscriptions: SIDEBAR_LABEL_BY_KEY.billing,
   costs: SIDEBAR_LABEL_BY_KEY.costs,
+  "fraud-dashboard": "Fraud Intelligence",
 };
 const subscribeToHydration = () => () => {};
 const AppShellSessionContext = createContext<AppShellSessionContextValue>({
