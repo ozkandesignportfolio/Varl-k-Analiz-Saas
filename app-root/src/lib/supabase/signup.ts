@@ -16,6 +16,13 @@ export const RATE_LIMITER_UNAVAILABLE_ERROR = "RATE_LIMITER_UNAVAILABLE";
 export const EMAIL_CONFIRMATION_DISABLED_ERROR = "EMAIL_CONFIRMATION_DISABLED";
 export const SIGNUP_FAILED_ERROR = "SIGNUP_FAILED";
 export const BOT_DETECTED_ERROR = TURNSTILE_INVALID_ERROR;
+export const MISSING_FIELDS_ERROR = "missing_fields";
+export const PASSWORD_MISMATCH_ERROR = "password_mismatch";
+export const TURNSTILE_FAILED_ERROR = "turnstile_failed";
+export const TURNSTILE_CONFIG_ERROR = "turnstile_config_error";
+export const INVALID_REQUEST_ERROR = "invalid_request";
+
+export type SignupEmailStatus = "failed" | "sent";
 
 export type SignupRiskLevel = "low" | "medium" | "high" | "critical";
 
@@ -40,6 +47,8 @@ export type SignupRisk = {
 };
 
 export type SignupApiSuccessResponse = {
+  emailStatus?: SignupEmailStatus;
+  message?: string;
   ok: true;
   risk: SignupRisk;
 };

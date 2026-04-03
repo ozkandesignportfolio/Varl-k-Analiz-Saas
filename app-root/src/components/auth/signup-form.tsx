@@ -21,16 +21,21 @@ import {
   EMAIL_CONFIRMATION_DISABLED_ERROR,
   EMAIL_RATE_LIMITED_ERROR,
   getSignupCooldownRemainingSeconds,
+  INVALID_REQUEST_ERROR,
   INVALID_EMAIL_ERROR,
   INVALID_PASSWORD_ERROR,
   INVALID_REDIRECT_URL_ERROR,
   KVKK_CONSENT_REQUIRED_ERROR,
+  MISSING_FIELDS_ERROR,
+  PASSWORD_MISMATCH_ERROR,
   PRIVACY_POLICY_NOT_ACCEPTED_ERROR,
   RATE_LIMITED_ERROR,
   RATE_LIMITER_UNAVAILABLE_ERROR,
   SIGNUP_COOLDOWN_MS,
   SIGNUP_COOLDOWN_STORAGE_KEY,
   TERMS_NOT_ACCEPTED_ERROR,
+  TURNSTILE_CONFIG_ERROR,
+  TURNSTILE_FAILED_ERROR,
   TURNSTILE_INVALID_ERROR,
   TURNSTILE_REQUIRED_ERROR,
   TURNSTILE_UNAVAILABLE_ERROR,
@@ -58,11 +63,37 @@ type SignupFormValidationInput = {
   acceptedPrivacyPolicy: boolean;
   acceptedTerms: boolean;
   email: string;
+  firstName: string;
+  lastName: string;
+  confirmPassword: string;
   password: string;
   turnstileSiteKey: string | null;
   turnstileStatus: TurnstileWidgetStatus;
   turnstileToken: string | null;
   turnstileWarning: string | null;
+};
+
+const getTurnstileSiteKeyWarning = (siteKey: string | null, warning: string | null) => {
+  if (warning) {
+    return warning;
+  }
+
+  if (!siteKey) {
+    return "Turnstile site key is missing. Please set NEXT_PUBLIC_TURNSTILE_SITE_KEY.";
+  }
+
+  const normalizedSiteKey = siteKey.trim().toLowerCase();
+
+  if (
+    !normalizedSiteKey ||
+    normalizedSiteKey.includes("placeholder") ||
+    normalizedSiteKey.includes("secret") ||
+    normalizedSiteKey.includes("your_turnstile")
+  ) {
+    return "NEXT_PUBLIC_TURNSTILE_SITE_KEY is invalid. Please check the public site key value.";
+  }
+
+  return null;
 };
 
 const createDeviceFingerprint = async () => {
@@ -124,8 +155,8 @@ const getTurnstileValidationMessage = ({
 };
 
 const getSignupValidationMessage = (input: SignupFormValidationInput) => {
-  if (!input.email || !input.password) {
-    return "E-posta ve sifre zorunludur.";
+  if (!input.firstName || !input.lastName || !input.email || !input.password || !input.confirmPassword) {
+    return "Ad, soyad, e-posta, sifre ve sifre tekrari zorunludur.";
   }
 
   if (!EMAIL_REGEX.test(input.email)) {
@@ -134,6 +165,10 @@ const getSignupValidationMessage = (input: SignupFormValidationInput) => {
 
   if (input.password.length < PASSWORD_MIN_LENGTH) {
     return `Sifre en az ${PASSWORD_MIN_LENGTH} karakter olmalidir.`;
+  }
+
+  if (input.password !== input.confirmPassword) {
+    return "Sifre ve sifre tekrari ayni olmalidir.";
   }
 
   if (!input.acceptedTerms) {
@@ -152,6 +187,14 @@ const getSignupValidationMessage = (input: SignupFormValidationInput) => {
 };
 
 const getSignupErrorMessage = (error?: string) => {
+  if (error === MISSING_FIELDS_ERROR) {
+    return "Ad, soyad, e-posta, sifre ve sifre tekrari zorunludur.";
+  }
+
+  if (error === PASSWORD_MISMATCH_ERROR) {
+    return "Sifre ve sifre tekrari ayni olmalidir.";
+  }
+
   if (error === EMAIL_RATE_LIMITED_ERROR || error === RATE_LIMITED_ERROR) {
     return "Kayit deneme limiti asildi. Lutfen kisa bir sure sonra tekrar deneyin.";
   }
@@ -168,7 +211,7 @@ const getSignupErrorMessage = (error?: string) => {
     return `Sifre en az ${PASSWORD_MIN_LENGTH} karakter olmalidir.`;
   }
 
-  if (error === TURNSTILE_INVALID_ERROR || error === BOT_DETECTED_ERROR) {
+  if (error === TURNSTILE_FAILED_ERROR || error === TURNSTILE_INVALID_ERROR || error === BOT_DETECTED_ERROR) {
     return "Bot dogrulamasi gecersiz. Lutfen tekrar deneyin.";
   }
 
@@ -176,7 +219,7 @@ const getSignupErrorMessage = (error?: string) => {
     return "Lutfen bot dogrulamasini tamamlayin.";
   }
 
-  if (error === TURNSTILE_UNAVAILABLE_ERROR) {
+  if (error === TURNSTILE_UNAVAILABLE_ERROR || error === TURNSTILE_CONFIG_ERROR) {
     return "Bot korumasi su anda kullanilamiyor. Lutfen daha sonra tekrar deneyin.";
   }
 
@@ -204,15 +247,23 @@ const getSignupErrorMessage = (error?: string) => {
     return "Kayit baglantisi gecersiz. Sayfayi yenileyip tekrar deneyin.";
   }
 
+  if (error === INVALID_REQUEST_ERROR) {
+    return "Kayit istegi gecersiz. Sayfayi yenileyip tekrar deneyin.";
+  }
+
   return null;
 };
 
 export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
   const router = useRouter();
   const { siteKey: turnstileSiteKey, warning: turnstileWarning } = readPublicTurnstileSiteKey();
+  const resolvedTurnstileWarning = getTurnstileSiteKeyWarning(turnstileSiteKey, turnstileWarning);
 
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [acceptedPrivacyPolicy, setAcceptedPrivacyPolicy] = useState(false);
   const [acceptedKvkk, setAcceptedKvkk] = useState(false);
@@ -288,12 +339,15 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
     acceptedKvkk,
     acceptedPrivacyPolicy,
     acceptedTerms,
+    confirmPassword,
     email,
+    firstName,
+    lastName,
     password,
     turnstileSiteKey,
     turnstileStatus,
     turnstileToken,
-    turnstileWarning,
+    turnstileWarning: resolvedTurnstileWarning,
   });
 
   const startSignupCooldown = () => {
@@ -339,9 +393,12 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
           acceptedKvkk,
           acceptedPrivacyPolicy,
           acceptedTerms,
+          confirmPassword,
           deviceFingerprint,
           email,
           emailRedirectTo,
+          firstName,
+          lastName,
           password,
           turnstileToken,
         }),
@@ -359,8 +416,18 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
         return;
       }
 
-      setMessage(emailVerificationSentMessage);
-      router.push(buildEmailVerificationPath(email, null, { emailSent: true }));
+      const successResult = result && "ok" in result && result.ok ? result : null;
+      const successMessage =
+        successResult?.message ??
+        (successResult?.emailStatus === "failed"
+          ? "Hesabiniz olusturuldu ancak dogrulama e-postasi gonderilemedi."
+          : emailVerificationSentMessage);
+
+      setMessage(successMessage);
+
+      if (successResult?.emailStatus !== "failed") {
+        router.push(buildEmailVerificationPath(email, null, { emailSent: true }));
+      }
     } catch {
       setMessage("Kayit sirasinda beklenmeyen bir hata olustu. Lutfen tekrar deneyin.");
     } finally {
@@ -396,9 +463,39 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
 
         <section className="premium-panel p-6">
           <h2 className="text-2xl font-semibold text-white">Kayit Ol</h2>
-          <p className="mt-2 text-sm text-slate-300">E-posta, sifre ve yasal onaylarla yeni hesabinizi guvenle olusturun.</p>
+          <p className="mt-2 text-sm text-slate-300">Ad, soyad, e-posta, sifre ve yasal onaylarla yeni hesabinizi guvenle olusturun.</p>
 
           <form onSubmit={onSubmit} className="mt-6 space-y-4" data-testid="register-form">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-1.5 block text-sm text-slate-300">Ad</span>
+                <input
+                  autoComplete="given-name"
+                  className={inputClassName}
+                  name="firstName"
+                  onChange={(event) => setFirstName(event.target.value)}
+                  placeholder="Adiniz"
+                  required
+                  type="text"
+                  value={firstName}
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 block text-sm text-slate-300">Soyad</span>
+                <input
+                  autoComplete="family-name"
+                  className={inputClassName}
+                  name="lastName"
+                  onChange={(event) => setLastName(event.target.value)}
+                  placeholder="Soyadiniz"
+                  required
+                  type="text"
+                  value={lastName}
+                />
+              </label>
+            </div>
+
             <label className="block">
               <span className="mb-1.5 block text-sm text-slate-300">E-posta</span>
               <input
@@ -427,6 +524,21 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
                 required
                 type="password"
                 value={password}
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-1.5 block text-sm text-slate-300">Sifre Tekrari</span>
+              <input
+                autoComplete="new-password"
+                className={inputClassName}
+                minLength={PASSWORD_MIN_LENGTH}
+                name="confirmPassword"
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                placeholder="Sifrenizi tekrar girin"
+                required
+                type="password"
+                value={confirmPassword}
               />
             </label>
 
@@ -485,9 +597,9 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
             </label>
 
             <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
-              {turnstileWarning ? (
+              {resolvedTurnstileWarning ? (
                 <p className="text-sm text-amber-200" role="alert">
-                  {turnstileWarning}
+                  {resolvedTurnstileWarning}
                 </p>
               ) : (
                 <TurnstileWidget
@@ -513,7 +625,9 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
                 {message}
               </p>
             ) : validationMessage ? (
-              <p className={turnstileWarning ? "text-sm text-amber-200" : "text-sm text-slate-400"}>{validationMessage}</p>
+              <p className={resolvedTurnstileWarning ? "text-sm text-amber-200" : "text-sm text-slate-400"}>
+                {validationMessage}
+              </p>
             ) : (
               <p className="text-sm text-slate-400">
                 Guvenlik sinyalleri icin cihaz iziniz arka planda uretilir{deviceFingerprint ? "." : ", yukleniyor..."}.
