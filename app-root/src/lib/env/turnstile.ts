@@ -1,5 +1,5 @@
 export const TURNSTILE_SITE_KEY_MISSING_MESSAGE =
-  "Turnstile site key yapilandirilmamis. NEXT_PUBLIC_TURNSTILE_SITE_KEY degerini kontrol edin.";
+  "Guvenlik dogrulamasi yuklenemedi";
 
 export type PublicTurnstileSiteKeyResult = {
   isConfigured: boolean;

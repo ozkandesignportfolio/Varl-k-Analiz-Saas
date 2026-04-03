@@ -10,6 +10,7 @@ import {
   isUnknownDeviceFingerprint,
 } from "@/lib/auth/device-fingerprint";
 import {
+  TURNSTILE_SITE_KEY_MISSING_MESSAGE,
   debugPublicTurnstileSiteKey,
   readPublicTurnstileSiteKey,
 } from "@/lib/env/turnstile";
@@ -53,6 +54,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
 
 type SignupFormProps = {
   emailRedirectTo: string;
+  pageWarning?: string | null;
 };
 
 type SignupFormValidationInput = {
@@ -114,7 +116,7 @@ const getTurnstileSiteKeyWarning = (siteKey: string | null, warning: string | nu
   }
 
   if (!siteKey) {
-    return "Guvenlik dogrulamasi yapilandirilmamis. NEXT_PUBLIC_TURNSTILE_SITE_KEY degerini kontrol edin.";
+    return TURNSTILE_SITE_KEY_MISSING_MESSAGE;
   }
 
   const normalizedSiteKey = siteKey.trim().toLowerCase();
@@ -246,7 +248,7 @@ const getSignupErrorMessage = (error?: string, fallbackMessage?: string) => {
   return fallbackMessage ?? "Kayit islemi tamamlanamadi. Lutfen tekrar deneyin.";
 };
 
-export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
+export default function SignupForm({ emailRedirectTo, pageWarning = null }: SignupFormProps) {
   const router = useRouter();
   const submitLockRef = useRef(false);
   const { siteKey: turnstileSiteKey, warning: turnstileWarning } = readPublicTurnstileSiteKey();
@@ -267,6 +269,9 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileStatus, setTurnstileStatus] = useState<TurnstileWidgetStatus>("idle");
   const [turnstileRefreshNonce, setTurnstileRefreshNonce] = useState(0);
+  const [turnstileRuntimeWarning, setTurnstileRuntimeWarning] = useState<string | null>(null);
+
+  const combinedTurnstileWarning = turnstileRuntimeWarning ?? resolvedTurnstileWarning;
 
   useEffect(() => {
     debugPublicTurnstileSiteKey();
@@ -336,7 +341,7 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
     turnstileSiteKey,
     turnstileStatus,
     turnstileToken,
-    turnstileWarning: resolvedTurnstileWarning,
+    turnstileWarning: combinedTurnstileWarning ?? (!emailRedirectTo ? "Kayit yonlendirmesi hazirlaniyor." : null),
   });
 
   const clearMessage = () => {
@@ -349,6 +354,14 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
     }
 
     setTurnstileToken(value);
+  };
+
+  const handleTurnstileWarningChange = (value: string | null) => {
+    if (!submitLockRef.current) {
+      clearMessage();
+    }
+
+    setTurnstileRuntimeWarning(value);
   };
 
   const handleTurnstileStatusChange = (value: TurnstileWidgetStatus) => {
@@ -397,12 +410,16 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
     submitLockRef.current = true;
     setIsSubmitting(true);
 
+    const abortController = new AbortController();
+    const timeoutId = window.setTimeout(() => abortController.abort(), 15_000);
+
     try {
       const response = await fetch("/api/auth/signup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        signal: abortController.signal,
         body: JSON.stringify({
           acceptedKvkk,
           acceptedPrivacyPolicy: acceptedLegalDocuments,
@@ -428,6 +445,14 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
           startSignupCooldown();
         }
 
+        if (errorResult?.error === TURNSTILE_FAILED_ERROR && turnstileStatus !== "unsupported") {
+          console.warn("Turnstile domain mismatch olabilir", {
+            hasToken: Boolean(turnstileToken?.trim()),
+            responseStatus: response.status,
+            turnstileStatus,
+          });
+        }
+
         setMessage(
           getSignupErrorMessage(errorResult?.error, errorResult?.message) ??
             "Kayit islemi tamamlanamadi. Lutfen tekrar deneyin.",
@@ -447,8 +472,13 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
         router.push(buildEmailVerificationPath(email, null, { emailSent: true }));
       }
     } catch {
-      setMessage("Beklenmeyen bir ag hatasi olustu. Lutfen tekrar deneyin.");
+      if (abortController.signal.aborted) {
+        setMessage("Kayit istegi zaman asimina ugradi. Sayfa acik kaldi; lutfen tekrar deneyin.");
+      } else {
+        setMessage("Beklenmeyen bir ag hatasi olustu. Lutfen tekrar deneyin.");
+      }
     } finally {
+      window.clearTimeout(timeoutId);
       setTurnstileToken(null);
       setTurnstileStatus(turnstileSiteKey ? "idle" : "unsupported");
       setTurnstileRefreshNonce((current) => current + 1);
@@ -623,14 +653,15 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
             </label>
 
             <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
-              {resolvedTurnstileWarning ? (
+              {combinedTurnstileWarning ? (
                 <p className="text-sm text-amber-200" role="alert">
-                  {resolvedTurnstileWarning}
+                  {combinedTurnstileWarning}
                 </p>
               ) : (
                 <TurnstileWidget
                   onStatusChange={handleTurnstileStatusChange}
                   onTokenChange={handleTurnstileTokenChange}
+                  onWarningChange={handleTurnstileWarningChange}
                   refreshNonce={turnstileRefreshNonce}
                   siteKey={turnstileSiteKey}
                 />
@@ -651,9 +682,11 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
                 {message}
               </p>
             ) : validationMessage ? (
-              <p className={resolvedTurnstileWarning ? "text-sm text-amber-200" : "text-sm text-slate-400"}>
+              <p className={combinedTurnstileWarning ? "text-sm text-amber-200" : "text-sm text-slate-400"}>
                 {validationMessage}
               </p>
+            ) : pageWarning ? (
+              <p className="text-sm text-amber-200">{pageWarning}</p>
             ) : (
               <p className="text-sm text-slate-400">
                 {fingerprintStatus === "ready" && "Cihaz guvenlik sinyalleri hazir."}
