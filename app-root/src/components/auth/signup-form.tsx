@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import TurnstileWidget, { type TurnstileWidgetStatus } from "@/components/auth/turnstile-widget";
 import {
   UNKNOWN_DEVICE_FINGERPRINT,
@@ -57,8 +57,7 @@ type SignupFormProps = {
 
 type SignupFormValidationInput = {
   acceptedKvkk: boolean;
-  acceptedPrivacyPolicy: boolean;
-  acceptedTerms: boolean;
+  acceptedLegalDocuments: boolean;
   confirmPassword: string;
   email: string;
   firstName: string;
@@ -82,16 +81,23 @@ const translateTurnstileMessage = (message?: string | null) => {
   if (
     normalizedMessage.includes("bot protection is not available") ||
     normalizedMessage.includes("turnstile verification is not configured on the server") ||
-    normalizedMessage.includes("turnstile server verification is not configured")
+    normalizedMessage.includes("turnstile server verification is not configured") ||
+    normalizedMessage.includes("turnstile server dogrulamasi yapilandirilmamis")
   ) {
-    return "Bot korumasi su anda kullanilamiyor. Lutfen daha sonra tekrar deneyin.";
+    return "Guvenlik dogrulamasi yapilandirilmamis. Lutfen daha sonra tekrar deneyin veya yoneticiyle iletisime gecin.";
   }
 
-  if (normalizedMessage.includes("turnstile verification could not be completed")) {
+  if (
+    normalizedMessage.includes("turnstile verification could not be completed") ||
+    normalizedMessage.includes("turnstile dogrulamasi tamamlanamadi")
+  ) {
     return "Guvenlik dogrulamasi su anda tamamlanamadi. Lutfen tekrar deneyin.";
   }
 
-  if (normalizedMessage.includes("turnstile verification failed")) {
+  if (
+    normalizedMessage.includes("turnstile verification failed") ||
+    normalizedMessage.includes("turnstile dogrulamasi basarisiz oldu")
+  ) {
     return "Guvenlik dogrulamasi basarisiz oldu. Lutfen tekrar deneyin.";
   }
 
@@ -108,7 +114,7 @@ const getTurnstileSiteKeyWarning = (siteKey: string | null, warning: string | nu
   }
 
   if (!siteKey) {
-    return "Bot korumasi su anda kullanilamiyor. Lutfen daha sonra tekrar deneyin.";
+    return "Guvenlik dogrulamasi yapilandirilmamis. NEXT_PUBLIC_TURNSTILE_SITE_KEY degerini kontrol edin.";
   }
 
   const normalizedSiteKey = siteKey.trim().toLowerCase();
@@ -119,7 +125,7 @@ const getTurnstileSiteKeyWarning = (siteKey: string | null, warning: string | nu
     normalizedSiteKey.includes("secret") ||
     normalizedSiteKey.includes("your_turnstile")
   ) {
-    return "Bot korumasi ayari gecersiz. Lutfen daha sonra tekrar deneyin.";
+    return "Guvenlik dogrulamasi ayari gecersiz. Lutfen Turnstile env degerlerini kontrol edin.";
   }
 
   return null;
@@ -159,31 +165,27 @@ const getTurnstileValidationMessage = ({
 
 const getSignupValidationMessage = (input: SignupFormValidationInput) => {
   if (!input.firstName || !input.lastName || !input.email || !input.password || !input.confirmPassword) {
-    return "First name, last name, email, password, and password confirmation are required.";
+    return "Ad, soyad, e-posta, sifre ve sifre tekrari zorunludur.";
   }
 
   if (!EMAIL_REGEX.test(input.email)) {
-    return "Please enter a valid email address.";
+    return "Lutfen gecerli bir e-posta adresi girin.";
   }
 
   if (input.password.length < PASSWORD_MIN_LENGTH) {
-    return `Password must be at least ${PASSWORD_MIN_LENGTH} characters long.`;
+    return `Sifre en az ${PASSWORD_MIN_LENGTH} karakter olmali.`;
   }
 
   if (input.password !== input.confirmPassword) {
-    return "Password and password confirmation must match.";
+    return "Sifre ve sifre tekrari ayni olmali.";
   }
 
-  if (!input.acceptedTerms) {
-    return "You must accept the Terms of Service to continue.";
-  }
-
-  if (!input.acceptedPrivacyPolicy) {
-    return "You must accept the Privacy Policy to continue.";
+  if (!input.acceptedLegalDocuments) {
+    return "Kullanim Sartlari ve Gizlilik Politikasini kabul etmelisiniz.";
   }
 
   if (!input.acceptedKvkk) {
-    return "You must accept the KVKK consent to continue.";
+    return "KVKK acik riza metnini kabul etmelisiniz.";
   }
 
   return getTurnstileValidationMessage(input);
@@ -191,61 +193,62 @@ const getSignupValidationMessage = (input: SignupFormValidationInput) => {
 
 const getSignupErrorMessage = (error?: string, fallbackMessage?: string) => {
   if (error === EMAIL_ALREADY_EXISTS_ERROR) {
-    return "This email is already registered.";
+    return "Bu e-posta zaten kayitli.";
   }
 
   if (error === TURNSTILE_FAILED_ERROR) {
     return (
       translateTurnstileMessage(fallbackMessage) ??
-      "Guvenlik dogrulamasi basarisiz oldu. Lutfen Turnstile dogrulamasini yeniden tamamlayin."
+      "Guvenlik dogrulamasi basarisiz. Lutfen yeniden deneyin."
     );
   }
 
   if (error === EMAIL_RATE_LIMITED_ERROR || error === RATE_LIMITED_ERROR) {
-    return fallbackMessage ?? "Too many signup attempts. Please wait and try again.";
+    return "Cok fazla kayit denemesi yapildi. Lutfen bekleyip tekrar deneyin.";
   }
 
   if (error === MISSING_FIELDS_ERROR) {
-    return fallbackMessage ?? "Please complete all required fields.";
+    return "Lutfen tum zorunlu alanlari doldurun.";
   }
 
   if (error === PASSWORD_MISMATCH_ERROR) {
-    return "Password and password confirmation must match.";
+    return "Sifre ve sifre tekrari ayni olmali.";
   }
 
   if (error === INVALID_EMAIL_ERROR) {
-    return "Please enter a valid email address.";
+    return "Lutfen gecerli bir e-posta adresi girin.";
   }
 
   if (error === INVALID_PASSWORD_ERROR) {
-    return `Password must be at least ${PASSWORD_MIN_LENGTH} characters long.`;
+    return `Sifreniz guvenlik kurallarini karsilamiyor. En az ${PASSWORD_MIN_LENGTH} karakter olacak sekilde daha guclu bir sifre girin.`;
   }
 
   if (error === TERMS_NOT_ACCEPTED_ERROR) {
-    return "You must accept the Terms of Service to continue.";
+    return "Kullanim Sartlarini kabul etmelisiniz.";
   }
 
   if (error === PRIVACY_POLICY_NOT_ACCEPTED_ERROR) {
-    return "You must accept the Privacy Policy to continue.";
+    return "Gizlilik Politikasini kabul etmelisiniz.";
   }
 
   if (error === KVKK_CONSENT_REQUIRED_ERROR) {
-    return "You must accept the KVKK consent to continue.";
+    return "KVKK acik riza metnini kabul etmelisiniz.";
   }
 
   if (error === INVALID_REDIRECT_URL_ERROR) {
-    return fallbackMessage ?? "The signup redirect URL is invalid. Please refresh the page and try again.";
+    return "Kayit yonlendirme adresi gecersiz. Sayfayi yenileyip tekrar deneyin.";
   }
 
   if (error === INTERNAL_ERROR) {
-    return fallbackMessage ?? "We could not complete signup. Please try again.";
+    return "Kullanici olusturulamadi, lutfen tekrar deneyin.";
   }
 
-  return fallbackMessage ?? "We could not complete signup. Please try again.";
+  return fallbackMessage ?? "Kayit islemi tamamlanamadi. Lutfen tekrar deneyin.";
 };
 
 export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
   const router = useRouter();
+  const submitLockRef = useRef(false);
   const { siteKey: turnstileSiteKey, warning: turnstileWarning } = readPublicTurnstileSiteKey();
   const resolvedTurnstileWarning = getTurnstileSiteKeyWarning(turnstileSiteKey, turnstileWarning);
 
@@ -254,8 +257,7 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [acceptedPrivacyPolicy, setAcceptedPrivacyPolicy] = useState(false);
+  const [acceptedLegalDocuments, setAcceptedLegalDocuments] = useState(false);
   const [acceptedKvkk, setAcceptedKvkk] = useState(false);
   const [deviceFingerprint, setDeviceFingerprint] = useState(UNKNOWN_DEVICE_FINGERPRINT);
   const [fingerprintStatus, setFingerprintStatus] = useState<FingerprintStatus>("loading");
@@ -325,8 +327,7 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
   const isCooldownActive = cooldownRemainingSeconds > 0;
   const validationMessage = getSignupValidationMessage({
     acceptedKvkk,
-    acceptedPrivacyPolicy,
-    acceptedTerms,
+    acceptedLegalDocuments,
     confirmPassword,
     email,
     firstName,
@@ -337,6 +338,26 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
     turnstileToken,
     turnstileWarning: resolvedTurnstileWarning,
   });
+
+  const clearMessage = () => {
+    setMessage((currentMessage) => (currentMessage ? "" : currentMessage));
+  };
+
+  const handleTurnstileTokenChange = (value: string | null) => {
+    if (!submitLockRef.current) {
+      clearMessage();
+    }
+
+    setTurnstileToken(value);
+  };
+
+  const handleTurnstileStatusChange = (value: TurnstileWidgetStatus) => {
+    if (!submitLockRef.current) {
+      clearMessage();
+    }
+
+    setTurnstileStatus(value);
+  };
 
   const startSignupCooldown = () => {
     if (typeof window === "undefined") {
@@ -356,10 +377,15 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (submitLockRef.current) {
+      return;
+    }
+
     setMessage("");
 
     if (isCooldownActive) {
-      setMessage(`Try again in ${cooldownRemainingSeconds}s.`);
+      setMessage(`${cooldownRemainingSeconds} saniye sonra tekrar deneyin.`);
       return;
     }
 
@@ -368,6 +394,7 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
       return;
     }
 
+    submitLockRef.current = true;
     setIsSubmitting(true);
 
     try {
@@ -378,8 +405,8 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
         },
         body: JSON.stringify({
           acceptedKvkk,
-          acceptedPrivacyPolicy,
-          acceptedTerms,
+          acceptedPrivacyPolicy: acceptedLegalDocuments,
+          acceptedTerms: acceptedLegalDocuments,
           confirmPassword,
           deviceFingerprint,
           email,
@@ -403,7 +430,7 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
 
         setMessage(
           getSignupErrorMessage(errorResult?.error, errorResult?.message) ??
-            "We could not complete signup. Please try again.",
+            "Kayit islemi tamamlanamadi. Lutfen tekrar deneyin.",
         );
         return;
       }
@@ -411,7 +438,7 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
       const successMessage =
         successResult.message ??
         (successResult.emailStatus === "failed"
-          ? "Your account was created, but the verification email could not be sent."
+          ? "Hesabiniz olusturuldu ancak dogrulama e-postasi gonderilemedi."
           : emailVerificationSentMessage);
 
       setMessage(successMessage);
@@ -420,12 +447,13 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
         router.push(buildEmailVerificationPath(email, null, { emailSent: true }));
       }
     } catch {
-      setMessage("Unexpected network error. Please try again.");
+      setMessage("Beklenmeyen bir ag hatasi olustu. Lutfen tekrar deneyin.");
     } finally {
       setTurnstileToken(null);
       setTurnstileStatus(turnstileSiteKey ? "idle" : "unsupported");
       setTurnstileRefreshNonce((current) => current + 1);
       setIsSubmitting(false);
+      submitLockRef.current = false;
     }
   };
 
@@ -445,7 +473,7 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
           >
             Assetly
           </Link>
-          <h1 className="mt-5 text-4xl font-semibold leading-[1.1] text-white">Hesabinizi olusturun</h1>
+          <h1 className="mt-5 text-4xl font-semibold leading-[1.1] text-white">Hesap Olustur</h1>
           <p className="mt-4 text-sm leading-7 text-slate-300">
             Deneme planinda {trialAssetLimit} varlik, {trialDocumentLimit} belge, {trialSubscriptionLimit} abonelik ve{" "}
             {trialInvoiceUploadLimit} fatura yukleme ile baslayin. Istediginiz zaman {PREMIUM_MONTHLY_PRICE_LABEL} premium plana gecin.
@@ -464,7 +492,10 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
                   autoComplete="given-name"
                   className={inputClassName}
                   name="firstName"
-                  onChange={(event) => setFirstName(event.target.value)}
+                  onChange={(event) => {
+                    clearMessage();
+                    setFirstName(event.target.value);
+                  }}
                   placeholder="Adiniz"
                   required
                   type="text"
@@ -478,7 +509,10 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
                   autoComplete="family-name"
                   className={inputClassName}
                   name="lastName"
-                  onChange={(event) => setLastName(event.target.value)}
+                  onChange={(event) => {
+                    clearMessage();
+                    setLastName(event.target.value);
+                  }}
                   placeholder="Soyadiniz"
                   required
                   type="text"
@@ -494,7 +528,10 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
                 className={inputClassName}
                 data-testid="register-email-input"
                 name="email"
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) => {
+                  clearMessage();
+                  setEmail(event.target.value);
+                }}
                 placeholder="ornek@mail.com"
                 required
                 type="email"
@@ -510,7 +547,10 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
                 data-testid="register-password-input"
                 minLength={PASSWORD_MIN_LENGTH}
                 name="password"
-                onChange={(event) => setPassword(event.target.value)}
+                onChange={(event) => {
+                  clearMessage();
+                  setPassword(event.target.value);
+                }}
                 placeholder={`En az ${PASSWORD_MIN_LENGTH} karakter`}
                 required
                 type="password"
@@ -525,7 +565,10 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
                 className={inputClassName}
                 minLength={PASSWORD_MIN_LENGTH}
                 name="confirmPassword"
-                onChange={(event) => setConfirmPassword(event.target.value)}
+                onChange={(event) => {
+                  clearMessage();
+                  setConfirmPassword(event.target.value);
+                }}
                 placeholder="Sifrenizi tekrar girin"
                 required
                 type="password"
@@ -535,11 +578,14 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
 
             <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
               <input
-                checked={acceptedTerms}
+                checked={acceptedLegalDocuments}
                 className={consentInputClassName}
-                data-testid="register-accepted-terms-input"
-                name="acceptedTerms"
-                onChange={(event) => setAcceptedTerms(event.target.checked)}
+                data-testid="register-accepted-legal-documents-input"
+                name="acceptedLegalDocuments"
+                onChange={(event) => {
+                  clearMessage();
+                  setAcceptedLegalDocuments(event.target.checked);
+                }}
                 required
                 type="checkbox"
               />
@@ -547,21 +593,7 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
                 <Link href="/legal/terms" className="font-semibold text-sky-200">
                   Kullanim Sartlari
                 </Link>{" "}
-                kabul ediyorum.
-              </span>
-            </label>
-
-            <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
-              <input
-                checked={acceptedPrivacyPolicy}
-                className={consentInputClassName}
-                data-testid="register-accepted-privacy-policy-input"
-                name="acceptedPrivacyPolicy"
-                onChange={(event) => setAcceptedPrivacyPolicy(event.target.checked)}
-                required
-                type="checkbox"
-              />
-              <span>
+                {" "}ve{" "}
                 <Link href="/legal/privacy" className="font-semibold text-sky-200">
                   Gizlilik Politikasi
                 </Link>{" "}
@@ -575,7 +607,10 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
                 className={consentInputClassName}
                 data-testid="register-accepted-kvkk-input"
                 name="acceptedKvkk"
-                onChange={(event) => setAcceptedKvkk(event.target.checked)}
+                onChange={(event) => {
+                  clearMessage();
+                  setAcceptedKvkk(event.target.checked);
+                }}
                 required
                 type="checkbox"
               />
@@ -594,8 +629,8 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
                 </p>
               ) : (
                 <TurnstileWidget
-                  onStatusChange={setTurnstileStatus}
-                  onTokenChange={setTurnstileToken}
+                  onStatusChange={handleTurnstileStatusChange}
+                  onTokenChange={handleTurnstileTokenChange}
                   refreshNonce={turnstileRefreshNonce}
                   siteKey={turnstileSiteKey}
                 />
@@ -608,7 +643,7 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
               disabled={isSubmitDisabled}
               type="submit"
             >
-              {isSubmitting ? "Kayit olusturuluyor..." : isCooldownActive ? `Tekrar deneme: ${cooldownRemainingSeconds}s` : "Kayit Ol"}
+              {isSubmitting ? "Hesap Olusturuluyor..." : isCooldownActive ? `Tekrar deneme: ${cooldownRemainingSeconds}s` : "Kayit Ol"}
             </button>
 
             {message ? (
@@ -621,16 +656,16 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
               </p>
             ) : (
               <p className="text-sm text-slate-400">
-                {fingerprintStatus === "ready" && "Device security signals are ready."}
-                {fingerprintStatus === "loading" && "Device security signals are loading in the background."}
+                {fingerprintStatus === "ready" && "Cihaz guvenlik sinyalleri hazir."}
+                {fingerprintStatus === "loading" && "Cihaz guvenlik sinyalleri arka planda hazirlaniyor."}
                 {fingerprintStatus === "fallback" &&
-                  "Device fingerprint is unavailable, but signup can continue with reduced device signals."}
+                  "Cihaz parmak izi alinamadi, kayit islemi sinirli guvenlik sinyalleriyle devam edecek."}
               </p>
             )}
           </form>
 
           <p className="mt-5 text-sm text-slate-300">
-            Hesabiniz var mi?{" "}
+            Zaten hesabin var mi?{" "}
             <Link href="/login" className="font-semibold text-sky-200">
               Giris yap
             </Link>

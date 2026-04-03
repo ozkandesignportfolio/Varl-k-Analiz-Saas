@@ -1,5 +1,5 @@
 export const TURNSTILE_SITE_KEY_MISSING_MESSAGE =
-  "Bot korumasi su anda kullanilamiyor. Lutfen daha sonra tekrar deneyin.";
+  "Turnstile site key yapilandirilmamis. NEXT_PUBLIC_TURNSTILE_SITE_KEY degerini kontrol edin.";
 
 export type PublicTurnstileSiteKeyResult = {
   isConfigured: boolean;

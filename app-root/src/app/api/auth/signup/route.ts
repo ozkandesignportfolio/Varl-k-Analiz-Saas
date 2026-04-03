@@ -14,6 +14,7 @@ import { getRequestIp } from "@/lib/api/rate-limit";
 import {
   isEmailRateLimitError,
   isUserAlreadyRegisteredError,
+  isWeakPasswordError,
 } from "@/lib/supabase/auth-errors";
 import {
   EMAIL_ALREADY_EXISTS_ERROR,
@@ -69,6 +70,16 @@ type SignupRequestBody = {
 };
 
 type SignupEmailStatus = "failed" | "sent";
+
+type SupabaseAuthErrorLike = {
+  code?: string | null;
+  message?: string | null;
+  status?: number | null;
+  weak_password?: {
+    message?: string | null;
+    reasons?: string[] | null;
+  } | null;
+};
 
 type SignupSuccessResponse = SignupApiSuccessResponse & {
   emailStatus: SignupEmailStatus;
@@ -162,6 +173,24 @@ const serializeError = (error: unknown) => {
     name: "UnknownError",
     stack: null,
   };
+};
+
+const serializeSupabaseAuthError = (error?: SupabaseAuthErrorLike | null) => ({
+  authErrorCode: error?.code ?? null,
+  authErrorMessage: error?.message ?? null,
+  authErrorStatus: error?.status ?? null,
+  weakPasswordMessage: error?.weak_password?.message ?? null,
+  weakPasswordReasons: Array.isArray(error?.weak_password?.reasons)
+    ? error?.weak_password?.reasons.filter(Boolean)
+    : [],
+});
+
+const logSupabaseResponse = (message: string, details?: Record<string, unknown>) => {
+  if (!isDevelopmentEnvironment()) {
+    return;
+  }
+
+  console.info(`${ROUTE_TAG} ${message}`, details ?? {});
 };
 
 const toJsonValue = (value: unknown): JsonValue => {
@@ -660,16 +689,26 @@ const normalizeDeviceFingerprint = (value: unknown) => {
   return normalized || UNKNOWN_DEVICE_FINGERPRINT;
 };
 
-const getTurnstileFailureMessage = (reason: "invalid" | "missing_secret" | "network_error") => {
+const getTurnstileFailureMessage = (
+  reason: "invalid" | "missing_secret" | "network_error",
+  turnstileEnv?: ReturnType<typeof readTurnstileServerEnv>,
+) => {
   if (reason === "missing_secret") {
-    return "Turnstile server verification is not configured. Set TURNSTILE_SECRET_KEY in app-root/.env.local and restart the server.";
+    const missingVars = turnstileEnv?.missing?.length
+      ? ` Eksik degiskenler: ${turnstileEnv.missing.join(", ")}.`
+      : "";
+    const envPath = turnstileEnv?.rootEnvLocalPath
+      ? ` Degerleri ${turnstileEnv.rootEnvLocalPath} dosyasina ekleyip sunucuyu yeniden baslatin.`
+      : "";
+
+    return `Turnstile server dogrulamasi yapilandirilmamis.${missingVars}${envPath}`.trim();
   }
 
   if (reason === "network_error") {
-    return "Turnstile verification could not be completed. Please try again.";
+    return "Turnstile dogrulamasi tamamlanamadi. Lutfen tekrar deneyin.";
   }
 
-  return "Turnstile verification failed.";
+  return "Turnstile dogrulamasi basarisiz oldu.";
 };
 
 export async function POST(request: Request) {
@@ -729,11 +768,11 @@ export async function POST(request: Request) {
 
   const turnstileEnv = readTurnstileServerEnv();
 
-  if (!turnstileEnv.secretKey) {
+  if (turnstileEnv.missing.length > 0) {
     return fail({
       error: TURNSTILE_FAILED_ERROR,
       eventType: "signup_turnstile_server_unconfigured",
-      message: getTurnstileFailureMessage("missing_secret"),
+      message: getTurnstileFailureMessage("missing_secret", turnstileEnv),
       metadata: {
         missing_env_vars: turnstileEnv.missing,
         root_env_local_path: turnstileEnv.rootEnvLocalPath,
@@ -1009,17 +1048,23 @@ export async function POST(request: Request) {
       type: "signup",
     });
 
-    console.info(`${ROUTE_TAG} Supabase user creation result.`, {
+    logSupabaseResponse("Supabase user creation result.", {
       actionLinkPresent: Boolean(signupData?.properties?.action_link),
-      error: signupError,
+      error: signupError
+        ? {
+            ...serializeSupabaseAuthError(signupError),
+          }
+        : null,
       userId: signupData?.user?.id ?? null,
     });
 
     if (signupError) {
+      const serializedSignupError = serializeSupabaseAuthError(signupError);
+
       if (isUserAlreadyRegisteredError(signupError)) {
-        console.info(`${ROUTE_TAG} Supabase reported duplicate email during signup.`, {
+        console.error(`${ROUTE_TAG} Supabase reported duplicate email during signup.`, {
           email: normalizedEmail,
-          authErrorCode: signupError.code ?? null,
+          ...serializedSignupError,
         });
 
         return fail({
@@ -1027,11 +1072,36 @@ export async function POST(request: Request) {
           eventType: "signup_duplicate_email_supabase",
           message: "This email is already registered.",
           metadata: {
-            auth_error_code: signupError.code ?? null,
-            auth_error_message: signupError.message ?? null,
-            auth_error_status: signupError.status ?? null,
+            auth_error_code: serializedSignupError.authErrorCode,
+            auth_error_message: serializedSignupError.authErrorMessage,
+            auth_error_status: serializedSignupError.authErrorStatus,
           },
           status: 409,
+          turnstileVerified: true,
+        });
+      }
+
+      if (isWeakPasswordError(signupError)) {
+        console.error(`${ROUTE_TAG} Supabase rejected a weak password during signup.`, {
+          email: normalizedEmail,
+          ...serializedSignupError,
+        });
+
+        return fail({
+          error: INVALID_PASSWORD_ERROR,
+          eventType: "signup_supabase_weak_password",
+          message:
+            serializedSignupError.weakPasswordMessage ??
+            serializedSignupError.authErrorMessage ??
+            `Password must be at least ${PASSWORD_MIN_LENGTH} characters long and meet Supabase password rules.`,
+          metadata: {
+            auth_error_code: serializedSignupError.authErrorCode,
+            auth_error_message: serializedSignupError.authErrorMessage,
+            auth_error_status: serializedSignupError.authErrorStatus,
+            weak_password_message: serializedSignupError.weakPasswordMessage,
+            weak_password_reasons: serializedSignupError.weakPasswordReasons,
+          },
+          status: 400,
           turnstileVerified: true,
         });
       }
@@ -1042,9 +1112,9 @@ export async function POST(request: Request) {
           eventType: "signup_supabase_email_rate_limited",
           message: "Supabase email rate limit exceeded.",
           metadata: {
-            auth_error_code: signupError.code ?? null,
-            auth_error_message: signupError.message ?? null,
-            auth_error_status: signupError.status ?? null,
+            auth_error_code: serializedSignupError.authErrorCode,
+            auth_error_message: serializedSignupError.authErrorMessage,
+            auth_error_status: serializedSignupError.authErrorStatus,
           },
           status: 429,
           triggeredEmailRateLimit: true,
@@ -1053,19 +1123,22 @@ export async function POST(request: Request) {
       }
 
       console.error(`${ROUTE_TAG} Supabase user creation failed.`, {
-        authErrorCode: signupError.code ?? null,
-        authErrorMessage: signupError.message ?? null,
-        authErrorStatus: signupError.status ?? null,
+        email: normalizedEmail,
+        ...serializedSignupError,
       });
 
       return fail({
         error: INTERNAL_ERROR,
         eventType: "signup_supabase_error",
-        message: "Supabase could not create the user.",
+        message:
+          serializedSignupError.authErrorMessage ??
+          "Supabase could not create the user. Please try again.",
         metadata: {
-          auth_error_code: signupError.code ?? null,
-          auth_error_message: signupError.message ?? null,
-          auth_error_status: signupError.status ?? null,
+          auth_error_code: serializedSignupError.authErrorCode,
+          auth_error_message: serializedSignupError.authErrorMessage,
+          auth_error_status: serializedSignupError.authErrorStatus,
+          weak_password_message: serializedSignupError.weakPasswordMessage,
+          weak_password_reasons: serializedSignupError.weakPasswordReasons,
         },
         status: 500,
         turnstileVerified: true,
@@ -1111,7 +1184,7 @@ export async function POST(request: Request) {
       return fail({
         error: INTERNAL_ERROR,
         eventType: "signup_bootstrap_failed",
-        message: "User creation could not be completed.",
+        message: "Supabase user was created but the signup bootstrap records could not be completed.",
         metadata: {
           bootstrap_error: error instanceof Error ? error.message : "unknown_bootstrap_error",
           cleanup_error: deleteError?.message ?? null,
@@ -1218,7 +1291,9 @@ export async function POST(request: Request) {
 
     return buildErrorResponse(
       INTERNAL_ERROR,
-      error instanceof Error ? error.message : "Unexpected error while creating signup.",
+      error instanceof Error && error.message.trim()
+        ? error.message
+        : "Supabase user creation failed unexpectedly.",
       500,
     );
   }

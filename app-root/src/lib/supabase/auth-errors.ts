@@ -2,6 +2,10 @@ type SupabaseAuthErrorLike = {
   code?: string | null;
   message?: string | null;
   status?: number | null;
+  weak_password?: {
+    message?: string | null;
+    reasons?: string[] | null;
+  } | null;
 };
 
 type SupabaseUserLike = {
@@ -102,5 +106,33 @@ export const isUserAlreadyRegisteredError = (error?: SupabaseAuthErrorLike | nul
     message.includes("already been registered") ||
     message.includes("already exists") ||
     message.includes("email exists")
+  );
+};
+
+export const isWeakPasswordError = (error?: SupabaseAuthErrorLike | null) => {
+  if (!error) return false;
+
+  const code = normalize(error.code);
+  const message = normalize(error.message);
+  const weakPasswordMessage = normalize(error.weak_password?.message);
+  const weakPasswordReasons = Array.isArray(error.weak_password?.reasons)
+    ? error.weak_password?.reasons.map((reason) => normalize(reason)).filter(Boolean)
+    : [];
+
+  if (code === "weak_password") {
+    return true;
+  }
+
+  return (
+    message.includes("weak password") ||
+    message.includes("password is too weak") ||
+    message.includes("password should") ||
+    weakPasswordMessage.includes("weak password") ||
+    weakPasswordReasons.some(
+      (reason) =>
+        reason.includes("weak password") ||
+        reason.includes("password should") ||
+        reason.includes("password is too weak"),
+    )
   );
 };
