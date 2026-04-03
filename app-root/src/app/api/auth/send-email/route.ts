@@ -18,7 +18,7 @@ type EmailContent = {
 
 type ResendEmailPayload = {
   from: string;
-  to: string[];
+  to: string;
   subject: string;
   html: string;
   text: string;
@@ -47,6 +47,8 @@ const getRequiredEnv = (name: "RESEND_API_KEY" | "EMAIL_HOOK_SECRET") => {
 const isNonEmptyString = (value: unknown): value is string => {
   return typeof value === "string" && value.trim().length > 0;
 };
+
+const trimToEmpty = (value: unknown) => (typeof value === "string" ? value.trim() : "");
 
 const asJsonObject = (value: unknown): Record<string, unknown> | null => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -131,58 +133,39 @@ const buildSignupEmailContent = (confirmUrl: string): EmailContent => {
   const safeConfirmUrl = escapeHtml(confirmUrl);
 
   return {
-    subject: "Confirm your Assetly account",
-    html: `
-      <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
-        <h1 style="font-size:20px;margin-bottom:16px">Confirm your email</h1>
-        <p style="margin-bottom:16px">Thanks for signing up for Assetly. Confirm your email address to activate your account.</p>
-        <p style="margin-bottom:24px">
-          <a
-            href="${safeConfirmUrl}"
-            style="display:inline-block;padding:12px 20px;background:#111827;color:#ffffff;text-decoration:none;border-radius:8px"
-          >
-            Confirm email
-          </a>
-        </p>
-        <p style="margin-bottom:0">If the button does not work, open this link:</p>
-        <p style="word-break:break-all;margin-top:8px">${safeConfirmUrl}</p>
-      </div>
-    `,
-    text: `Confirm your Assetly account: ${confirmUrl}`,
+    subject: "Confirm your email",
+    html: `<h2>Confirm your email</h2><p>Click below:</p><a href="${safeConfirmUrl}">Confirm</a>`,
+    text: `Confirm your email: ${confirmUrl}`,
   };
 };
 
 const buildGenericEmailContent = (): EmailContent => ({
-  subject: "Assetly notification",
-  html: `
-    <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
-      <h1 style="font-size:20px;margin-bottom:16px">Assetly notification</h1>
-      <p style="margin-bottom:16px">We received a request related to your Assetly account.</p>
-      <p style="margin-bottom:0">If you did not expect this email, you can safely ignore it or contact support.</p>
-    </div>
-  `,
-  text: "Assetly notification. We received a request related to your Assetly account. If you did not expect this email, you can safely ignore it or contact support.",
+  subject: "Notification email",
+  html: "<p>Notification email</p>",
+  text: "Notification email",
 });
 
 const ensureValidEmailContent = (content: EmailContent): EmailContent => {
-  const fallback = buildGenericEmailContent();
+  let html = trimToEmpty(content.html);
+  let text = trimToEmpty(content.text);
+
+  if (!html && !text) {
+    html = "<p>Fallback email</p>";
+    text = "Fallback email";
+  }
+
+  if (!html) {
+    html = `<p>${escapeHtml(text)}</p>`;
+  }
+
+  if (!text) {
+    text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() || "Fallback email";
+  }
 
   return {
-    subject: isNonEmptyString(content.subject) ? content.subject.trim() : fallback.subject,
-    html: isNonEmptyString(content.html) ? content.html.trim() : fallback.html,
-    text: isNonEmptyString(content.text) ? content.text.trim() : fallback.text,
-  };
-};
-
-const buildResendPayload = (email: string, content: EmailContent): ResendEmailPayload => {
-  const safeContent = ensureValidEmailContent(content);
-
-  return {
-    from: EMAIL_FROM,
-    to: [email],
-    subject: safeContent.subject,
-    html: safeContent.html,
-    text: safeContent.text,
+    subject: trimToEmpty(content.subject) || "Notification email",
+    html,
+    text,
   };
 };
 
@@ -199,7 +182,20 @@ const parseResponseBody = (value: string) => {
 };
 
 const sendEmail = async (email: string, content: EmailContent, resendApiKey: string) => {
-  const payload = buildResendPayload(email, content);
+  let { subject, html, text } = ensureValidEmailContent(content);
+
+  if (!html && !text) {
+    html = "<p>Fallback email</p>";
+    text = "Fallback email";
+  }
+
+  const payload: ResendEmailPayload = {
+    from: EMAIL_FROM,
+    to: email,
+    subject,
+    html,
+    text,
+  };
 
   const resendResponse = await fetch(RESEND_API_URL, {
     method: "POST",
@@ -211,8 +207,9 @@ const sendEmail = async (email: string, content: EmailContent, resendApiKey: str
     cache: "no-store",
   });
 
-  const resendResponseText = await resendResponse.text();
-  const resendResponseBody = parseResponseBody(resendResponseText);
+  const result = await resendResponse.text();
+  console.log("RESEND RESULT:", result);
+  const resendResponseBody = parseResponseBody(result);
 
   console.log("[auth.send-email] Resend response.", {
     ok: resendResponse.ok,
