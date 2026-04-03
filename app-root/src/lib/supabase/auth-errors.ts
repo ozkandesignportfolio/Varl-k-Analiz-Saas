@@ -97,5 +97,10 @@ export const isUserAlreadyRegisteredError = (error?: SupabaseAuthErrorLike | nul
     return true;
   }
 
-  return message.includes("user already registered");
+  return (
+    message.includes("user already registered") ||
+    message.includes("already been registered") ||
+    message.includes("already exists") ||
+    message.includes("email exists")
+  );
 };

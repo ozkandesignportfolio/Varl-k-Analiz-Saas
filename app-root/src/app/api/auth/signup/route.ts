@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient as createSupabaseClient, type User } from "@supabase/supabase-js";
+import {
+  UNKNOWN_DEVICE_FINGERPRINT,
+  isUnknownDeviceFingerprint,
+} from "@/lib/auth/device-fingerprint";
 import { assessSignupRisk } from "@/lib/auth/signup-risk";
 import { verifyTurnstileToken } from "@/lib/auth/turnstile";
 import {
@@ -14,15 +18,19 @@ import {
 import {
   EMAIL_ALREADY_EXISTS_ERROR,
   EMAIL_RATE_LIMITED_ERROR,
+  INTERNAL_ERROR,
   INVALID_EMAIL_ERROR,
   INVALID_PASSWORD_ERROR,
   INVALID_REDIRECT_URL_ERROR,
   KVKK_CONSENT_REQUIRED_ERROR,
+  MISSING_FIELDS_ERROR,
   normalizeEmail,
+  PASSWORD_MISMATCH_ERROR,
   PRIVACY_POLICY_NOT_ACCEPTED_ERROR,
   RATE_LIMITED_ERROR,
-  SIGNUP_FAILED_ERROR,
   TERMS_NOT_ACCEPTED_ERROR,
+  TURNSTILE_FAILED_ERROR,
+  type SignupApiErrorCode,
   type SignupApiErrorResponse,
   type SignupApiSuccessResponse,
   type SignupRisk,
@@ -34,16 +42,12 @@ const ROUTE_TAG = "[auth.signup]";
 const RESEND_API_URL = "https://api.resend.com/emails";
 const DEFAULT_FROM_EMAIL = "Assetly <onboarding@resend.dev>";
 const PASSWORD_MIN_LENGTH = 8;
+const SIGNUP_DUPLICATE_LOOKUP_MAX_PAGES = 20;
+const SIGNUP_DUPLICATE_LOOKUP_PAGE_SIZE = 100;
 const SIGNUP_IP_RATE_LIMIT_CAPACITY = 5;
 const SIGNUP_EMAIL_RATE_LIMIT_CAPACITY = 3;
 const SIGNUP_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1_000;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
-
-const MISSING_FIELDS_ERROR = "missing_fields";
-const PASSWORD_MISMATCH_ERROR = "password_mismatch";
-const TURNSTILE_FAILED_ERROR = "turnstile_failed";
-const INVALID_REQUEST_ERROR = "invalid_request";
-const TURNSTILE_CONFIG_ERROR = "turnstile_config_error";
 
 type SignupRequestBody = {
   acceptedKvkk?: unknown;
@@ -82,6 +86,20 @@ type SecurityEventParams = {
   ip?: string | null;
   metadata?: JsonValue;
   userAgent?: string | null;
+  userId?: string | null;
+};
+
+type FailureResponseInput = {
+  error: SignupApiErrorCode;
+  eventType: string;
+  headers?: HeadersInit;
+  message: string;
+  metadata?: Record<string, unknown>;
+  status: number;
+  turnstileErrorCodes?: string[];
+  turnstileVerified?: boolean;
+  triggeredEmailRateLimit?: boolean;
+  triggeredIpRateLimit?: boolean;
   userId?: string | null;
 };
 
@@ -199,7 +217,7 @@ const buildFallbackRisk = (reason: string): SignupRisk => ({
 });
 
 const buildRiskMetadata = (risk: SignupRisk, deviceFingerprint?: string | null) => ({
-  device_fingerprint: deviceFingerprint?.trim() || null,
+  device_fingerprint: deviceFingerprint?.trim() || UNKNOWN_DEVICE_FINGERPRINT,
   risk_level: risk.level,
   risk_reasons: risk.reasons,
   risk_score: risk.score,
@@ -207,7 +225,7 @@ const buildRiskMetadata = (risk: SignupRisk, deviceFingerprint?: string | null) 
 });
 
 const buildErrorResponse = (
-  error: string,
+  error: SignupApiErrorCode,
   message: string,
   status: number,
   risk?: SignupRisk,
@@ -219,6 +237,7 @@ const buildErrorResponse = (
       message,
       ok: false,
       ...(risk ? { risk } : {}),
+      verified: false,
     },
     {
       headers,
@@ -237,6 +256,7 @@ const buildSuccessResponse = (input: {
       message: input.message,
       ok: true,
       risk: input.risk,
+      verified: true,
     },
     { status: 200 },
   );
@@ -329,7 +349,7 @@ const persistSignupBootstrapRecords = async (input: {
     { onConflict: "id" },
   );
 
-  console.info(`${ROUTE_TAG} User insert result.`, {
+  console.info(`${ROUTE_TAG} User profile bootstrap result.`, {
     profileError,
     userId: input.userId,
   });
@@ -345,7 +365,7 @@ const persistSignupBootstrapRecords = async (input: {
     { onConflict: "user_id" },
   );
 
-  console.info(`${ROUTE_TAG} Notification settings insert result.`, {
+  console.info(`${ROUTE_TAG} Notification settings bootstrap result.`, {
     notificationError,
     userId: input.userId,
   });
@@ -365,7 +385,7 @@ const persistSignupBootstrapRecords = async (input: {
     user_id: input.userId,
   });
 
-  console.info(`${ROUTE_TAG} Consent insert result.`, {
+  console.info(`${ROUTE_TAG} Consent bootstrap result.`, {
     consentError,
     userId: input.userId,
   });
@@ -496,6 +516,7 @@ const evaluateRiskSafely = async (input: {
   userAgent?: string | null;
 }) => {
   if (!isUpstashRedisConfigured()) {
+    console.warn(`${ROUTE_TAG} Risk evaluation skipped because Upstash Redis is not configured.`);
     return buildFallbackRisk("risk_checks_skipped");
   }
 
@@ -517,7 +538,7 @@ const evaluateRiskSafely = async (input: {
       userAgent: input.userAgent,
     });
   } catch (error) {
-    console.error(`${ROUTE_TAG} Risk evaluation failed.`, serializeError(error));
+    console.error(`${ROUTE_TAG} Risk evaluation failed. Continuing with fallback risk.`, serializeError(error));
     return buildFallbackRisk("risk_checks_failed");
   }
 };
@@ -557,7 +578,7 @@ const takeRateLimitSafely = async (input: {
       bypassed: false,
     };
   } catch (error) {
-    console.error(`${ROUTE_TAG} Rate limit check failed.`, {
+    console.error(`${ROUTE_TAG} Rate limit check failed. Continuing without blocking signup.`, {
       error: serializeError(error),
       requestIp: input.requestIp,
       scope: input.scope,
@@ -573,6 +594,71 @@ const takeRateLimitSafely = async (input: {
   }
 };
 
+const findExistingAuthUserByEmail = async ({
+  adminClient,
+  email,
+}: {
+  adminClient: ReturnType<typeof createAdminClient>;
+  email: string;
+}) => {
+  console.info(`${ROUTE_TAG} Checking for duplicate email before signup.`, {
+    email,
+  });
+
+  for (let page = 1; page <= SIGNUP_DUPLICATE_LOOKUP_MAX_PAGES; page += 1) {
+    const { data, error } = await adminClient.auth.admin.listUsers({
+      page,
+      perPage: SIGNUP_DUPLICATE_LOOKUP_PAGE_SIZE,
+    });
+
+    if (error) {
+      throw new Error(`Failed to list auth users for duplicate check: ${error.message}`);
+    }
+
+    const foundUser =
+      data.users.find((user) => (user.email ?? "").trim().toLowerCase() === email) ?? null;
+
+    if (foundUser) {
+      console.info(`${ROUTE_TAG} Duplicate email detected before signup.`, {
+        email,
+        userId: foundUser.id,
+      });
+      return foundUser;
+    }
+
+    if (data.users.length < SIGNUP_DUPLICATE_LOOKUP_PAGE_SIZE) {
+      break;
+    }
+  }
+
+  console.info(`${ROUTE_TAG} Duplicate email check completed with no existing auth user.`, {
+    email,
+  });
+
+  return null;
+};
+
+const normalizeDeviceFingerprint = (value: unknown) => {
+  if (!isNonEmptyString(value)) {
+    return UNKNOWN_DEVICE_FINGERPRINT;
+  }
+
+  const normalized = value.trim();
+  return normalized || UNKNOWN_DEVICE_FINGERPRINT;
+};
+
+const getTurnstileFailureMessage = (reason: "invalid" | "missing_secret" | "network_error") => {
+  if (reason === "missing_secret") {
+    return "Turnstile verification is not configured on the server.";
+  }
+
+  if (reason === "network_error") {
+    return "Turnstile verification could not be completed. Please try again.";
+  }
+
+  return "Turnstile verification failed.";
+};
+
 export async function POST(request: Request) {
   const requestIp = getRequestIp(request);
   const requestUserAgent = request.headers.get("user-agent")?.trim() || null;
@@ -586,22 +672,19 @@ export async function POST(request: Request) {
   })();
 
   let normalizedEmail = "";
-  let deviceFingerprint = "";
+  let deviceFingerprint = UNKNOWN_DEVICE_FINGERPRINT;
   let turnstileToken = "";
 
-  const fail = async (input: {
-    error: string;
-    eventType: string;
-    headers?: HeadersInit;
-    message: string;
-    metadata?: Record<string, unknown>;
-    status: number;
-    turnstileErrorCodes?: string[];
-    turnstileVerified?: boolean;
-    triggeredEmailRateLimit?: boolean;
-    triggeredIpRateLimit?: boolean;
-    userId?: string | null;
-  }) => {
+  const fail = async (input: FailureResponseInput) => {
+    console.warn(`${ROUTE_TAG} Signup request failed.`, {
+      error: input.error,
+      eventType: input.eventType,
+      message: input.message,
+      metadata: input.metadata ?? null,
+      status: input.status,
+      turnstileVerified: input.turnstileVerified ?? false,
+    });
+
     const risk = await evaluateRiskSafely({
       deviceFingerprint,
       email: normalizedEmail || "unknown@example.com",
@@ -638,8 +721,8 @@ export async function POST(request: Request) {
     } catch (error) {
       console.error(`${ROUTE_TAG} Failed to parse signup request body.`, serializeError(error));
       return buildErrorResponse(
-        INVALID_REQUEST_ERROR,
-        "Signup request body is invalid JSON.",
+        MISSING_FIELDS_ERROR,
+        "Signup request body is invalid.",
         400,
       );
     }
@@ -654,7 +737,7 @@ export async function POST(request: Request) {
     const confirmPassword = typeof body.confirmPassword === "string" ? body.confirmPassword : "";
     const emailRedirectTo = isNonEmptyString(body.emailRedirectTo) ? body.emailRedirectTo.trim() : "";
     turnstileToken = isNonEmptyString(body.turnstileToken) ? body.turnstileToken.trim() : "";
-    deviceFingerprint = isNonEmptyString(body.deviceFingerprint) ? body.deviceFingerprint.trim() : "";
+    deviceFingerprint = normalizeDeviceFingerprint(body.deviceFingerprint);
     normalizedEmail = email ? normalizeEmail(email) : "";
     const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
 
@@ -664,13 +747,16 @@ export async function POST(request: Request) {
       tokenPreview: maskTokenForLogs(turnstileToken),
     });
 
-    if (!firstName || !lastName || !normalizedEmail || !password || !confirmPassword) {
+    console.info(`${ROUTE_TAG} Fingerprint generation status.`, {
+      fingerprintStatus: isUnknownDeviceFingerprint(deviceFingerprint) ? "fallback" : "captured",
+    });
+
+    if (!firstName || !lastName || !normalizedEmail || !password || !confirmPassword || !emailRedirectTo) {
       return fail({
         error: MISSING_FIELDS_ERROR,
         eventType: "signup_missing_fields",
-        message: "First name, last name, email, password, and password confirmation are required.",
+        message: "First name, last name, email, password, password confirmation, and redirect URL are required.",
         status: 400,
-        turnstileVerified: false,
       });
     }
 
@@ -680,17 +766,6 @@ export async function POST(request: Request) {
         eventType: "signup_password_mismatch",
         message: "Password and password confirmation must match.",
         status: 400,
-        turnstileVerified: false,
-      });
-    }
-
-    if (!emailRedirectTo) {
-      return fail({
-        error: MISSING_FIELDS_ERROR,
-        eventType: "signup_missing_redirect_url",
-        message: "Email redirect URL is required.",
-        status: 400,
-        turnstileVerified: false,
       });
     }
 
@@ -698,9 +773,8 @@ export async function POST(request: Request) {
       return fail({
         error: INVALID_EMAIL_ERROR,
         eventType: "signup_invalid_email",
-        message: "Invalid email address.",
+        message: "Please enter a valid email address.",
         status: 400,
-        turnstileVerified: false,
       });
     }
 
@@ -710,7 +784,6 @@ export async function POST(request: Request) {
         eventType: "signup_invalid_password",
         message: `Password must be at least ${PASSWORD_MIN_LENGTH} characters long.`,
         status: 400,
-        turnstileVerified: false,
       });
     }
 
@@ -718,12 +791,11 @@ export async function POST(request: Request) {
       return fail({
         error: INVALID_REDIRECT_URL_ERROR,
         eventType: "signup_invalid_redirect_url",
-        message: "Invalid email redirect URL.",
+        message: "The signup redirect URL is invalid.",
         metadata: {
           emailRedirectTo,
         },
         status: 400,
-        turnstileVerified: false,
       });
     }
 
@@ -731,9 +803,8 @@ export async function POST(request: Request) {
       return fail({
         error: TERMS_NOT_ACCEPTED_ERROR,
         eventType: "signup_missing_terms_consent",
-        message: "Terms of Service consent is required.",
+        message: "You must accept the Terms of Service to continue.",
         status: 400,
-        turnstileVerified: false,
       });
     }
 
@@ -741,9 +812,8 @@ export async function POST(request: Request) {
       return fail({
         error: PRIVACY_POLICY_NOT_ACCEPTED_ERROR,
         eventType: "signup_missing_privacy_policy_consent",
-        message: "Privacy Policy consent is required.",
+        message: "You must accept the Privacy Policy to continue.",
         status: 400,
-        turnstileVerified: false,
       });
     }
 
@@ -751,9 +821,8 @@ export async function POST(request: Request) {
       return fail({
         error: KVKK_CONSENT_REQUIRED_ERROR,
         eventType: "signup_missing_kvkk_consent",
-        message: "KVKK consent is required.",
+        message: "You must accept the KVKK consent to continue.",
         status: 400,
-        turnstileVerified: false,
       });
     }
 
@@ -761,9 +830,8 @@ export async function POST(request: Request) {
       return fail({
         error: TURNSTILE_FAILED_ERROR,
         eventType: "signup_turnstile_missing_token",
-        message: "Turnstile token is missing or invalid.",
+        message: "Please complete the Turnstile verification.",
         status: 400,
-        turnstileVerified: false,
       });
     }
 
@@ -782,7 +850,7 @@ export async function POST(request: Request) {
         headers: {
           "Retry-After": String(Math.max(1, Math.ceil(ipRateLimit.retryAfterMs / 1_000))),
         },
-        message: "Too many signup attempts from this IP address.",
+        message: "Too many signup attempts from this IP address. Please try again shortly.",
         metadata: {
           limit: SIGNUP_IP_RATE_LIMIT_CAPACITY,
           retry_after_ms: ipRateLimit.retryAfterMs,
@@ -791,7 +859,6 @@ export async function POST(request: Request) {
         },
         status: 429,
         triggeredIpRateLimit: true,
-        turnstileVerified: false,
       });
     }
 
@@ -810,7 +877,7 @@ export async function POST(request: Request) {
         headers: {
           "Retry-After": String(Math.max(1, Math.ceil(emailRateLimit.retryAfterMs / 1_000))),
         },
-        message: "Too many signup attempts for this email address.",
+        message: "Too many signup attempts for this email address. Please try again shortly.",
         metadata: {
           limit: SIGNUP_EMAIL_RATE_LIMIT_CAPACITY,
           retry_after_ms: emailRateLimit.retryAfterMs,
@@ -819,7 +886,6 @@ export async function POST(request: Request) {
         },
         status: 429,
         triggeredEmailRateLimit: true,
-        turnstileVerified: false,
       });
     }
 
@@ -828,45 +894,20 @@ export async function POST(request: Request) {
       token: turnstileToken,
     });
 
-    console.info(`${ROUTE_TAG} Turnstile verification response.`, turnstileVerification);
+    console.info(`${ROUTE_TAG} Turnstile verification result.`, turnstileVerification);
 
     if (!turnstileVerification.ok) {
-      if (turnstileVerification.reason === "missing_secret") {
-        return fail({
-          error: TURNSTILE_CONFIG_ERROR,
-          eventType: "signup_turnstile_secret_missing",
-          message: "TURNSTILE_SECRET_KEY is not configured on the server.",
-          metadata: {
-            turnstile_error_codes: turnstileVerification.errorCodes,
-          },
-          status: 500,
-          turnstileErrorCodes: turnstileVerification.errorCodes,
-          turnstileVerified: false,
-        });
-      }
-
-      if (turnstileVerification.reason === "network_error") {
-        return fail({
-          error: TURNSTILE_CONFIG_ERROR,
-          eventType: "signup_turnstile_unavailable",
-          message: "Turnstile verification is currently unavailable.",
-          metadata: {
-            turnstile_error_codes: turnstileVerification.errorCodes,
-          },
-          status: 503,
-          turnstileErrorCodes: turnstileVerification.errorCodes,
-          turnstileVerified: false,
-        });
-      }
-
       return fail({
         error: TURNSTILE_FAILED_ERROR,
         eventType: "signup_turnstile_failed",
-        message: "Turnstile verification failed.",
+        message: getTurnstileFailureMessage(turnstileVerification.reason),
         metadata: {
+          turnstile_action: turnstileVerification.action,
           turnstile_error_codes: turnstileVerification.errorCodes,
+          turnstile_hostname: turnstileVerification.hostname,
+          turnstile_reason: turnstileVerification.reason,
         },
-        status: 403,
+        status: turnstileVerification.reason === "invalid" ? 403 : 503,
         turnstileErrorCodes: turnstileVerification.errorCodes,
         turnstileVerified: false,
       });
@@ -874,11 +915,37 @@ export async function POST(request: Request) {
 
     if (!adminClient) {
       return fail({
-        error: SIGNUP_FAILED_ERROR,
+        error: INTERNAL_ERROR,
         eventType: "signup_admin_client_missing",
-        message: "Signup is temporarily unavailable because the server auth client is not configured.",
+        message: "Signup is temporarily unavailable.",
         status: 500,
         turnstileVerified: true,
+      });
+    }
+
+    try {
+      const existingUser = await findExistingAuthUserByEmail({
+        adminClient,
+        email: normalizedEmail,
+      });
+
+      if (existingUser) {
+        return fail({
+          error: EMAIL_ALREADY_EXISTS_ERROR,
+          eventType: "signup_duplicate_email_precheck",
+          message: "This email is already registered.",
+          metadata: {
+            existing_user_id: existingUser.id,
+          },
+          status: 409,
+          turnstileVerified: true,
+          userId: existingUser.id,
+        });
+      }
+    } catch (error) {
+      console.error(`${ROUTE_TAG} Duplicate email precheck failed. Continuing with Supabase signup fallback.`, {
+        email: normalizedEmail,
+        error: serializeError(error),
       });
     }
 
@@ -906,7 +973,7 @@ export async function POST(request: Request) {
       type: "signup",
     });
 
-    console.info(`${ROUTE_TAG} Supabase signup result.`, {
+    console.info(`${ROUTE_TAG} Supabase user creation result.`, {
       actionLinkPresent: Boolean(signupData?.properties?.action_link),
       error: signupError,
       userId: signupData?.user?.id ?? null,
@@ -914,10 +981,15 @@ export async function POST(request: Request) {
 
     if (signupError) {
       if (isUserAlreadyRegisteredError(signupError)) {
+        console.info(`${ROUTE_TAG} Supabase reported duplicate email during signup.`, {
+          email: normalizedEmail,
+          authErrorCode: signupError.code ?? null,
+        });
+
         return fail({
           error: EMAIL_ALREADY_EXISTS_ERROR,
-          eventType: "signup_user_already_exists",
-          message: "A user with this email address already exists.",
+          eventType: "signup_duplicate_email_supabase",
+          message: "This email is already registered.",
           metadata: {
             auth_error_code: signupError.code ?? null,
             auth_error_message: signupError.message ?? null,
@@ -944,16 +1016,22 @@ export async function POST(request: Request) {
         });
       }
 
+      console.error(`${ROUTE_TAG} Supabase user creation failed.`, {
+        authErrorCode: signupError.code ?? null,
+        authErrorMessage: signupError.message ?? null,
+        authErrorStatus: signupError.status ?? null,
+      });
+
       return fail({
-        error: SIGNUP_FAILED_ERROR,
+        error: INTERNAL_ERROR,
         eventType: "signup_supabase_error",
-        message: signupError.message || "Supabase failed to create the user.",
+        message: "Supabase could not create the user.",
         metadata: {
           auth_error_code: signupError.code ?? null,
           auth_error_message: signupError.message ?? null,
           auth_error_status: signupError.status ?? null,
         },
-        status: 400,
+        status: 500,
         turnstileVerified: true,
       });
     }
@@ -962,7 +1040,7 @@ export async function POST(request: Request) {
 
     if (!createdUser?.id) {
       return fail({
-        error: SIGNUP_FAILED_ERROR,
+        error: INTERNAL_ERROR,
         eventType: "signup_missing_user_id",
         message: "Supabase did not return a user id for the new signup.",
         status: 500,
@@ -995,9 +1073,9 @@ export async function POST(request: Request) {
       });
 
       return fail({
-        error: SIGNUP_FAILED_ERROR,
+        error: INTERNAL_ERROR,
         eventType: "signup_bootstrap_failed",
-        message: "User was created but required signup records could not be initialized.",
+        message: "User creation could not be completed.",
         metadata: {
           bootstrap_error: error instanceof Error ? error.message : "unknown_bootstrap_error",
           cleanup_error: deleteError?.message ?? null,
@@ -1022,7 +1100,7 @@ export async function POST(request: Request) {
 
         emailStatus = "sent";
 
-        console.info(`${ROUTE_TAG} Email send result.`, {
+        console.info(`${ROUTE_TAG} Verification email send result.`, {
           emailSendResult,
           emailStatus,
           userId: createdUser.id,
@@ -1030,14 +1108,14 @@ export async function POST(request: Request) {
       } catch (error) {
         emailFailureReason = error instanceof Error ? error.message : "unknown_email_error";
 
-        console.error(`${ROUTE_TAG} Email send failed.`, {
+        console.error(`${ROUTE_TAG} Verification email send failed.`, {
           error: serializeError(error),
           provider: "resend",
           userId: createdUser.id,
         });
       }
     } else {
-      console.error(`${ROUTE_TAG} Email send skipped because Supabase did not return an action link.`, {
+      console.error(`${ROUTE_TAG} Verification email send skipped because Supabase did not return an action link.`, {
         userId: createdUser.id,
       });
     }
@@ -1103,7 +1181,7 @@ export async function POST(request: Request) {
     });
 
     return buildErrorResponse(
-      SIGNUP_FAILED_ERROR,
+      INTERNAL_ERROR,
       error instanceof Error ? error.message : "Unexpected error while creating signup.",
       500,
     );

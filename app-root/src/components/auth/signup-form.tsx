@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import TurnstileWidget, { type TurnstileWidgetStatus } from "@/components/auth/turnstile-widget";
 import {
+  UNKNOWN_DEVICE_FINGERPRINT,
+  createDeviceFingerprint,
+  isUnknownDeviceFingerprint,
+} from "@/lib/auth/device-fingerprint";
+import {
   debugPublicTurnstileSiteKey,
   readPublicTurnstileSiteKey,
 } from "@/lib/env/turnstile";
@@ -12,16 +17,12 @@ import { getPlanConfig } from "@/lib/plans/plan-config";
 import { PREMIUM_MONTHLY_PRICE_LABEL } from "@/lib/plans/pricing";
 import {
   buildEmailVerificationPath,
-  emailVerificationConfigMismatchMessage,
   emailVerificationSentMessage,
 } from "@/lib/supabase/email-verification";
 import {
-  BOT_DETECTED_ERROR,
   EMAIL_ALREADY_EXISTS_ERROR,
-  EMAIL_CONFIRMATION_DISABLED_ERROR,
   EMAIL_RATE_LIMITED_ERROR,
-  getSignupCooldownRemainingSeconds,
-  INVALID_REQUEST_ERROR,
+  INTERNAL_ERROR,
   INVALID_EMAIL_ERROR,
   INVALID_PASSWORD_ERROR,
   INVALID_REDIRECT_URL_ERROR,
@@ -30,15 +31,11 @@ import {
   PASSWORD_MISMATCH_ERROR,
   PRIVACY_POLICY_NOT_ACCEPTED_ERROR,
   RATE_LIMITED_ERROR,
-  RATE_LIMITER_UNAVAILABLE_ERROR,
   SIGNUP_COOLDOWN_MS,
   SIGNUP_COOLDOWN_STORAGE_KEY,
   TERMS_NOT_ACCEPTED_ERROR,
-  TURNSTILE_CONFIG_ERROR,
   TURNSTILE_FAILED_ERROR,
-  TURNSTILE_INVALID_ERROR,
-  TURNSTILE_REQUIRED_ERROR,
-  TURNSTILE_UNAVAILABLE_ERROR,
+  getSignupCooldownRemainingSeconds,
   type SignupApiErrorResponse,
   type SignupApiSuccessResponse,
 } from "@/lib/supabase/signup";
@@ -62,10 +59,10 @@ type SignupFormValidationInput = {
   acceptedKvkk: boolean;
   acceptedPrivacyPolicy: boolean;
   acceptedTerms: boolean;
+  confirmPassword: string;
   email: string;
   firstName: string;
   lastName: string;
-  confirmPassword: string;
   password: string;
   turnstileSiteKey: string | null;
   turnstileStatus: TurnstileWidgetStatus;
@@ -73,13 +70,15 @@ type SignupFormValidationInput = {
   turnstileWarning: string | null;
 };
 
+type FingerprintStatus = "fallback" | "loading" | "ready";
+
 const getTurnstileSiteKeyWarning = (siteKey: string | null, warning: string | null) => {
   if (warning) {
     return warning;
   }
 
   if (!siteKey) {
-    return "Turnstile site key is missing. Please set NEXT_PUBLIC_TURNSTILE_SITE_KEY.";
+    return "Turnstile cannot start because NEXT_PUBLIC_TURNSTILE_SITE_KEY is missing.";
   }
 
   const normalizedSiteKey = siteKey.trim().toLowerCase();
@@ -94,32 +93,6 @@ const getTurnstileSiteKeyWarning = (siteKey: string | null, warning: string | nu
   }
 
   return null;
-};
-
-const createDeviceFingerprint = async () => {
-  if (typeof window === "undefined" || !window.crypto?.subtle) {
-    return null;
-  }
-
-  const fingerprintParts = [
-    window.navigator.userAgent,
-    window.navigator.language,
-    window.navigator.platform,
-    Intl.DateTimeFormat().resolvedOptions().timeZone,
-    String(window.screen.width),
-    String(window.screen.height),
-    String(window.devicePixelRatio),
-    String(window.navigator.hardwareConcurrency ?? ""),
-  ];
-
-  const digest = await window.crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(fingerprintParts.join("|")),
-  );
-
-  return Array.from(new Uint8Array(digest))
-    .map((value) => value.toString(16).padStart(2, "0"))
-    .join("");
 };
 
 const getTurnstileValidationMessage = ({
@@ -156,102 +129,86 @@ const getTurnstileValidationMessage = ({
 
 const getSignupValidationMessage = (input: SignupFormValidationInput) => {
   if (!input.firstName || !input.lastName || !input.email || !input.password || !input.confirmPassword) {
-    return "Ad, soyad, e-posta, sifre ve sifre tekrari zorunludur.";
+    return "First name, last name, email, password, and password confirmation are required.";
   }
 
   if (!EMAIL_REGEX.test(input.email)) {
-    return "Gecerli bir e-posta adresi girin.";
+    return "Please enter a valid email address.";
   }
 
   if (input.password.length < PASSWORD_MIN_LENGTH) {
-    return `Sifre en az ${PASSWORD_MIN_LENGTH} karakter olmalidir.`;
+    return `Password must be at least ${PASSWORD_MIN_LENGTH} characters long.`;
   }
 
   if (input.password !== input.confirmPassword) {
-    return "Sifre ve sifre tekrari ayni olmalidir.";
+    return "Password and password confirmation must match.";
   }
 
   if (!input.acceptedTerms) {
-    return "Devam etmek icin Kullanim Sartlari'ni kabul etmelisiniz.";
+    return "You must accept the Terms of Service to continue.";
   }
 
   if (!input.acceptedPrivacyPolicy) {
-    return "Devam etmek icin Gizlilik Politikasi'ni kabul etmelisiniz.";
+    return "You must accept the Privacy Policy to continue.";
   }
 
   if (!input.acceptedKvkk) {
-    return "Devam etmek icin KVKK aydinlatma metnini kabul etmelisiniz.";
+    return "You must accept the KVKK consent to continue.";
   }
 
   return getTurnstileValidationMessage(input);
 };
 
-const getSignupErrorMessage = (error?: string) => {
-  if (error === MISSING_FIELDS_ERROR) {
-    return "Ad, soyad, e-posta, sifre ve sifre tekrari zorunludur.";
+const getSignupErrorMessage = (error?: string, fallbackMessage?: string) => {
+  if (error === EMAIL_ALREADY_EXISTS_ERROR) {
+    return "This email is already registered.";
   }
 
-  if (error === PASSWORD_MISMATCH_ERROR) {
-    return "Sifre ve sifre tekrari ayni olmalidir.";
+  if (error === TURNSTILE_FAILED_ERROR) {
+    return fallbackMessage ?? "Security verification failed. Please complete Turnstile again.";
   }
 
   if (error === EMAIL_RATE_LIMITED_ERROR || error === RATE_LIMITED_ERROR) {
-    return "Kayit deneme limiti asildi. Lutfen kisa bir sure sonra tekrar deneyin.";
+    return fallbackMessage ?? "Too many signup attempts. Please wait and try again.";
   }
 
-  if (error === EMAIL_ALREADY_EXISTS_ERROR) {
-    return "Bu e-posta adresi ile zaten bir hesap bulunuyor.";
+  if (error === MISSING_FIELDS_ERROR) {
+    return fallbackMessage ?? "Please complete all required fields.";
+  }
+
+  if (error === PASSWORD_MISMATCH_ERROR) {
+    return "Password and password confirmation must match.";
   }
 
   if (error === INVALID_EMAIL_ERROR) {
-    return "Gecerli bir e-posta adresi girin.";
+    return "Please enter a valid email address.";
   }
 
   if (error === INVALID_PASSWORD_ERROR) {
-    return `Sifre en az ${PASSWORD_MIN_LENGTH} karakter olmalidir.`;
-  }
-
-  if (error === TURNSTILE_FAILED_ERROR || error === TURNSTILE_INVALID_ERROR || error === BOT_DETECTED_ERROR) {
-    return "Bot dogrulamasi gecersiz. Lutfen tekrar deneyin.";
-  }
-
-  if (error === TURNSTILE_REQUIRED_ERROR) {
-    return "Lutfen bot dogrulamasini tamamlayin.";
-  }
-
-  if (error === TURNSTILE_UNAVAILABLE_ERROR || error === TURNSTILE_CONFIG_ERROR) {
-    return "Bot korumasi su anda kullanilamiyor. Lutfen daha sonra tekrar deneyin.";
-  }
-
-  if (error === RATE_LIMITER_UNAVAILABLE_ERROR) {
-    return "Kayit sistemi su anda gecici olarak kullanilamiyor. Lutfen daha sonra tekrar deneyin.";
+    return `Password must be at least ${PASSWORD_MIN_LENGTH} characters long.`;
   }
 
   if (error === TERMS_NOT_ACCEPTED_ERROR) {
-    return "Devam etmek icin Kullanim Sartlari'ni kabul etmelisiniz.";
+    return "You must accept the Terms of Service to continue.";
   }
 
   if (error === PRIVACY_POLICY_NOT_ACCEPTED_ERROR) {
-    return "Devam etmek icin Gizlilik Politikasi'ni kabul etmelisiniz.";
+    return "You must accept the Privacy Policy to continue.";
   }
 
   if (error === KVKK_CONSENT_REQUIRED_ERROR) {
-    return "Devam etmek icin KVKK aydinlatma metnini kabul etmelisiniz.";
-  }
-
-  if (error === EMAIL_CONFIRMATION_DISABLED_ERROR) {
-    return emailVerificationConfigMismatchMessage;
+    return "You must accept the KVKK consent to continue.";
   }
 
   if (error === INVALID_REDIRECT_URL_ERROR) {
-    return "Kayit baglantisi gecersiz. Sayfayi yenileyip tekrar deneyin.";
+    return fallbackMessage ?? "The signup redirect URL is invalid. Please refresh the page and try again.";
   }
 
-  if (error === INVALID_REQUEST_ERROR) {
-    return "Kayit istegi gecersiz. Sayfayi yenileyip tekrar deneyin.";
+  if (error === INTERNAL_ERROR) {
+    return fallbackMessage ?? "We could not complete signup. Please try again.";
   }
 
-  return null;
+  return fallbackMessage ?? "We could not complete signup. Please try again.";
 };
 
 export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
@@ -267,7 +224,8 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [acceptedPrivacyPolicy, setAcceptedPrivacyPolicy] = useState(false);
   const [acceptedKvkk, setAcceptedKvkk] = useState(false);
-  const [deviceFingerprint, setDeviceFingerprint] = useState<string | null>(null);
+  const [deviceFingerprint, setDeviceFingerprint] = useState(UNKNOWN_DEVICE_FINGERPRINT);
+  const [fingerprintStatus, setFingerprintStatus] = useState<FingerprintStatus>("loading");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [cooldownRemainingSeconds, setCooldownRemainingSeconds] = useState(0);
@@ -282,17 +240,14 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
   useEffect(() => {
     let cancelled = false;
 
-    void createDeviceFingerprint()
-      .then((value) => {
-        if (!cancelled) {
-          setDeviceFingerprint(value);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setDeviceFingerprint(null);
-        }
-      });
+    void createDeviceFingerprint().then((value) => {
+      if (cancelled) {
+        return;
+      }
+
+      setDeviceFingerprint(value);
+      setFingerprintStatus(isUnknownDeviceFingerprint(value) ? "fallback" : "ready");
+    });
 
     return () => {
       cancelled = true;
@@ -371,7 +326,7 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
     setMessage("");
 
     if (isCooldownActive) {
-      setMessage(`Tekrar deneme: ${cooldownRemainingSeconds}s`);
+      setMessage(`Try again in ${cooldownRemainingSeconds}s.`);
       return;
     }
 
@@ -380,7 +335,6 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
       return;
     }
 
-    startSignupCooldown();
     setIsSubmitting(true);
 
     try {
@@ -405,31 +359,35 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
       });
 
       const result = (await response.json().catch(() => null)) as SignupApiErrorResponse | SignupApiSuccessResponse | null;
+      const errorResult = result && "error" in result ? result : null;
+      const successResult =
+        result && "ok" in result && result.ok && result.verified === true ? result : null;
 
-      if (!response.ok) {
-        const errorResult = result && "error" in result ? result : null;
+      if (!response.ok || !successResult) {
+        if (response.status === 429 || errorResult?.error === RATE_LIMITED_ERROR || errorResult?.error === EMAIL_RATE_LIMITED_ERROR) {
+          startSignupCooldown();
+        }
+
         setMessage(
-          getSignupErrorMessage(errorResult?.error) ??
-            errorResult?.message ??
-            "Kayit sirasinda bir hata olustu. Lutfen tekrar deneyin.",
+          getSignupErrorMessage(errorResult?.error, errorResult?.message) ??
+            "We could not complete signup. Please try again.",
         );
         return;
       }
 
-      const successResult = result && "ok" in result && result.ok ? result : null;
       const successMessage =
-        successResult?.message ??
-        (successResult?.emailStatus === "failed"
-          ? "Hesabiniz olusturuldu ancak dogrulama e-postasi gonderilemedi."
+        successResult.message ??
+        (successResult.emailStatus === "failed"
+          ? "Your account was created, but the verification email could not be sent."
           : emailVerificationSentMessage);
 
       setMessage(successMessage);
 
-      if (successResult?.emailStatus !== "failed") {
+      if (successResult.emailStatus !== "failed") {
         router.push(buildEmailVerificationPath(email, null, { emailSent: true }));
       }
     } catch {
-      setMessage("Kayit sirasinda beklenmeyen bir hata olustu. Lutfen tekrar deneyin.");
+      setMessage("Unexpected network error. Please try again.");
     } finally {
       setTurnstileToken(null);
       setTurnstileStatus(turnstileSiteKey ? "idle" : "unsupported");
@@ -630,7 +588,10 @@ export default function SignupForm({ emailRedirectTo }: SignupFormProps) {
               </p>
             ) : (
               <p className="text-sm text-slate-400">
-                Guvenlik sinyalleri icin cihaz iziniz arka planda uretilir{deviceFingerprint ? "." : ", yukleniyor..."}.
+                {fingerprintStatus === "ready" && "Device security signals are ready."}
+                {fingerprintStatus === "loading" && "Device security signals are loading in the background."}
+                {fingerprintStatus === "fallback" &&
+                  "Device fingerprint is unavailable, but signup can continue with reduced device signals."}
               </p>
             )}
           </form>

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { randomUUID } from "crypto";
+import { isUnknownDeviceFingerprint } from "@/lib/auth/device-fingerprint";
 import { hashRateLimitSubject, runUpstashCommands } from "@/lib/auth/upstash-rate-limit";
 
 const RISK_WINDOW_MS = 10 * 60 * 1_000;
@@ -63,7 +64,10 @@ type SignupRiskInput = {
 const clampScore = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 const normalizeEmail = (value: string) => value.trim().toLowerCase();
 const normalizeIp = (value: string) => value.trim() || "unknown";
-const normalizeFingerprint = (value?: string | null) => value?.trim().toLowerCase() || null;
+const normalizeFingerprint = (value?: string | null) => {
+  const normalized = value?.trim().toLowerCase() || null;
+  return normalized && !isUnknownDeviceFingerprint(normalized) ? normalized : null;
+};
 
 const toInteger = (value: unknown) => {
   const parsed = Number(value);

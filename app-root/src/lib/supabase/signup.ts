@@ -1,26 +1,34 @@
 export const SIGNUP_COOLDOWN_STORAGE_KEY = "signup_cooldown_end_timestamp";
 export const SIGNUP_COOLDOWN_MS = 60_000;
-export const EMAIL_ALREADY_EXISTS_ERROR = "EMAIL_ALREADY_EXISTS";
-export const EMAIL_RATE_LIMITED_ERROR = "EMAIL_RATE_LIMITED";
-export const RATE_LIMITED_ERROR = "RATE_LIMITED";
-export const INVALID_EMAIL_ERROR = "INVALID_EMAIL";
-export const INVALID_PASSWORD_ERROR = "INVALID_PASSWORD";
-export const INVALID_REDIRECT_URL_ERROR = "INVALID_REDIRECT_URL";
-export const TERMS_NOT_ACCEPTED_ERROR = "TERMS_NOT_ACCEPTED";
-export const PRIVACY_POLICY_NOT_ACCEPTED_ERROR = "PRIVACY_POLICY_NOT_ACCEPTED";
-export const KVKK_CONSENT_REQUIRED_ERROR = "KVKK_CONSENT_REQUIRED";
-export const TURNSTILE_REQUIRED_ERROR = "TURNSTILE_REQUIRED";
-export const TURNSTILE_INVALID_ERROR = "TURNSTILE_INVALID";
-export const TURNSTILE_UNAVAILABLE_ERROR = "TURNSTILE_UNAVAILABLE";
-export const RATE_LIMITER_UNAVAILABLE_ERROR = "RATE_LIMITER_UNAVAILABLE";
-export const EMAIL_CONFIRMATION_DISABLED_ERROR = "EMAIL_CONFIRMATION_DISABLED";
-export const SIGNUP_FAILED_ERROR = "SIGNUP_FAILED";
-export const BOT_DETECTED_ERROR = TURNSTILE_INVALID_ERROR;
+
+export const EMAIL_ALREADY_EXISTS_ERROR = "email_already_exists";
+export const EMAIL_RATE_LIMITED_ERROR = "email_rate_limited";
+export const INTERNAL_ERROR = "internal_error";
+export const INVALID_EMAIL_ERROR = "invalid_email";
+export const INVALID_PASSWORD_ERROR = "invalid_password";
+export const INVALID_REDIRECT_URL_ERROR = "invalid_redirect_url";
+export const KVKK_CONSENT_REQUIRED_ERROR = "kvkk_consent_required";
 export const MISSING_FIELDS_ERROR = "missing_fields";
 export const PASSWORD_MISMATCH_ERROR = "password_mismatch";
+export const PRIVACY_POLICY_NOT_ACCEPTED_ERROR = "privacy_policy_not_accepted";
+export const RATE_LIMITED_ERROR = "rate_limited";
+export const TERMS_NOT_ACCEPTED_ERROR = "terms_not_accepted";
 export const TURNSTILE_FAILED_ERROR = "turnstile_failed";
-export const TURNSTILE_CONFIG_ERROR = "turnstile_config_error";
-export const INVALID_REQUEST_ERROR = "invalid_request";
+
+export type SignupApiErrorCode =
+  | typeof EMAIL_ALREADY_EXISTS_ERROR
+  | typeof EMAIL_RATE_LIMITED_ERROR
+  | typeof INTERNAL_ERROR
+  | typeof INVALID_EMAIL_ERROR
+  | typeof INVALID_PASSWORD_ERROR
+  | typeof INVALID_REDIRECT_URL_ERROR
+  | typeof KVKK_CONSENT_REQUIRED_ERROR
+  | typeof MISSING_FIELDS_ERROR
+  | typeof PASSWORD_MISMATCH_ERROR
+  | typeof PRIVACY_POLICY_NOT_ACCEPTED_ERROR
+  | typeof RATE_LIMITED_ERROR
+  | typeof TERMS_NOT_ACCEPTED_ERROR
+  | typeof TURNSTILE_FAILED_ERROR;
 
 export type SignupEmailStatus = "failed" | "sent";
 
@@ -51,13 +59,15 @@ export type SignupApiSuccessResponse = {
   message?: string;
   ok: true;
   risk: SignupRisk;
+  verified: true;
 };
 
 export type SignupApiErrorResponse = {
-  error: string;
+  error: SignupApiErrorCode;
   message: string;
   ok: false;
   risk?: SignupRisk;
+  verified: false;
 };
 
 export const getSignupCooldownRemainingSeconds = (cooldownEndTimestamp: number, now = Date.now()) => {
