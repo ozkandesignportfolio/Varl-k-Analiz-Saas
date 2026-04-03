@@ -35,6 +35,10 @@ import {
   type SignupApiSuccessResponse,
   type SignupRisk,
 } from "@/lib/supabase/signup";
+import {
+  logTurnstileEnvDebug,
+  readTurnstileServerEnv,
+} from "@/lib/env/turnstile-server";
 
 export const runtime = "nodejs";
 
@@ -48,6 +52,7 @@ const SIGNUP_IP_RATE_LIMIT_CAPACITY = 5;
 const SIGNUP_EMAIL_RATE_LIMIT_CAPACITY = 3;
 const SIGNUP_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1_000;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
+const isDevelopmentEnvironment = () => process.env.NODE_ENV === "development";
 
 type SignupRequestBody = {
   acceptedKvkk?: unknown;
@@ -194,6 +199,14 @@ const maskTokenForLogs = (token: string) => {
   }
 
   return `${trimmedToken.slice(0, 8)}...${trimmedToken.slice(-6)}`;
+};
+
+const logTurnstileDebug = (message: string, details?: Record<string, unknown>) => {
+  if (!isDevelopmentEnvironment()) {
+    return;
+  }
+
+  console.info(`${ROUTE_TAG} ${message}`, details ?? {});
 };
 
 const buildFallbackRisk = (reason: string): SignupRisk => ({
@@ -649,7 +662,7 @@ const normalizeDeviceFingerprint = (value: unknown) => {
 
 const getTurnstileFailureMessage = (reason: "invalid" | "missing_secret" | "network_error") => {
   if (reason === "missing_secret") {
-    return "Turnstile verification is not configured on the server.";
+    return "Turnstile server verification is not configured. Set TURNSTILE_SECRET_KEY in app-root/.env.local and restart the server.";
   }
 
   if (reason === "network_error") {
@@ -662,6 +675,7 @@ const getTurnstileFailureMessage = (reason: "invalid" | "missing_secret" | "netw
 export async function POST(request: Request) {
   const requestIp = getRequestIp(request);
   const requestUserAgent = request.headers.get("user-agent")?.trim() || null;
+  logTurnstileEnvDebug(`${ROUTE_TAG} request_start`);
   const adminClient = (() => {
     try {
       return createAdminClient();
@@ -713,6 +727,22 @@ export async function POST(request: Request) {
     return buildErrorResponse(input.error, input.message, input.status, risk, input.headers);
   };
 
+  const turnstileEnv = readTurnstileServerEnv();
+
+  if (!turnstileEnv.secretKey) {
+    return fail({
+      error: TURNSTILE_FAILED_ERROR,
+      eventType: "signup_turnstile_server_unconfigured",
+      message: getTurnstileFailureMessage("missing_secret"),
+      metadata: {
+        missing_env_vars: turnstileEnv.missing,
+        root_env_local_path: turnstileEnv.rootEnvLocalPath,
+      },
+      status: 503,
+      turnstileVerified: false,
+    });
+  }
+
   try {
     let body: SignupRequestBody;
 
@@ -741,7 +771,7 @@ export async function POST(request: Request) {
     normalizedEmail = email ? normalizeEmail(email) : "";
     const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
 
-    console.info(`${ROUTE_TAG} Turnstile token received.`, {
+    logTurnstileDebug("Turnstile token received.", {
       tokenLength: turnstileToken.length,
       tokenPresent: Boolean(turnstileToken),
       tokenPreview: maskTokenForLogs(turnstileToken),
@@ -894,7 +924,13 @@ export async function POST(request: Request) {
       token: turnstileToken,
     });
 
-    console.info(`${ROUTE_TAG} Turnstile verification result.`, turnstileVerification);
+    logTurnstileDebug("Turnstile verification result.", {
+      action: turnstileVerification.action,
+      errorCodes: turnstileVerification.errorCodes,
+      hostname: turnstileVerification.hostname,
+      ok: turnstileVerification.ok,
+      reason: turnstileVerification.ok ? null : turnstileVerification.reason,
+    });
 
     if (!turnstileVerification.ok) {
       return fail({

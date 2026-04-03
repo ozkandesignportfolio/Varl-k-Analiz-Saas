@@ -19,6 +19,18 @@ APP_URL=http://localhost:3000
 - `STRIPE_PRICE_PREMIUM` veya `STRIPE_PRICE_PREMIUM_MONTHLY`
 - `STRIPE_ALLOW_LIVE_IN_NON_PROD`
 
+## Turnstile
+
+- `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
+- `TURNSTILE_SECRET_KEY`
+
+## Turnstile Notlari
+
+- Next.js `.env.local` dosyasini sadece proje root'undan yukler: `app-root/.env.local`
+- `app-root/src/app/(admin)/.env.local` gibi alt klasor env dosyalari Next.js server runtime tarafinda okunmaz.
+- `TURNSTILE_SECRET_KEY` veya `NEXT_PUBLIC_TURNSTILE_SITE_KEY` eksik ya da placeholder ise uygulama startup sirasinda net hata verip acilmaz.
+- `.env.local` degistirildiginde `npm run dev`, `npm run build` veya `npm run start` surecini yeniden baslatmak gerekir; Next.js env degerlerini startup'ta okur.
+
 ## OpenAI
 
 - `OPENAI_API_KEY`

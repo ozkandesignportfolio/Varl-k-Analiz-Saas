@@ -1,6 +1,17 @@
 import "server-only";
 
+import { logTurnstileEnvDebug, readTurnstileServerEnv } from "@/lib/env/turnstile-server";
+
 const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+const isDevelopmentEnvironment = () => process.env.NODE_ENV === "development";
+
+const logTurnstileDebug = (message: string, details?: Record<string, unknown>) => {
+  if (!isDevelopmentEnvironment()) {
+    return;
+  }
+
+  console.info(`[auth.signup] ${message}`, details ?? {});
+};
 
 type TurnstileVerifyResponse = {
   action?: string;
@@ -31,8 +42,10 @@ export const verifyTurnstileToken = async ({
   remoteIp?: string | null;
   token: string;
 }): Promise<TurnstileValidationResult> => {
-  const secretKey = process.env.TURNSTILE_SECRET_KEY?.trim();
+  const { secretKey } = readTurnstileServerEnv();
+
   if (!secretKey) {
+    logTurnstileEnvDebug("verifyTurnstileToken.missing_secret");
     return {
       action: null,
       errorCodes: [],
@@ -62,6 +75,11 @@ export const verifyTurnstileToken = async ({
     });
 
     if (!response.ok) {
+      logTurnstileDebug("Turnstile verify endpoint returned a non-OK status.", {
+        remoteIpPresent: Boolean(remoteIp?.trim()),
+        status: response.status,
+      });
+
       return {
         action: null,
         errorCodes: [`http_${response.status}`],
@@ -77,6 +95,12 @@ export const verifyTurnstileToken = async ({
     const hostname = payload?.hostname?.trim() || null;
 
     if (payload?.success === true) {
+      logTurnstileDebug("Turnstile verification succeeded.", {
+        action,
+        errorCodeCount: errorCodes.length,
+        hostname,
+      });
+
       return {
         action,
         errorCodes,
@@ -84,6 +108,12 @@ export const verifyTurnstileToken = async ({
         ok: true,
       };
     }
+
+    logTurnstileDebug("Turnstile verification rejected the token.", {
+      action,
+      errorCodes,
+      hostname,
+    });
 
     return {
       action,

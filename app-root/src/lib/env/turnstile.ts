@@ -1,5 +1,5 @@
 export const TURNSTILE_SITE_KEY_MISSING_MESSAGE =
-  "Turnstile site key is not configured. Please set NEXT_PUBLIC_TURNSTILE_SITE_KEY in your environment.";
+  "Bot korumasi su anda kullanilamiyor. Lutfen daha sonra tekrar deneyin.";
 
 export type PublicTurnstileSiteKeyResult = {
   isConfigured: boolean;
@@ -29,6 +29,14 @@ export const readPublicTurnstileSiteKey = (): PublicTurnstileSiteKeyResult => {
 };
 
 export const debugPublicTurnstileSiteKey = () => {
-  const { rawValue } = readPublicTurnstileSiteKey();
-  console.debug("[turnstile] process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY =", rawValue);
+  if (process.env.NODE_ENV !== "development") {
+    return;
+  }
+
+  const { siteKey, warning } = readPublicTurnstileSiteKey();
+  console.debug("[turnstile.env] Client env debug.", {
+    hasSiteKey: Boolean(siteKey),
+    siteKeyLength: siteKey?.length ?? 0,
+    warning,
+  });
 };

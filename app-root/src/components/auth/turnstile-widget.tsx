@@ -123,7 +123,7 @@ export default function TurnstileWidget({
   if (scriptFailed) {
     return (
       <p className="text-sm text-amber-200" role="alert">
-        Turnstile could not be loaded. Please refresh the page and try again.
+        Bot korumasi yuklenemedi. Lutfen sayfayi yenileyip tekrar deneyin.
       </p>
     );
   }

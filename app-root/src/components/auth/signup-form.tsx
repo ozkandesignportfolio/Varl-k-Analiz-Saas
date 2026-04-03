@@ -72,13 +72,43 @@ type SignupFormValidationInput = {
 
 type FingerprintStatus = "fallback" | "loading" | "ready";
 
+const translateTurnstileMessage = (message?: string | null) => {
+  const normalizedMessage = message?.trim().toLowerCase();
+
+  if (!normalizedMessage) {
+    return null;
+  }
+
+  if (
+    normalizedMessage.includes("bot protection is not available") ||
+    normalizedMessage.includes("turnstile verification is not configured on the server") ||
+    normalizedMessage.includes("turnstile server verification is not configured")
+  ) {
+    return "Bot korumasi su anda kullanilamiyor. Lutfen daha sonra tekrar deneyin.";
+  }
+
+  if (normalizedMessage.includes("turnstile verification could not be completed")) {
+    return "Guvenlik dogrulamasi su anda tamamlanamadi. Lutfen tekrar deneyin.";
+  }
+
+  if (normalizedMessage.includes("turnstile verification failed")) {
+    return "Guvenlik dogrulamasi basarisiz oldu. Lutfen tekrar deneyin.";
+  }
+
+  if (normalizedMessage.includes("please complete the turnstile verification")) {
+    return "Lutfen bot dogrulamasini tamamlayin.";
+  }
+
+  return message ?? null;
+};
+
 const getTurnstileSiteKeyWarning = (siteKey: string | null, warning: string | null) => {
   if (warning) {
-    return warning;
+    return translateTurnstileMessage(warning) ?? warning;
   }
 
   if (!siteKey) {
-    return "Turnstile cannot start because NEXT_PUBLIC_TURNSTILE_SITE_KEY is missing.";
+    return "Bot korumasi su anda kullanilamiyor. Lutfen daha sonra tekrar deneyin.";
   }
 
   const normalizedSiteKey = siteKey.trim().toLowerCase();
@@ -89,7 +119,7 @@ const getTurnstileSiteKeyWarning = (siteKey: string | null, warning: string | nu
     normalizedSiteKey.includes("secret") ||
     normalizedSiteKey.includes("your_turnstile")
   ) {
-    return "NEXT_PUBLIC_TURNSTILE_SITE_KEY is invalid. Please check the public site key value.";
+    return "Bot korumasi ayari gecersiz. Lutfen daha sonra tekrar deneyin.";
   }
 
   return null;
@@ -109,19 +139,19 @@ const getTurnstileValidationMessage = ({
   }
 
   if (!turnstileToken?.trim()) {
-    return "Please complete the Turnstile verification before submitting.";
+    return "Lutfen bot dogrulamasini tamamlayin.";
   }
 
   if (turnstileStatus === "expired") {
-    return "Turnstile verification expired. Please complete it again.";
+    return "Bot dogrulamasinin suresi doldu. Lutfen yeniden tamamlayin.";
   }
 
   if (turnstileStatus === "error") {
-    return "Turnstile verification failed. Please try again.";
+    return "Bot dogrulamasi basarisiz oldu. Lutfen tekrar deneyin.";
   }
 
   if (turnstileStatus !== "verified") {
-    return "Please complete the Turnstile verification before submitting.";
+    return "Lutfen bot dogrulamasini tamamlayin.";
   }
 
   return null;
@@ -165,7 +195,10 @@ const getSignupErrorMessage = (error?: string, fallbackMessage?: string) => {
   }
 
   if (error === TURNSTILE_FAILED_ERROR) {
-    return fallbackMessage ?? "Security verification failed. Please complete Turnstile again.";
+    return (
+      translateTurnstileMessage(fallbackMessage) ??
+      "Guvenlik dogrulamasi basarisiz oldu. Lutfen Turnstile dogrulamasini yeniden tamamlayin."
+    );
   }
 
   if (error === EMAIL_RATE_LIMITED_ERROR || error === RATE_LIMITED_ERROR) {
