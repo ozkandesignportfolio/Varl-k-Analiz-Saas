@@ -2,20 +2,22 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { getPlanConfig } from "@/lib/plans/plan-config";
 import { PREMIUM_MONTHLY_PRICE_LABEL } from "@/lib/plans/pricing";
-import {
-  isEmailNotConfirmedError,
-  isEmailRateLimitError,
-  isSupabaseUserEmailConfirmed,
-} from "@/lib/supabase/auth-errors";
-import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   buildEmailVerificationPath,
   emailVerificationConfigMismatchMessage,
   emailVerificationSentMessage,
 } from "@/lib/supabase/email-verification";
+import {
+  EMAIL_ALREADY_EXISTS_ERROR,
+  EMAIL_CONFIRMATION_DISABLED_ERROR,
+  EMAIL_RATE_LIMITED_ERROR,
+  getSignupCooldownRemainingSeconds,
+  SIGNUP_COOLDOWN_MS,
+  SIGNUP_COOLDOWN_STORAGE_KEY,
+} from "@/lib/supabase/signup";
 
 const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
@@ -30,11 +32,64 @@ type RegisterPageClientProps = {
 };
 
 export default function RegisterPageClient({ emailRedirectTo }: RegisterPageClientProps) {
-  const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const router = useRouter();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
+  const [cooldownRemainingSeconds, setCooldownRemainingSeconds] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const syncCooldownState = () => {
+      try {
+        const rawValue = window.localStorage.getItem(SIGNUP_COOLDOWN_STORAGE_KEY);
+        const cooldownEndTimestamp = rawValue ? Number(rawValue) : Number.NaN;
+
+        if (!Number.isFinite(cooldownEndTimestamp)) {
+          setCooldownRemainingSeconds(0);
+          return;
+        }
+
+        const nextRemainingSeconds = getSignupCooldownRemainingSeconds(cooldownEndTimestamp);
+
+        if (nextRemainingSeconds <= 0) {
+          window.localStorage.removeItem(SIGNUP_COOLDOWN_STORAGE_KEY);
+          setCooldownRemainingSeconds(0);
+          return;
+        }
+
+        setCooldownRemainingSeconds(nextRemainingSeconds);
+      } catch {
+        setCooldownRemainingSeconds(0);
+      }
+    };
+
+    syncCooldownState();
+
+    const intervalId = window.setInterval(syncCooldownState, 1_000);
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  const isCooldownActive = cooldownRemainingSeconds > 0;
+
+  const startSignupCooldown = () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const cooldownEndTimestamp = Date.now() + SIGNUP_COOLDOWN_MS;
+
+    try {
+      window.localStorage.setItem(SIGNUP_COOLDOWN_STORAGE_KEY, String(cooldownEndTimestamp));
+    } catch {
+      // Local storage is best-effort here; the in-memory countdown still blocks repeated attempts.
+    }
+
+    setCooldownRemainingSeconds(getSignupCooldownRemainingSeconds(cooldownEndTimestamp));
+  };
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -46,6 +101,11 @@ export default function RegisterPageClient({ emailRedirectTo }: RegisterPageClie
     const email = String(formData.get("email") ?? "").trim();
     const password = String(formData.get("password") ?? "");
     const passwordConfirm = String(formData.get("passwordConfirm") ?? "");
+
+    if (isCooldownActive) {
+      setMessage(`Tekrar deneme: ${cooldownRemainingSeconds}s`);
+      return;
+    }
 
     if (!fullName || !email || !password) {
       setMessage("Ad soyad, e-posta ve sifre zorunludur.");
@@ -62,6 +122,7 @@ export default function RegisterPageClient({ emailRedirectTo }: RegisterPageClie
       return;
     }
 
+    startSignupCooldown();
     setIsSubmitting(true);
 
     try {
@@ -74,74 +135,49 @@ export default function RegisterPageClient({ emailRedirectTo }: RegisterPageClie
         matchesBrowserOrigin: Boolean(browserOrigin && redirectOrigin && browserOrigin === redirectOrigin),
       });
 
-      const notificationPreferences = {
-        maintenance: true,
-        maintenance_email: true,
-        warranty: true,
-        warranty_email: true,
-        document: true,
-        document_email: true,
-        documentExpiry: true,
-        document_expiry: true,
-        document_expiry_email: true,
-        service: true,
-        service_logs: true,
-        service_log: true,
-        service_email: true,
-        payment: true,
-        subscription_email: true,
-        system: true,
-        inApp: true,
-        in_app: true,
-        email: true,
-        frequency: "Aninda",
-      };
-
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo,
-          data: {
-            full_name: fullName,
-            notification_preferences: notificationPreferences,
-            notificationPreferences: notificationPreferences,
-          },
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          fullName,
+          email,
+          password,
+          emailRedirectTo,
+        }),
       });
 
-      if (error) {
-        if (isEmailRateLimitError(error)) {
+      const result = (await response.json().catch(() => null)) as
+        | {
+            error?: string;
+            message?: string;
+          }
+        | null;
+
+      if (!response.ok) {
+        if (result?.error === EMAIL_RATE_LIMITED_ERROR) {
           setMessage("E-posta limiti asildi. Lutfen kisa bir sure sonra tekrar deneyin.");
           return;
         }
 
-        if (isEmailNotConfirmedError(error)) {
-          setMessage(emailVerificationSentMessage);
-          router.push(buildEmailVerificationPath(email, null, { emailSent: true }));
+        if (result?.error === EMAIL_ALREADY_EXISTS_ERROR) {
+          setMessage("Bu e-posta adresi ile zaten bir hesap bulunuyor.");
           return;
         }
 
-        setMessage(error.message || "Kayit sirasinda bir hata olustu. Lutfen tekrar deneyin.");
+        if (result?.error === EMAIL_CONFIRMATION_DISABLED_ERROR) {
+          setMessage(emailVerificationConfigMismatchMessage);
+          return;
+        }
+
+        setMessage(result?.message || "Kayit sirasinda bir hata olustu. Lutfen tekrar deneyin.");
         return;
       }
 
-      if (data.session && data.user && isSupabaseUserEmailConfirmed(data.user)) {
-        await supabase.auth.signOut();
-        setMessage(emailVerificationConfigMismatchMessage);
-        return;
-      }
-
-      const requiresEmailVerification = !data.session || !isSupabaseUserEmailConfirmed(data.user);
-
-      if (requiresEmailVerification) {
-        await supabase.auth.signOut();
-        setMessage(emailVerificationSentMessage);
-        router.push(buildEmailVerificationPath(email, null, { emailSent: true }));
-        return;
-      }
-
-      setMessage("Kayit tamamlandi ancak e-posta dogrulamasi baslatilamadi. Lutfen destek ile iletisime gecin.");
+      setMessage(emailVerificationSentMessage);
+      router.push(buildEmailVerificationPath(email, null, { emailSent: true }));
+      return;
     } catch {
       setMessage("Kayit sirasinda beklenmeyen bir hata olustu. Lutfen tekrar deneyin.");
     } finally {
@@ -227,11 +263,11 @@ export default function RegisterPageClient({ emailRedirectTo }: RegisterPageClie
 
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isCooldownActive}
               data-testid="register-submit"
               className="w-full rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {isSubmitting ? "Kayit olusturuluyor..." : "Kayit Ol"}
+              {isSubmitting ? "Kayit olusturuluyor..." : isCooldownActive ? `Tekrar deneme: ${cooldownRemainingSeconds}s` : "Kayit Ol"}
             </button>
 
             {message ? (
