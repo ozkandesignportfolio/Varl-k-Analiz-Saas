@@ -10,9 +10,13 @@ import {
   isUnknownDeviceFingerprint,
 } from "@/lib/auth/device-fingerprint";
 import {
+  canUseLocalhostTurnstileTestKeys,
+  TURNSTILE_DOMAIN_INACTIVE_MESSAGE,
   TURNSTILE_SITE_KEY_MISSING_MESSAGE,
   debugPublicTurnstileSiteKey,
+  isLocalhostTestTurnstileSiteKey,
   readPublicTurnstileSiteKey,
+  resolveTurnstileSiteKeyForHostname,
 } from "@/lib/env/turnstile";
 import { getPlanConfig } from "@/lib/plans/plan-config";
 import { PREMIUM_MONTHLY_PRICE_LABEL } from "@/lib/plans/pricing";
@@ -107,10 +111,63 @@ const translateTurnstileMessage = (message?: string | null) => {
     return "Lutfen bot dogrulamasini tamamlayin.";
   }
 
+  if (
+    normalizedMessage.includes("110200") ||
+    normalizedMessage.includes(TURNSTILE_DOMAIN_INACTIVE_MESSAGE.toLowerCase())
+  ) {
+    return TURNSTILE_DOMAIN_INACTIVE_MESSAGE;
+  }
+
+  if (
+    normalizedMessage.includes("domain cloudflare tarafinda yetkili degil") ||
+    normalizedMessage.includes("domain cloudflare tarafında yetkili değil")
+  ) {
+    return TURNSTILE_DOMAIN_INACTIVE_MESSAGE;
+  }
+
+  if (
+    normalizedMessage.includes("tarayici eklentisi engelliyor olabilir") ||
+    normalizedMessage.includes("tarayıcı eklentisi engelliyor olabilir")
+  ) {
+    return "Tarayıcı eklentisi engelliyor olabilir";
+  }
+
   return message ?? null;
 };
 
-const getTurnstileSiteKeyWarning = (siteKey: string | null, warning: string | null) => {
+const getTurnstileDiagnosticsMessage = (turnstile?: SignupApiErrorResponse["turnstile"]) => {
+  if (!turnstile) {
+    return null;
+  }
+
+  if (turnstile.hostnameMismatch || turnstile.errorCodes.includes("110200") || turnstile.issue === "domain") {
+    return TURNSTILE_DOMAIN_INACTIVE_MESSAGE;
+  }
+
+  if (turnstile.errorCodes.includes("invalid-input-secret") || turnstile.issue === "key") {
+    return "Guvenlik dogrulamasi sunucu anahtari gecersiz. Site yoneticisi Turnstile secret ayarini kontrol etmeli.";
+  }
+
+  if (turnstile.errorCodes.includes("invalid-input-response") || turnstile.issue === "token") {
+    return "Guvenlik dogrulamasi tokeni gecersiz veya suresi dolmus. Lutfen yeniden dogrulayin.";
+  }
+
+  if (turnstile.issue === "env") {
+    return "Guvenlik dogrulamasi server tarafinda yapilandirilmamis. Site yoneticisi env degerlerini kontrol etmeli.";
+  }
+
+  if (turnstile.issue === "network") {
+    return "Guvenlik dogrulamasi su anda tamamlanamadi. Lutfen tekrar deneyin.";
+  }
+
+  return null;
+};
+
+const getTurnstileSiteKeyWarning = (
+  siteKey: string | null,
+  warning: string | null,
+  hostname?: string | null,
+) => {
   if (warning) {
     return translateTurnstileMessage(warning) ?? warning;
   }
@@ -128,6 +185,10 @@ const getTurnstileSiteKeyWarning = (siteKey: string | null, warning: string | nu
     normalizedSiteKey.includes("your_turnstile")
   ) {
     return "Guvenlik dogrulamasi ayari gecersiz. Lutfen Turnstile env degerlerini kontrol edin.";
+  }
+
+  if (!canUseLocalhostTurnstileTestKeys(hostname) && isLocalhostTestTurnstileSiteKey(siteKey)) {
+    return "Guvenlik dogrulamasi ayari gecersiz. Production icin gercek Turnstile anahtarlarini tanimlayin.";
   }
 
   return null;
@@ -193,13 +254,18 @@ const getSignupValidationMessage = (input: SignupFormValidationInput) => {
   return getTurnstileValidationMessage(input);
 };
 
-const getSignupErrorMessage = (error?: string, fallbackMessage?: string) => {
+const getSignupErrorMessage = (
+  error?: string,
+  fallbackMessage?: string,
+  turnstile?: SignupApiErrorResponse["turnstile"],
+) => {
   if (error === EMAIL_ALREADY_EXISTS_ERROR) {
     return "Bu e-posta zaten kayitli.";
   }
 
   if (error === TURNSTILE_FAILED_ERROR) {
     return (
+      getTurnstileDiagnosticsMessage(turnstile) ??
       translateTurnstileMessage(fallbackMessage) ??
       "Guvenlik dogrulamasi basarisiz. Lutfen yeniden deneyin."
     );
@@ -251,8 +317,11 @@ const getSignupErrorMessage = (error?: string, fallbackMessage?: string) => {
 export default function SignupForm({ emailRedirectTo, pageWarning = null }: SignupFormProps) {
   const router = useRouter();
   const submitLockRef = useRef(false);
-  const { siteKey: turnstileSiteKey, warning: turnstileWarning } = readPublicTurnstileSiteKey();
-  const resolvedTurnstileWarning = getTurnstileSiteKeyWarning(turnstileSiteKey, turnstileWarning);
+  const { siteKey: envTurnstileSiteKey, warning: envTurnstileWarning } = readPublicTurnstileSiteKey();
+  const [turnstileSiteKey, setTurnstileSiteKey] = useState<string | null>(envTurnstileSiteKey);
+  const [resolvedTurnstileWarning, setResolvedTurnstileWarning] = useState<string | null>(
+    getTurnstileSiteKeyWarning(envTurnstileSiteKey, envTurnstileWarning),
+  );
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -276,6 +345,20 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
   useEffect(() => {
     debugPublicTurnstileSiteKey();
   }, []);
+
+  useEffect(() => {
+    const hostname = typeof window !== "undefined" ? window.location.hostname : null;
+    const nextSiteKey = resolveTurnstileSiteKeyForHostname({
+      configuredSiteKey: envTurnstileSiteKey,
+      hostname,
+    });
+    const nextWarning = canUseLocalhostTurnstileTestKeys(hostname)
+      ? null
+      : getTurnstileSiteKeyWarning(nextSiteKey, envTurnstileWarning, hostname);
+
+    setTurnstileSiteKey(nextSiteKey);
+    setResolvedTurnstileWarning(nextWarning);
+  }, [envTurnstileSiteKey, envTurnstileWarning]);
 
   useEffect(() => {
     let cancelled = false;
@@ -445,7 +528,11 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
           startSignupCooldown();
         }
 
-        if (errorResult?.error === TURNSTILE_FAILED_ERROR && turnstileStatus !== "unsupported") {
+        if (
+          process.env.NODE_ENV === "development" &&
+          errorResult?.error === TURNSTILE_FAILED_ERROR &&
+          turnstileStatus !== "unsupported"
+        ) {
           console.warn("Turnstile domain mismatch olabilir", {
             hasToken: Boolean(turnstileToken?.trim()),
             responseStatus: response.status,
@@ -454,7 +541,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
         }
 
         setMessage(
-          getSignupErrorMessage(errorResult?.error, errorResult?.message) ??
+          getSignupErrorMessage(errorResult?.error, errorResult?.message, errorResult?.turnstile) ??
             "Kayit islemi tamamlanamadi. Lutfen tekrar deneyin.",
         );
         return;
@@ -653,19 +740,13 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
             </label>
 
             <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
-              {combinedTurnstileWarning ? (
-                <p className="text-sm text-amber-200" role="alert">
-                  {combinedTurnstileWarning}
-                </p>
-              ) : (
-                <TurnstileWidget
-                  onStatusChange={handleTurnstileStatusChange}
-                  onTokenChange={handleTurnstileTokenChange}
-                  onWarningChange={handleTurnstileWarningChange}
-                  refreshNonce={turnstileRefreshNonce}
-                  siteKey={turnstileSiteKey}
-                />
-              )}
+              <TurnstileWidget
+                onStatusChange={handleTurnstileStatusChange}
+                onTokenChange={handleTurnstileTokenChange}
+                onWarningChange={handleTurnstileWarningChange}
+                refreshNonce={turnstileRefreshNonce}
+                siteKey={turnstileSiteKey}
+              />
             </div>
 
             <button

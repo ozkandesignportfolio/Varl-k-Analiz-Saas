@@ -1,0 +1,29 @@
+
+> assetcare@0.1.0 dev
+> next dev --webpack
+
+[turnstile.env] Startup validation summary. {
+  context: 'next-config',
+  hasMisplacedEnvLocal: false,
+  missing: [],
+  rootEnvLocalPath: 'C:\\Users\\Osman\\Desktop\\Varlık Takip Saas\\app-root\\.env.local',
+  secretKeyLength: 35,
+  siteKeyLength: 24
+}
+▲ Next.js 16.1.6 (webpack)
+- Local:         http://localhost:3000
+- Network:       http://100.76.190.47:3000
+- Environments: .env.local
+
+✓ Starting...
+[turnstile.env] Server env debug. {
+  context: 'instrumentation',
+  hasMisplacedEnvLocal: false,
+  missing: [],
+  rootEnvLocalPath: 'C:\\Users\\Osman\\Desktop\\Varlık Takip Saas\\app-root\\.env.local',
+  secretKeyLength: 35,
+  siteKeyLength: 24,
+  usesLocalDevFallback: false
+}
+✓ Ready in 3.9s
+○ Compiling /instrumentation ...

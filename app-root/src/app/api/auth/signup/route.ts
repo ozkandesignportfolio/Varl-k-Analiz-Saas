@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient as createSupabaseClient, type User } from "@supabase/supabase-js";
+import { getTurnstileRequestContext } from "@/lib/auth/turnstile-diagnostics";
 import {
   UNKNOWN_DEVICE_FINGERPRINT,
   isUnknownDeviceFingerprint,
@@ -35,11 +36,16 @@ import {
   type SignupApiErrorResponse,
   type SignupApiSuccessResponse,
   type SignupRisk,
+  type SignupApiTurnstileDiagnostics,
 } from "@/lib/supabase/signup";
 import {
   logTurnstileEnvDebug,
   readTurnstileServerEnv,
 } from "@/lib/env/turnstile-server";
+import {
+  canUseLocalhostTurnstileTestKeys,
+  TURNSTILE_DOMAIN_INACTIVE_MESSAGE,
+} from "@/lib/env/turnstile";
 
 export const runtime = "nodejs";
 
@@ -112,6 +118,7 @@ type FailureResponseInput = {
   message: string;
   metadata?: Record<string, unknown>;
   status: number;
+  turnstile?: SignupApiTurnstileDiagnostics;
   turnstileErrorCodes?: string[];
   turnstileVerified?: boolean;
   triggeredEmailRateLimit?: boolean;
@@ -272,6 +279,7 @@ const buildErrorResponse = (
   status: number,
   risk?: SignupRisk,
   headers?: HeadersInit,
+  turnstile?: SignupApiTurnstileDiagnostics,
 ) =>
   NextResponse.json<SignupApiErrorResponse>(
     {
@@ -279,6 +287,7 @@ const buildErrorResponse = (
       message,
       ok: false,
       ...(risk ? { risk } : {}),
+      ...(turnstile ? { turnstile } : {}),
       verified: false,
     },
     {
@@ -692,6 +701,8 @@ const normalizeDeviceFingerprint = (value: unknown) => {
 const getTurnstileFailureMessage = (
   reason: "invalid" | "missing_secret" | "network_error",
   turnstileEnv?: ReturnType<typeof readTurnstileServerEnv>,
+  errorCodes?: string[],
+  diagnostics?: SignupApiTurnstileDiagnostics,
 ) => {
   if (reason === "missing_secret") {
     const missingVars = turnstileEnv?.missing?.length
@@ -708,12 +719,38 @@ const getTurnstileFailureMessage = (
     return "Turnstile dogrulamasi tamamlanamadi. Lutfen tekrar deneyin.";
   }
 
+  if (diagnostics?.hostnameMismatch || errorCodes?.includes("110200")) {
+    return TURNSTILE_DOMAIN_INACTIVE_MESSAGE;
+  }
+
+  if (errorCodes?.includes("invalid-input-secret")) {
+    return "Turnstile secret key gecersiz. Cloudflare secret ayarini kontrol edin.";
+  }
+
+  if (errorCodes?.includes("invalid-input-response")) {
+    return "Turnstile token gecersiz veya beklenenden farkli. Lutfen dogrulamayi yeniden tamamlayin.";
+  }
+
   return "Turnstile dogrulamasi basarisiz oldu.";
 };
 
 export async function POST(request: Request) {
   const requestIp = getRequestIp(request);
   const requestUserAgent = request.headers.get("user-agent")?.trim() || null;
+  const {
+    headers: {
+      host: hostHeader,
+      origin,
+      xForwardedHost: forwardedHost,
+    },
+    requestHostname: requestHost,
+  } = getTurnstileRequestContext(request);
+  console.info(`${ROUTE_TAG} Request host headers.`, {
+    host: hostHeader,
+    hostname: requestHost,
+    origin,
+    xForwardedHost: forwardedHost,
+  });
   logTurnstileEnvDebug(`${ROUTE_TAG} request_start`);
   const adminClient = (() => {
     try {
@@ -735,6 +772,7 @@ export async function POST(request: Request) {
       message: input.message,
       metadata: input.metadata ?? null,
       status: input.status,
+      turnstile: input.turnstile ?? null,
       turnstileVerified: input.turnstileVerified ?? false,
     });
 
@@ -757,27 +795,47 @@ export async function POST(request: Request) {
       ip: requestIp,
       metadata: {
         ...(input.metadata ?? {}),
+        turnstile: input.turnstile ?? null,
         ...buildRiskMetadata(risk, deviceFingerprint),
       },
       userAgent: requestUserAgent,
       userId: input.userId ?? null,
     });
 
-    return buildErrorResponse(input.error, input.message, input.status, risk, input.headers);
+    return buildErrorResponse(
+      input.error,
+      input.message,
+      input.status,
+      risk,
+      input.headers,
+      input.turnstile,
+    );
   };
 
   const turnstileEnv = readTurnstileServerEnv();
+  const isLocalhostRequest = canUseLocalhostTurnstileTestKeys(requestHost);
 
-  if (turnstileEnv.missing.length > 0) {
+  if (turnstileEnv.missing.length > 0 && !isLocalhostRequest) {
     return fail({
       error: TURNSTILE_FAILED_ERROR,
       eventType: "signup_turnstile_server_unconfigured",
       message: getTurnstileFailureMessage("missing_secret", turnstileEnv),
       metadata: {
         missing_env_vars: turnstileEnv.missing,
+        request_forwarded_host: forwardedHost,
+        request_host: requestHost,
+        request_host_header: hostHeader,
+        request_origin: origin,
         root_env_local_path: turnstileEnv.rootEnvLocalPath,
       },
       status: 503,
+      turnstile: {
+        errorCodes: [],
+        hostnameMismatch: false,
+        issue: "env",
+        requestHostname: requestHost,
+        responseHostname: null,
+      },
       turnstileVerified: false,
     });
   }
@@ -959,30 +1017,75 @@ export async function POST(request: Request) {
     }
 
     const turnstileVerification = await verifyTurnstileToken({
+      requestHost,
       remoteIp: requestIp,
       token: turnstileToken,
     });
+    const turnstileDiagnostics: SignupApiTurnstileDiagnostics = {
+      errorCodes: turnstileVerification.errorCodes,
+      hostnameMismatch: turnstileVerification.hostnameMismatch,
+      issue: turnstileVerification.issue,
+      requestHostname: turnstileVerification.requestHostname,
+      responseHostname: turnstileVerification.hostname,
+    };
 
     logTurnstileDebug("Turnstile verification result.", {
       action: turnstileVerification.action,
       errorCodes: turnstileVerification.errorCodes,
+      hostnameMismatch: turnstileVerification.hostnameMismatch,
       hostname: turnstileVerification.hostname,
+      issue: turnstileVerification.issue,
       ok: turnstileVerification.ok,
+      requestHostname: turnstileVerification.requestHostname,
       reason: turnstileVerification.ok ? null : turnstileVerification.reason,
     });
+
+    if (turnstileVerification.hostnameMismatch) {
+      return fail({
+        error: TURNSTILE_FAILED_ERROR,
+        eventType: "signup_turnstile_hostname_mismatch",
+        message: getTurnstileFailureMessage("invalid", turnstileEnv, turnstileVerification.errorCodes, turnstileDiagnostics),
+        metadata: {
+          request_forwarded_host: forwardedHost,
+          request_host: requestHost,
+          request_host_header: hostHeader,
+          request_origin: origin,
+          turnstile_action: turnstileVerification.action,
+          turnstile_error_codes: turnstileVerification.errorCodes,
+          turnstile_hostname: turnstileVerification.hostname,
+          turnstile_issue: turnstileVerification.issue,
+          turnstile_reason: "hostname_mismatch",
+        },
+        status: 403,
+        turnstile: turnstileDiagnostics,
+        turnstileErrorCodes: turnstileVerification.errorCodes,
+        turnstileVerified: false,
+      });
+    }
 
     if (!turnstileVerification.ok) {
       return fail({
         error: TURNSTILE_FAILED_ERROR,
         eventType: "signup_turnstile_failed",
-        message: getTurnstileFailureMessage(turnstileVerification.reason),
+        message: getTurnstileFailureMessage(
+          turnstileVerification.reason,
+          turnstileEnv,
+          turnstileVerification.errorCodes,
+          turnstileDiagnostics,
+        ),
         metadata: {
+          request_forwarded_host: forwardedHost,
+          request_host: requestHost,
+          request_host_header: hostHeader,
+          request_origin: origin,
           turnstile_action: turnstileVerification.action,
           turnstile_error_codes: turnstileVerification.errorCodes,
           turnstile_hostname: turnstileVerification.hostname,
+          turnstile_issue: turnstileVerification.issue,
           turnstile_reason: turnstileVerification.reason,
         },
         status: turnstileVerification.reason === "invalid" ? 403 : 503,
+        turnstile: turnstileDiagnostics,
         turnstileErrorCodes: turnstileVerification.errorCodes,
         turnstileVerified: false,
       });

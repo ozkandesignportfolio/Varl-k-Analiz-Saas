@@ -35,6 +35,15 @@ export type SignupApiErrorCode =
   | typeof WEAK_PASSWORD_ERROR;
 
 export type SignupEmailStatus = "failed" | "sent";
+export type SignupTurnstileIssueCategory = "domain" | "env" | "key" | "network" | "token" | "unknown";
+
+export type SignupApiTurnstileDiagnostics = {
+  errorCodes: string[];
+  hostnameMismatch: boolean;
+  issue: SignupTurnstileIssueCategory;
+  requestHostname: string | null;
+  responseHostname: string | null;
+};
 
 export type SignupRiskLevel = "low" | "medium" | "high" | "critical";
 
@@ -71,6 +80,7 @@ export type SignupApiErrorResponse = {
   message: string;
   ok: false;
   risk?: SignupRisk;
+  turnstile?: SignupApiTurnstileDiagnostics;
   verified: false;
 };
 
