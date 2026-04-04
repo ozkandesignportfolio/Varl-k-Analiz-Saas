@@ -200,6 +200,17 @@ const logSupabaseResponse = (message: string, details?: Record<string, unknown>)
   console.info(`${ROUTE_TAG} ${message}`, details ?? {});
 };
 
+const logSignupStep = (step: "TURNSTILE PASSED" | "USER CREATED" | "EMAIL TRIGGERED", details?: Record<string, unknown>) => {
+  console.info(`${ROUTE_TAG} ${step}`, details ?? {});
+};
+
+const logReturnReason = (reason: string, details?: Record<string, unknown>) => {
+  console.warn(`${ROUTE_TAG} RETURN`, {
+    details: details ?? null,
+    reason,
+  });
+};
+
 const toJsonValue = (value: unknown): JsonValue => {
   if (
     value === null ||
@@ -243,6 +254,38 @@ const logTurnstileDebug = (message: string, details?: Record<string, unknown>) =
   }
 
   console.info(`${ROUTE_TAG} ${message}`, details ?? {});
+};
+
+const getTurnstileFailureCategory = (input: {
+  errorCodes?: string[];
+  hostnameMismatch?: boolean;
+  issue?: SignupApiTurnstileDiagnostics["issue"] | null;
+}) => {
+  if (input.hostnameMismatch) {
+    return "mismatch";
+  }
+
+  if (input.issue === "env") {
+    return "env";
+  }
+
+  if (input.issue === "key") {
+    return "key";
+  }
+
+  if (input.issue === "domain" || input.errorCodes?.includes("110200")) {
+    return "domain";
+  }
+
+  if (input.issue === "token" || input.errorCodes?.includes("invalid-input-response")) {
+    return "token";
+  }
+
+  if (input.issue === "unknown") {
+    return "mismatch";
+  }
+
+  return "mismatch";
 };
 
 const buildFallbackRisk = (reason: string): SignupRisk => ({
@@ -486,6 +529,14 @@ const sendSignupConfirmationEmail = async (input: {
   const resendApiKey = getOptionalEnv("RESEND_API_KEY");
   const fromEmail = getOptionalEnv("AUTOMATION_FROM_EMAIL") ?? DEFAULT_FROM_EMAIL;
   const replyTo = getOptionalEnv("AUTOMATION_REPLY_TO_EMAIL");
+
+  logSignupStep("EMAIL TRIGGERED", {
+    actionLinkPresent: Boolean(input.actionLink.trim()),
+    email: input.email,
+    fromEmail,
+    resendConfigured: Boolean(resendApiKey),
+    replyTo: replyTo ?? null,
+  });
 
   if (!resendApiKey) {
     throw new Error("Missing required env var: RESEND_API_KEY");
@@ -766,6 +817,20 @@ export async function POST(request: Request) {
   let turnstileToken = "";
 
   const fail = async (input: FailureResponseInput) => {
+    logReturnReason(input.eventType, {
+      error: input.error,
+      message: input.message,
+      status: input.status,
+      turnstileCategory: input.turnstile
+        ? getTurnstileFailureCategory({
+            errorCodes: input.turnstile.errorCodes,
+            hostnameMismatch: input.turnstile.hostnameMismatch,
+            issue: input.turnstile.issue,
+          })
+        : null,
+      turnstileVerified: input.turnstileVerified ?? false,
+    });
+
     console.warn(`${ROUTE_TAG} Signup request failed.`, {
       error: input.error,
       eventType: input.eventType,
@@ -847,6 +912,10 @@ export async function POST(request: Request) {
       body = (await request.json()) as SignupRequestBody;
     } catch (error) {
       console.error(`${ROUTE_TAG} Failed to parse signup request body.`, serializeError(error));
+      logReturnReason("signup_invalid_request_body", {
+        error: MISSING_FIELDS_ERROR,
+        status: 400,
+      });
       return buildErrorResponse(
         MISSING_FIELDS_ERROR,
         "Signup request body is invalid.",
@@ -1031,6 +1100,13 @@ export async function POST(request: Request) {
 
     logTurnstileDebug("Turnstile verification result.", {
       action: turnstileVerification.action,
+      category: turnstileVerification.ok
+        ? null
+        : getTurnstileFailureCategory({
+            errorCodes: turnstileVerification.errorCodes,
+            hostnameMismatch: turnstileVerification.hostnameMismatch,
+            issue: turnstileVerification.issue,
+          }),
       errorCodes: turnstileVerification.errorCodes,
       hostnameMismatch: turnstileVerification.hostnameMismatch,
       hostname: turnstileVerification.hostname,
@@ -1038,6 +1114,22 @@ export async function POST(request: Request) {
       ok: turnstileVerification.ok,
       requestHostname: turnstileVerification.requestHostname,
       reason: turnstileVerification.ok ? null : turnstileVerification.reason,
+      success: turnstileVerification.ok,
+      tokenPresent: Boolean(turnstileToken),
+    });
+
+    console.info(`${ROUTE_TAG} Turnstile verification audit.`, {
+      errorCodes: turnstileVerification.errorCodes,
+      failureCategory: turnstileVerification.ok
+        ? null
+        : getTurnstileFailureCategory({
+            errorCodes: turnstileVerification.errorCodes,
+            hostnameMismatch: turnstileVerification.hostnameMismatch,
+            issue: turnstileVerification.issue,
+          }),
+      hostname: turnstileVerification.hostname,
+      success: turnstileVerification.ok,
+      tokenPresent: Boolean(turnstileToken),
     });
 
     if (turnstileVerification.hostnameMismatch) {
@@ -1090,6 +1182,12 @@ export async function POST(request: Request) {
         turnstileVerified: false,
       });
     }
+
+    logSignupStep("TURNSTILE PASSED", {
+      hostname: turnstileVerification.hostname,
+      requestHostname: turnstileVerification.requestHostname,
+      tokenPresent: Boolean(turnstileToken),
+    });
 
     if (!adminClient) {
       return fail({
@@ -1260,6 +1358,11 @@ export async function POST(request: Request) {
       });
     }
 
+    logSignupStep("USER CREATED", {
+      email: normalizedEmail,
+      userId: createdUser.id,
+    });
+
     try {
       await persistSignupBootstrapRecords({
         acceptedKvkk: true,
@@ -1327,6 +1430,10 @@ export async function POST(request: Request) {
         });
       }
     } else {
+      logReturnReason("signup_email_trigger_skipped", {
+        reason: emailFailureReason,
+        userId: createdUser.id,
+      });
       console.error(`${ROUTE_TAG} Verification email send skipped because Supabase did not return an action link.`, {
         userId: createdUser.id,
       });
@@ -1371,6 +1478,12 @@ export async function POST(request: Request) {
       userId: createdUser.id,
     });
 
+    logReturnReason(emailStatus === "sent" ? "signup_success" : "signup_success_email_failed", {
+      emailFailureReason,
+      emailStatus,
+      userId: createdUser.id,
+    });
+
     return buildSuccessResponse({
       emailStatus,
       message:
@@ -1390,6 +1503,11 @@ export async function POST(request: Request) {
         error: serializeError(error),
       },
       userAgent: requestUserAgent,
+    });
+
+    logReturnReason("signup_unhandled_error", {
+      error: error instanceof Error ? error.message : "unknown_error",
+      status: 500,
     });
 
     return buildErrorResponse(
