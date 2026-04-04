@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   TURNSTILE_DOMAIN_INACTIVE_MESSAGE,
   TURNSTILE_LOCALHOST_TEST_SITE_KEY,
@@ -13,7 +13,6 @@ type TurnstileWidgetProps = {
   onStatusChange?: (status: TurnstileWidgetStatus) => void;
   onTokenChange: (token: string | null) => void;
   onWarningChange?: (warning: string | null) => void;
-  refreshNonce?: number;
   siteKey?: string | null;
   theme?: "auto" | "light" | "dark";
 };
@@ -44,6 +43,14 @@ type TurnstileDebugState = {
   windowTurnstile: boolean;
 };
 
+type PreservedWidgetState = {
+  cleanupTimer: number | null;
+  parkingNode: HTMLDivElement;
+  siteKey: string;
+  theme: "auto" | "light" | "dark";
+  widgetId: string;
+};
+
 declare global {
   interface Window {
     turnstile?: TurnstileApi;
@@ -53,13 +60,14 @@ declare global {
 const TURNSTILE_SCRIPT_ID = "cloudflare-turnstile-script";
 const TURNSTILE_SCRIPT_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
 const TURNSTILE_SCRIPT_LOAD_TIMEOUT_MS = 10_000;
-const TURNSTILE_RERENDER_DELAY_MS = 350;
-const ADBLOCK_MESSAGE = "Tarayıcı eklentisi engelliyor olabilir";
+const STRICT_MODE_PRESERVE_MS = 250;
+const ADBLOCK_MESSAGE = "Tarayici eklentisi engelliyor olabilir";
 const DOMAIN_MISMATCH_MESSAGE = TURNSTILE_DOMAIN_INACTIVE_MESSAGE;
-const HARD_RESET_MESSAGE = "Doğrulama takıldı, widget yeniden yükleniyor.";
+const RUNTIME_RESET_MESSAGE = "Dogrulama yenileniyor. Lutfen tekrar tamamlayin.";
 const isDevelopment = process.env.NODE_ENV === "development";
 
 let turnstileScriptPromise: Promise<void> | null = null;
+let preservedWidgetState: PreservedWidgetState | null = null;
 
 const debugTurnstile = (message: string, details?: Record<string, unknown>) => {
   if (!isDevelopment) {
@@ -167,6 +175,37 @@ const ensureTurnstileScript = () => {
   return turnstileScriptPromise;
 };
 
+const clearPreservedWidgetCleanup = () => {
+  if (!preservedWidgetState || preservedWidgetState.cleanupTimer === null || typeof window === "undefined") {
+    return;
+  }
+
+  window.clearTimeout(preservedWidgetState.cleanupTimer);
+  preservedWidgetState.cleanupTimer = null;
+};
+
+const discardPreservedWidget = (reason: string) => {
+  if (!preservedWidgetState) {
+    return;
+  }
+
+  clearPreservedWidgetCleanup();
+
+  if (window.turnstile?.remove) {
+    try {
+      window.turnstile.remove(preservedWidgetState.widgetId);
+    } catch (error) {
+      debugTurnstile("Preserved widget remove failed.", {
+        error,
+        reason,
+        widgetId: preservedWidgetState.widgetId,
+      });
+    }
+  }
+
+  preservedWidgetState = null;
+};
+
 function DebugLine({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/10 px-3 py-2">
@@ -176,28 +215,32 @@ function DebugLine({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default function TurnstileWidget({
+function TurnstileWidget({
   onStatusChange,
   onTokenChange,
   onWarningChange,
-  refreshNonce = 0,
   siteKey,
   theme = "auto",
 }: TurnstileWidgetProps) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  if (isDevelopment) {
+    console.count("TURNSTILE RENDER");
+  }
+
+  const containerElementRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
-  const widgetRenderedRef = useRef(false);
-  const widgetVerifiedRef = useRef(false);
-  const scheduledRerenderRef = useRef<number | null>(null);
+  const renderAttemptedRef = useRef(false);
   const callbacksRef = useRef({
     onStatusChange,
     onTokenChange,
     onWarningChange,
   });
-  const [scriptReady, setScriptReady] = useState(() => typeof window !== "undefined" && Boolean(window.turnstile));
-  const [scriptFailed, setScriptFailed] = useState(false);
-  const [runtimeWarning, setRuntimeWarning] = useState<string | null>(null);
-  const [renderNonce, setRenderNonce] = useState(0);
+  const renderWidgetRef = useRef<() => void>(() => undefined);
+  const resolvedSiteKeyRef = useRef<string | null>(null);
+  const themeRef = useRef<"auto" | "light" | "dark">(theme);
+  const statusRef = useRef<TurnstileWidgetStatus>("idle");
+  const tokenRef = useRef<string | null>(null);
+  const warningRef = useRef<string | null>(null);
+
   const hostname = typeof window !== "undefined" ? window.location.hostname : null;
   const configuredSiteKey = siteKey?.trim() || readPublicTurnstileSiteKey().siteKey;
   const resolvedSiteKey = resolveTurnstileSiteKeyForHostname({
@@ -205,6 +248,18 @@ export default function TurnstileWidget({
     hostname,
   });
   const isUsingTestKey = resolvedSiteKey === TURNSTILE_LOCALHOST_TEST_SITE_KEY;
+
+  resolvedSiteKeyRef.current = resolvedSiteKey;
+  themeRef.current = theme;
+  callbacksRef.current = {
+    onStatusChange,
+    onTokenChange,
+    onWarningChange,
+  };
+
+  const [scriptReady, setScriptReady] = useState(() => typeof window !== "undefined" && Boolean(window.turnstile));
+  const [scriptFailed, setScriptFailed] = useState(false);
+  const [runtimeWarning, setRuntimeWarning] = useState<string | null>(null);
   const [debugState, setDebugState] = useState<TurnstileDebugState>(() => ({
     callbackTriggered: false,
     lastErrorCode: null,
@@ -218,48 +273,41 @@ export default function TurnstileWidget({
     setDebugState((current) => ({
       ...current,
       ...patch,
-      usingTestKey: patch.usingTestKey ?? isUsingTestKey,
+      usingTestKey: patch.usingTestKey ?? (resolvedSiteKeyRef.current === TURNSTILE_LOCALHOST_TEST_SITE_KEY),
       windowTurnstile: patch.windowTurnstile ?? (typeof window !== "undefined" && Boolean(window.turnstile)),
     }));
   };
 
   const emitStatus = (status: TurnstileWidgetStatus) => {
+    if (statusRef.current === status) {
+      return;
+    }
+
+    statusRef.current = status;
     callbacksRef.current.onStatusChange?.(status);
   };
 
   const emitToken = (token: string | null) => {
+    if (tokenRef.current === token) {
+      return;
+    }
+
+    tokenRef.current = token;
     callbacksRef.current.onTokenChange(token);
   };
 
   const emitWarning = (warning: string | null) => {
-    callbacksRef.current.onWarningChange?.(warning);
-  };
-
-  const clearScheduledRerender = () => {
-    if (scheduledRerenderRef.current === null || typeof window === "undefined") {
+    if (warningRef.current === warning) {
       return;
     }
 
-    window.clearTimeout(scheduledRerenderRef.current);
-    scheduledRerenderRef.current = null;
+    warningRef.current = warning;
+    setRuntimeWarning((current) => (current === warning ? current : warning));
+    callbacksRef.current.onWarningChange?.(warning);
   };
 
-  const destroyWidget = (reason: string, options?: { resetFirst?: boolean }) => {
-    clearScheduledRerender();
-
+  const destroyWidget = (reason: string) => {
     const widgetId = widgetIdRef.current;
-
-    if (widgetId && options?.resetFirst && window.turnstile?.reset) {
-      try {
-        window.turnstile.reset(widgetId);
-      } catch (error) {
-        debugTurnstile("Widget reset before remove failed.", {
-          error,
-          reason,
-          widgetId,
-        });
-      }
-    }
 
     if (widgetId && window.turnstile?.remove) {
       try {
@@ -273,67 +321,215 @@ export default function TurnstileWidget({
       }
     }
 
-    if (containerRef.current) {
-      containerRef.current.innerHTML = "";
+    if (containerElementRef.current) {
+      containerElementRef.current.innerHTML = "";
     }
 
     widgetIdRef.current = null;
-    widgetRenderedRef.current = false;
-    widgetVerifiedRef.current = false;
+    renderAttemptedRef.current = false;
   };
 
-  const scheduleHardReset = (reason: string, warningMessage: string | null) => {
-    const widgetId = widgetIdRef.current;
-
-    widgetVerifiedRef.current = false;
-    emitToken(null);
-    emitStatus("idle");
-    setRuntimeWarning(warningMessage);
-    emitWarning(warningMessage);
-
-    if (widgetId && window.turnstile?.reset) {
-      try {
-        window.turnstile.reset(widgetId);
-        debugTurnstile("Widget reset.", {
-          reason,
-          siteKey: resolvedSiteKey,
-          widgetId,
-        });
-      } catch (error) {
-        debugTurnstile("Widget reset failed.", {
-          error,
-          reason,
-          widgetId,
-        });
-      }
+  const preserveWidgetForStrictMode = () => {
+    if (!isDevelopment || typeof window === "undefined" || !containerElementRef.current || !widgetIdRef.current) {
+      return false;
     }
 
-    clearScheduledRerender();
+    if (!containerElementRef.current.firstChild || !resolvedSiteKeyRef.current) {
+      return false;
+    }
 
-    if (typeof window === "undefined") {
+    discardPreservedWidget("replace-preserved-widget");
+
+    const parkingNode = document.createElement("div");
+
+    while (containerElementRef.current.firstChild) {
+      parkingNode.appendChild(containerElementRef.current.firstChild);
+    }
+
+    preservedWidgetState = {
+      cleanupTimer: window.setTimeout(() => {
+        discardPreservedWidget("strict-mode-timeout");
+      }, STRICT_MODE_PRESERVE_MS),
+      parkingNode,
+      siteKey: resolvedSiteKeyRef.current,
+      theme: themeRef.current,
+      widgetId: widgetIdRef.current,
+    };
+
+    widgetIdRef.current = null;
+    renderAttemptedRef.current = false;
+
+    return true;
+  };
+
+  const restorePreservedWidget = () => {
+    if (!preservedWidgetState || !containerElementRef.current || !resolvedSiteKeyRef.current) {
+      return false;
+    }
+
+    if (
+      preservedWidgetState.siteKey !== resolvedSiteKeyRef.current ||
+      preservedWidgetState.theme !== themeRef.current
+    ) {
+      discardPreservedWidget("config-changed");
+      return false;
+    }
+
+    clearPreservedWidgetCleanup();
+
+    while (preservedWidgetState.parkingNode.firstChild) {
+      containerElementRef.current.appendChild(preservedWidgetState.parkingNode.firstChild);
+    }
+
+    widgetIdRef.current = preservedWidgetState.widgetId;
+    renderAttemptedRef.current = true;
+    preservedWidgetState = null;
+    updateDebugState({
+      renderCalled: true,
+      scriptLoaded: true,
+      usingTestKey: resolvedSiteKeyRef.current === TURNSTILE_LOCALHOST_TEST_SITE_KEY,
+      windowTurnstile: true,
+    });
+    debugTurnstile("Restored preserved widget after StrictMode remount.", {
+      siteKey: resolvedSiteKeyRef.current,
+      widgetId: widgetIdRef.current,
+    });
+    return true;
+  };
+
+  const resetWidget = (reason: string, nextStatus: Extract<TurnstileWidgetStatus, "expired" | "error">, nextWarning: string | null) => {
+    const widgetId = widgetIdRef.current;
+
+    emitToken(null);
+    emitStatus(nextStatus);
+    emitWarning(nextWarning);
+
+    if (!widgetId || !window.turnstile?.reset) {
       return;
     }
 
-    scheduledRerenderRef.current = window.setTimeout(() => {
-      destroyWidget(`${reason}:rerender`);
-      setRuntimeWarning(null);
-      emitWarning(null);
-      updateDebugState({
-        callbackTriggered: false,
-        lastErrorCode: null,
-        renderCalled: false,
+    try {
+      window.turnstile.reset(widgetId);
+      debugTurnstile("Widget reset.", {
+        reason,
+        widgetId,
       });
-      setRenderNonce((current) => current + 1);
-    }, TURNSTILE_RERENDER_DELAY_MS);
+    } catch (error) {
+      debugTurnstile("Widget reset failed.", {
+        error,
+        reason,
+        widgetId,
+      });
+    }
   };
 
-  useEffect(() => {
-    callbacksRef.current = {
-      onStatusChange,
-      onTokenChange,
-      onWarningChange,
-    };
-  }, [onStatusChange, onTokenChange, onWarningChange]);
+  renderWidgetRef.current = () => {
+    const activeSiteKey = resolvedSiteKeyRef.current;
+
+    if (!containerElementRef.current || !window.turnstile || !activeSiteKey || widgetIdRef.current || renderAttemptedRef.current) {
+      return;
+    }
+
+    if (restorePreservedWidget()) {
+      return;
+    }
+
+    renderAttemptedRef.current = true;
+    emitStatus("idle");
+    emitWarning(null);
+
+    try {
+      widgetIdRef.current = window.turnstile.render(containerElementRef.current, {
+        sitekey: activeSiteKey,
+        theme: themeRef.current,
+        callback: (token) => {
+          emitWarning(null);
+          emitToken(token);
+          emitStatus("verified");
+          updateDebugState({
+            callbackTriggered: true,
+            lastErrorCode: null,
+          });
+          debugTurnstile("Widget callback fired.", {
+            tokenLength: token.length,
+            widgetId: widgetIdRef.current,
+          });
+        },
+        "error-callback": (errorCode) => {
+          const normalizedErrorCode = String(errorCode ?? "").trim();
+
+          emitToken(null);
+          updateDebugState({
+            callbackTriggered: false,
+            lastErrorCode: normalizedErrorCode || "unknown",
+          });
+
+          if (normalizedErrorCode === "110200") {
+            emitWarning(DOMAIN_MISMATCH_MESSAGE);
+            emitStatus("unsupported");
+            warnPossibleDomainMismatch({
+              errorCode,
+              siteKey: activeSiteKey,
+              widgetRendered: true,
+            });
+            return;
+          }
+
+          warnPossibleDomainMismatch({
+            errorCode,
+            siteKey: activeSiteKey,
+            widgetRendered: true,
+          });
+          resetWidget("error-callback", "error", RUNTIME_RESET_MESSAGE);
+        },
+        "expired-callback": () => {
+          updateDebugState({
+            callbackTriggered: false,
+            lastErrorCode: "expired",
+          });
+          resetWidget("expired-callback", "expired", null);
+        },
+        "timeout-callback": () => {
+          updateDebugState({
+            callbackTriggered: false,
+            lastErrorCode: "timeout",
+          });
+          resetWidget("timeout-callback", "expired", RUNTIME_RESET_MESSAGE);
+        },
+      });
+      updateDebugState({
+        renderCalled: true,
+        scriptLoaded: true,
+        usingTestKey: activeSiteKey === TURNSTILE_LOCALHOST_TEST_SITE_KEY,
+        windowTurnstile: true,
+      });
+      debugTurnstile("Widget rendered.", {
+        scriptLoaded: true,
+        siteKey: activeSiteKey,
+        widgetId: widgetIdRef.current,
+      });
+    } catch (error) {
+      widgetIdRef.current = null;
+      renderAttemptedRef.current = false;
+      emitToken(null);
+      emitStatus("error");
+      emitWarning(RUNTIME_RESET_MESSAGE);
+      updateDebugState({
+        callbackTriggered: false,
+        lastErrorCode: error instanceof Error ? error.message : "render_failed",
+        renderCalled: false,
+      });
+      console.error("[turnstile.widget] Widget render failed.", error);
+    }
+  };
+
+  const setContainerRef = useCallback((node: HTMLDivElement | null) => {
+    containerElementRef.current = node;
+
+    if (node) {
+      renderWidgetRef.current();
+    }
+  }, []);
 
   useEffect(() => {
     updateDebugState({
@@ -350,37 +546,24 @@ export default function TurnstileWidget({
   }, [isUsingTestKey, resolvedSiteKey, scriptReady]);
 
   useEffect(() => {
-    return () => {
-      destroyWidget("component-unmount", { resetFirst: true });
-    };
-  }, []);
-
-  useEffect(() => {
-    if (resolvedSiteKey) {
-      return;
-    }
-
-    setRuntimeWarning(null);
-    emitWarning(null);
-    emitToken(null);
-    emitStatus("unsupported");
-    updateDebugState({
-      callbackTriggered: false,
-      lastErrorCode: null,
-      renderCalled: false,
-      usingTestKey: false,
-    });
-  }, [resolvedSiteKey]);
-
-  useEffect(() => {
-    if (!resolvedSiteKey) {
-      return;
-    }
-
     let cancelled = false;
 
+    if (!resolvedSiteKeyRef.current) {
+      emitToken(null);
+      emitStatus("unsupported");
+      emitWarning(null);
+      updateDebugState({
+        callbackTriggered: false,
+        lastErrorCode: null,
+        renderCalled: false,
+        usingTestKey: false,
+      });
+      return () => {
+        discardPreservedWidget("missing-site-key-cleanup");
+      };
+    }
+
     setScriptFailed(false);
-    setRuntimeWarning(null);
     emitWarning(null);
 
     void ensureTurnstileScript()
@@ -389,12 +572,13 @@ export default function TurnstileWidget({
           return;
         }
 
-        setScriptFailed(false);
         setScriptReady(true);
+        setScriptFailed(false);
         updateDebugState({
           scriptLoaded: true,
           windowTurnstile: true,
         });
+        renderWidgetRef.current();
       })
       .catch((error) => {
         if (cancelled) {
@@ -403,10 +587,9 @@ export default function TurnstileWidget({
 
         emitToken(null);
         emitStatus("error");
+        emitWarning(ADBLOCK_MESSAGE);
         setScriptReady(false);
         setScriptFailed(true);
-        setRuntimeWarning(ADBLOCK_MESSAGE);
-        emitWarning(ADBLOCK_MESSAGE);
         updateDebugState({
           lastErrorCode: error instanceof Error ? error.message : "script_load_failed",
           scriptLoaded: false,
@@ -417,145 +600,15 @@ export default function TurnstileWidget({
 
     return () => {
       cancelled = true;
+
+      if (preserveWidgetForStrictMode()) {
+        return;
+      }
+
+      destroyWidget("component-unmount");
+      discardPreservedWidget("component-unmount");
     };
-  }, [resolvedSiteKey]);
-
-  useEffect(() => {
-    if (!scriptReady || !resolvedSiteKey || scriptFailed || !containerRef.current || !window.turnstile) {
-      return;
-    }
-
-    destroyWidget("pre-render", { resetFirst: true });
-
-    emitToken(null);
-    emitStatus("idle");
-    emitWarning(null);
-    setRuntimeWarning(null);
-    updateDebugState({
-      callbackTriggered: false,
-      lastErrorCode: null,
-      renderCalled: false,
-      scriptLoaded: true,
-      windowTurnstile: true,
-    });
-
-    try {
-      updateDebugState({ renderCalled: true });
-
-      widgetIdRef.current = window.turnstile.render(containerRef.current, {
-        sitekey: resolvedSiteKey,
-        theme,
-        callback: (token) => {
-          widgetVerifiedRef.current = true;
-          setRuntimeWarning(null);
-          emitWarning(null);
-          emitToken(token);
-          emitStatus("verified");
-          updateDebugState({
-            callbackTriggered: true,
-            lastErrorCode: null,
-          });
-          debugTurnstile("Widget callback fired.", {
-            tokenLength: token.length,
-            widgetId: widgetIdRef.current,
-          });
-        },
-        "error-callback": (errorCode) => {
-          const normalizedErrorCode = String(errorCode ?? "").trim();
-
-          widgetVerifiedRef.current = false;
-          emitToken(null);
-          updateDebugState({
-            callbackTriggered: false,
-            lastErrorCode: normalizedErrorCode || "unknown",
-          });
-
-          if (normalizedErrorCode === "110200") {
-            setRuntimeWarning(DOMAIN_MISMATCH_MESSAGE);
-            emitWarning(DOMAIN_MISMATCH_MESSAGE);
-            emitStatus("unsupported");
-            return;
-          }
-
-          if (widgetRenderedRef.current && !widgetVerifiedRef.current) {
-            warnPossibleDomainMismatch({
-              errorCode,
-              siteKey: resolvedSiteKey,
-              widgetRendered: true,
-            });
-          }
-
-          emitStatus("error");
-          scheduleHardReset("error-callback", HARD_RESET_MESSAGE);
-        },
-        "expired-callback": () => {
-          widgetVerifiedRef.current = false;
-          emitToken(null);
-          emitStatus("expired");
-          updateDebugState({
-            callbackTriggered: false,
-            lastErrorCode: "expired",
-          });
-          scheduleHardReset("expired-callback", null);
-        },
-        "timeout-callback": () => {
-          widgetVerifiedRef.current = false;
-          emitToken(null);
-          emitStatus("expired");
-          updateDebugState({
-            callbackTriggered: false,
-            lastErrorCode: "timeout",
-          });
-
-          if (widgetRenderedRef.current && !widgetVerifiedRef.current) {
-            warnPossibleDomainMismatch({
-              reason: "timeout",
-              siteKey: resolvedSiteKey,
-              widgetRendered: true,
-            });
-          }
-
-          scheduleHardReset("timeout-callback", HARD_RESET_MESSAGE);
-        },
-      });
-
-      widgetRenderedRef.current = true;
-      debugTurnstile("Widget rendered.", {
-        scriptLoaded: true,
-        siteKey: resolvedSiteKey,
-        widgetRendered: true,
-        widgetId: widgetIdRef.current,
-      });
-    } catch (error) {
-      widgetRenderedRef.current = false;
-      widgetIdRef.current = null;
-      emitToken(null);
-      emitStatus("error");
-      updateDebugState({
-        callbackTriggered: false,
-        lastErrorCode: error instanceof Error ? error.message : "render_failed",
-      });
-      console.error("[turnstile.widget] Widget render failed.", error);
-      scheduleHardReset("render-failed", HARD_RESET_MESSAGE);
-      return;
-    }
-
-    return () => {
-      destroyWidget("effect-cleanup", { resetFirst: true });
-    };
-  }, [renderNonce, resolvedSiteKey, scriptFailed, scriptReady, theme]);
-
-  useEffect(() => {
-    if (!refreshNonce) {
-      return;
-    }
-
-    scheduleHardReset("external-refresh", null);
-  }, [refreshNonce]);
-
-  const handleManualRefresh = () => {
-    scheduleHardReset("manual-refresh", null);
-  };
+  }, []);
 
   const displayWarning = resolvedSiteKey
     ? runtimeWarning ?? (scriptFailed ? ADBLOCK_MESSAGE : null)
@@ -571,28 +624,12 @@ export default function TurnstileWidget({
 
       <div className="relative z-[999] !pointer-events-auto">
         <div
-          ref={containerRef}
+          ref={setContainerRef}
           className={`cf-turnstile relative z-[999] min-h-[65px] !pointer-events-auto ${
             resolvedSiteKey && !scriptFailed ? "" : "hidden"
           }`}
           data-theme={theme}
         />
-      </div>
-
-      <div className={`flex flex-wrap items-center gap-3 ${isDevelopment ? "justify-between" : "justify-end"}`}>
-        {isDevelopment ? (
-          <p className="text-xs text-slate-400">
-            {isUsingTestKey ? "Localhost test key aktif." : "Cloudflare Turnstile explicit render aktif."}
-          </p>
-        ) : null}
-        <button
-          type="button"
-          onClick={handleManualRefresh}
-          className="rounded-full border border-white/15 px-3 py-1.5 text-xs font-medium text-slate-100 transition hover:border-sky-300 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={!resolvedSiteKey}
-        >
-          Doğrulamayı Yenile
-        </button>
       </div>
 
       {isDevelopment ? (
@@ -611,3 +648,5 @@ export default function TurnstileWidget({
     </div>
   );
 }
+
+export default React.memo(TurnstileWidget);

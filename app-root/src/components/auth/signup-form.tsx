@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, memo, useCallback, useEffect, useRef, useState } from "react";
 import TurnstileWidget, { type TurnstileWidgetStatus } from "@/components/auth/turnstile-widget";
 import {
   UNKNOWN_DEVICE_FINGERPRINT,
@@ -76,6 +76,13 @@ type SignupFormValidationInput = {
 };
 
 type FingerprintStatus = "fallback" | "loading" | "ready";
+
+type SignupTurnstileSectionProps = {
+  onStatusChange: (status: TurnstileWidgetStatus) => void;
+  onTokenChange: (token: string | null) => void;
+  onWarningChange: (warning: string | null) => void;
+  siteKey: string | null;
+};
 
 const translateTurnstileMessage = (message?: string | null) => {
   const normalizedMessage = message?.trim().toLowerCase();
@@ -314,6 +321,24 @@ const getSignupErrorMessage = (
   return fallbackMessage ?? "Kayit islemi tamamlanamadi. Lutfen tekrar deneyin.";
 };
 
+const SignupTurnstileSection = memo(function SignupTurnstileSection({
+  onStatusChange,
+  onTokenChange,
+  onWarningChange,
+  siteKey,
+}: SignupTurnstileSectionProps) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
+      <TurnstileWidget
+        onStatusChange={onStatusChange}
+        onTokenChange={onTokenChange}
+        onWarningChange={onWarningChange}
+        siteKey={siteKey}
+      />
+    </div>
+  );
+});
+
 export default function SignupForm({ emailRedirectTo, pageWarning = null }: SignupFormProps) {
   const router = useRouter();
   const submitLockRef = useRef(false);
@@ -337,7 +362,6 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
   const [cooldownRemainingSeconds, setCooldownRemainingSeconds] = useState(0);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileStatus, setTurnstileStatus] = useState<TurnstileWidgetStatus>("idle");
-  const [turnstileRefreshNonce, setTurnstileRefreshNonce] = useState(0);
   const [turnstileRuntimeWarning, setTurnstileRuntimeWarning] = useState<string | null>(null);
 
   const combinedTurnstileWarning = turnstileRuntimeWarning ?? resolvedTurnstileWarning;
@@ -427,33 +451,33 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
     turnstileWarning: combinedTurnstileWarning ?? (!emailRedirectTo ? "Kayit yonlendirmesi hazirlaniyor." : null),
   });
 
-  const clearMessage = () => {
+  const clearMessage = useCallback(() => {
     setMessage((currentMessage) => (currentMessage ? "" : currentMessage));
-  };
+  }, []);
 
-  const handleTurnstileTokenChange = (value: string | null) => {
+  const handleTurnstileTokenChange = useCallback((value: string | null) => {
     if (!submitLockRef.current) {
       clearMessage();
     }
 
-    setTurnstileToken(value);
-  };
+    setTurnstileToken((currentValue) => (currentValue === value ? currentValue : value));
+  }, [clearMessage]);
 
-  const handleTurnstileWarningChange = (value: string | null) => {
+  const handleTurnstileWarningChange = useCallback((value: string | null) => {
     if (!submitLockRef.current) {
       clearMessage();
     }
 
-    setTurnstileRuntimeWarning(value);
-  };
+    setTurnstileRuntimeWarning((currentValue) => (currentValue === value ? currentValue : value));
+  }, [clearMessage]);
 
-  const handleTurnstileStatusChange = (value: TurnstileWidgetStatus) => {
+  const handleTurnstileStatusChange = useCallback((value: TurnstileWidgetStatus) => {
     if (!submitLockRef.current) {
       clearMessage();
     }
 
-    setTurnstileStatus(value);
-  };
+    setTurnstileStatus((currentValue) => (currentValue === value ? currentValue : value));
+  }, [clearMessage]);
 
   const startSignupCooldown = () => {
     if (typeof window === "undefined") {
@@ -566,9 +590,6 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
       }
     } finally {
       window.clearTimeout(timeoutId);
-      setTurnstileToken(null);
-      setTurnstileStatus(turnstileSiteKey ? "idle" : "unsupported");
-      setTurnstileRefreshNonce((current) => current + 1);
       setIsSubmitting(false);
       submitLockRef.current = false;
     }
@@ -739,15 +760,12 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
               </span>
             </label>
 
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
-              <TurnstileWidget
-                onStatusChange={handleTurnstileStatusChange}
-                onTokenChange={handleTurnstileTokenChange}
-                onWarningChange={handleTurnstileWarningChange}
-                refreshNonce={turnstileRefreshNonce}
-                siteKey={turnstileSiteKey}
-              />
-            </div>
+            <SignupTurnstileSection
+              onStatusChange={handleTurnstileStatusChange}
+              onTokenChange={handleTurnstileTokenChange}
+              onWarningChange={handleTurnstileWarningChange}
+              siteKey={turnstileSiteKey}
+            />
 
             <button
               className="w-full rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
