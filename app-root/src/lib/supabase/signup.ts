@@ -13,6 +13,7 @@ export const PRIVACY_POLICY_NOT_ACCEPTED_ERROR = "privacy_policy_not_accepted";
 export const RATE_LIMITED_ERROR = "rate_limited";
 export const SUPABASE_ERROR = "supabase_error";
 export const TERMS_NOT_ACCEPTED_ERROR = "terms_not_accepted";
+export const TURNSTILE_TOKEN_USED_ERROR = "turnstile_token_used";
 export const WEAK_PASSWORD_ERROR = "weak_password";
 
 export const INTERNAL_ERROR = SUPABASE_ERROR;
@@ -32,6 +33,7 @@ export type SignupApiErrorCode =
   | typeof RATE_LIMITED_ERROR
   | typeof SUPABASE_ERROR
   | typeof TERMS_NOT_ACCEPTED_ERROR
+  | typeof TURNSTILE_TOKEN_USED_ERROR
   | typeof WEAK_PASSWORD_ERROR;
 
 export type SignupEmailStatus = "failed" | "sent";
@@ -68,17 +70,53 @@ export type SignupRisk = {
 };
 
 export type SignupApiSuccessResponse = {
-  emailStatus?: SignupEmailStatus;
-  message?: string;
+  emailError?: string | null;
+  emailSent: boolean;
+  emailStatus: SignupEmailStatus;
+  message: string;
   ok: true;
+  requestId: string;
   risk: SignupRisk;
+  userCreated: true;
+  userId?: string;
   verified: true;
+  warning?: string | null;
+};
+
+export type SignupApiErrorReason =
+  | "duplicate_email"
+  | "email_rate_limited"
+  | "invalid_email"
+  | "invalid_redirect_url"
+  | "missing_fields"
+  | "password_mismatch"
+  | "signup_bootstrap_failed"
+  | "signup_service_unavailable"
+  | "supabase_user_create_failed"
+  | "terms_not_accepted"
+  | "privacy_policy_not_accepted"
+  | "kvkk_consent_required"
+  | "turnstile_already_used"
+  | "turnstile_hostname_mismatch"
+  | "turnstile_invalid_or_expired"
+  | "turnstile_missing"
+  | "turnstile_network_error"
+  | "turnstile_server_misconfigured"
+  | "weak_password";
+
+export type SignupApiErrorDetails = {
+  field?: "email" | "form" | "password" | "service" | "turnstile";
+  reason: SignupApiErrorReason;
+  retryable: boolean;
+  shouldResetTurnstile?: boolean;
 };
 
 export type SignupApiErrorResponse = {
+  details?: SignupApiErrorDetails;
   error: SignupApiErrorCode;
   message: string;
   ok: false;
+  requestId: string;
   risk?: SignupRisk;
   turnstile?: SignupApiTurnstileDiagnostics;
   verified: false;

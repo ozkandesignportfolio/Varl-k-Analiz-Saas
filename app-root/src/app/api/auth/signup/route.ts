@@ -33,6 +33,7 @@ import {
   TERMS_NOT_ACCEPTED_ERROR,
   TURNSTILE_FAILED_ERROR,
   type SignupApiErrorCode,
+  type SignupApiErrorDetails,
   type SignupApiErrorResponse,
   type SignupApiSuccessResponse,
   type SignupRisk,
@@ -88,8 +89,10 @@ type SupabaseAuthErrorLike = {
 };
 
 type SignupSuccessResponse = SignupApiSuccessResponse & {
-  emailStatus: SignupEmailStatus;
-  message: string;
+  emailError: string | null;
+  emailSent: boolean;
+  userCreated: true;
+  warning?: string | null;
 };
 
 type JsonValue =
@@ -112,6 +115,7 @@ type SecurityEventParams = {
 };
 
 type FailureResponseInput = {
+  details?: SignupApiErrorDetails;
   error: SignupApiErrorCode;
   eventType: string;
   headers?: HeadersInit;
@@ -248,6 +252,21 @@ const maskTokenForLogs = (token: string) => {
   return `${trimmedToken.slice(0, 8)}...${trimmedToken.slice(-6)}`;
 };
 
+const maskUrlForLogs = (value?: string | null) => {
+  const trimmedValue = value?.trim();
+
+  if (!trimmedValue) {
+    return null;
+  }
+
+  try {
+    const url = new URL(trimmedValue);
+    return `${url.origin}${url.pathname}`;
+  } catch {
+    return maskTokenForLogs(trimmedValue);
+  }
+};
+
 const logTurnstileDebug = (message: string, details?: Record<string, unknown>) => {
   if (!isDevelopmentEnvironment()) {
     return;
@@ -323,12 +342,15 @@ const buildErrorResponse = (
   risk?: SignupRisk,
   headers?: HeadersInit,
   turnstile?: SignupApiTurnstileDiagnostics,
+  details?: SignupApiErrorDetails,
 ) =>
   NextResponse.json<SignupApiErrorResponse>(
     {
+      ...(details ? { details } : {}),
       error,
       message,
       ok: false,
+      requestId: crypto.randomUUID(),
       ...(risk ? { risk } : {}),
       ...(turnstile ? { turnstile } : {}),
       verified: false,
@@ -340,17 +362,25 @@ const buildErrorResponse = (
   );
 
 const buildSuccessResponse = (input: {
+  emailFailureReason?: string | null;
   emailStatus: SignupEmailStatus;
   message: string;
   risk: SignupRisk;
+  userId: string;
 }) =>
   NextResponse.json<SignupSuccessResponse>(
     {
+      emailError: input.emailStatus === "sent" ? null : (input.emailFailureReason ?? "unknown_email_error"),
+      emailSent: input.emailStatus === "sent",
       emailStatus: input.emailStatus,
       message: input.message,
       ok: true,
+      requestId: crypto.randomUUID(),
       risk: input.risk,
+      userCreated: true,
+      userId: input.userId,
       verified: true,
+      warning: input.emailStatus === "sent" ? null : "EMAIL_SEND_FAILED",
     },
     { status: 200 },
   );
@@ -531,6 +561,7 @@ const sendSignupConfirmationEmail = async (input: {
   const replyTo = getOptionalEnv("AUTOMATION_REPLY_TO_EMAIL");
 
   logSignupStep("EMAIL TRIGGERED", {
+    actionLinkPreview: maskUrlForLogs(input.actionLink),
     actionLinkPresent: Boolean(input.actionLink.trim()),
     email: input.email,
     fromEmail,
@@ -568,6 +599,13 @@ const sendSignupConfirmationEmail = async (input: {
   } catch {
     parsedResponse = responseText;
   }
+
+  console.info(`${ROUTE_TAG} Resend email API response.`, {
+    email: input.email,
+    ok: response.ok,
+    parsedResponse,
+    status: response.status,
+  });
 
   if (!response.ok) {
     throw new Error(`Resend request failed with status ${response.status}: ${responseText}`);
@@ -874,6 +912,7 @@ export async function POST(request: Request) {
       risk,
       input.headers,
       input.turnstile,
+      input.details,
     );
   };
 
@@ -882,6 +921,12 @@ export async function POST(request: Request) {
 
   if (turnstileEnv.missing.length > 0 && !isLocalhostRequest) {
     return fail({
+      details: {
+        field: "turnstile",
+        reason: "turnstile_server_misconfigured",
+        retryable: false,
+        shouldResetTurnstile: false,
+      },
       error: TURNSTILE_FAILED_ERROR,
       eventType: "signup_turnstile_server_unconfigured",
       message: getTurnstileFailureMessage("missing_secret", turnstileEnv),
@@ -1024,6 +1069,12 @@ export async function POST(request: Request) {
 
     if (!turnstileToken) {
       return fail({
+        details: {
+          field: "turnstile",
+          reason: "turnstile_missing",
+          retryable: true,
+          shouldResetTurnstile: true,
+        },
         error: TURNSTILE_FAILED_ERROR,
         eventType: "signup_turnstile_missing_token",
         message: "Please complete the Turnstile verification.",
@@ -1134,6 +1185,12 @@ export async function POST(request: Request) {
 
     if (turnstileVerification.hostnameMismatch) {
       return fail({
+        details: {
+          field: "turnstile",
+          reason: "turnstile_hostname_mismatch",
+          retryable: false,
+          shouldResetTurnstile: false,
+        },
         error: TURNSTILE_FAILED_ERROR,
         eventType: "signup_turnstile_hostname_mismatch",
         message: getTurnstileFailureMessage("invalid", turnstileEnv, turnstileVerification.errorCodes, turnstileDiagnostics),
@@ -1157,6 +1214,12 @@ export async function POST(request: Request) {
 
     if (!turnstileVerification.ok) {
       return fail({
+        details: {
+          field: "turnstile",
+          reason: "turnstile_invalid_or_expired",
+          retryable: true,
+          shouldResetTurnstile: true,
+        },
         error: TURNSTILE_FAILED_ERROR,
         eventType: "signup_turnstile_failed",
         message: getTurnstileFailureMessage(
@@ -1239,6 +1302,13 @@ export async function POST(request: Request) {
       notification_preferences: notificationPreferences,
     };
 
+    logSupabaseResponse("Attempting Supabase signup via generateLink.", {
+      email: normalizedEmail,
+      emailRedirectTo,
+      metadataKeys: Object.keys(initialUserMetadata),
+      passwordLength: password.length,
+    });
+
     const { data: signupData, error: signupError } = await adminClient.auth.admin.generateLink({
       email: normalizedEmail,
       options: {
@@ -1250,12 +1320,15 @@ export async function POST(request: Request) {
     });
 
     logSupabaseResponse("Supabase user creation result.", {
+      actionLinkPreview: maskUrlForLogs(signupData?.properties?.action_link ?? null),
       actionLinkPresent: Boolean(signupData?.properties?.action_link),
       error: signupError
         ? {
             ...serializeSupabaseAuthError(signupError),
           }
         : null,
+      generatedLinkType: signupData?.properties?.email_otp ? "otp" : (signupData?.properties?.action_link ? "action_link" : null),
+      propertiesKeys: signupData?.properties ? Object.keys(signupData.properties) : [],
       userId: signupData?.user?.id ?? null,
     });
 
@@ -1418,6 +1491,7 @@ export async function POST(request: Request) {
         console.info(`${ROUTE_TAG} Verification email send result.`, {
           emailSendResult,
           emailStatus,
+          userCreated: true,
           userId: createdUser.id,
         });
       } catch (error) {
@@ -1485,12 +1559,14 @@ export async function POST(request: Request) {
     });
 
     return buildSuccessResponse({
+      emailFailureReason,
       emailStatus,
       message:
         emailStatus === "sent"
           ? "Verification email sent successfully."
           : "Account created, but the verification email could not be sent.",
       risk,
+      userId: createdUser.id,
     });
   } catch (error) {
     console.error(`${ROUTE_TAG} Unhandled signup error.`, serializeError(error));

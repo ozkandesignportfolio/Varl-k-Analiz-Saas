@@ -54,6 +54,7 @@ const trialDocumentLimit = trialPlan.limits.documentsLimit ?? 0;
 const trialSubscriptionLimit = trialPlan.limits.subscriptionsLimit ?? 0;
 const trialInvoiceUploadLimit = trialPlan.limits.invoiceUploadsLimit ?? 0;
 const PASSWORD_MIN_LENGTH = 8;
+const TURNSTILE_TOKEN_MAX_AGE_MS = 90_000;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
 
 type SignupFormProps = {
@@ -81,6 +82,7 @@ type SignupTurnstileSectionProps = {
   onStatusChange: (status: TurnstileWidgetStatus) => void;
   onTokenChange: (token: string | null) => void;
   onWarningChange: (warning: string | null) => void;
+  resetTrigger: number;
   siteKey: string | null;
 };
 
@@ -325,6 +327,7 @@ const SignupTurnstileSection = memo(function SignupTurnstileSection({
   onStatusChange,
   onTokenChange,
   onWarningChange,
+  resetTrigger,
   siteKey,
 }: SignupTurnstileSectionProps) {
   return (
@@ -333,6 +336,7 @@ const SignupTurnstileSection = memo(function SignupTurnstileSection({
         onStatusChange={onStatusChange}
         onTokenChange={onTokenChange}
         onWarningChange={onWarningChange}
+        resetTrigger={resetTrigger}
         siteKey={siteKey}
       />
     </div>
@@ -363,6 +367,9 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileStatus, setTurnstileStatus] = useState<TurnstileWidgetStatus>("idle");
   const [turnstileRuntimeWarning, setTurnstileRuntimeWarning] = useState<string | null>(null);
+  const [resetCounter, setResetCounter] = useState(0);
+  const tokenTimestampRef = useRef<number | null>(null);
+  const expiryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const combinedTurnstileWarning = turnstileRuntimeWarning ?? resolvedTurnstileWarning;
 
@@ -455,12 +462,64 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
     setMessage((currentMessage) => (currentMessage ? "" : currentMessage));
   }, []);
 
+  const triggerReset = useCallback(() => {
+    setTurnstileToken(null);
+    setTurnstileStatus("expired");
+    tokenTimestampRef.current = null;
+    if (expiryTimeoutRef.current) {
+      clearTimeout(expiryTimeoutRef.current);
+      expiryTimeoutRef.current = null;
+    }
+    setResetCounter((prev) => prev + 1);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (expiryTimeoutRef.current) {
+        clearTimeout(expiryTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleTurnstileTokenChange = useCallback((value: string | null) => {
     if (!submitLockRef.current) {
       clearMessage();
     }
 
     setTurnstileToken((currentValue) => (currentValue === value ? currentValue : value));
+
+    if (value) {
+      tokenTimestampRef.current = Date.now();
+
+      if (expiryTimeoutRef.current) {
+        clearTimeout(expiryTimeoutRef.current);
+      }
+
+      expiryTimeoutRef.current = setTimeout(() => {
+        if (process.env.NODE_ENV === "development") {
+          console.debug("[signup.turnstile] Token expired via timeout after 90s.");
+        }
+        setTurnstileToken(null);
+        setTurnstileStatus("expired");
+        tokenTimestampRef.current = null;
+        expiryTimeoutRef.current = null;
+        setMessage("Doğrulama süresi doldu. Lütfen güvenlik kontrolünü tekrar tamamlayın.");
+        setResetCounter((prev) => prev + 1);
+      }, TURNSTILE_TOKEN_MAX_AGE_MS);
+
+      if (process.env.NODE_ENV === "development") {
+        console.debug("[signup.turnstile] Token received.", {
+          tokenLength: value.length,
+          timestamp: tokenTimestampRef.current,
+        });
+      }
+    } else {
+      tokenTimestampRef.current = null;
+      if (expiryTimeoutRef.current) {
+        clearTimeout(expiryTimeoutRef.current);
+        expiryTimeoutRef.current = null;
+      }
+    }
   }, [clearMessage]);
 
   const handleTurnstileWarningChange = useCallback((value: string | null) => {
@@ -517,6 +576,24 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
     submitLockRef.current = true;
     setIsSubmitting(true);
 
+    const tokenAge = tokenTimestampRef.current ? Date.now() - tokenTimestampRef.current : null;
+
+    if (process.env.NODE_ENV === "development") {
+      console.debug("[signup.turnstile] Submit token lifecycle.", {
+        tokenAge: tokenAge !== null ? `${Math.round(tokenAge / 1000)}s` : "N/A",
+        tokenPresent: Boolean(turnstileToken),
+        tokenTimestamp: tokenTimestampRef.current,
+      });
+    }
+
+    if (!turnstileToken || tokenAge === null || tokenAge > TURNSTILE_TOKEN_MAX_AGE_MS) {
+      setMessage("Güvenlik doğrulamasının süresi doldu. Lütfen tekrar doğrulayın.");
+      triggerReset();
+      setIsSubmitting(false);
+      submitLockRef.current = false;
+      return;
+    }
+
     const abortController = new AbortController();
     const timeoutId = window.setTimeout(() => abortController.abort(), 15_000);
 
@@ -562,6 +639,19 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
             responseStatus: response.status,
             turnstileStatus,
           });
+        }
+
+        if (
+          errorResult?.error === TURNSTILE_FAILED_ERROR ||
+          errorResult?.details?.shouldResetTurnstile === true
+        ) {
+          if (process.env.NODE_ENV === "development") {
+            console.debug("[signup.turnstile] Backend requested Turnstile reset.", {
+              error: errorResult?.error,
+              shouldResetTurnstile: errorResult?.details?.shouldResetTurnstile,
+            });
+          }
+          triggerReset();
         }
 
         setMessage(
@@ -764,6 +854,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
               onStatusChange={handleTurnstileStatusChange}
               onTokenChange={handleTurnstileTokenChange}
               onWarningChange={handleTurnstileWarningChange}
+              resetTrigger={resetCounter}
               siteKey={turnstileSiteKey}
             />
 

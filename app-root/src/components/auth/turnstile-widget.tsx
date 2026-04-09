@@ -13,6 +13,7 @@ type TurnstileWidgetProps = {
   onStatusChange?: (status: TurnstileWidgetStatus) => void;
   onTokenChange: (token: string | null) => void;
   onWarningChange?: (warning: string | null) => void;
+  resetTrigger?: number;
   siteKey?: string | null;
   theme?: "auto" | "light" | "dark";
 };
@@ -39,6 +40,7 @@ type TurnstileDebugState = {
   lastErrorCode: string | null;
   renderCalled: boolean;
   scriptLoaded: boolean;
+  tokenReceivedAt: number | null;
   usingTestKey: boolean;
   windowTurnstile: boolean;
 };
@@ -219,6 +221,7 @@ function TurnstileWidget({
   onStatusChange,
   onTokenChange,
   onWarningChange,
+  resetTrigger = 0,
   siteKey,
   theme = "auto",
 }: TurnstileWidgetProps) {
@@ -240,6 +243,7 @@ function TurnstileWidget({
   const statusRef = useRef<TurnstileWidgetStatus>("idle");
   const tokenRef = useRef<string | null>(null);
   const warningRef = useRef<string | null>(null);
+  const prevResetTriggerRef = useRef(resetTrigger);
 
   const hostname = typeof window !== "undefined" ? window.location.hostname : null;
   const configuredSiteKey = siteKey?.trim() || readPublicTurnstileSiteKey().siteKey;
@@ -265,6 +269,7 @@ function TurnstileWidget({
     lastErrorCode: null,
     renderCalled: false,
     scriptLoaded: typeof window !== "undefined" && Boolean(window.turnstile),
+    tokenReceivedAt: null,
     usingTestKey: isUsingTestKey,
     windowTurnstile: typeof window !== "undefined" && Boolean(window.turnstile),
   }));
@@ -449,9 +454,11 @@ function TurnstileWidget({
           updateDebugState({
             callbackTriggered: true,
             lastErrorCode: null,
+            tokenReceivedAt: Date.now(),
           });
           debugTurnstile("Widget callback fired.", {
             tokenLength: token.length,
+            tokenReceivedAt: Date.now(),
             widgetId: widgetIdRef.current,
           });
         },
@@ -610,6 +617,29 @@ function TurnstileWidget({
     };
   }, []);
 
+  useEffect(() => {
+    if (prevResetTriggerRef.current === resetTrigger) {
+      return;
+    }
+    prevResetTriggerRef.current = resetTrigger;
+
+    const widgetId = widgetIdRef.current;
+    if (!widgetId || !window.turnstile?.reset) {
+      return;
+    }
+
+    emitToken(null);
+    emitStatus("idle");
+    emitWarning(null);
+
+    try {
+      window.turnstile.reset(widgetId);
+      debugTurnstile("Widget reset via resetTrigger.", { resetTrigger, widgetId });
+    } catch (error) {
+      debugTurnstile("Widget reset via resetTrigger failed.", { error, resetTrigger, widgetId });
+    }
+  }, [resetTrigger]);
+
   const displayWarning = resolvedSiteKey
     ? runtimeWarning ?? (scriptFailed ? ADBLOCK_MESSAGE : null)
     : TURNSTILE_SITE_KEY_MISSING_MESSAGE;
@@ -642,6 +672,7 @@ function TurnstileWidget({
             <DebugLine label="callback tetiklendi" value={debugState.callbackTriggered ? "Evet" : "Hayir"} />
             <DebugLine label="site key modu" value={debugState.usingTestKey ? "Test key" : "Env key"} />
             <DebugLine label="son hata" value={debugState.lastErrorCode ?? "-"} />
+            <DebugLine label="token alindi" value={debugState.tokenReceivedAt ? new Date(debugState.tokenReceivedAt).toLocaleTimeString() : "-"} />
           </div>
         </div>
       ) : null}
