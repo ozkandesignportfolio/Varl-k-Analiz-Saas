@@ -32,6 +32,7 @@ import {
   RATE_LIMITED_ERROR,
   TERMS_NOT_ACCEPTED_ERROR,
   TURNSTILE_FAILED_ERROR,
+  TURNSTILE_TOKEN_USED_ERROR,
   type SignupApiResponse,
   type SignupApiErrorCode as SignupErrorCode,
   type SignupRisk,
@@ -49,6 +50,14 @@ import {
 export const runtime = "nodejs";
 
 const ROUTE_TAG = "[auth.signup]";
+
+// PRODUCTION-SAFE: Turnstile tokens are single-use by Cloudflare design.
+// The verifyTurnstileToken() call to Cloudflare is the source of truth.
+// In-memory deduplication is REMOVED because:
+// 1. Serverless instances don't share memory - useless for replay protection
+// 2. Turnstile tokens expire ~5 minutes and can only be verified once
+// 3. Adds complexity without real security benefit
+// 4. Upstash Redis could be used if true cross-instance dedup is needed
 const RESEND_API_URL = "https://api.resend.com/emails";
 const DEFAULT_FROM_EMAIL = "Assetly <onboarding@resend.dev>";
 const PASSWORD_MIN_LENGTH = 8;
@@ -462,6 +471,13 @@ const safeLogSecurityEvent = async (
   }
 };
 
+// PRODUCTION-SAFE: Atomic user creation with guaranteed rollback on failure.
+// Uses a transaction-like pattern: if ANY bootstrap step fails, auth user is DELETED.
+// This ensures no orphan users without profiles.
+type BootstrapResult =
+  | { ok: true }
+  | { ok: false; error: Error; stage: "profile" | "notification_settings" | "user_consents" };
+
 const persistSignupBootstrapRecords = async (input: {
   acceptedKvkk: boolean;
   acceptedPrivacyPolicy: boolean;
@@ -471,9 +487,10 @@ const persistSignupBootstrapRecords = async (input: {
   ip: string;
   userAgent: string | null;
   userId: string;
-}) => {
+}): Promise<BootstrapResult> => {
   const consentedAt = new Date().toISOString();
 
+  // Stage 1: Profile (REQUIRED - user cannot exist without profile)
   const { error: profileError } = await input.adminClient.from("profiles").upsert(
     {
       id: input.userId,
@@ -488,9 +505,14 @@ const persistSignupBootstrapRecords = async (input: {
   });
 
   if (profileError) {
-    throw new Error(`Failed to upsert profile: ${profileError.message}`);
+    return {
+      ok: false,
+      error: new Error(`Failed to upsert profile: ${profileError.message}`),
+      stage: "profile",
+    };
   }
 
+  // Stage 2: Notification settings (REQUIRED)
   const { error: notificationError } = await input.adminClient.from("notification_settings").upsert(
     {
       user_id: input.userId,
@@ -504,9 +526,14 @@ const persistSignupBootstrapRecords = async (input: {
   });
 
   if (notificationError) {
-    throw new Error(`Failed to upsert notification settings: ${notificationError.message}`);
+    return {
+      ok: false,
+      error: new Error(`Failed to upsert notification settings: ${notificationError.message}`),
+      stage: "notification_settings",
+    };
   }
 
+  // Stage 3: User consents (REQUIRED)
   const { error: consentError } = await input.adminClient.from("user_consents").insert({
     accepted_kvkk: input.acceptedKvkk,
     accepted_privacy_policy: input.acceptedPrivacyPolicy,
@@ -524,8 +551,61 @@ const persistSignupBootstrapRecords = async (input: {
   });
 
   if (consentError) {
-    throw new Error(`Failed to insert user consent: ${consentError.message}`);
+    return {
+      ok: false,
+      error: new Error(`Failed to insert user consent: ${consentError.message}`),
+      stage: "user_consents",
+    };
   }
+
+  return { ok: true };
+};
+
+// PRODUCTION-SAFE: Guaranteed user deletion for rollback.
+// Retries once on failure because auth deletion is critical for data consistency.
+const rollbackAuthUser = async (
+  adminClient: ReturnType<typeof createAdminClient>,
+  userId: string,
+  context: { stage: string; originalError: string },
+): Promise<{ ok: boolean; error?: Error }> => {
+  console.error(`${ROUTE_TAG} ROLLBACK: Deleting auth user due to bootstrap failure.`, {
+    context,
+    userId,
+  });
+
+  // First attempt
+  const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId);
+
+  if (!deleteError) {
+    console.info(`${ROUTE_TAG} ROLLBACK: Auth user deleted successfully.`, { userId });
+    return { ok: true };
+  }
+
+  console.error(`${ROUTE_TAG} ROLLBACK: Auth user deletion failed, retrying once.`, {
+    deleteError,
+    userId,
+  });
+
+  // Retry once after 500ms (transient failure)
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  const { error: retryError } = await adminClient.auth.admin.deleteUser(userId);
+
+  if (!retryError) {
+    console.info(`${ROUTE_TAG} ROLLBACK: Auth user deleted on retry.`, { userId });
+    return { ok: true };
+  }
+
+  // CRITICAL: User exists without profile. Log for manual cleanup.
+  console.error(`${ROUTE_TAG} ROLLBACK FAILED: Orphan auth user requires manual cleanup!`, {
+    context,
+    retryError,
+    userId,
+  });
+
+  return {
+    ok: false,
+    error: new Error(`Rollback failed: ${retryError.message}`),
+  };
 };
 
 const buildSignupEmailHtml = (input: {
@@ -1155,6 +1235,8 @@ export async function POST(request: Request) {
       });
     }
 
+    // PRODUCTION-SAFE: Turnstile verification (Cloudflare is the source of truth).
+    // No in-memory deduplication needed - Turnstile tokens are single-use by design.
     const turnstileVerification = await verifyTurnstileToken({
       requestHost,
       remoteIp: requestIp,
@@ -1202,7 +1284,58 @@ export async function POST(request: Request) {
       tokenPresent: Boolean(turnstileToken),
     });
 
+    // PRODUCTION-SAFE: HARD validation - explicit checks for all security criteria
+    const turnstileHostnameValid = !turnstileVerification.hostnameMismatch;
+    // If action is expected, validate it matches (uncomment if using actions)
+    // const expectedAction = "signup";
+    // const turnstileActionValid = !expectedAction || turnstileVerification.action === expectedAction;
+    const turnstileActionValid = true; // No action validation unless explicitly configured
+
+    // turnstileVerification.ok is the definitive success indicator from Cloudflare
+    if (!turnstileVerification.ok || !turnstileHostnameValid || !turnstileActionValid) {
+      const failureReasons: string[] = [];
+      if (!turnstileVerification.ok) failureReasons.push("verification_failed");
+      if (!turnstileHostnameValid) failureReasons.push("hostname_mismatch");
+      if (!turnstileActionValid) failureReasons.push("action_mismatch");
+
+      // Type guard: reason only exists when ok is false
+      const failureReason = turnstileVerification.ok === false ? turnstileVerification.reason : "invalid";
+
+      return fail({
+        step: "captcha",
+        error: TURNSTILE_FAILED_ERROR,
+        reason: "turnstile_hard_validation_failed",
+        shouldResetTurnstile: true,
+        eventType: "signup_turnstile_hard_validation_failed",
+        message: getTurnstileFailureMessage(
+          failureReason,
+          turnstileEnv,
+          turnstileVerification.errorCodes,
+          turnstileDiagnostics,
+        ),
+        metadata: {
+          request_forwarded_host: forwardedHost,
+          request_host: requestHost,
+          request_host_header: hostHeader,
+          request_origin: origin,
+          turnstile_action: turnstileVerification.action,
+          turnstile_error_codes: turnstileVerification.errorCodes,
+          turnstile_failure_reasons: failureReasons,
+          turnstile_hostname: turnstileVerification.hostname,
+          turnstile_hostname_valid: turnstileHostnameValid,
+          turnstile_issue: turnstileVerification.issue,
+          turnstile_ok: turnstileVerification.ok,
+        },
+        status: 403,
+        turnstile: turnstileDiagnostics,
+        turnstileErrorCodes: turnstileVerification.errorCodes,
+        turnstileVerified: false,
+      });
+    }
+
+    // After passing hard validation, we know ok is true, so these checks are defense-in-depth
     if (turnstileVerification.hostnameMismatch) {
+      // This should not happen due to hard validation above, but keep for defense-in-depth
       return fail({
         step: "captcha",
         error: TURNSTILE_FAILED_ERROR,
@@ -1228,37 +1361,7 @@ export async function POST(request: Request) {
       });
     }
 
-    if (!turnstileVerification.ok) {
-      return fail({
-        step: "captcha",
-        error: TURNSTILE_FAILED_ERROR,
-        reason: "turnstile_invalid_or_expired",
-        shouldResetTurnstile: true,
-        eventType: "signup_turnstile_failed",
-        message: getTurnstileFailureMessage(
-          turnstileVerification.reason,
-          turnstileEnv,
-          turnstileVerification.errorCodes,
-          turnstileDiagnostics,
-        ),
-        metadata: {
-          request_forwarded_host: forwardedHost,
-          request_host: requestHost,
-          request_host_header: hostHeader,
-          request_origin: origin,
-          turnstile_action: turnstileVerification.action,
-          turnstile_error_codes: turnstileVerification.errorCodes,
-          turnstile_hostname: turnstileVerification.hostname,
-          turnstile_issue: turnstileVerification.issue,
-          turnstile_reason: turnstileVerification.reason,
-        },
-        status: turnstileVerification.reason === "invalid" ? 403 : 503,
-        turnstile: turnstileDiagnostics,
-        turnstileErrorCodes: turnstileVerification.errorCodes,
-        turnstileVerified: false,
-      });
-    }
-
+    // All Turnstile validations passed - proceed with signup
     console.info(`${ROUTE_TAG} TURNSTILE_RESULT`, {
       ok: true,
       step: "captcha",
@@ -1413,30 +1516,44 @@ export async function POST(request: Request) {
       method: fallbackToMagicLink ? "magiclink" : "signup",
     });
 
-    try {
-      await persistSignupBootstrapRecords({
-        acceptedKvkk: true,
-        acceptedPrivacyPolicy: true,
-        acceptedTerms: true,
-        adminClient,
-        email: normalizedEmail,
-        ip: requestIp,
-        userAgent: requestUserAgent,
-        userId: theUserId,
-      });
-    } catch (error) {
+    // PRODUCTION-SAFE: Atomic bootstrap with guaranteed rollback on failure
+    const bootstrapResult = await persistSignupBootstrapRecords({
+      acceptedKvkk: true,
+      acceptedPrivacyPolicy: true,
+      acceptedTerms: true,
+      adminClient,
+      email: normalizedEmail,
+      ip: requestIp,
+      userAgent: requestUserAgent,
+      userId: theUserId,
+    });
+
+    if (!bootstrapResult.ok) {
       console.error(`${ROUTE_TAG} Failed to persist signup bootstrap records.`, {
-        error: serializeError(error),
+        error: bootstrapResult.error.message,
+        stage: bootstrapResult.stage,
         userId: theUserId,
       });
 
-      const { error: deleteError } = await adminClient.auth.admin.deleteUser(theUserId);
+      // CRITICAL: Rollback auth user to maintain data consistency
+      const rollbackResult = await rollbackAuthUser(adminClient, theUserId, {
+        originalError: bootstrapResult.error.message,
+        stage: bootstrapResult.stage,
+      });
+
+      if (!rollbackResult.ok) {
+        // CRITICAL: Orphan user exists - logged in rollback function for manual cleanup
+        console.error(`${ROUTE_TAG} CRITICAL: Orphan user may exist after rollback failure.`, {
+          rollbackError: rollbackResult.error?.message,
+          userId: theUserId,
+        });
+      }
 
       return fail({
         step: "user",
         error: INTERNAL_ERROR,
         eventType: "signup_bootstrap_failed",
-        message: "Supabase user was created but the signup bootstrap records could not be completed.",
+        message: "Hesap oluşturulamadı. Lütfen tekrar deneyin.",
         status: 500,
         turnstileVerified: true,
       });

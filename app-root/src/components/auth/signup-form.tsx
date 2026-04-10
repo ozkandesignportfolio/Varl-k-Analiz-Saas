@@ -40,10 +40,30 @@ import {
   SIGNUP_COOLDOWN_STORAGE_KEY,
   TERMS_NOT_ACCEPTED_ERROR,
   TURNSTILE_FAILED_ERROR,
+  TURNSTILE_TOKEN_USED_ERROR,
   getSignupCooldownRemainingSeconds,
   type SignupApiErrorResponse,
   type SignupApiSuccessResponse,
 } from "@/lib/supabase/signup";
+
+// PRODUCTION-SAFE STATE MACHINE
+// Valid states: idle -> verifying_captcha -> creating_user -> sending_email -> success | email_failed | rollback | error
+type SignupState =
+  | { type: "idle" }
+  | { type: "verifying_captcha"; token: string; requestId: string }
+  | { type: "creating_user"; token: string; requestId: string }
+  | { type: "sending_email"; userId: string; requestId: string }
+  | { type: "success"; emailStatus: "sent"; userMessage: string }
+  | { type: "email_failed"; userMessage: string }
+  | { type: "rollback"; reason: string; userMessage: string }  // Backend rolled back user creation
+  | { type: "error"; error: string; shouldResetTurnstile: boolean; userMessage: string };
+
+// Token lifecycle state - SINGLE SOURCE OF TRUTH
+type TokenLifecycle =
+  | { type: "empty" }
+  | { type: "available"; token: string; expiresAt: number }
+  | { type: "consumed"; token: string; usedAt: number; requestId: string }
+  | { type: "expired"; previousToken: string; expiredAt: number };
 
 const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
@@ -56,6 +76,9 @@ const trialInvoiceUploadLimit = trialPlan.limits.invoiceUploadsLimit ?? 0;
 const PASSWORD_MIN_LENGTH = 8;
 const TURNSTILE_TOKEN_MAX_AGE_MS = 90_000;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
+
+// Generate unique request ID for tracking
+const generateRequestId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 
 type SignupFormProps = {
   emailRedirectTo: string;
@@ -272,6 +295,10 @@ const getSignupErrorMessage = (
     return "Bu e-posta zaten kayitli.";
   }
 
+  if (error === TURNSTILE_TOKEN_USED_ERROR) {
+    return "Bu güvenlik doğrulaması zaten kullanıldı. Lütfen yeni bir doğrulama tamamlayın.";
+  }
+
   if (error === TURNSTILE_FAILED_ERROR) {
     return (
       getTurnstileDiagnosticsMessage(turnstile) ??
@@ -347,7 +374,6 @@ const SignupTurnstileSection = memo(function SignupTurnstileSection({
 
 export default function SignupForm({ emailRedirectTo, pageWarning = null }: SignupFormProps) {
   const router = useRouter();
-  const submitLockRef = useRef(false);
   const { siteKey: envTurnstileSiteKey, warning: envTurnstileWarning } = readPublicTurnstileSiteKey();
   const [turnstileSiteKey, setTurnstileSiteKey] = useState<string | null>(envTurnstileSiteKey);
   const [resolvedTurnstileWarning, setResolvedTurnstileWarning] = useState<string | null>(
@@ -363,18 +389,54 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
   const [acceptedKvkk, setAcceptedKvkk] = useState(false);
   const [deviceFingerprint, setDeviceFingerprint] = useState(UNKNOWN_DEVICE_FINGERPRINT);
   const [fingerprintStatus, setFingerprintStatus] = useState<FingerprintStatus>("loading");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [message, setMessage] = useState("");
   const [cooldownRemainingSeconds, setCooldownRemainingSeconds] = useState(0);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileStatus, setTurnstileStatus] = useState<TurnstileWidgetStatus>("idle");
   const [turnstileRuntimeWarning, setTurnstileRuntimeWarning] = useState<string | null>(null);
   const [resetCounter, setResetCounter] = useState(0);
-  const tokenTimestampRef = useRef<number | null>(null);
+
+  // PRODUCTION-SAFE: State machine for signup flow
+  const [signupState, setSignupState] = useState<SignupState>({ type: "idle" });
+
+  // SINGLE SOURCE OF TRUTH: Token lifecycle - no separate refs!
+  const tokenLifecycleRef = useRef<TokenLifecycle>({ type: "empty" });
   const expiryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const tokenUsedRef = useRef<boolean>(false);
+
+  // Computed values from state machine
+  const isSubmitting = signupState.type !== "idle" && signupState.type !== "success" && signupState.type !== "error";
+  const message = signupState.type === "success"
+    ? signupState.userMessage
+    : signupState.type === "error"
+      ? signupState.userMessage
+      : "";
 
   const combinedTurnstileWarning = turnstileRuntimeWarning ?? resolvedTurnstileWarning;
+
+  // Helper to get current turnstile token from lifecycle
+  const getCurrentToken = useCallback((): string | null => {
+    const lifecycle = tokenLifecycleRef.current;
+    if (lifecycle.type === "available") {
+      return lifecycle.token;
+    }
+    if (lifecycle.type === "consumed") {
+      return lifecycle.token; // Still return for validation, but it's consumed
+    }
+    return null;
+  }, []);
+
+  // Helper to check if token is valid for submission
+  const isTokenValidForSubmission = useCallback((): boolean => {
+    const lifecycle = tokenLifecycleRef.current;
+    if (lifecycle.type !== "available") {
+      return false;
+    }
+    const now = Date.now();
+    if (now > lifecycle.expiresAt) {
+      // Token expired - transition state
+      tokenLifecycleRef.current = { type: "expired", previousToken: lifecycle.token, expiredAt: now };
+      return false;
+    }
+    return true;
+  }, []);
 
   useEffect(() => {
     debugPublicTurnstileSiteKey();
@@ -447,6 +509,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
   }, []);
 
   const isCooldownActive = cooldownRemainingSeconds > 0;
+  const currentToken = getCurrentToken();
   const validationMessage = getSignupValidationMessage({
     acceptedKvkk,
     acceptedLegalDocuments,
@@ -457,25 +520,44 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
     password,
     turnstileSiteKey,
     turnstileStatus,
-    turnstileToken,
+    turnstileToken: currentToken,
     turnstileWarning: combinedTurnstileWarning ?? (!emailRedirectTo ? "Kayit yonlendirmesi hazirlaniyor." : null),
   });
 
-  const clearMessage = useCallback(() => {
-    setMessage((currentMessage) => (currentMessage ? "" : currentMessage));
+  const clearErrorState = useCallback(() => {
+    setSignupState((current) => {
+      if (current.type === "error") {
+        return { type: "idle" };
+      }
+      return current;
+    });
   }, []);
 
+  // PRODUCTION-SAFE: Centralized reset that clears ALL token state
   const triggerReset = useCallback(() => {
-    setTurnstileToken(null);
-    setTurnstileStatus("expired");
-    tokenTimestampRef.current = null;
+    // SINGLE SOURCE OF TRUTH: Clear token lifecycle
+    tokenLifecycleRef.current = { type: "empty" };
+
+    // Clear timeout
     if (expiryTimeoutRef.current) {
       clearTimeout(expiryTimeoutRef.current);
       expiryTimeoutRef.current = null;
     }
+
+    // Reset UI state
+    setTurnstileStatus("expired");
     setResetCounter((prev) => prev + 1);
+
+    // If we were in an error state, go back to idle
+    setSignupState((current) => {
+      if (current.type === "error") {
+        return { type: "idle" };
+      }
+      return current;
+    });
   }, []);
 
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (expiryTimeoutRef.current) {
@@ -484,68 +566,89 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
     };
   }, []);
 
+  // PRODUCTION-SAFE: Handle token changes with single source of truth
   const handleTurnstileTokenChange = useCallback((value: string | null) => {
-    if (!submitLockRef.current) {
-      clearMessage();
-    }
-
-    setTurnstileToken((currentValue) => (currentValue === value ? currentValue : value));
-
-    // Reset token used flag when getting a new token OR when token is cleared (expired)
-    if (value !== turnstileToken) {
-      tokenUsedRef.current = false;
-    }
+    // Clear any error state when token changes (user is interacting)
+    clearErrorState();
 
     if (value) {
-      tokenTimestampRef.current = Date.now();
+      const now = Date.now();
+      const expiresAt = now + TURNSTILE_TOKEN_MAX_AGE_MS;
 
+      // SINGLE SOURCE OF TRUTH: Set token lifecycle
+      tokenLifecycleRef.current = { type: "available", token: value, expiresAt };
+
+      // Clear any existing timeout
       if (expiryTimeoutRef.current) {
         clearTimeout(expiryTimeoutRef.current);
       }
 
+      // Set new timeout - BUT check if request is in flight before resetting
       expiryTimeoutRef.current = setTimeout(() => {
-        if (process.env.NODE_ENV === "development") {
-          console.debug("[signup.turnstile] Token expired via timeout after 90s.");
+        const lifecycle = tokenLifecycleRef.current;
+
+        // CRITICAL FIX: Only reset if NOT currently in a request
+        // If a request is in flight, let it complete - the error handler will deal with it
+        if (lifecycle.type === "consumed") {
+          if (process.env.NODE_ENV === "development") {
+            console.debug("[signup.turnstile] Token expired but request in flight - deferring reset.");
+          }
+          // Mark as expired but don't reset yet - the request completion will handle it
+          tokenLifecycleRef.current = {
+            type: "expired",
+            previousToken: lifecycle.token,
+            expiredAt: Date.now(),
+          };
+          return;
         }
-        setTurnstileToken(null);
+
+        if (process.env.NODE_ENV === "development") {
+          console.debug("[signup.turnstile] Token expired via timeout.");
+        }
+
+        // Only reset UI if we're not submitting
+        setSignupState((current) => {
+          if (current.type === "idle" || current.type === "error") {
+            return {
+              type: "error",
+              error: "token_expired",
+              shouldResetTurnstile: true,
+              userMessage: "Doğrulama süresi doldu. Lütfen güvenlik kontrolünü tekrar tamamlayın.",
+            };
+          }
+          return current;
+        });
+
+        tokenLifecycleRef.current = { type: "empty" };
         setTurnstileStatus("expired");
-        tokenTimestampRef.current = null;
-        expiryTimeoutRef.current = null;
-        tokenUsedRef.current = false; // CRITICAL FIX: Reset on expiry
-        setMessage("Doğrulama süresi doldu. Lütfen güvenlik kontrolünü tekrar tamamlayın.");
         setResetCounter((prev) => prev + 1);
       }, TURNSTILE_TOKEN_MAX_AGE_MS);
 
       if (process.env.NODE_ENV === "development") {
         console.debug("[signup.turnstile] Token received.", {
           tokenLength: value.length,
-          timestamp: tokenTimestampRef.current,
+          expiresAt: new Date(expiresAt).toISOString(),
         });
       }
     } else {
-      tokenTimestampRef.current = null;
+      // Token cleared - reset lifecycle
+      tokenLifecycleRef.current = { type: "empty" };
       if (expiryTimeoutRef.current) {
         clearTimeout(expiryTimeoutRef.current);
         expiryTimeoutRef.current = null;
       }
     }
-  }, [clearMessage]);
+  }, [clearErrorState]);
 
   const handleTurnstileWarningChange = useCallback((value: string | null) => {
-    if (!submitLockRef.current) {
-      clearMessage();
-    }
-
+    clearErrorState();
     setTurnstileRuntimeWarning((currentValue) => (currentValue === value ? currentValue : value));
-  }, [clearMessage]);
+  }, [clearErrorState]);
 
   const handleTurnstileStatusChange = useCallback((value: TurnstileWidgetStatus) => {
-    if (!submitLockRef.current) {
-      clearMessage();
-    }
-
+    clearErrorState();
     setTurnstileStatus((currentValue) => (currentValue === value ? currentValue : value));
-  }, [clearMessage]);
+  }, [clearErrorState]);
 
   const startSignupCooldown = () => {
     if (typeof window === "undefined") {
@@ -563,65 +666,82 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
     setCooldownRemainingSeconds(getSignupCooldownRemainingSeconds(cooldownEndTimestamp));
   };
 
+  // PRODUCTION-SAFE: Submit handler with state machine and hard lock
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    // IMMEDIATE HARD LOCK - Prevent race condition from double clicks
-    if (submitLockRef.current) {
-      return;
-    }
-    submitLockRef.current = true;
-
-    if (isSubmitting) {
-      submitLockRef.current = false;
+    // HARD LOCK: Check state machine FIRST - no race condition possible
+    const currentState = signupState;
+    if (currentState.type !== "idle" && currentState.type !== "error") {
+      // Already submitting - ignore
       return;
     }
 
-    setMessage("");
+    // Clear previous error state
+    if (currentState.type === "error") {
+      setSignupState({ type: "idle" });
+    }
 
+    // Validate cooldown
     if (isCooldownActive) {
-      submitLockRef.current = false;
-      setMessage(`${cooldownRemainingSeconds} saniye sonra tekrar deneyin.`);
+      setSignupState({
+        type: "error",
+        error: "cooldown_active",
+        shouldResetTurnstile: false,
+        userMessage: `${cooldownRemainingSeconds} saniye sonra tekrar deneyin.`,
+      });
       return;
     }
 
+    // Validate form
     if (validationMessage) {
-      submitLockRef.current = false;
-      setMessage(validationMessage);
+      setSignupState({
+        type: "error",
+        error: "validation_failed",
+        shouldResetTurnstile: false,
+        userMessage: validationMessage,
+      });
       return;
     }
 
-    // Prevent double submit - check if token was already used
-    if (tokenUsedRef.current) {
-      submitLockRef.current = false;
-      setMessage("Islem zaten gonderildi. Lutfen bekleyin.");
-      triggerReset();
+    // Validate token availability and expiry
+    const lifecycle = tokenLifecycleRef.current;
+    if (lifecycle.type !== "available") {
+      setSignupState({
+        type: "error",
+        error: "token_unavailable",
+        shouldResetTurnstile: true,
+        userMessage: "Lütfen bot doğrulamasını tamamlayın.",
+      });
       return;
     }
 
-    setIsSubmitting(true);
+    const now = Date.now();
+    if (now > lifecycle.expiresAt) {
+      tokenLifecycleRef.current = { type: "expired", previousToken: lifecycle.token, expiredAt: now };
+      setSignupState({
+        type: "error",
+        error: "token_expired",
+        shouldResetTurnstile: true,
+        userMessage: "Güvenlik doğrulamasının süresi doldu. Lütfen tekrar doğrulayın.",
+      });
+      return;
+    }
 
-    const tokenAge = tokenTimestampRef.current ? Date.now() - tokenTimestampRef.current : null;
+    // CONSUME TOKEN - mark as in-use with request ID
+    const requestId = generateRequestId();
+    tokenLifecycleRef.current = { type: "consumed", token: lifecycle.token, usedAt: now, requestId };
 
     if (process.env.NODE_ENV === "development") {
-      console.debug("[signup.turnstile] Submit token lifecycle.", {
-        tokenAge: tokenAge !== null ? `${Math.round(tokenAge / 1000)}s` : "N/A",
-        tokenPresent: Boolean(turnstileToken),
-        tokenTimestamp: tokenTimestampRef.current,
-        tokenUsed: tokenUsedRef.current,
+      console.debug("[signup] Starting submission.", {
+        requestId,
+        tokenLength: lifecycle.token.length,
+        expiresIn: Math.round((lifecycle.expiresAt - now) / 1000),
       });
     }
 
-    if (!turnstileToken || tokenAge === null || tokenAge > TURNSTILE_TOKEN_MAX_AGE_MS) {
-      setMessage("Güvenlik doğrulamasının süresi doldu. Lütfen tekrar doğrulayın.");
-      triggerReset();
-      setIsSubmitting(false);
-      submitLockRef.current = false;
-      return;
-    }
-
-    // Mark token as used to prevent duplicate submissions
-    tokenUsedRef.current = true;
+    // Transition to captcha verification state
+    setSignupState({ type: "verifying_captcha", token: lifecycle.token, requestId });
 
     const abortController = new AbortController();
     const timeoutId = window.setTimeout(() => abortController.abort(), 15_000);
@@ -644,7 +764,8 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
           firstName,
           lastName,
           password,
-          turnstileToken,
+          turnstileToken: lifecycle.token,
+          requestId, // Send request ID for correlation
         }),
       });
 
@@ -654,72 +775,86 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
         result && "ok" in result && result.ok && result.verified === true ? result : null;
 
       if (!response.ok || !successResult) {
+        // Handle rate limiting
         if (response.status === 429 || errorResult?.error === RATE_LIMITED_ERROR || errorResult?.error === EMAIL_RATE_LIMITED_ERROR) {
           startSignupCooldown();
         }
 
-        if (
-          process.env.NODE_ENV === "development" &&
-          errorResult?.error === TURNSTILE_FAILED_ERROR &&
-          turnstileStatus !== "unsupported"
-        ) {
-          console.warn("Turnstile domain mismatch olabilir", {
-            hasToken: Boolean(turnstileToken?.trim()),
-            responseStatus: response.status,
-            turnstileStatus,
-          });
-        }
-
-        if (
+        // Check if we need to reset turnstile
+        const shouldResetTurnstile =
           errorResult?.error === TURNSTILE_FAILED_ERROR ||
-          errorResult?.details?.shouldResetTurnstile === true
-        ) {
+          errorResult?.details?.shouldResetTurnstile === true;
+
+        if (shouldResetTurnstile) {
           if (process.env.NODE_ENV === "development") {
-            console.debug("[signup.turnstile] Backend requested Turnstile reset.", {
+            console.debug("[signup] Backend requested Turnstile reset.", {
               error: errorResult?.error,
-              shouldResetTurnstile: errorResult?.details?.shouldResetTurnstile,
             });
           }
           triggerReset();
         }
 
-        // Show real backend error message if available
+        // Show real backend error message
         const backendError = errorResult?.message || errorResult?.error;
-        setMessage(
+        const userMessage =
           getSignupErrorMessage(errorResult?.error, backendError, errorResult?.turnstile) ??
-            errorResult?.message ??
-            "Kayit islemi tamamlanamadi. Lutfen tekrar deneyin.",
-        );
-        // Reset token used flag on error so user can retry
-        tokenUsedRef.current = false;
+          errorResult?.message ??
+          "Kayıt işlemi tamamlanamadı. Lütfen tekrar deneyin.";
+
+        // RESET TOKEN so user can retry
+        tokenLifecycleRef.current = { type: "empty" };
+        if (expiryTimeoutRef.current) {
+          clearTimeout(expiryTimeoutRef.current);
+          expiryTimeoutRef.current = null;
+        }
+
+        setSignupState({
+          type: "error",
+          error: errorResult?.error || "unknown_error",
+          shouldResetTurnstile,
+          userMessage,
+        });
         return;
       }
 
-      const successMessage =
-        successResult.message ??
-        (successResult.emailStatus === "failed"
-          ? "Hesabiniz olusturuldu ancak dogrulama e-postasi gonderilemedi."
-          : emailVerificationSentMessage);
+      // SUCCESS: Handle based on email delivery status
+      const emailFailed = successResult.emailStatus === "failed";
 
-      setMessage(successMessage);
-
-      if (successResult.emailStatus !== "failed") {
+      if (emailFailed) {
+        // Email failed but user was created - special state for this case
+        setSignupState({
+          type: "email_failed",
+          userMessage: "Hesabınız oluşturuldu ancak doğrulama e-postası gönderilemedi. Lütfen giriş yapmayı deneyin veya destek ile iletişime geçin.",
+        });
+      } else {
+        // Full success - navigate to verification page
+        setSignupState({
+          type: "success",
+          emailStatus: "sent",
+          userMessage: successResult.message ?? emailVerificationSentMessage,
+        });
         router.push(buildEmailVerificationPath(email, null, { emailSent: true }));
       }
     } catch (error) {
-      // CRITICAL FIX: Reset tokenUsedRef on ANY error so user can retry
-      tokenUsedRef.current = false;
-      if (abortController.signal.aborted) {
-        setMessage("Kayit istegi zaman asimina ugradi. Sayfa acik kaldi; lutfen tekrar deneyin.");
-      } else {
-        const errorMessage = error instanceof Error ? error.message : "Beklenmeyen bir ag hatasi olustu.";
-        setMessage(`Kayit hatasi: ${errorMessage}`);
+      // RESET TOKEN on any error so user can retry
+      tokenLifecycleRef.current = { type: "empty" };
+      if (expiryTimeoutRef.current) {
+        clearTimeout(expiryTimeoutRef.current);
+        expiryTimeoutRef.current = null;
       }
+
+      const userMessage = abortController.signal.aborted
+        ? "Kayıt isteği zaman aşımına uğradı. Lütfen tekrar deneyin."
+        : `Kayıt hatası: ${error instanceof Error ? error.message : "Beklenmeyen bir ağ hatası oluştu."}`;
+
+      setSignupState({
+        type: "error",
+        error: "request_failed",
+        shouldResetTurnstile: true,
+        userMessage,
+      });
     } finally {
       window.clearTimeout(timeoutId);
-      setIsSubmitting(false);
-      submitLockRef.current = false;
-      // tokenUsedRef is now handled in catch block and on successful token change
     }
   };
 
@@ -759,7 +894,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
                   className={inputClassName}
                   name="firstName"
                   onChange={(event) => {
-                    clearMessage();
+                    clearErrorState();
                     setFirstName(event.target.value);
                   }}
                   placeholder="Adiniz"
@@ -776,7 +911,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
                   className={inputClassName}
                   name="lastName"
                   onChange={(event) => {
-                    clearMessage();
+                    clearErrorState();
                     setLastName(event.target.value);
                   }}
                   placeholder="Soyadiniz"
@@ -795,7 +930,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
                 data-testid="register-email-input"
                 name="email"
                 onChange={(event) => {
-                  clearMessage();
+                  clearErrorState();
                   setEmail(event.target.value);
                 }}
                 placeholder="ornek@mail.com"
@@ -814,7 +949,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
                 minLength={PASSWORD_MIN_LENGTH}
                 name="password"
                 onChange={(event) => {
-                  clearMessage();
+                  clearErrorState();
                   setPassword(event.target.value);
                 }}
                 placeholder={`En az ${PASSWORD_MIN_LENGTH} karakter`}
@@ -832,7 +967,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
                 minLength={PASSWORD_MIN_LENGTH}
                 name="confirmPassword"
                 onChange={(event) => {
-                  clearMessage();
+                  clearErrorState();
                   setConfirmPassword(event.target.value);
                 }}
                 placeholder="Sifrenizi tekrar girin"
@@ -849,7 +984,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
                 data-testid="register-accepted-legal-documents-input"
                 name="acceptedLegalDocuments"
                 onChange={(event) => {
-                  clearMessage();
+                  clearErrorState();
                   setAcceptedLegalDocuments(event.target.checked);
                 }}
                 required
@@ -874,7 +1009,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
                 data-testid="register-accepted-kvkk-input"
                 name="acceptedKvkk"
                 onChange={(event) => {
-                  clearMessage();
+                  clearErrorState();
                   setAcceptedKvkk(event.target.checked);
                 }}
                 required
