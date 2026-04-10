@@ -47,14 +47,13 @@ import {
 } from "@/lib/supabase/signup";
 
 // PRODUCTION-SAFE STATE MACHINE
-// Valid states: idle -> verifying_captcha -> creating_user -> sending_email -> success | email_failed | rollback | error
+// Valid states: idle -> verifying_captcha -> creating_user -> sending_email -> success | rollback | error
 type SignupState =
   | { type: "idle" }
   | { type: "verifying_captcha"; token: string; requestId: string }
   | { type: "creating_user"; token: string; requestId: string }
   | { type: "sending_email"; userId: string; requestId: string }
-  | { type: "success"; emailStatus: "sent"; userMessage: string }
-  | { type: "email_failed"; userMessage: string }
+  | { type: "success"; emailStatus: "queued" | "sent" | "failed"; userMessage: string }
   | { type: "rollback"; reason: string; userMessage: string }  // Backend rolled back user creation
   | { type: "error"; error: string; shouldResetTurnstile: boolean; userMessage: string };
 
@@ -788,40 +787,42 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
         return;
       }
 
-      // SUCCESS: Handle based on email delivery status
-      const emailFailed = successResult.emailStatus === "failed";
+      // SUCCESS: User created - show success regardless of email status
+      // Email is sent asynchronously in background (status: "queued")
+      console.log("SIGNUP_SUCCESS", { emailStatus: successResult.emailStatus, userId: successResult.userId });
 
-      console.log("NOTIFICATION_TRIGGERED", { success: true, emailStatus: successResult.emailStatus, emailFailed });
+      const emailStatus = successResult.emailStatus ?? "queued";
+      const isEmailFailed = emailStatus === "failed";
 
-      if (emailFailed) {
-        // Email failed but user was created - show warning toast
-        setSignupState({
-          type: "email_failed",
-          userMessage: "Hesabınız oluşturuldu ancak doğrulama e-postası gönderilemedi. Lütfen giriş yapmayı deneyin veya destek ile iletişime geçin.",
-        });
-        // Show warning toast for email failure
-        if (typeof window !== "undefined" && (window as unknown as { showToast?: (msg: string, type: string) => void }).showToast) {
-          (window as unknown as { showToast: (msg: string, type: string) => void }).showToast(
-            "Hesabınız oluşturuldu ancak doğrulama maili gönderilemedi.",
-            "warning"
-          );
-        }
+      // Build user message based on email status
+      let userMessage: string;
+      if (isEmailFailed) {
+        userMessage = "Hesabınız oluşturuldu ancak doğrulama e-postası gönderilemedi. Lütfen giriş yapmayı deneyin veya destek ile iletişime geçin.";
+      } else if (emailStatus === "queued") {
+        userMessage = "Hesabınız başarıyla oluşturuldu! Doğrulama e-postası gönderiliyor, lütfen birkaç dakika içinde gelen kutunuzu kontrol edin.";
       } else {
-        // Full success - show success toast and navigate to verification page
-        setSignupState({
-          type: "success",
-          emailStatus: "sent",
-          userMessage: successResult.message ?? emailVerificationSentMessage,
-        });
-        // Show success toast
-        if (typeof window !== "undefined" && (window as unknown as { showToast?: (msg: string, type: string) => void }).showToast) {
-          (window as unknown as { showToast: (msg: string, type: string) => void }).showToast(
-            "Hesabınız başarıyla oluşturuldu! Doğrulama e-postası gönderildi.",
-            "success"
-          );
-        }
-        router.push(buildEmailVerificationPath(email, null, { emailSent: true }));
+        userMessage = successResult.message ?? emailVerificationSentMessage;
       }
+
+      setSignupState({
+        type: "success",
+        emailStatus,
+        userMessage,
+      });
+
+      // Show appropriate toast
+      if (typeof window !== "undefined" && (window as unknown as { showToast?: (msg: string, type: string) => void }).showToast) {
+        const toastMessage = isEmailFailed
+          ? "Hesabınız oluşturuldu ancak doğrulama maili gönderilemedi."
+          : "Hesabınız başarıyla oluşturuldu! Doğrulama e-postası gönderildi.";
+        (window as unknown as { showToast: (msg: string, type: string) => void }).showToast(
+          toastMessage,
+          isEmailFailed ? "warning" : "success"
+        );
+      }
+
+      // Navigate to verification page for all success cases (even if email failed)
+      router.push(buildEmailVerificationPath(email, null, { emailSent: !isEmailFailed }));
     } catch (error) {
       // RESET TOKEN on any error so user can retry
       tokenLifecycleRef.current = { type: "empty" };
