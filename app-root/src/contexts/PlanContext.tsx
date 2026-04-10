@@ -34,6 +34,9 @@ export type PlanContextValue = {
   subscriptionLimit: number | null;
   invoiceUploadCount: number;
   invoiceUploadLimit: number | null;
+  canExportPdfReports: boolean;
+  canUseAdvancedAnalytics: boolean;
+  canUseAutomation: boolean;
   setAssetCount: (nextAssetCount: number) => void;
   refreshPlanState: () => Promise<void>;
 };
@@ -63,6 +66,9 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   const [subscriptionLimit, setSubscriptionLimit] = useState<number | null>(STARTER_PLAN.limits.subscriptionsLimit);
   const [invoiceUploadCount, setInvoiceUploadCount] = useState(0);
   const [invoiceUploadLimit, setInvoiceUploadLimit] = useState<number | null>(STARTER_PLAN.limits.invoiceUploadsLimit);
+  const [canExportPdfReports, setCanExportPdfReports] = useState(false);
+  const [canUseAdvancedAnalytics, setCanUseAdvancedAnalytics] = useState(false);
+  const [canUseAutomation, setCanUseAutomation] = useState(false);
 
   const resetToFreePlan = useCallback(() => {
     setUserId(null);
@@ -75,6 +81,9 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     setDocumentCount(0);
     setSubscriptionCount(0);
     setInvoiceUploadCount(0);
+    setCanExportPdfReports(false);
+    setCanUseAdvancedAnalytics(false);
+    setCanUseAutomation(false);
   }, []);
 
   const refreshPlanState = useCallback(async () => {
@@ -133,6 +142,9 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       setDocumentLimit(resolvedPlanConfig.limits.documentsLimit);
       setSubscriptionLimit(resolvedPlanConfig.limits.subscriptionsLimit);
       setInvoiceUploadLimit(resolvedPlanConfig.limits.invoiceUploadsLimit);
+      setCanExportPdfReports(resolvedPlanConfig.features.canExportPdfReports);
+      setCanUseAdvancedAnalytics(resolvedPlanConfig.features.canUseAdvancedAnalytics);
+      setCanUseAutomation(resolvedPlanConfig.features.canUseAutomation);
 
       const [assetCountRes, documentCountRes, subscriptionCountRes, invoiceCountRes] = await Promise.all([
         countAssetsByUser(supabase, { userId: user.id }),
@@ -196,6 +208,9 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       subscriptionLimit,
       invoiceUploadCount,
       invoiceUploadLimit,
+      canExportPdfReports,
+      canUseAdvancedAnalytics,
+      canUseAutomation,
       setAssetCount,
       refreshPlanState,
     }),
@@ -211,6 +226,9 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       subscriptionLimit,
       invoiceUploadCount,
       invoiceUploadLimit,
+      canExportPdfReports,
+      canUseAdvancedAnalytics,
+      canUseAutomation,
       refreshPlanState,
     ],
   );

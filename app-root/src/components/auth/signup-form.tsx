@@ -317,10 +317,12 @@ const getSignupErrorMessage = (
   }
 
   if (error === INTERNAL_ERROR) {
-    return "Kullanici olusturulamadi, lutfen tekrar deneyin.";
+    // ALWAYS show real backend error, never generic
+    return fallbackMessage || "Sunucu hatasi: Kayit islemi basarisiz oldu.";
   }
 
-  return fallbackMessage ?? "Kayit islemi tamamlanamadi. Lutfen tekrar deneyin.";
+  // NEVER return generic - always show specific error from backend
+  return fallbackMessage || "Bilinmeyen hata: Lutfen sayfayi yenileyip tekrar deneyin.";
 };
 
 const SignupTurnstileSection = memo(function SignupTurnstileSection({
@@ -370,6 +372,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
   const [resetCounter, setResetCounter] = useState(0);
   const tokenTimestampRef = useRef<number | null>(null);
   const expiryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tokenUsedRef = useRef<boolean>(false);
 
   const combinedTurnstileWarning = turnstileRuntimeWarning ?? resolvedTurnstileWarning;
 
@@ -488,6 +491,11 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
 
     setTurnstileToken((currentValue) => (currentValue === value ? currentValue : value));
 
+    // Reset token used flag when getting a new token OR when token is cleared (expired)
+    if (value !== turnstileToken) {
+      tokenUsedRef.current = false;
+    }
+
     if (value) {
       tokenTimestampRef.current = Date.now();
 
@@ -503,6 +511,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
         setTurnstileStatus("expired");
         tokenTimestampRef.current = null;
         expiryTimeoutRef.current = null;
+        tokenUsedRef.current = false; // CRITICAL FIX: Reset on expiry
         setMessage("Doğrulama süresi doldu. Lütfen güvenlik kontrolünü tekrar tamamlayın.");
         setResetCounter((prev) => prev + 1);
       }, TURNSTILE_TOKEN_MAX_AGE_MS);
@@ -557,23 +566,39 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
+    // IMMEDIATE HARD LOCK - Prevent race condition from double clicks
     if (submitLockRef.current) {
+      return;
+    }
+    submitLockRef.current = true;
+
+    if (isSubmitting) {
+      submitLockRef.current = false;
       return;
     }
 
     setMessage("");
 
     if (isCooldownActive) {
+      submitLockRef.current = false;
       setMessage(`${cooldownRemainingSeconds} saniye sonra tekrar deneyin.`);
       return;
     }
 
     if (validationMessage) {
+      submitLockRef.current = false;
       setMessage(validationMessage);
       return;
     }
 
-    submitLockRef.current = true;
+    // Prevent double submit - check if token was already used
+    if (tokenUsedRef.current) {
+      submitLockRef.current = false;
+      setMessage("Islem zaten gonderildi. Lutfen bekleyin.");
+      triggerReset();
+      return;
+    }
+
     setIsSubmitting(true);
 
     const tokenAge = tokenTimestampRef.current ? Date.now() - tokenTimestampRef.current : null;
@@ -583,6 +608,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
         tokenAge: tokenAge !== null ? `${Math.round(tokenAge / 1000)}s` : "N/A",
         tokenPresent: Boolean(turnstileToken),
         tokenTimestamp: tokenTimestampRef.current,
+        tokenUsed: tokenUsedRef.current,
       });
     }
 
@@ -593,6 +619,9 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
       submitLockRef.current = false;
       return;
     }
+
+    // Mark token as used to prevent duplicate submissions
+    tokenUsedRef.current = true;
 
     const abortController = new AbortController();
     const timeoutId = window.setTimeout(() => abortController.abort(), 15_000);
@@ -654,10 +683,15 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
           triggerReset();
         }
 
+        // Show real backend error message if available
+        const backendError = errorResult?.message || errorResult?.error;
         setMessage(
-          getSignupErrorMessage(errorResult?.error, errorResult?.message, errorResult?.turnstile) ??
+          getSignupErrorMessage(errorResult?.error, backendError, errorResult?.turnstile) ??
+            errorResult?.message ??
             "Kayit islemi tamamlanamadi. Lutfen tekrar deneyin.",
         );
+        // Reset token used flag on error so user can retry
+        tokenUsedRef.current = false;
         return;
       }
 
@@ -672,29 +706,33 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
       if (successResult.emailStatus !== "failed") {
         router.push(buildEmailVerificationPath(email, null, { emailSent: true }));
       }
-    } catch {
+    } catch (error) {
+      // CRITICAL FIX: Reset tokenUsedRef on ANY error so user can retry
+      tokenUsedRef.current = false;
       if (abortController.signal.aborted) {
         setMessage("Kayit istegi zaman asimina ugradi. Sayfa acik kaldi; lutfen tekrar deneyin.");
       } else {
-        setMessage("Beklenmeyen bir ag hatasi olustu. Lutfen tekrar deneyin.");
+        const errorMessage = error instanceof Error ? error.message : "Beklenmeyen bir ag hatasi olustu.";
+        setMessage(`Kayit hatasi: ${errorMessage}`);
       }
     } finally {
       window.clearTimeout(timeoutId);
       setIsSubmitting(false);
       submitLockRef.current = false;
+      // tokenUsedRef is now handled in catch block and on successful token change
     }
   };
 
   const isSubmitDisabled = isSubmitting || isCooldownActive || Boolean(validationMessage);
 
   return (
-    <main className="relative min-h-screen px-4 py-6 sm:px-6 lg:px-8">
+    <main className="relative min-h-screen w-full overflow-x-hidden px-3 py-4 sm:px-4 sm:py-6 lg:px-8">
       <div className="pointer-events-none absolute inset-0 opacity-30">
         <div className="ambient-orb ambient-orb-a" />
       </div>
 
-      <div className="relative mx-auto grid w-full max-w-4xl gap-4 lg:grid-cols-[1fr_1fr]">
-        <section className="premium-panel p-6">
+      <div className="relative mx-auto flex w-full max-w-md flex-col gap-4 lg:max-w-4xl lg:grid-cols-[1fr_1fr] lg:grid">
+        <section className="premium-panel p-4 sm:p-6">
           <Link
             href="/"
             className="inline-flex items-center gap-2 rounded-full border border-white/15 px-3 py-1.5 text-xs text-slate-300"
@@ -708,12 +746,12 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
           </p>
         </section>
 
-        <section className="premium-panel p-6">
-          <h2 className="text-2xl font-semibold text-white">Kayit Ol</h2>
+        <section className="premium-panel p-4 sm:p-6">
+          <h2 className="text-xl sm:text-2xl font-semibold text-white">Kayit Ol</h2>
           <p className="mt-2 text-sm text-slate-300">Ad, soyad, e-posta, sifre ve yasal onaylarla yeni hesabinizi guvenle olusturun.</p>
 
-          <form onSubmit={onSubmit} className="mt-6 space-y-4" data-testid="register-form">
-            <div className="grid gap-4 sm:grid-cols-2">
+          <form onSubmit={onSubmit} className="mt-4 sm:mt-6 space-y-3 sm:space-y-4" data-testid="register-form">
+            <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
               <label className="block">
                 <span className="mb-1.5 block text-sm text-slate-300">Ad</span>
                 <input

@@ -69,57 +69,46 @@ export type SignupRisk = {
   };
 };
 
-export type SignupApiSuccessResponse = {
-  emailError?: string | null;
-  emailSent: boolean;
-  emailStatus: SignupEmailStatus;
-  message: string;
-  ok: true;
+export type SignupApiResponse = {
+  ok: boolean;
+  step: "captcha" | "user" | "email";
+  status: "success" | "failed";
+  error?: string;
+  reason?: string;
+  message?: string;
   requestId: string;
-  risk: SignupRisk;
-  userCreated: true;
-  userId?: string;
-  verified: true;
-  warning?: string | null;
-};
-
-export type SignupApiErrorReason =
-  | "duplicate_email"
-  | "email_rate_limited"
-  | "invalid_email"
-  | "invalid_redirect_url"
-  | "missing_fields"
-  | "password_mismatch"
-  | "signup_bootstrap_failed"
-  | "signup_service_unavailable"
-  | "supabase_user_create_failed"
-  | "terms_not_accepted"
-  | "privacy_policy_not_accepted"
-  | "kvkk_consent_required"
-  | "turnstile_already_used"
-  | "turnstile_hostname_mismatch"
-  | "turnstile_invalid_or_expired"
-  | "turnstile_missing"
-  | "turnstile_network_error"
-  | "turnstile_server_misconfigured"
-  | "weak_password";
-
-export type SignupApiErrorDetails = {
-  field?: "email" | "form" | "password" | "service" | "turnstile";
-  reason: SignupApiErrorReason;
-  retryable: boolean;
   shouldResetTurnstile?: boolean;
+  risk?: SignupRisk;
+  turnstile?: SignupApiTurnstileDiagnostics;
+  verified?: true;
+  emailStatus?: "sent" | "failed";
 };
 
 export type SignupApiErrorResponse = {
-  details?: SignupApiErrorDetails;
-  error: SignupApiErrorCode;
-  message: string;
   ok: false;
+  step: "captcha" | "user" | "email";
+  status: "failed";
+  error: string;
+  reason?: string;
+  message?: string;
   requestId: string;
+  shouldResetTurnstile?: boolean;
   risk?: SignupRisk;
   turnstile?: SignupApiTurnstileDiagnostics;
-  verified: false;
+  details?: {
+    shouldResetTurnstile?: boolean;
+  };
+};
+
+export type SignupApiSuccessResponse = {
+  ok: true;
+  step: "email" | "user";
+  status: "success";
+  message?: string;
+  requestId: string;
+  risk?: SignupRisk;
+  verified: true;
+  emailStatus: "sent" | "failed";
 };
 
 export const getSignupCooldownRemainingSeconds = (cooldownEndTimestamp: number, now = Date.now()) => {

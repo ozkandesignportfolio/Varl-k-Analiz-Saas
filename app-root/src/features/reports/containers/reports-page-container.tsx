@@ -85,7 +85,7 @@ assertNoMojibakeText(reportsSubtitle, "Raporlar alt başlığı");
 export function ReportsPageContainer() {
   const router = useRouter();
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
-  const { plan, isLoading: isPlanLoading } = usePlanContext();
+  const { plan, canExportPdfReports, isLoading: isPlanLoading } = usePlanContext();
   const today = useMemo(() => new Date(), []);
   const initialStart = useMemo(() => new Date(today.getFullYear(), today.getMonth(), 1), [today]);
 
@@ -162,7 +162,6 @@ export function ReportsPageContainer() {
     [assetNameById, documents, services],
   );
 
-  const canExportPdfReports = plan === "premium";
   const showPremiumPdfMessage = !isPlanLoading && !canExportPdfReports;
 
   const loadPdfExportDetails = useCallback(async () => {

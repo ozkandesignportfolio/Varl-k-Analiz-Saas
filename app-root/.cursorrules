@@ -1,8 +1,6 @@
-# =========================
-# Assetly — Anti Gravity Rules
-# =========================
+# Assetly — Cursor Rules
 # Amaç: Bu projede yalnızca belirlenen altyapıların kullanılması, güvenlik ve kalite hatalarının
-# minimize edilmesi, mobil/PWA ve prod deploy’da sürpriz çıkmaması.
+# minimize edilmesi, mobil/PWA ve prod deploy'da sürpriz çıkmaması.
 #
 # Stack (değiştirilemez):
 # - Frontend: Next.js (App Router) + React
@@ -19,9 +17,7 @@
 # 4) Veri: Multi-tenant varsayımı: her kayıt user_id ile bağlanmalı; tüm sorgular user_id filtreli olmalı.
 # 5) Kalite: TypeScript strict, lint/build geçmeden PR/commit yok.
 
-# -------------------------
 # REPO ve DOSYA YAPISI
-# -------------------------
 # - app/  : Next.js App Router sayfaları
 # - components/: UI bileşenleri
 # - lib/  : saf yardımcı fonksiyonlar (bakım motoru, tarih hesapları)
@@ -32,115 +28,68 @@
 # - UI bileşeni -> components/
 # - sayfa -> app/<route>/page.tsx
 # - iş mantığı -> lib/
-# - supabase erişimi -> lib/supabaseClient.ts veya lib/supabaseServer.ts (projeye göre)
+# - supabase erişimi -> lib/supabaseClient.ts veya lib/supabaseServer.ts
 
-# -------------------------
 # TYPECRIPT / REACT KURALLARI
-# -------------------------
 # - TypeScript strict varsay: any kullanma. Zorunluysa nedenini yorumla.
 # - React state minimal: form için uygun state; gereksiz global state ekleme.
 # - Yan etkiler: useEffect bağımlılıkları doğru olmalı.
 # - Tarih/saat: tek bir yardımcı modül üzerinden yönet (lib/date.ts gibi).
-# - Hata durumları: UI’de kullanıcıya anlaşılır Türkçe mesaj.
+# - Hata durumları: UI'de kullanıcıya anlaşılır Türkçe mesaj.
 
-# -------------------------
 # UI / TAILWIND KURALLARI
-# -------------------------
 # - Tailwind dışında CSS framework ekleme.
 # - Mobil öncelikli tasarla (mobile-first).
 # - Formlar <30 sn veri girişi hedefi: kısa, net label, yardımcı placeholder, validasyon.
 # - Her sayfa: loading/empty/error state içermeli.
 
-# -------------------------
 # SUPABASE KURALLARI (KRİTİK)
-# -------------------------
 # 1) RLS her tabloda AÇIK olmalı.
 # 2) Tüm tablolar user_id ile kullanıcıya bağlı olmalı.
 # 3) Tüm sorgularda user_id filtre şart (server veya client).
-# 4) Service role key ASLA client’a konmaz. Server-side (api route / server action) gerekiyorsa ayrı.
+# 4) Service role key ASLA client'a konmaz. Server-side (api route / server action) gerekiyorsa ayrı.
 # 5) Storage bucket private olmalı.
 # 6) Storage erişimi path bazlı user izolasyonu: /<user_id>/<asset_id>/...
-# 7) Her yeni tablo için:
-#    - create table
-#    - index (user_id, created_at vs)
-#    - RLS enable
-#    - select/insert/update/delete policy (auth.uid() = user_id)
-#    - gerekiyorsa foreign key’ler
+# 7) Her yeni tablo için: create table, index, RLS enable, policies, foreign keys
 
-# -------------------------
 # AUTH / ROUTE GUARD
-# -------------------------
-# - Protected route: auth yoksa login’e yönlendir.
+# - Protected route: auth yoksa login'e yönlendir.
 # - Session kontrolü tutarlı: client komponentlerde gereksiz session polling yapma.
 # - Reset password akışı Supabase standardına uygun olmalı.
 
-# -------------------------
 # BAKIM MOTORU / İŞ MANTIĞI
-# -------------------------
 # - Bakım motoru deterministik olmalı (aynı input -> aynı output).
-# - Edge case’ler:
-#   - periyot değişimi
-#   - servis erken/ geç yapılması
-#   - garanti bitiş tarihi yoksa
-#   - varlık pasif/arsiv
+# - Edge case'ler: periyot değişimi, servis erken/geç, garanti bitiş yoksa, varlık pasif/arsiv
 # - Tüm hesaplar unit test olmasa bile en azından lib fonksiyonları izole yaz.
 
-# -------------------------
 # CHART.JS KURALLARI
-# -------------------------
 # - Chart bileşenleri client component olmalı.
 # - Data mapping ayrı fonksiyonda olsun (lib/charts.ts).
 # - Boş veri durumunda "Veri yok" göster.
 
-# -------------------------
 # PDF / jsPDF KURALLARI
-# -------------------------
 # - Rapor içerikleri Türkçe.
 # - Büyük dataset için sayfalama düşün (uzun tablolar).
-# - Kullanıcı verisini server’dan çekip client’ta pdf üretirken veri erişim yetkileri korunmalı.
+# - Kullanıcı verisini server'dan çekip client'ta pdf üretirken veri erişim yetkileri korunmalı.
 
-# -------------------------
 # ENV / GİZLİ BİLGİ
-# -------------------------
-# - .env, .env.local, .env.* repo’ya asla girmez.
+# - .env, .env.local, .env.* repo'ya asla girmez.
 # - .gitignore içinde env dosyaları olmalı.
 # - Client env sadece NEXT_PUBLIC_* ile; secret key yok.
-#
-# Zorunlu env örnekleri:
-# NEXT_PUBLIC_SUPABASE_URL
-# NEXT_PUBLIC_SUPABASE_ANON_KEY
+# - Zorunlu: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-# -------------------------
 # DEPLOY / BUILD KALİTE KAPILARI
-# -------------------------
-# Her değişiklikten sonra yerelde:
 # 1) npm run dev (manuel smoke test)
 # 2) npm run build (derleme kontrolü) => HATA YOKSA commit
 # 3) Kritik sayfalar: login, assets list, asset detail, service log, documents, reports
-#
-# Vercel deploy’da env değiştiyse: Vercel environment variables güncelle.
 
-# -------------------------
-# PWA / MOBİL YAYIN KURALLARI
-# -------------------------
-# - PWA opsiyoneldir; eklenecekse:
-#   - manifest.json
-#   - icon set
-#   - offline stratejisi (en azından shell cache)
-# - Mobilde camera/file upload:
-#   - QR/scan gibi özellik varsa izin akışını düzgün kur.
-#   - upload hata/iptal durumlarını yönet.
-#
-# -------------------------
 # ÇALIŞMA PRENSİBİ (AI)
-# -------------------------
 # - Büyük değişiklik yapmadan önce plan çıkar.
-# - Çok dosyalı patch’lerde diff incelemeden apply etme.
-# - RLS/Storage policy değişikliklerinde “gevşetme” yok; sadece sıkılaştırma veya doğru izolasyon.
-# - “Her şeyi refactor et” gibi broad değişiklik yok.
-#
-# -------------------------
+# - Çok dosyalı patch'lerde diff incelemeden apply etme.
+# - RLS/Storage policy değişikliklerinde "gevşetme" yok; sadece sıkılaştırma veya doğru izolasyon.
+# - "Her şeyi refactor et" gibi broad değişiklik yok.
+
 # ÇIKTI DİLİ
-# -------------------------
 # - UI metinleri Türkçe.
-# - Developer comment’ler Türkçe veya İngilizce olabilir; kullanıcı-facing metinler Türkçe olmalı.
+# - Developer comment'ler Türkçe veya İngilizce olabilir.
+# - Kullanıcı-facing metinler Türkçe olmalı.
