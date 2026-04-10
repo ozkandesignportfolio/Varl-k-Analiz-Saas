@@ -82,6 +82,8 @@ export type SignupApiResponse = {
   turnstile?: SignupApiTurnstileDiagnostics;
   verified?: true;
   emailStatus?: "sent" | "failed";
+  userId?: string;
+  warnings?: string[];
 };
 
 export type SignupApiErrorResponse = {
@@ -102,13 +104,14 @@ export type SignupApiErrorResponse = {
 
 export type SignupApiSuccessResponse = {
   ok: true;
-  step: "email" | "user";
-  status: "success";
+  step?: "email" | "user";
+  status?: "success";
   message?: string;
-  requestId: string;
+  requestId?: string;
   risk?: SignupRisk;
-  verified: true;
+  verified?: true;
   emailStatus: "sent" | "failed";
+  userId: string;
 };
 
 export const getSignupCooldownRemainingSeconds = (cooldownEndTimestamp: number, now = Date.now()) => {

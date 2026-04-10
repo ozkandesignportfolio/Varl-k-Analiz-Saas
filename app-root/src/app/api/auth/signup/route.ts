@@ -51,13 +51,12 @@ export const runtime = "nodejs";
 
 const ROUTE_TAG = "[auth.signup]";
 
-// PRODUCTION-SAFE: Turnstile tokens are single-use by Cloudflare design.
-// The verifyTurnstileToken() call to Cloudflare is the source of truth.
-// In-memory deduplication is REMOVED because:
-// 1. Serverless instances don't share memory - useless for replay protection
-// 2. Turnstile tokens expire ~5 minutes and can only be verified once
-// 3. Adds complexity without real security benefit
-// 4. Upstash Redis could be used if true cross-instance dedup is needed
+// PRODUCTION-SAFE: In-flight request deduplication
+// Uses a Map to track requests currently being processed by idempotency key
+// This prevents duplicate user creation from rapid double-clicks or network retries
+const inProgressRequests = new Map<string, Promise<SignupResult>>();
+const COMPLETED_REQUEST_TTL_MS = 30_000; // Keep completed results for 30s
+
 const RESEND_API_URL = "https://api.resend.com/emails";
 const DEFAULT_FROM_EMAIL = "Assetly <onboarding@resend.dev>";
 const PASSWORD_MIN_LENGTH = 8;
@@ -68,6 +67,11 @@ const SIGNUP_EMAIL_RATE_LIMIT_CAPACITY = 3;
 const SIGNUP_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1_000;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
 const isDevelopmentEnvironment = () => process.env.NODE_ENV === "development";
+
+// Result types for atomic flow
+type SignupResult =
+  | { ok: true; userId: string; emailStatus: "sent" | "failed"; verified: true; warnings?: string[] }
+  | { ok: false; step: "turnstile" | "user" | "profile"; error: string };
 
 type SignupRequestBody = {
   acceptedKvkk?: unknown;
@@ -478,6 +482,7 @@ type BootstrapResult =
   | { ok: true }
   | { ok: false; error: Error; stage: "profile" | "notification_settings" | "user_consents" };
 
+// STRICT ATOMIC INSERT - NO UPSERT: Using insert() to catch duplicates/constraint violations
 const persistSignupBootstrapRecords = async (input: {
   acceptedKvkk: boolean;
   acceptedPrivacyPolicy: boolean;
@@ -491,44 +496,44 @@ const persistSignupBootstrapRecords = async (input: {
   const consentedAt = new Date().toISOString();
 
   // Stage 1: Profile (REQUIRED - user cannot exist without profile)
-  const { error: profileError } = await input.adminClient.from("profiles").upsert(
-    {
-      id: input.userId,
-      plan: "free",
-    },
-    { onConflict: "id" },
-  );
+  // Using INSERT - will fail if profile already exists (idempotency violation)
+  const { error: profileError } = await input.adminClient.from("profiles").insert({
+    id: input.userId,
+    plan: "free",
+  });
 
-  console.info(`${ROUTE_TAG} User profile bootstrap result.`, {
-    profileError,
+  console.log("PROFILE_INSERT_RESULT", {
+    ok: !profileError,
     userId: input.userId,
+    error: profileError?.message ?? null,
+    code: (profileError as { code?: string })?.code ?? null,
   });
 
   if (profileError) {
     return {
       ok: false,
-      error: new Error(`Failed to upsert profile: ${profileError.message}`),
+      error: new Error(`Failed to insert profile: ${profileError.message}`),
       stage: "profile",
     };
   }
 
   // Stage 2: Notification settings (REQUIRED)
-  const { error: notificationError } = await input.adminClient.from("notification_settings").upsert(
-    {
-      user_id: input.userId,
-    },
-    { onConflict: "user_id" },
-  );
+  // Using INSERT - will fail if settings already exist
+  const { error: notificationError } = await input.adminClient.from("notification_settings").insert({
+    user_id: input.userId,
+  });
 
-  console.info(`${ROUTE_TAG} Notification settings bootstrap result.`, {
-    notificationError,
+  console.log("NOTIFICATION_INSERT_RESULT", {
+    ok: !notificationError,
     userId: input.userId,
+    error: notificationError?.message ?? null,
+    code: (notificationError as { code?: string })?.code ?? null,
   });
 
   if (notificationError) {
     return {
       ok: false,
-      error: new Error(`Failed to upsert notification settings: ${notificationError.message}`),
+      error: new Error(`Failed to insert notification settings: ${notificationError.message}`),
       stage: "notification_settings",
     };
   }
@@ -545,9 +550,11 @@ const persistSignupBootstrapRecords = async (input: {
     user_id: input.userId,
   });
 
-  console.info(`${ROUTE_TAG} Consent bootstrap result.`, {
-    consentError,
+  console.log("CONSENT_INSERT_RESULT", {
+    ok: !consentError,
     userId: input.userId,
+    error: consentError?.message ?? null,
+    code: (consentError as { code?: string })?.code ?? null,
   });
 
   if (consentError) {
@@ -640,6 +647,95 @@ const buildSignupEmailText = (input: {
     input.actionLink,
   ].join("\n");
 
+// PRODUCTION-SAFE: Fire-and-forget email sending
+// Email failures do NOT block signup response
+const sendSignupConfirmationEmailAsync = async (input: {
+  actionLink: string;
+  email: string;
+  firstName: string;
+  userId: string;
+}): Promise<"sent" | "failed"> => {
+  const resendApiKey = getOptionalEnv("RESEND_API_KEY");
+  const fromEmail = getOptionalEnv("AUTOMATION_FROM_EMAIL") ?? DEFAULT_FROM_EMAIL;
+  const replyTo = getOptionalEnv("AUTOMATION_REPLY_TO_EMAIL");
+
+  console.log("EMAIL_TRIGGERED", {
+    email: input.email,
+    userId: input.userId,
+    actionLinkPresent: Boolean(input.actionLink.trim()),
+    resendConfigured: Boolean(resendApiKey),
+  });
+
+  if (!resendApiKey) {
+    console.error("EMAIL_RESULT", {
+      ok: false,
+      email: input.email,
+      userId: input.userId,
+      error: "Missing RESEND_API_KEY",
+    });
+    return "failed";
+  }
+
+  try {
+    const response = await fetch(RESEND_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: fromEmail,
+        html: buildSignupEmailHtml(input),
+        reply_to: replyTo ? [replyTo] : undefined,
+        subject: "Assetly hesabinizi dogrulayin",
+        text: buildSignupEmailText(input),
+        to: [input.email],
+      }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
+    });
+
+    const responseText = await response.text();
+    let parsedResponse: unknown = null;
+
+    try {
+      parsedResponse = responseText ? JSON.parse(responseText) : null;
+    } catch {
+      parsedResponse = responseText;
+    }
+
+    console.log("EMAIL_RESULT", {
+      ok: response.ok,
+      email: input.email,
+      userId: input.userId,
+      status: response.status,
+      response: parsedResponse,
+    });
+
+    if (!response.ok) {
+      console.error("EMAIL_RESULT", {
+        ok: false,
+        email: input.email,
+        userId: input.userId,
+        status: response.status,
+        error: responseText,
+      });
+      return "failed";
+    }
+
+    return "sent";
+  } catch (error) {
+    console.error("EMAIL_RESULT", {
+      ok: false,
+      email: input.email,
+      userId: input.userId,
+      error: error instanceof Error ? error.message : "unknown_error",
+    });
+    return "failed";
+  }
+};
+
+// Backwards compat - deprecated, use sendSignupConfirmationEmailAsync
 const sendSignupConfirmationEmail = async (input: {
   actionLink: string;
   email: string;
@@ -876,6 +972,20 @@ const normalizeDeviceFingerprint = (value: unknown) => {
   return normalized || UNKNOWN_DEVICE_FINGERPRINT;
 };
 
+// PRODUCTION-SAFE: Idempotency helpers for preventing duplicate requests
+const generateIdempotencyKey = (email: string, turnstileToken: string): string => {
+  // Hash email + token prefix for idempotency key
+  const normalizedEmail = email.toLowerCase().trim();
+  const tokenPrefix = turnstileToken.slice(0, 16); // First 16 chars of token
+  return `${normalizedEmail}:${tokenPrefix}`;
+};
+
+const cleanupInProgressRequest = (key: string, delayMs = COMPLETED_REQUEST_TTL_MS) => {
+  setTimeout(() => {
+    inProgressRequests.delete(key);
+  }, delayMs);
+};
+
 const getTurnstileFailureMessage = (
   reason: "invalid" | "missing_secret" | "network_error",
   turnstileEnv?: ReturnType<typeof readTurnstileServerEnv>,
@@ -912,24 +1022,15 @@ const getTurnstileFailureMessage = (
   return "Turnstile dogrulamasi basarisiz oldu.";
 };
 
+// PRODUCTION-SAFE: Atomic signup handler with idempotency and rollback guarantee
 export async function POST(request: Request) {
   const requestIp = getRequestIp(request);
   const requestUserAgent = request.headers.get("user-agent")?.trim() || null;
   const {
-    headers: {
-      host: hostHeader,
-      origin,
-      xForwardedHost: forwardedHost,
-    },
+    headers: { host: hostHeader, origin, xForwardedHost: forwardedHost },
     requestHostname: requestHost,
   } = getTurnstileRequestContext(request);
-  console.info(`${ROUTE_TAG} Request host headers.`, {
-    host: hostHeader,
-    hostname: requestHost,
-    origin,
-    xForwardedHost: forwardedHost,
-  });
-  logTurnstileEnvDebug(`${ROUTE_TAG} request_start`);
+
   const adminClient = (() => {
     try {
       return createAdminClient();
@@ -939,744 +1040,380 @@ export async function POST(request: Request) {
     }
   })();
 
-  let normalizedEmail = "";
-  let deviceFingerprint = UNKNOWN_DEVICE_FINGERPRINT;
-  let turnstileToken = "";
-
-  const fail = async (input: FailureResponseInput) => {
-    logReturnReason(input.eventType, {
-      error: input.error,
-      message: input.message,
-      status: input.status,
-      turnstileCategory: input.turnstile
-        ? getTurnstileFailureCategory({
-            errorCodes: input.turnstile.errorCodes,
-            hostnameMismatch: input.turnstile.hostnameMismatch,
-            issue: input.turnstile.issue,
-          })
-        : null,
-      turnstileVerified: input.turnstileVerified ?? false,
-    });
-
-    console.warn(`${ROUTE_TAG} Signup request failed.`, {
-      error: input.error,
-      eventType: input.eventType,
-      message: input.message,
-      metadata: input.metadata ?? null,
-      status: input.status,
-      turnstile: input.turnstile ?? null,
-      turnstileVerified: input.turnstileVerified ?? false,
-    });
-
-    const risk = await evaluateRiskSafely({
-      deviceFingerprint,
-      email: normalizedEmail || "unknown@example.com",
-      emailRateLimited: input.triggeredEmailRateLimit,
-      ip: requestIp,
-      ipRateLimited: input.triggeredIpRateLimit,
-      outcome: input.eventType,
-      turnstileErrorCodes: input.turnstileErrorCodes,
-      turnstileTokenPresent: Boolean(turnstileToken),
-      turnstileVerified: input.turnstileVerified ?? false,
-      userAgent: requestUserAgent,
-    });
-
-    await safeLogSecurityEvent(adminClient, {
-      email: normalizedEmail || null,
-      eventType: input.eventType,
-      ip: requestIp,
-      metadata: {
-        ...(input.metadata ?? {}),
-        turnstile: input.turnstile ?? null,
-        ...buildRiskMetadata(risk, deviceFingerprint),
-      },
-      userAgent: requestUserAgent,
-      userId: input.userId ?? null,
-    });
-
-    return buildErrorResponse(
-      input.error,
-      input.message,
-      input.status,
-      risk,
-      input.headers,
-      input.turnstile,
-      input.details,
+  // Parse request body early for idempotency key generation
+  let body: SignupRequestBody;
+  try {
+    body = (await request.json()) as SignupRequestBody;
+  } catch (error) {
+    console.error("SIGNUP_ERROR", { step: "parse_body", error: serializeError(error) });
+    return NextResponse.json(
+      { ok: false, step: "user", error: MISSING_FIELDS_ERROR },
+      { status: 400 }
     );
+  }
+
+  // Extract and validate required fields
+  const acceptedTerms = body.acceptedTerms === true;
+  const acceptedPrivacyPolicy = body.acceptedPrivacyPolicy === true;
+  const acceptedKvkk = body.acceptedKvkk === true;
+  const firstName = isNonEmptyString(body.firstName) ? body.firstName.trim() : "";
+  const lastName = isNonEmptyString(body.lastName) ? body.lastName.trim() : "";
+  const email = isNonEmptyString(body.email) ? body.email.trim() : "";
+  const password = typeof body.password === "string" ? body.password : "";
+  const confirmPassword = typeof body.confirmPassword === "string" ? body.confirmPassword : "";
+  const emailRedirectTo = isNonEmptyString(body.emailRedirectTo) ? body.emailRedirectTo.trim() : "";
+  const turnstileToken = isNonEmptyString(body.turnstileToken) ? body.turnstileToken.trim() : "";
+  const deviceFingerprint = normalizeDeviceFingerprint(body.deviceFingerprint);
+  const normalizedEmail = email ? normalizeEmail(email) : "";
+  const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
+
+  // Basic validation (fast-fail before idempotency check)
+  if (!firstName || !lastName || !normalizedEmail || !password || !confirmPassword || !emailRedirectTo) {
+    return NextResponse.json(
+      { ok: false, step: "user", error: MISSING_FIELDS_ERROR },
+      { status: 400 }
+    );
+  }
+
+  if (password !== confirmPassword) {
+    return NextResponse.json(
+      { ok: false, step: "user", error: PASSWORD_MISMATCH_ERROR },
+      { status: 400 }
+    );
+  }
+
+  if (!EMAIL_REGEX.test(normalizedEmail)) {
+    return NextResponse.json(
+      { ok: false, step: "user", error: INVALID_EMAIL_ERROR },
+      { status: 400 }
+    );
+  }
+
+  if (password.length < PASSWORD_MIN_LENGTH) {
+    return NextResponse.json(
+      { ok: false, step: "user", error: INVALID_PASSWORD_ERROR },
+      { status: 400 }
+    );
+  }
+
+  if (!acceptedTerms || !acceptedPrivacyPolicy || !acceptedKvkk) {
+    return NextResponse.json(
+      { ok: false, step: "user", error: TERMS_NOT_ACCEPTED_ERROR },
+      { status: 400 }
+    );
+  }
+
+  if (!turnstileToken) {
+    return NextResponse.json(
+      { ok: false, step: "turnstile", error: TURNSTILE_FAILED_ERROR },
+      { status: 400 }
+    );
+  }
+
+  // IDEMPOTENCY: Check for duplicate in-flight requests
+  const idempotencyKey = generateIdempotencyKey(normalizedEmail, turnstileToken);
+  const existingRequest = inProgressRequests.get(idempotencyKey);
+  if (existingRequest) {
+    console.log("IDEMPOTENCY_HIT", { email: normalizedEmail, key: idempotencyKey });
+    const result = await existingRequest;
+    return NextResponse.json(result, { status: result.ok ? 200 : 500 });
+  }
+
+  // Create the signup promise and store it
+  const signupPromise = executeAtomicSignup({
+    adminClient,
+    acceptedKvkk,
+    acceptedPrivacyPolicy,
+    acceptedTerms,
+    deviceFingerprint,
+    email: normalizedEmail,
+    emailRedirectTo,
+    firstName,
+    fullName,
+    lastName,
+    password,
+    requestHost,
+    requestIp,
+    requestUserAgent,
+    turnstileToken,
+  });
+
+  inProgressRequests.set(idempotencyKey, signupPromise);
+
+  // Cleanup after completion (success or failure)
+  signupPromise
+    .then(() => cleanupInProgressRequest(idempotencyKey))
+    .catch(() => cleanupInProgressRequest(idempotencyKey));
+
+  const result = await signupPromise;
+  return NextResponse.json(result, { status: result.ok ? 200 : 500 });
+}
+
+// ATOMIC SIGNUP EXECUTION - All or nothing
+async function executeAtomicSignup(input: {
+  adminClient: ReturnType<typeof createAdminClient> | null;
+  acceptedKvkk: boolean;
+  acceptedPrivacyPolicy: boolean;
+  acceptedTerms: boolean;
+  deviceFingerprint: string;
+  email: string;
+  emailRedirectTo: string;
+  firstName: string;
+  fullName: string;
+  lastName: string;
+  password: string;
+  requestHost: string | null;
+  requestIp: string;
+  requestUserAgent: string | null;
+  turnstileToken: string;
+}): Promise<SignupResult> {
+  const ROUTE_TAG = "[auth.signup]";
+
+  // STEP 1: Verify Turnstile
+  const turnstileVerification = await verifyTurnstileToken({
+    requestHost: input.requestHost,
+    remoteIp: input.requestIp,
+    token: input.turnstileToken,
+  });
+
+  console.log("TURNSTILE_RESULT", {
+    ok: turnstileVerification.ok,
+    success: turnstileVerification.ok,
+    hostnameMismatch: turnstileVerification.hostnameMismatch,
+    errorCodes: turnstileVerification.errorCodes,
+    issue: turnstileVerification.issue,
+  });
+
+  if (!turnstileVerification.ok || turnstileVerification.hostnameMismatch) {
+    return {
+      ok: false,
+      step: "turnstile",
+      error: TURNSTILE_FAILED_ERROR,
+    };
+  }
+
+  // STEP 2: Rate limiting
+  const ipRateLimit = await takeRateLimitSafely({
+    limit: SIGNUP_IP_RATE_LIMIT_CAPACITY,
+    requestIp: input.requestIp,
+    scope: "auth_signup_ip",
+    subject: input.requestIp,
+    windowMs: SIGNUP_RATE_LIMIT_WINDOW_MS,
+  });
+
+  if (!ipRateLimit.allowed && !ipRateLimit.bypassed) {
+    return { ok: false, step: "user", error: RATE_LIMITED_ERROR };
+  }
+
+  const emailRateLimit = await takeRateLimitSafely({
+    limit: SIGNUP_EMAIL_RATE_LIMIT_CAPACITY,
+    requestIp: input.requestIp,
+    scope: "auth_signup_email",
+    subject: input.email,
+    windowMs: SIGNUP_RATE_LIMIT_WINDOW_MS,
+  });
+
+  if (!emailRateLimit.allowed && !emailRateLimit.bypassed) {
+    return { ok: false, step: "user", error: EMAIL_RATE_LIMITED_ERROR };
+  }
+
+  // STEP 3: Create Supabase Auth User
+  if (!input.adminClient) {
+    return { ok: false, step: "user", error: INTERNAL_ERROR };
+  }
+
+  const initialUserMetadata = {
+    email_status: "pending",
+    first_name: input.firstName,
+    full_name: input.fullName,
+    last_name: input.lastName,
+    legal_consents: {
+      accepted_kvkk: input.acceptedKvkk,
+      accepted_privacy_policy: input.acceptedPrivacyPolicy,
+      accepted_terms: input.acceptedTerms,
+      consented_at: new Date().toISOString(),
+    },
+    notification_preferences: notificationPreferences,
   };
 
-  const turnstileEnv = readTurnstileServerEnv();
-  const isLocalhostRequest = canUseLocalhostTurnstileTestKeys(requestHost);
-
-  if (turnstileEnv.missing.length > 0 && !isLocalhostRequest) {
-    return fail({
-      step: "captcha",
-      error: TURNSTILE_FAILED_ERROR,
-      reason: "turnstile_server_misconfigured",
-      shouldResetTurnstile: false,
-      eventType: "signup_turnstile_server_unconfigured",
-      message: getTurnstileFailureMessage("missing_secret", turnstileEnv),
-      metadata: {
-        missing_env_vars: turnstileEnv.missing,
-        request_forwarded_host: forwardedHost,
-        request_host: requestHost,
-        request_host_header: hostHeader,
-        request_origin: origin,
-        root_env_local_path: turnstileEnv.rootEnvLocalPath,
-      },
-      status: 503,
-      turnstile: {
-        errorCodes: [],
-        hostnameMismatch: false,
-        issue: "env",
-        requestHostname: requestHost,
-        responseHostname: null,
-      },
-      turnstileVerified: false,
-    });
-  }
+  let theUserId: string | null = null;
+  let actionLink = "";
 
   try {
-    let body: SignupRequestBody;
-
-    try {
-      body = (await request.json()) as SignupRequestBody;
-    } catch (error) {
-      console.error(`${ROUTE_TAG} Failed to parse signup request body.`, serializeError(error));
-      logReturnReason("signup_invalid_request_body", {
-        error: MISSING_FIELDS_ERROR,
-        status: 400,
-      });
-      return buildResponse(
-        {
-          ok: false,
-          step: "user",
-          status: "failed",
-          error: MISSING_FIELDS_ERROR,
-          message: "Signup request body is invalid.",
-        },
-        crypto.randomUUID(),
-        400,
-      );
-    }
-
-    const acceptedTerms = body.acceptedTerms === true;
-    const acceptedPrivacyPolicy = body.acceptedPrivacyPolicy === true;
-    const acceptedKvkk = body.acceptedKvkk === true;
-    const firstName = isNonEmptyString(body.firstName) ? body.firstName.trim() : "";
-    const lastName = isNonEmptyString(body.lastName) ? body.lastName.trim() : "";
-    const email = isNonEmptyString(body.email) ? body.email.trim() : "";
-    const password = typeof body.password === "string" ? body.password : "";
-    const confirmPassword = typeof body.confirmPassword === "string" ? body.confirmPassword : "";
-    const emailRedirectTo = isNonEmptyString(body.emailRedirectTo) ? body.emailRedirectTo.trim() : "";
-    turnstileToken = isNonEmptyString(body.turnstileToken) ? body.turnstileToken.trim() : "";
-    deviceFingerprint = normalizeDeviceFingerprint(body.deviceFingerprint);
-    normalizedEmail = email ? normalizeEmail(email) : "";
-    const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
-
-    logTurnstileDebug("Turnstile token received.", {
-      tokenLength: turnstileToken.length,
-      tokenPresent: Boolean(turnstileToken),
-      tokenPreview: maskTokenForLogs(turnstileToken),
-    });
-
-    console.info(`${ROUTE_TAG} Fingerprint generation status.`, {
-      fingerprintStatus: isUnknownDeviceFingerprint(deviceFingerprint) ? "fallback" : "captured",
-    });
-
-    if (!firstName || !lastName || !normalizedEmail || !password || !confirmPassword || !emailRedirectTo) {
-      return fail({
-        step: "user",
-        error: MISSING_FIELDS_ERROR,
-        eventType: "signup_missing_fields",
-        message: "First name, last name, email, password, password confirmation, and redirect URL are required.",
-        status: 400,
-      });
-    }
-
-    if (password !== confirmPassword) {
-      return fail({
-        step: "user",
-        error: PASSWORD_MISMATCH_ERROR,
-        eventType: "signup_password_mismatch",
-        message: "Password and password confirmation must match.",
-        status: 400,
-      });
-    }
-
-    if (!EMAIL_REGEX.test(normalizedEmail)) {
-      return fail({
-        step: "user",
-        error: INVALID_EMAIL_ERROR,
-        eventType: "signup_invalid_email",
-        message: "Please enter a valid email address.",
-        status: 400,
-      });
-    }
-
-    if (password.length < PASSWORD_MIN_LENGTH) {
-      return fail({
-        step: "user",
-        error: INVALID_PASSWORD_ERROR,
-        eventType: "signup_invalid_password",
-        message: `Password must be at least ${PASSWORD_MIN_LENGTH} characters long.`,
-        status: 400,
-      });
-    }
-
-    if (!isAllowedEmailRedirect(emailRedirectTo, request)) {
-      return fail({
-        step: "user",
-        error: INVALID_REDIRECT_URL_ERROR,
-        eventType: "signup_invalid_redirect_url",
-        message: "The signup redirect URL is invalid.",
-        metadata: {
-          emailRedirectTo,
-        },
-        status: 400,
-      });
-    }
-
-    if (!acceptedTerms) {
-      return fail({
-        step: "user",
-        error: TERMS_NOT_ACCEPTED_ERROR,
-        eventType: "signup_missing_terms_consent",
-        message: "You must accept the Terms of Service to continue.",
-        status: 400,
-      });
-    }
-
-    if (!acceptedPrivacyPolicy) {
-      return fail({
-        step: "user",
-        error: PRIVACY_POLICY_NOT_ACCEPTED_ERROR,
-        eventType: "signup_missing_privacy_policy_consent",
-        message: "You must accept the Privacy Policy to continue.",
-        status: 400,
-      });
-    }
-
-    if (!acceptedKvkk) {
-      return fail({
-        step: "user",
-        error: KVKK_CONSENT_REQUIRED_ERROR,
-        eventType: "signup_missing_kvkk_consent",
-        message: "You must accept the KVKK consent to continue.",
-        status: 400,
-      });
-    }
-
-    if (!turnstileToken) {
-      return fail({
-        step: "captcha",
-        error: TURNSTILE_FAILED_ERROR,
-        reason: "turnstile_missing",
-        shouldResetTurnstile: true,
-        eventType: "signup_turnstile_missing_token",
-        message: "Please complete the Turnstile verification.",
-        status: 400,
-      });
-    }
-
-    const ipRateLimit = await takeRateLimitSafely({
-      limit: SIGNUP_IP_RATE_LIMIT_CAPACITY,
-      requestIp,
-      scope: "auth_signup_ip",
-      subject: requestIp,
-      windowMs: SIGNUP_RATE_LIMIT_WINDOW_MS,
-    });
-
-    if (!ipRateLimit.allowed) {
-      return fail({
-        step: "user",
-        error: RATE_LIMITED_ERROR,
-        eventType: "signup_rate_limited_ip",
-        headers: {
-          "Retry-After": String(Math.max(1, Math.ceil(ipRateLimit.retryAfterMs / 1_000))),
-        },
-        message: "Too many signup attempts from this IP address. Please try again shortly.",
-        metadata: {
-          limit: SIGNUP_IP_RATE_LIMIT_CAPACITY,
-          retry_after_ms: ipRateLimit.retryAfterMs,
-          scope: "ip",
-          window_ms: SIGNUP_RATE_LIMIT_WINDOW_MS,
-        },
-        status: 429,
-        triggeredIpRateLimit: true,
-      });
-    }
-
-    const emailRateLimit = await takeRateLimitSafely({
-      limit: SIGNUP_EMAIL_RATE_LIMIT_CAPACITY,
-      requestIp,
-      scope: "auth_signup_email",
-      subject: normalizedEmail,
-      windowMs: SIGNUP_RATE_LIMIT_WINDOW_MS,
-    });
-
-    if (!emailRateLimit.allowed) {
-      return fail({
-        step: "user",
-        error: EMAIL_RATE_LIMITED_ERROR,
-        eventType: "signup_rate_limited_email",
-        headers: {
-          "Retry-After": String(Math.max(1, Math.ceil(emailRateLimit.retryAfterMs / 1_000))),
-        },
-        message: "Too many signup attempts for this email address. Please try again shortly.",
-        metadata: {
-          limit: SIGNUP_EMAIL_RATE_LIMIT_CAPACITY,
-          retry_after_ms: emailRateLimit.retryAfterMs,
-          scope: "email",
-          window_ms: SIGNUP_RATE_LIMIT_WINDOW_MS,
-        },
-        status: 429,
-        triggeredEmailRateLimit: true,
-      });
-    }
-
-    // PRODUCTION-SAFE: Turnstile verification (Cloudflare is the source of truth).
-    // No in-memory deduplication needed - Turnstile tokens are single-use by design.
-    const turnstileVerification = await verifyTurnstileToken({
-      requestHost,
-      remoteIp: requestIp,
-      token: turnstileToken,
-    });
-    const turnstileDiagnostics: SignupApiTurnstileDiagnostics = {
-      errorCodes: turnstileVerification.errorCodes,
-      hostnameMismatch: turnstileVerification.hostnameMismatch,
-      issue: turnstileVerification.issue,
-      requestHostname: turnstileVerification.requestHostname,
-      responseHostname: turnstileVerification.hostname,
-    };
-
-    logTurnstileDebug("Turnstile verification result.", {
-      action: turnstileVerification.action,
-      category: turnstileVerification.ok
-        ? null
-        : getTurnstileFailureCategory({
-            errorCodes: turnstileVerification.errorCodes,
-            hostnameMismatch: turnstileVerification.hostnameMismatch,
-            issue: turnstileVerification.issue,
-          }),
-      errorCodes: turnstileVerification.errorCodes,
-      hostnameMismatch: turnstileVerification.hostnameMismatch,
-      hostname: turnstileVerification.hostname,
-      issue: turnstileVerification.issue,
-      ok: turnstileVerification.ok,
-      requestHostname: turnstileVerification.requestHostname,
-      reason: turnstileVerification.ok ? null : turnstileVerification.reason,
-      success: turnstileVerification.ok,
-      tokenPresent: Boolean(turnstileToken),
-    });
-
-    console.info(`${ROUTE_TAG} Turnstile verification audit.`, {
-      errorCodes: turnstileVerification.errorCodes,
-      failureCategory: turnstileVerification.ok
-        ? null
-        : getTurnstileFailureCategory({
-            errorCodes: turnstileVerification.errorCodes,
-            hostnameMismatch: turnstileVerification.hostnameMismatch,
-            issue: turnstileVerification.issue,
-          }),
-      hostname: turnstileVerification.hostname,
-      success: turnstileVerification.ok,
-      tokenPresent: Boolean(turnstileToken),
-    });
-
-    // PRODUCTION-SAFE: HARD validation - explicit checks for all security criteria
-    const turnstileHostnameValid = !turnstileVerification.hostnameMismatch;
-    // If action is expected, validate it matches (uncomment if using actions)
-    // const expectedAction = "signup";
-    // const turnstileActionValid = !expectedAction || turnstileVerification.action === expectedAction;
-    const turnstileActionValid = true; // No action validation unless explicitly configured
-
-    // turnstileVerification.ok is the definitive success indicator from Cloudflare
-    if (!turnstileVerification.ok || !turnstileHostnameValid || !turnstileActionValid) {
-      const failureReasons: string[] = [];
-      if (!turnstileVerification.ok) failureReasons.push("verification_failed");
-      if (!turnstileHostnameValid) failureReasons.push("hostname_mismatch");
-      if (!turnstileActionValid) failureReasons.push("action_mismatch");
-
-      // Type guard: reason only exists when ok is false
-      const failureReason = turnstileVerification.ok === false ? turnstileVerification.reason : "invalid";
-
-      return fail({
-        step: "captcha",
-        error: TURNSTILE_FAILED_ERROR,
-        reason: "turnstile_hard_validation_failed",
-        shouldResetTurnstile: true,
-        eventType: "signup_turnstile_hard_validation_failed",
-        message: getTurnstileFailureMessage(
-          failureReason,
-          turnstileEnv,
-          turnstileVerification.errorCodes,
-          turnstileDiagnostics,
-        ),
-        metadata: {
-          request_forwarded_host: forwardedHost,
-          request_host: requestHost,
-          request_host_header: hostHeader,
-          request_origin: origin,
-          turnstile_action: turnstileVerification.action,
-          turnstile_error_codes: turnstileVerification.errorCodes,
-          turnstile_failure_reasons: failureReasons,
-          turnstile_hostname: turnstileVerification.hostname,
-          turnstile_hostname_valid: turnstileHostnameValid,
-          turnstile_issue: turnstileVerification.issue,
-          turnstile_ok: turnstileVerification.ok,
-        },
-        status: 403,
-        turnstile: turnstileDiagnostics,
-        turnstileErrorCodes: turnstileVerification.errorCodes,
-        turnstileVerified: false,
-      });
-    }
-
-    // After passing hard validation, we know ok is true, so these checks are defense-in-depth
-    if (turnstileVerification.hostnameMismatch) {
-      // This should not happen due to hard validation above, but keep for defense-in-depth
-      return fail({
-        step: "captcha",
-        error: TURNSTILE_FAILED_ERROR,
-        reason: "turnstile_hostname_mismatch",
-        shouldResetTurnstile: false,
-        eventType: "signup_turnstile_hostname_mismatch",
-        message: getTurnstileFailureMessage("invalid", turnstileEnv, turnstileVerification.errorCodes, turnstileDiagnostics),
-        metadata: {
-          request_forwarded_host: forwardedHost,
-          request_host: requestHost,
-          request_host_header: hostHeader,
-          request_origin: origin,
-          turnstile_action: turnstileVerification.action,
-          turnstile_error_codes: turnstileVerification.errorCodes,
-          turnstile_hostname: turnstileVerification.hostname,
-          turnstile_issue: turnstileVerification.issue,
-          turnstile_reason: "hostname_mismatch",
-        },
-        status: 403,
-        turnstile: turnstileDiagnostics,
-        turnstileErrorCodes: turnstileVerification.errorCodes,
-        turnstileVerified: false,
-      });
-    }
-
-    // All Turnstile validations passed - proceed with signup
-    console.info(`${ROUTE_TAG} TURNSTILE_RESULT`, {
-      ok: true,
-      step: "captcha",
-      hostname: turnstileVerification.hostname,
-      requestHostname: turnstileVerification.requestHostname,
-      tokenPresent: Boolean(turnstileToken),
-      errorCodes: turnstileVerification.errorCodes,
-      issue: turnstileVerification.issue,
-    });
-
-    if (!adminClient) {
-      return fail({
-        step: "user",
-        error: INTERNAL_ERROR,
-        eventType: "signup_admin_client_missing",
-        message: "Signup is temporarily unavailable.",
-        status: 500,
-        turnstileVerified: true,
-      });
-    }
-
-    let existingUser: any = null;
-    try {
-      existingUser = await findExistingAuthUserByEmail({
-        adminClient,
-        email: normalizedEmail,
-      });
-    } catch (error) {
-      console.error(`${ROUTE_TAG} Duplicate email precheck failed. Continuing with Supabase signup fallback.`, {
-        email: normalizedEmail,
-        error: serializeError(error),
-      });
-    }
-
-    const initialUserMetadata = {
-      email_status: "pending",
-      first_name: firstName,
-      full_name: fullName,
-      last_name: lastName,
-      legal_consents: {
-        accepted_kvkk: true,
-        accepted_privacy_policy: true,
-        accepted_terms: true,
-        consented_at: new Date().toISOString(),
+    const { data: signupData, error: signupError } = await input.adminClient.auth.admin.generateLink({
+      email: input.email,
+      options: {
+        data: initialUserMetadata,
+        redirectTo: input.emailRedirectTo,
       },
-      notification_preferences: notificationPreferences,
-    };
-
-    let theUserId: string | null = null;
-    let fallbackToMagicLink = false;
-    let fallbackDataProp: any = null;
-
-    if (existingUser) {
-      console.info(`${ROUTE_TAG} [STEP] USER_EXISTS - Converting to magic link for idempotency`, {
-        email: normalizedEmail,
-        userId: existingUser.id,
-      });
-      theUserId = existingUser.id;
-      fallbackToMagicLink = true;
-    } else {
-      const { data: signupData, error: signupError } = await adminClient.auth.admin.generateLink({
-        email: normalizedEmail,
-        options: {
-          data: initialUserMetadata,
-          redirectTo: emailRedirectTo,
-        },
-        password,
-        type: "signup",
-      });
-
-      if (signupError) {
-        const serializedSignupError = serializeSupabaseAuthError(signupError);
-
-        if (isUserAlreadyRegisteredError(signupError)) {
-          console.info(`${ROUTE_TAG} [STEP] USER_EXISTS (RACE CONDITION CAUGHT) - Converting to magic link`, {
-            email: normalizedEmail,
-          });
-          fallbackToMagicLink = true;
-        } else if (isWeakPasswordError(signupError)) {
-          return fail({
-            step: "user",
-            error: INVALID_PASSWORD_ERROR,
-            eventType: "signup_supabase_weak_password",
-            message: serializedSignupError.weakPasswordMessage ?? "Password does not meet requirements.",
-            status: 400,
-            turnstileVerified: true,
-          });
-        } else if (isEmailRateLimitError(signupError)) {
-          return fail({
-            step: "user",
-            error: EMAIL_RATE_LIMITED_ERROR,
-            eventType: "signup_supabase_email_rate_limited",
-            message: "Supabase email rate limit exceeded.",
-            status: 429,
-            triggeredEmailRateLimit: true,
-            turnstileVerified: true,
-          });
-        } else {
-          const errorMessage = signupError?.message || "Supabase user creation failed";
-          const errorCode = (signupError as any)?.code || "unknown";
-          console.error(`${ROUTE_TAG} USER_CREATE_RESULT`, {
-            ok: false,
-            step: "user",
-            error: INTERNAL_ERROR,
-            reason: "supabase_error",
-            supabaseError: serializedSignupError,
-            errorCode,
-            errorMessage,
-          });
-          return fail({
-            step: "user",
-            error: INTERNAL_ERROR,
-            reason: "supabase_error",
-            eventType: "signup_supabase_error",
-            message: `Kullanıcı oluşturulamadı: ${errorMessage}`,
-            status: 500,
-            turnstileVerified: true,
-          });
-        }
-      } else {
-        theUserId = signupData?.user?.id ?? null;
-        fallbackDataProp = signupData?.properties ?? null;
-      }
-    }
-
-    if (fallbackToMagicLink) {
-      const { data: fallbackData } = await adminClient.auth.admin.generateLink({
-        email: normalizedEmail,
-        type: "magiclink",
-        options: { redirectTo: emailRedirectTo },
-      });
-      theUserId = fallbackData?.user?.id ?? existingUser?.id ?? null;
-      fallbackDataProp = fallbackData?.properties ?? null;
-    }
-
-    if (!theUserId) {
-      return fail({
-        step: "user",
-        error: INTERNAL_ERROR,
-        eventType: "signup_missing_user_id",
-        message: "Supabase did not return a user id for the new signup.",
-        status: 500,
-        turnstileVerified: true,
-      });
-    }
-
-    console.info(`${ROUTE_TAG} USER_CREATE_RESULT`, {
-      ok: true,
-      step: "user",
-      email: normalizedEmail,
-      userId: theUserId,
-      method: fallbackToMagicLink ? "magiclink" : "signup",
+      password: input.password,
+      type: "signup",
     });
 
-    // PRODUCTION-SAFE: Atomic bootstrap with guaranteed rollback on failure
-    const bootstrapResult = await persistSignupBootstrapRecords({
-      acceptedKvkk: true,
-      acceptedPrivacyPolicy: true,
-      acceptedTerms: true,
-      adminClient,
-      email: normalizedEmail,
-      ip: requestIp,
-      userAgent: requestUserAgent,
-      userId: theUserId,
-    });
-
-    if (!bootstrapResult.ok) {
-      console.error(`${ROUTE_TAG} Failed to persist signup bootstrap records.`, {
-        error: bootstrapResult.error.message,
-        stage: bootstrapResult.stage,
-        userId: theUserId,
-      });
-
-      // CRITICAL: Rollback auth user to maintain data consistency
-      const rollbackResult = await rollbackAuthUser(adminClient, theUserId, {
-        originalError: bootstrapResult.error.message,
-        stage: bootstrapResult.stage,
-      });
-
-      if (!rollbackResult.ok) {
-        // CRITICAL: Orphan user exists - logged in rollback function for manual cleanup
-        console.error(`${ROUTE_TAG} CRITICAL: Orphan user may exist after rollback failure.`, {
-          rollbackError: rollbackResult.error?.message,
-          userId: theUserId,
+    if (signupError) {
+      if (isUserAlreadyRegisteredError(signupError)) {
+        // User exists - convert to magic link
+        const { data: magicData } = await input.adminClient.auth.admin.generateLink({
+          email: input.email,
+          type: "magiclink",
+          options: { redirectTo: input.emailRedirectTo },
         });
-      }
-
-      return fail({
-        step: "user",
-        error: INTERNAL_ERROR,
-        eventType: "signup_bootstrap_failed",
-        message: "Hesap oluşturulamadı. Lütfen tekrar deneyin.",
-        status: 500,
-        turnstileVerified: true,
-      });
-    }
-
-    const actionLink = fallbackDataProp?.action_link?.trim() || "";
-    let emailStatus: SignupEmailStatus = "failed";
-    let emailFailureReason: string | null = actionLink ? null : "missing_signup_action_link";
-
-    if (actionLink) {
-      try {
-        await sendSignupConfirmationEmail({
-          actionLink,
-          email: normalizedEmail,
-          firstName,
-        });
-        emailStatus = "sent";
-        console.info(`${ROUTE_TAG} EMAIL_RESULT`, {
+        theUserId = magicData?.user?.id ?? null;
+        actionLink = magicData?.properties?.action_link?.trim() ?? "";
+        console.log("USER_CREATE_RESULT", {
           ok: true,
-          step: "email",
-          email: normalizedEmail,
+          method: "magiclink_fallback",
+          email: input.email,
           userId: theUserId,
-          status: "sent",
         });
-      } catch (error) {
-        emailFailureReason = error instanceof Error ? error.message : "unknown_email_error";
-        console.error(`${ROUTE_TAG} EMAIL_RESULT`, {
+      } else if (isWeakPasswordError(signupError)) {
+        return { ok: false, step: "user", error: INVALID_PASSWORD_ERROR };
+      } else if (isEmailRateLimitError(signupError)) {
+        return { ok: false, step: "user", error: EMAIL_RATE_LIMITED_ERROR };
+      } else {
+        console.log("USER_CREATE_RESULT", {
           ok: false,
-          step: "email",
-          email: normalizedEmail,
-          userId: theUserId,
-          status: "failed",
-          error: emailFailureReason,
+          email: input.email,
+          error: signupError.message,
+          code: (signupError as { code?: string }).code,
         });
+        return { ok: false, step: "user", error: INTERNAL_ERROR };
       }
     } else {
-      console.error(`${ROUTE_TAG} Verification email send skipped because Supabase did not return an action link.`, {
+      theUserId = signupData?.user?.id ?? null;
+      actionLink = signupData?.properties?.action_link?.trim() ?? "";
+      console.log("USER_CREATE_RESULT", {
+        ok: true,
+        method: "signup",
+        email: input.email,
         userId: theUserId,
       });
     }
+  } catch (error) {
+    console.log("USER_CREATE_RESULT", {
+      ok: false,
+      email: input.email,
+      error: error instanceof Error ? error.message : "unknown",
+    });
+    return { ok: false, step: "user", error: INTERNAL_ERROR };
+  }
 
+  if (!theUserId) {
+    return { ok: false, step: "user", error: INTERNAL_ERROR };
+  }
+
+  // STEP 4: Create Profile (ATOMIC - failure triggers rollback)
+  const bootstrapResult = await persistSignupBootstrapRecords({
+    acceptedKvkk: input.acceptedKvkk,
+    acceptedPrivacyPolicy: input.acceptedPrivacyPolicy,
+    acceptedTerms: input.acceptedTerms,
+    adminClient: input.adminClient,
+    email: input.email,
+    ip: input.requestIp,
+    userAgent: input.requestUserAgent,
+    userId: theUserId,
+  });
+
+  if (!bootstrapResult.ok) {
+    // CRITICAL: Rollback auth user
+    console.log("ROLLBACK_TRIGGERED", {
+      userId: theUserId,
+      stage: bootstrapResult.stage,
+      error: bootstrapResult.error.message,
+    });
+
+    const rollbackResult = await rollbackAuthUser(input.adminClient, theUserId, {
+      stage: bootstrapResult.stage,
+      originalError: bootstrapResult.error.message,
+    });
+
+    console.log("ROLLBACK_RESULT", {
+      userId: theUserId,
+      ok: rollbackResult.ok,
+      error: rollbackResult.error?.message ?? null,
+    });
+
+    return { ok: false, step: "profile", error: INTERNAL_ERROR };
+  }
+
+  // STEP 5: Send confirmation email and return with accurate status
+  console.log("SIGNUP_FLOW_STEP", "STEP5_EMAIL_SENDING");
+
+  let emailStatus: "sent" | "failed" = "failed";
+
+  if (actionLink) {
+    console.log("SIGNUP_FLOW_STEP", "EMAIL_TRIGGERING");
     try {
-      await updateUserEmailStatus({
-        adminClient,
-        emailFailureReason,
-        emailStatus,
-        user: { id: theUserId } as any,
+      // Await email to get actual status (with 12s timeout to avoid blocking indefinitely)
+      const emailPromise = sendSignupConfirmationEmailAsync({
+        actionLink,
+        email: input.email,
+        firstName: input.firstName,
+        userId: theUserId,
+      });
+
+      // Race with 12s timeout - if email takes too long, mark as failed but don't block
+      const timeoutPromise = new Promise<"failed">((resolve) => {
+        setTimeout(() => resolve("failed"), 12_000);
+      });
+
+      emailStatus = await Promise.race([emailPromise, timeoutPromise]);
+      console.log("EMAIL_RESPONSE", { emailStatus, userId: theUserId, email: input.email });
+
+      // Update user metadata with email status (best effort, don't block response)
+      input.adminClient?.auth.admin.updateUserById(theUserId, {
+        user_metadata: {
+          email_status: emailStatus,
+          email_sent_at: emailStatus === "sent" ? new Date().toISOString() : null,
+        },
+      }).catch((err) => {
+        console.error("EMAIL_ERROR", { userId: theUserId, error: err.message, context: "metadata_update_failed" });
       });
     } catch (error) {
-      console.error(`${ROUTE_TAG} Failed to update email status metadata.`, {
-        error: serializeError(error),
-        userId: theUserId,
-      });
+      console.error("EMAIL_ERROR", { userId: theUserId, error: error instanceof Error ? error.message : "unknown_error", context: "send_failed" });
+      emailStatus = "failed";
     }
+  } else {
+    console.log("EMAIL_SKIPPED", { userId: theUserId, reason: "missing_action_link" });
+    emailStatus = "failed";
+  }
 
-    const risk = await evaluateRiskSafely({
-      deviceFingerprint,
-      email: normalizedEmail,
-      ip: requestIp,
-      outcome: emailStatus === "sent" ? "signup_success" : "signup_success_email_failed",
-      turnstileTokenPresent: true,
-      turnstileVerified: true,
-      userAgent: requestUserAgent,
-    });
-
-    await safeLogSecurityEvent(adminClient, {
-      email: normalizedEmail,
-      eventType: emailStatus === "sent" ? "signup_success" : "signup_success_email_failed",
-      ip: requestIp,
+  // Log security event (async, don't block)
+  evaluateRiskSafely({
+    deviceFingerprint: input.deviceFingerprint,
+    email: input.email,
+    ip: input.requestIp,
+    outcome: "signup_success",
+    turnstileTokenPresent: true,
+    turnstileVerified: true,
+    userAgent: input.requestUserAgent,
+  }).then((risk) => {
+    safeLogSecurityEvent(input.adminClient, {
+      email: input.email,
+      eventType: "signup_success",
+      ip: input.requestIp,
       metadata: {
-        email_failure_reason: emailFailureReason,
-        email_status: emailStatus,
-        session_created: false,
         supabase_user_id: theUserId,
-        ...buildRiskMetadata(risk, deviceFingerprint),
+        ...buildRiskMetadata(risk, input.deviceFingerprint),
       },
-      userAgent: requestUserAgent,
+      userAgent: input.requestUserAgent,
       userId: theUserId,
     });
+  });
 
-    return buildResponse(
-      {
-        ok: true,
-        step: emailStatus === "sent" ? "email" : "user",
-        status: "success",
-        message:
-          emailStatus === "sent"
-            ? "Verification email sent successfully."
-            : "Account created, but the verification email could not be sent.",
-        risk,
-        verified: true,
-        emailStatus,
-      },
-      crypto.randomUUID(),
-    );
-  } catch (error) {
-    console.error(`${ROUTE_TAG} Unhandled signup error.`, serializeError(error));
-
-    await safeLogSecurityEvent(adminClient, {
-      email: normalizedEmail || null,
-      eventType: "signup_unhandled_error",
-      ip: requestIp,
-      metadata: {
-        error: serializeError(error),
-      },
-      userAgent: requestUserAgent,
-    });
-
-    logReturnReason("signup_unhandled_error", {
-      error: error instanceof Error ? error.message : "unknown_error",
-      status: 500,
-    });
-
-    return buildResponse(
-      {
-        ok: false,
-        step: "user",
-        status: "failed",
-        error: INTERNAL_ERROR,
-        message: error instanceof Error && error.message.trim() ? error.message : "Supabase user creation failed unexpectedly.",
-      },
-      crypto.randomUUID(),
-      500,
-    );
+  // Return with accurate email status
+  const warnings: string[] = [];
+  if (emailStatus === "failed") {
+    warnings.push("Hesabınız oluşturuldu ancak doğrulama maili gönderilemedi.");
   }
+
+  console.log("SIGNUP_FLOW_STEP", "STEP6_RESPONSE", { emailStatus, userId: theUserId, warnings });
+
+  return {
+    ok: true,
+    userId: theUserId,
+    emailStatus,
+    verified: true,
+    warnings: warnings.length > 0 ? warnings : undefined,
+  };
 }

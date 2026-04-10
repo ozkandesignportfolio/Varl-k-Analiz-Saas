@@ -291,65 +291,36 @@ const getSignupErrorMessage = (
   fallbackMessage?: string,
   turnstile?: SignupApiErrorResponse["turnstile"],
 ) => {
-  if (error === EMAIL_ALREADY_EXISTS_ERROR) {
-    return "Bu e-posta zaten kayitli.";
+  // Map error codes to user-friendly messages
+  const errorMessages: Record<string, string> = {
+    [EMAIL_ALREADY_EXISTS_ERROR]: "Bu e-posta adresi zaten kayıtlı. Lütfen giriş yapmayı deneyin.",
+    [TURNSTILE_TOKEN_USED_ERROR]: "Bu güvenlik doğrulaması zaten kullanıldı. Lütfen yeniden doğrulayın.",
+    [TURNSTILE_FAILED_ERROR]: getTurnstileDiagnosticsMessage(turnstile) ?? "Güvenlik doğrulaması başarısız. Lütfen tekrar deneyin.",
+    [EMAIL_RATE_LIMITED_ERROR]: "Çok fazla kayıt denemesi yapıldı. Lütfen 1 dakika bekleyip tekrar deneyin.",
+    [RATE_LIMITED_ERROR]: "Çok fazla kayıt denemesi yapıldı. Lütfen 1 dakika bekleyip tekrar deneyin.",
+    [MISSING_FIELDS_ERROR]: "Lütfen tüm zorunlu alanları doldurun.",
+    [PASSWORD_MISMATCH_ERROR]: "Şifre ve şifre tekrarı aynı olmalı.",
+    [INVALID_EMAIL_ERROR]: "Lütfen geçerli bir e-posta adresi girin.",
+    [INVALID_PASSWORD_ERROR]: `Şifreniz en az ${PASSWORD_MIN_LENGTH} karakter olmalı ve büyük harf, küçük harf, rakam içermeli.`,
+    [TERMS_NOT_ACCEPTED_ERROR]: "Kullanım Şartlarını kabul etmelisiniz.",
+    [PRIVACY_POLICY_NOT_ACCEPTED_ERROR]: "Gizlilik Politikasını kabul etmelisiniz.",
+    [KVKK_CONSENT_REQUIRED_ERROR]: "KVKK açık rıza metnini kabul etmelisiniz.",
+    [INVALID_REDIRECT_URL_ERROR]: "Kayıt yönlendirme adresi geçersiz. Sayfayı yenileyip tekrar deneyin.",
+    [INTERNAL_ERROR]: "Sunucu hatası oluştu. Lütfen daha sonra tekrar deneyin.",
+  };
+
+  // Return mapped message or backend-provided message (never generic)
+  if (error && errorMessages[error]) {
+    return errorMessages[error];
   }
 
-  if (error === TURNSTILE_TOKEN_USED_ERROR) {
-    return "Bu güvenlik doğrulaması zaten kullanıldı. Lütfen yeni bir doğrulama tamamlayın.";
+  // If backend provided a specific message, use it
+  if (fallbackMessage && fallbackMessage.length > 0) {
+    return fallbackMessage;
   }
 
-  if (error === TURNSTILE_FAILED_ERROR) {
-    return (
-      getTurnstileDiagnosticsMessage(turnstile) ??
-      translateTurnstileMessage(fallbackMessage) ??
-      "Guvenlik dogrulamasi basarisiz. Lutfen yeniden deneyin."
-    );
-  }
-
-  if (error === EMAIL_RATE_LIMITED_ERROR || error === RATE_LIMITED_ERROR) {
-    return "Cok fazla kayit denemesi yapildi. Lutfen bekleyip tekrar deneyin.";
-  }
-
-  if (error === MISSING_FIELDS_ERROR) {
-    return "Lutfen tum zorunlu alanlari doldurun.";
-  }
-
-  if (error === PASSWORD_MISMATCH_ERROR) {
-    return "Sifre ve sifre tekrari ayni olmali.";
-  }
-
-  if (error === INVALID_EMAIL_ERROR) {
-    return "Lutfen gecerli bir e-posta adresi girin.";
-  }
-
-  if (error === INVALID_PASSWORD_ERROR) {
-    return `Sifreniz guvenlik kurallarini karsilamiyor. En az ${PASSWORD_MIN_LENGTH} karakter olacak sekilde daha guclu bir sifre girin.`;
-  }
-
-  if (error === TERMS_NOT_ACCEPTED_ERROR) {
-    return "Kullanim Sartlarini kabul etmelisiniz.";
-  }
-
-  if (error === PRIVACY_POLICY_NOT_ACCEPTED_ERROR) {
-    return "Gizlilik Politikasini kabul etmelisiniz.";
-  }
-
-  if (error === KVKK_CONSENT_REQUIRED_ERROR) {
-    return "KVKK acik riza metnini kabul etmelisiniz.";
-  }
-
-  if (error === INVALID_REDIRECT_URL_ERROR) {
-    return "Kayit yonlendirme adresi gecersiz. Sayfayi yenileyip tekrar deneyin.";
-  }
-
-  if (error === INTERNAL_ERROR) {
-    // ALWAYS show real backend error, never generic
-    return fallbackMessage || "Sunucu hatasi: Kayit islemi basarisiz oldu.";
-  }
-
-  // NEVER return generic - always show specific error from backend
-  return fallbackMessage || "Bilinmeyen hata: Lutfen sayfayi yenileyip tekrar deneyin.";
+  // Last resort - use error code as message (should never happen)
+  return error || "Beklenmeyen hata oluştu";
 };
 
 const SignupTurnstileSection = memo(function SignupTurnstileSection({
@@ -820,19 +791,35 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
       // SUCCESS: Handle based on email delivery status
       const emailFailed = successResult.emailStatus === "failed";
 
+      console.log("NOTIFICATION_TRIGGERED", { success: true, emailStatus: successResult.emailStatus, emailFailed });
+
       if (emailFailed) {
-        // Email failed but user was created - special state for this case
+        // Email failed but user was created - show warning toast
         setSignupState({
           type: "email_failed",
           userMessage: "Hesabınız oluşturuldu ancak doğrulama e-postası gönderilemedi. Lütfen giriş yapmayı deneyin veya destek ile iletişime geçin.",
         });
+        // Show warning toast for email failure
+        if (typeof window !== "undefined" && (window as unknown as { showToast?: (msg: string, type: string) => void }).showToast) {
+          (window as unknown as { showToast: (msg: string, type: string) => void }).showToast(
+            "Hesabınız oluşturuldu ancak doğrulama maili gönderilemedi.",
+            "warning"
+          );
+        }
       } else {
-        // Full success - navigate to verification page
+        // Full success - show success toast and navigate to verification page
         setSignupState({
           type: "success",
           emailStatus: "sent",
           userMessage: successResult.message ?? emailVerificationSentMessage,
         });
+        // Show success toast
+        if (typeof window !== "undefined" && (window as unknown as { showToast?: (msg: string, type: string) => void }).showToast) {
+          (window as unknown as { showToast: (msg: string, type: string) => void }).showToast(
+            "Hesabınız başarıyla oluşturuldu! Doğrulama e-postası gönderildi.",
+            "success"
+          );
+        }
         router.push(buildEmailVerificationPath(email, null, { emailSent: true }));
       }
     } catch (error) {
@@ -866,22 +853,23 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
         <div className="ambient-orb ambient-orb-a" />
       </div>
 
-      <div className="relative mx-auto flex w-full max-w-md flex-col gap-4 lg:max-w-4xl lg:grid-cols-[1fr_1fr] lg:grid">
-        <section className="premium-panel p-4 sm:p-6">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 rounded-full border border-white/15 px-3 py-1.5 text-xs text-slate-300"
-          >
-            Assetly
-          </Link>
-          <h1 className="mt-5 text-4xl font-semibold leading-[1.1] text-white">Hesap Olustur</h1>
-          <p className="mt-4 text-sm leading-7 text-slate-300">
-            Deneme planinda {trialAssetLimit} varlik, {trialDocumentLimit} belge, {trialSubscriptionLimit} abonelik ve{" "}
-            {trialInvoiceUploadLimit} fatura yukleme ile baslayin. Istediginiz zaman {PREMIUM_MONTHLY_PRICE_LABEL} premium plana gecin.
-          </p>
-        </section>
+      <div className="relative mx-auto w-full max-w-md px-4 lg:max-w-4xl lg:px-8">
+        <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[1fr_1fr]">
+          <section className="premium-panel p-4 sm:p-6">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 px-3 py-1.5 text-xs text-slate-300"
+            >
+              Assetly
+            </Link>
+            <h1 className="mt-5 text-4xl font-semibold leading-[1.1] text-white">Hesap Olustur</h1>
+            <p className="mt-4 text-sm leading-7 text-slate-300">
+              Deneme planinda {trialAssetLimit} varlik, {trialDocumentLimit} belge, {trialSubscriptionLimit} abonelik ve{" "}
+              {trialInvoiceUploadLimit} fatura yukleme ile baslayin. Istediginiz zaman {PREMIUM_MONTHLY_PRICE_LABEL} premium plana gecin.
+            </p>
+          </section>
 
-        <section className="premium-panel p-4 sm:p-6">
+          <section className="premium-panel p-4 sm:p-6">
           <h2 className="text-xl sm:text-2xl font-semibold text-white">Kayit Ol</h2>
           <p className="mt-2 text-sm text-slate-300">Ad, soyad, e-posta, sifre ve yasal onaylarla yeni hesabinizi guvenle olusturun.</p>
 
@@ -1067,6 +1055,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
             </Link>
           </p>
         </section>
+        </div>
       </div>
     </main>
   );
