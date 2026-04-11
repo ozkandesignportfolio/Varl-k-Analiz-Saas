@@ -68,7 +68,7 @@ const isDevelopmentEnvironment = () => process.env.NODE_ENV === "development";
 
 // Result types for atomic flow - WITH FULL ERROR VISIBILITY
 type SignupResult =
-  | { ok: true; userId: string; emailStatus: "queued" | "sent" | "failed"; verified: true; warnings?: string[] }
+  | { ok: true; userId: string; emailStatus: "sent" | "failed"; verified: true; warnings?: string[] }
   | { ok: false; step: "turnstile" | "user" | "profile" | "email"; error: string; message: string };
 
 type SignupRequestBody = {
@@ -107,6 +107,7 @@ type SignupSuccessResponse = {
   requestId: string;
   message?: string;
   risk?: SignupRisk;
+  warnings?: string[];
 };
 
 type JsonValue =
@@ -675,7 +676,14 @@ const sendSignupConfirmationEmailAsync = async (input: {
 
   if (!resendApiKey) {
     const failMsg = "RESEND_API_KEY env değişkeni eksik";
-    console.log("EMAIL_RESULT", { email: input.email, userId: input.userId, status: "failed", reason: failMsg });
+    console.log("EMAIL_FAILED", { email: input.email, userId: input.userId, error: failMsg, reason: "missing_api_key" });
+    return { status: "failed", message: failMsg };
+  }
+
+  // Validate FROM email
+  if (!fromEmail || fromEmail.includes("resend.dev") || fromEmail.includes("example.com")) {
+    const failMsg = `Geçersiz gönderen e-posta adresi: ${fromEmail}. Lütfen AUTOMATION_FROM_EMAIL env değişkenini ayarlayın.`;
+    console.log("EMAIL_FAILED", { email: input.email, userId: input.userId, error: failMsg, reason: "invalid_from_email" });
     return { status: "failed", message: failMsg };
   }
 
@@ -714,21 +722,30 @@ const sendSignupConfirmationEmailAsync = async (input: {
       ),
     ]);
 
-    console.log("EMAIL_RESULT", {
-      email: input.email,
-      userId: input.userId,
-      status: result.status,
-      message: result.message,
-    });
+    // Log with exact names required by spec
+    if (result.status === "sent") {
+      console.log("EMAIL_SUCCESS", {
+        email: input.email,
+        userId: input.userId,
+        message: result.message,
+      });
+    } else {
+      console.log("EMAIL_FAILED", {
+        email: input.email,
+        userId: input.userId,
+        error: result.message,
+        reason: "resend_api_error",
+      });
+    }
 
     return result;
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
-    console.log("EMAIL_RESULT", {
+    console.log("EMAIL_FAILED", {
       email: input.email,
       userId: input.userId,
-      status: "failed",
-      message: errorMsg,
+      error: errorMsg,
+      reason: "exception",
     });
     return { status: "failed", message: errorMsg };
   }
@@ -1330,31 +1347,38 @@ async function executeAtomicSignup(input: {
     return { ok: false, step: "profile", error: INTERNAL_ERROR, message: `Profil oluşturma hatası: ${bootstrapResult.error.message}` };
   }
 
-  // STEP 5: Fire confirmation email asynchronously (do NOT block response)
-  // Email failure must NOT break signup - user is already created
-  if (actionLink) {
-    // Fire and forget - email sending happens in background
-    void (async () => {
-      const emailStatus = await sendSignupConfirmationEmailAsync({
-        actionLink,
-        email: input.email,
-        firstName: input.firstName,
-        userId: theUserId,
-      });
+  // STEP 5: Send confirmation email with timeout (10s max)
+  // Email failure must NOT block signup - user is already created
+  let emailStatus: "sent" | "failed" = "failed";
+  let emailError: string | null = null;
 
-      // Update user metadata with email status (best effort)
-      input.adminClient?.auth.admin.updateUserById(theUserId, {
-        user_metadata: {
-          email_status: emailStatus.status,
-          email_failure_reason: emailStatus.status === "failed" ? emailStatus.message : null,
-          email_sent_at: emailStatus.status === "sent" ? new Date().toISOString() : null,
-        },
-      }).catch(() => {
-        // Metadata update failure is not critical
-      });
-    })();
+  if (actionLink) {
+    const emailResult = await sendSignupConfirmationEmailAsync({
+      actionLink,
+      email: input.email,
+      firstName: input.firstName,
+      userId: theUserId,
+    });
+
+    emailStatus = emailResult.status;
+    if (emailResult.status === "failed") {
+      emailError = emailResult.message;
+    }
+
+    // Update user metadata with email status (best effort)
+    input.adminClient?.auth.admin.updateUserById(theUserId, {
+      user_metadata: {
+        email_status: emailResult.status,
+        email_failure_reason: emailResult.status === "failed" ? emailResult.message : null,
+        email_sent_at: emailResult.status === "sent" ? new Date().toISOString() : null,
+      },
+    }).catch(() => {
+      // Metadata update failure is not critical
+    });
   } else {
-    console.log("EMAIL_FAILED", { userId: theUserId, reason: "missing_action_link" });
+    console.log("EMAIL_FAILED", { userId: theUserId, error: "missing_action_link", reason: "missing_action_link" });
+    emailStatus = "failed";
+    emailError = "Doğrulama bağlantısı oluşturulamadı";
   }
 
   // Log security event (async, don't block)
@@ -1373,6 +1397,8 @@ async function executeAtomicSignup(input: {
       ip: input.requestIp,
       metadata: {
         supabase_user_id: theUserId,
+        email_status: emailStatus,
+        email_error: emailError,
         ...buildRiskMetadata(risk, input.deviceFingerprint),
       },
       userAgent: input.requestUserAgent,
@@ -1380,14 +1406,24 @@ async function executeAtomicSignup(input: {
     });
   });
 
-  // Return immediately - email is queued and sending in background
-  // User is created successfully regardless of email delivery
-  console.log("SIGNUP_COMPLETE", { userId: theUserId, email: input.email });
+  // Return success - user is created regardless of email delivery
+  console.log("SIGNUP_COMPLETE", {
+    userId: theUserId,
+    email: input.email,
+    emailStatus,
+    emailFailed: emailStatus === "failed",
+  });
+
+  const warnings: string[] = [];
+  if (emailStatus === "failed" && emailError) {
+    warnings.push(`Email gönderilemedi: ${emailError}`);
+  }
 
   return {
     ok: true,
     userId: theUserId,
-    emailStatus: "queued",
+    emailStatus,
     verified: true,
+    warnings: warnings.length > 0 ? warnings : undefined,
   };
 }

@@ -51,7 +51,7 @@ type SignupState =
   | { type: "verifying_captcha"; token: string; requestId: string }
   | { type: "creating_user"; token: string; requestId: string }
   | { type: "sending_email"; userId: string; requestId: string }
-  | { type: "success"; emailStatus: "queued" | "sent" | "failed"; userMessage: string }
+  | { type: "success"; emailStatus: "sent" | "failed"; userMessage: string }
   | { type: "rollback"; reason: string; userMessage: string }  // Backend rolled back user creation
   | { type: "error"; error: string; shouldResetTurnstile: boolean; userMessage: string };
 
@@ -784,19 +784,21 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
       }
 
       // SUCCESS: User created - show success regardless of email status
-      // Email is sent asynchronously in background (status: "queued")
-      console.log("SIGNUP_SUCCESS", { emailStatus: successResult.emailStatus, userId: successResult.userId });
+      // Email is awaited with 10s timeout - actual status returned (sent/failed)
+      console.log("SIGNUP_SUCCESS", { emailStatus: successResult.emailStatus, userId: successResult.userId, warnings: successResult.warnings });
 
-      const emailStatus = successResult.emailStatus ?? "queued";
+      const emailStatus = successResult.emailStatus ?? "failed";
       const isEmailFailed = emailStatus === "failed";
+      const emailWarning = successResult.warnings?.find(w => w.includes("Email gönderilemedi"));
 
       // Build user message based on email status
       let userMessage: string;
       if (isEmailFailed) {
-        userMessage = "Hesabınız oluşturuldu ancak doğrulama e-postası gönderilemedi. Lütfen giriş yapmayı deneyin veya destek ile iletişime geçin.";
-      } else if (emailStatus === "queued") {
-        userMessage = "Hesabınız başarıyla oluşturuldu! Doğrulama e-postası gönderiliyor, lütfen birkaç dakika içinde gelen kutunuzu kontrol edin.";
+        userMessage = emailWarning
+          ? "Hesabınız oluşturuldu ancak doğrulama e-postası gönderilemedi. Lütfen giriş yapmayı deneyin veya destek ile iletişime geçin."
+          : "Hesabınız oluşturuldu ancak doğrulama e-postası gönderilemedi. Lütfen giriş yapmayı deneyin veya destek ile iletişime geçin.";
       } else {
+        // emailStatus === "sent"
         userMessage = successResult.message ?? emailVerificationSentMessage;
       }
 

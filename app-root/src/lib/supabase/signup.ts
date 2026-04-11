@@ -32,7 +32,7 @@ export type SignupApiErrorCode =
   | typeof TURNSTILE_TOKEN_USED_ERROR
   | typeof WEAK_PASSWORD_ERROR;
 
-export type SignupEmailStatus = "failed" | "queued" | "sent";
+export type SignupEmailStatus = "failed" | "sent";
 export type SignupTurnstileIssueCategory = "domain" | "env" | "key" | "network" | "token" | "unknown";
 
 export type SignupApiTurnstileDiagnostics = {
@@ -77,7 +77,7 @@ export type SignupApiResponse = {
   risk?: SignupRisk;
   turnstile?: SignupApiTurnstileDiagnostics;
   verified?: true;
-  emailStatus?: "queued" | "sent" | "failed";
+  emailStatus?: "sent" | "failed";
   userId?: string;
   warnings?: string[];
 };
@@ -106,8 +106,9 @@ export type SignupApiSuccessResponse = {
   requestId?: string;
   risk?: SignupRisk;
   verified?: true;
-  emailStatus: "queued" | "sent" | "failed";
+  emailStatus: "sent" | "failed";
   userId: string;
+  warnings?: string[];
 };
 
 export const getSignupCooldownRemainingSeconds = (cooldownEndTimestamp: number, now = Date.now()) => {
