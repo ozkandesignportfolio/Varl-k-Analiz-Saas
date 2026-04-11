@@ -28,9 +28,11 @@ function VerifyEmailFallback() {
 }
 
 export default function VerifyEmailPage() {
+  // Use /auth/callback as the email redirect target
+  // The callback handles code exchange and redirects appropriately
   return (
     <Suspense fallback={<VerifyEmailFallback />}>
-      <VerifyEmailClient emailRedirectTo={requireAuthRedirectUrl("/verify-email")} />
+      <VerifyEmailClient emailRedirectTo={requireAuthRedirectUrl("/auth/callback")} />
     </Suspense>
   );
 }

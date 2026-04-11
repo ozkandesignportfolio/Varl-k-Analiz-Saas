@@ -7,9 +7,11 @@ function RegisterPageFallback() {
 }
 
 export default function RegisterPage() {
+  // Use /auth/callback as the email redirect target
+  // The callback handles code exchange and redirects appropriately
   return (
     <Suspense fallback={<RegisterPageFallback />}>
-      <RegisterPageClient emailRedirectTo={getAuthRedirectUrl("/verify-email")} />
+      <RegisterPageClient emailRedirectTo={getAuthRedirectUrl("/auth/callback")} />
     </Suspense>
   );
 }

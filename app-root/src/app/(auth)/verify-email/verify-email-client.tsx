@@ -18,7 +18,7 @@ import {
 const allowedVerificationTypes = new Set(["signup", "email"]);
 const emailVerificationProcessingMessage = "Dogrulama baglantisi kontrol ediliyor...";
 
-type MessageTone = "error" | "info";
+type MessageTone = "error" | "info" | "success";
 
 const getSafeNextPath = (candidate: string | null) => {
   if (!candidate) {
@@ -36,6 +36,16 @@ type VerifyEmailClientProps = {
   emailRedirectTo: string;
 };
 
+/**
+ * VerifyEmailClient
+ * 
+ * NOTE: Email verification callbacks are now handled by /auth/callback route.
+ * This component is for:
+ * 1. Showing "check your email" message after signup
+ * 2. Manual verification resend
+ * 3. Displaying errors from failed callback attempts
+ * 4. Backwards compatibility for old verification links (legacy token_hash handling)
+ */
 export default function VerifyEmailClient({ emailRedirectTo }: VerifyEmailClientProps) {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
@@ -44,33 +54,37 @@ export default function VerifyEmailClient({ emailRedirectTo }: VerifyEmailClient
   const isRedirectingRef = useRef(false);
 
   const email = (searchParams.get("email") ?? "").trim();
+  // Legacy: code and token_hash are now handled by /auth/callback
+  // Kept here for backwards compatibility with old email links
   const authCode = (searchParams.get("code") ?? "").trim();
   const tokenHash = (searchParams.get("token_hash") ?? "").trim();
   const verificationType = (searchParams.get("type") ?? "signup").trim();
   const hasSentState = searchParams.get("sent") === "1";
   const nextPath = useMemo(() => getSafeNextPath(searchParams.get("next")), [searchParams]);
-  const redirectErrorMessage = useMemo(
-    () => (searchParams.get("error_description") ?? searchParams.get("error") ?? "").trim(),
-    [searchParams],
-  );
+  
+  // Handle errors passed from callback route or Supabase
+  const errorParam = searchParams.get("error");
+  const errorDescription = searchParams.get("error_description");
+  const redirectErrorMessage = errorDescription ?? errorParam ?? "";
 
   const [isResendingVerification, setIsResendingVerification] = useState(false);
-  const [{ text: message, tone: messageTone }, setFeedback] = useState({
-    text: hasSentState ? emailVerificationSentMessage : emailVerificationPromptMessage,
-    tone: "info" as MessageTone,
+  const [{ text: message, tone: messageTone }, setFeedback] = useState(() => {
+    // If there's an error from callback, show it
+    if (redirectErrorMessage) {
+      return {
+        text: isInvalidEmailVerificationError({ message: redirectErrorMessage })
+          ? invalidVerificationLinkMessage
+          : redirectErrorMessage,
+        tone: "error" as MessageTone,
+      };
+    }
+    return {
+      text: hasSentState ? emailVerificationSentMessage : emailVerificationPromptMessage,
+      tone: "info" as MessageTone,
+    };
   });
 
-  useEffect(() => {
-    if (isRedirectingRef.current) {
-      return;
-    }
-
-    setFeedback({
-      text: hasSentState ? emailVerificationSentMessage : emailVerificationPromptMessage,
-      tone: "info",
-    });
-  }, [hasSentState]);
-
+  // Handle legacy verification (code/token_hash in URL) - for backwards compatibility
   useEffect(() => {
     let isActive = true;
 
@@ -82,7 +96,7 @@ export default function VerifyEmailClient({ emailRedirectTo }: VerifyEmailClient
       isRedirectingRef.current = true;
       setFeedback({
         text: `${emailVerificationCompletedMessage} Yonlendiriliyorsunuz...`,
-        tone: "info",
+        tone: "success",
       });
       router.replace(nextPath);
       router.refresh();
@@ -109,25 +123,23 @@ export default function VerifyEmailClient({ emailRedirectTo }: VerifyEmailClient
       router.refresh();
     };
 
-    const handleVerificationRedirect = async () => {
-      if (redirectErrorMessage) {
-        setFeedback({
-          text: isInvalidEmailVerificationError({ message: redirectErrorMessage })
-            ? invalidVerificationLinkMessage
-            : redirectErrorMessage,
-          tone: "error",
-        });
+    const handleLegacyVerification = async () => {
+      // Skip if already handled or no legacy params
+      if (isHandlingRedirectRef.current || (!authCode && !tokenHash)) {
         return;
       }
 
+      // Skip if there's an error already displayed
+      if (redirectErrorMessage) {
+        return;
+      }
+
+      // If already have session, just redirect
       if (await syncSession()) {
         return;
       }
 
-      if (isHandlingRedirectRef.current) {
-        return;
-      }
-
+      // Handle legacy code exchange (old email links)
       if (authCode) {
         isHandlingRedirectRef.current = true;
         setFeedback({
@@ -155,6 +167,7 @@ export default function VerifyEmailClient({ emailRedirectTo }: VerifyEmailClient
         return;
       }
 
+      // Handle legacy token_hash verification (old email links)
       if (tokenHash) {
         if (!allowedVerificationTypes.has(verificationType)) {
           setFeedback({
@@ -193,8 +206,9 @@ export default function VerifyEmailClient({ emailRedirectTo }: VerifyEmailClient
       }
     };
 
-    void handleVerificationRedirect();
+    void handleLegacyVerification();
 
+    // Also listen for auth state changes
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event: AuthChangeEvent, session: Session | null) => {
         if (!session || !isActive) {
@@ -294,7 +308,13 @@ export default function VerifyEmailClient({ emailRedirectTo }: VerifyEmailClient
 
           {message ? (
             <p
-              className={`mt-6 text-sm ${messageTone === "info" ? "text-sky-200" : "text-rose-200"}`}
+              className={`mt-6 text-sm ${
+                messageTone === "success"
+                  ? "text-emerald-200"
+                  : messageTone === "info"
+                    ? "text-sky-200"
+                    : "text-rose-200"
+              }`}
               data-testid="verify-email-message"
             >
               {message}
