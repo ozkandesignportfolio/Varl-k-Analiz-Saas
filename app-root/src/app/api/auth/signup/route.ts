@@ -496,13 +496,15 @@ const persistSignupBootstrapRecords = async (input: {
   const consentedAt = new Date().toISOString();
 
   // Stage 1: Profile (REQUIRED - user cannot exist without profile)
-  // Using INSERT - will fail if profile already exists (idempotency violation)
+  // Using UPSERT - allows idempotent retry if profile already exists
   const profilePayload = { id: input.userId, plan: "free" };
-  console.log("PROFILE_INSERT_ATTEMPT", { userId: input.userId, payload: profilePayload });
+  console.log("PROFILE_UPSERT_ATTEMPT", { userId: input.userId, payload: profilePayload });
 
-  const { data: profileData, error: profileError } = await input.adminClient.from("profiles").insert(profilePayload);
+  const { data: profileData, error: profileError } = await input.adminClient
+    .from("profiles")
+    .upsert(profilePayload, { onConflict: "id" });
 
-  console.log("PROFILE_INSERT_RESULT", {
+  console.log("PROFILE_UPSERT_RESULT", {
     ok: !profileError,
     userId: input.userId,
     error: profileError?.message ?? null,
@@ -510,58 +512,67 @@ const persistSignupBootstrapRecords = async (input: {
     data: profileData,
   });
 
-  if (profileError) {
+  // Only fail on REAL errors (not duplicate/constraint violations)
+  if (profileError && (profileError as { code?: string }).code !== "23505") {
     return {
       ok: false,
-      error: new Error(`Failed to insert profile: ${profileError.message} (code: ${(profileError as { code?: string }).code ?? "unknown"})`),
+      error: new Error(`Failed to upsert profile: ${profileError.message} (code: ${(profileError as { code?: string }).code ?? "unknown"})`),
       stage: "profile",
     };
   }
 
   // Stage 2: Notification settings (REQUIRED)
-  // Using INSERT - will fail if settings already exist
-  const { error: notificationError } = await input.adminClient.from("notification_settings").insert({
-    user_id: input.userId,
-  });
+  // Using UPSERT - allows idempotent retry
+  const { error: notificationError } = await input.adminClient
+    .from("notification_settings")
+    .upsert({ user_id: input.userId }, { onConflict: "user_id" });
 
-  console.log("NOTIFICATION_INSERT_RESULT", {
+  console.log("NOTIFICATION_UPSERT_RESULT", {
     ok: !notificationError,
     userId: input.userId,
     error: notificationError?.message ?? null,
     code: (notificationError as { code?: string })?.code ?? null,
   });
 
-  if (notificationError) {
+  // Only fail on REAL errors (not duplicate/constraint violations)
+  if (notificationError && (notificationError as { code?: string }).code !== "23505") {
     return {
       ok: false,
-      error: new Error(`Failed to insert notification settings: ${notificationError.message}`),
+      error: new Error(`Failed to upsert notification settings: ${notificationError.message}`),
       stage: "notification_settings",
     };
   }
 
   // Stage 3: User consents (REQUIRED)
-  const { error: consentError } = await input.adminClient.from("user_consents").insert({
-    accepted_kvkk: input.acceptedKvkk,
-    accepted_privacy_policy: input.acceptedPrivacyPolicy,
-    accepted_terms: input.acceptedTerms,
-    consented_at: consentedAt,
-    email: input.email,
-    ip: input.ip,
-    user_agent: input.userAgent,
-    user_id: input.userId,
-  });
+  // Using UPSERT - allows idempotent retry
+  const { error: consentError } = await input.adminClient
+    .from("user_consents")
+    .upsert(
+      {
+        accepted_kvkk: input.acceptedKvkk,
+        accepted_privacy_policy: input.acceptedPrivacyPolicy,
+        accepted_terms: input.acceptedTerms,
+        consented_at: consentedAt,
+        email: input.email,
+        ip: input.ip,
+        user_agent: input.userAgent,
+        user_id: input.userId,
+      },
+      { onConflict: "user_id" }
+    );
 
-  console.log("CONSENT_INSERT_RESULT", {
+  console.log("CONSENT_UPSERT_RESULT", {
     ok: !consentError,
     userId: input.userId,
     error: consentError?.message ?? null,
     code: (consentError as { code?: string })?.code ?? null,
   });
 
-  if (consentError) {
+  // Only fail on REAL errors (not duplicate/constraint violations)
+  if (consentError && (consentError as { code?: string }).code !== "23505") {
     return {
       ok: false,
-      error: new Error(`Failed to insert user consent: ${consentError.message}`),
+      error: new Error(`Failed to upsert user consent: ${consentError.message}`),
       stage: "user_consents",
     };
   }
