@@ -31,10 +31,8 @@ import {
   INVALID_EMAIL_ERROR,
   INVALID_PASSWORD_ERROR,
   INVALID_REDIRECT_URL_ERROR,
-  KVKK_CONSENT_REQUIRED_ERROR,
   MISSING_FIELDS_ERROR,
   PASSWORD_MISMATCH_ERROR,
-  PRIVACY_POLICY_NOT_ACCEPTED_ERROR,
   RATE_LIMITED_ERROR,
   SIGNUP_COOLDOWN_MS,
   SIGNUP_COOLDOWN_STORAGE_KEY,
@@ -97,6 +95,10 @@ type SignupFormValidationInput = {
   turnstileToken: string | null;
   turnstileWarning: string | null;
 };
+
+// UNIFIED SCHEMA: Backend only stores accepted_terms (boolean)
+// Frontend still validates both checkboxes separately for legal compliance
+// but combines them into single acceptedTerms field for API
 
 type FingerprintStatus = "fallback" | "loading" | "ready";
 
@@ -301,9 +303,7 @@ const getSignupErrorMessage = (
     [PASSWORD_MISMATCH_ERROR]: "Şifre ve şifre tekrarı aynı olmalı.",
     [INVALID_EMAIL_ERROR]: "Lütfen geçerli bir e-posta adresi girin.",
     [INVALID_PASSWORD_ERROR]: `Şifreniz en az ${PASSWORD_MIN_LENGTH} karakter olmalı ve büyük harf, küçük harf, rakam içermeli.`,
-    [TERMS_NOT_ACCEPTED_ERROR]: "Kullanım Şartlarını kabul etmelisiniz.",
-    [PRIVACY_POLICY_NOT_ACCEPTED_ERROR]: "Gizlilik Politikasını kabul etmelisiniz.",
-    [KVKK_CONSENT_REQUIRED_ERROR]: "KVKK açık rıza metnini kabul etmelisiniz.",
+    [TERMS_NOT_ACCEPTED_ERROR]: "Kullanım Şartları, Gizlilik Politikası ve KVKK Aydınlatma Metni'ni kabul etmelisiniz.",
     [INVALID_REDIRECT_URL_ERROR]: "Kayıt yönlendirme adresi geçersiz. Sayfayı yenileyip tekrar deneyin.",
     [INTERNAL_ERROR]: "Sunucu hatası oluştu. Lütfen daha sonra tekrar deneyin.",
   };
@@ -723,10 +723,10 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
           "Content-Type": "application/json",
         },
         signal: abortController.signal,
+        // UNIFIED SCHEMA: Only accepted_terms is stored in database
+        // Both checkboxes must be checked for acceptedTerms to be true
         body: JSON.stringify({
-          acceptedKvkk,
-          acceptedPrivacyPolicy: acceptedLegalDocuments,
-          acceptedTerms: acceptedLegalDocuments,
+          acceptedTerms: acceptedLegalDocuments && acceptedKvkk,
           confirmPassword,
           deviceFingerprint,
           email,

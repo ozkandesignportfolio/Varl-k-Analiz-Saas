@@ -1,9 +1,17 @@
 import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import {
+  createUserConsentsInsert,
+  type UserConsentsInsert,
+  validateUserConsentsPayload,
+} from "@/schema/userConsents";
 
 type Json = string | number | boolean | null | { [key: string]: Json } | Json[];
 
+// UNIFIED SCHEMA - Only 3 fields allowed:
+// user_id, accepted_terms, consented_at
+// DELETED: accepted_kvkk, accepted_privacy_policy, id, email, ip, user_agent, created_at
 type SignupSecurityDatabase = {
   public: {
     Tables: {
@@ -42,39 +50,18 @@ type SignupSecurityDatabase = {
       };
       user_consents: {
         Row: {
-          accepted_kvkk: boolean;
-          accepted_privacy_policy: boolean;
           accepted_terms: boolean;
           consented_at: string;
-          created_at: string;
-          email: string | null;
-          id: string;
-          ip: string | null;
-          user_agent: string | null;
           user_id: string;
         };
         Insert: {
-          accepted_kvkk: boolean;
-          accepted_privacy_policy: boolean;
           accepted_terms: boolean;
           consented_at?: string;
-          created_at?: string;
-          email?: string | null;
-          id?: string;
-          ip?: string | null;
-          user_agent?: string | null;
           user_id: string;
         };
         Update: {
-          accepted_kvkk?: boolean;
-          accepted_privacy_policy?: boolean;
           accepted_terms?: boolean;
           consented_at?: string;
-          created_at?: string;
-          email?: string | null;
-          id?: string;
-          ip?: string | null;
-          user_agent?: string | null;
           user_id?: string;
         };
         Relationships: [];
@@ -96,14 +83,10 @@ type AuthSecurityEventParams = {
   userId?: string | null;
 };
 
+// UNIFIED: Only accepted_terms is stored. KVKK and privacy are covered under terms.
 type UserConsentInsertParams = {
-  acceptedKvkk: boolean;
-  acceptedPrivacyPolicy: boolean;
   acceptedTerms: boolean;
   consentedAt?: string;
-  email?: string | null;
-  ip?: string | null;
-  userAgent?: string | null;
   userId: string;
 };
 
@@ -113,18 +96,31 @@ export const insertUserConsent = async (params: UserConsentInsertParams) => {
       table: T,
     ) => ReturnType<typeof supabaseAdmin.from>;
   };
-  const { error } = await client.from("user_consents").insert({
-    user_id: params.userId,
-    email: params.email?.trim() || null,
-    ip: params.ip?.trim() || null,
-    user_agent: params.userAgent?.trim() || null,
-    accepted_terms: params.acceptedTerms,
-    accepted_privacy_policy: params.acceptedPrivacyPolicy,
-    accepted_kvkk: params.acceptedKvkk,
-    consented_at: params.consentedAt ?? new Date().toISOString(),
+
+  // Create payload using schema factory with validation
+  const payload = createUserConsentsInsert({
+    userId: params.userId,
+    acceptedTerms: params.acceptedTerms,
+    consentedAt: params.consentedAt,
   });
 
+  // Additional runtime validation before DB insert
+  validateUserConsentsPayload(payload as unknown as Record<string, unknown>, "insert");
+
+  // Log final payload for debugging (development only)
+  if (process.env.NODE_ENV === "development") {
+    console.log("[insertUserConsent] Final validated payload:", payload);
+  }
+
+  // STRICT INSERT - no upsert, will fail on duplicate/constraint violation
+  const { error } = await client.from("user_consents").insert(payload);
+
   if (error) {
+    console.error("[insertUserConsent] Database insert failed:", {
+      error: error.message,
+      code: (error as { code?: string }).code,
+      userId: params.userId,
+    });
     throw new Error(`Failed to insert user consent: ${error.message}`);
   }
 };

@@ -6,10 +6,8 @@ export const EMAIL_RATE_LIMITED_ERROR = "email_rate_limited";
 export const INVALID_TURNSTILE_ERROR = "invalid_turnstile";
 export const INVALID_EMAIL_ERROR = "invalid_email";
 export const INVALID_REDIRECT_URL_ERROR = "invalid_redirect_url";
-export const KVKK_CONSENT_REQUIRED_ERROR = "kvkk_consent_required";
 export const MISSING_FIELDS_ERROR = "missing_fields";
 export const PASSWORD_MISMATCH_ERROR = "password_mismatch";
-export const PRIVACY_POLICY_NOT_ACCEPTED_ERROR = "privacy_policy_not_accepted";
 export const RATE_LIMITED_ERROR = "rate_limited";
 export const SUPABASE_ERROR = "supabase_error";
 export const TERMS_NOT_ACCEPTED_ERROR = "terms_not_accepted";
@@ -26,10 +24,8 @@ export type SignupApiErrorCode =
   | typeof INVALID_TURNSTILE_ERROR
   | typeof INVALID_EMAIL_ERROR
   | typeof INVALID_REDIRECT_URL_ERROR
-  | typeof KVKK_CONSENT_REQUIRED_ERROR
   | typeof MISSING_FIELDS_ERROR
   | typeof PASSWORD_MISMATCH_ERROR
-  | typeof PRIVACY_POLICY_NOT_ACCEPTED_ERROR
   | typeof RATE_LIMITED_ERROR
   | typeof SUPABASE_ERROR
   | typeof TERMS_NOT_ACCEPTED_ERROR

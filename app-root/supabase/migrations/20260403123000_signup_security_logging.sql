@@ -1,5 +1,11 @@
 begin;
 
+-- NOTE: This migration creates the initial user_consents table.
+-- SCHEMA UNIFICATION: Run migration 20260411133000_user_consents_schema_unification.sql
+-- to reduce to unified schema (3 columns: user_id, accepted_terms, consented_at).
+-- The original schema kept all consent fields and metadata for audit purposes,
+-- but was simplified to prevent schema drift and column-not-found errors.
+
 create table if not exists public.user_consents (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,

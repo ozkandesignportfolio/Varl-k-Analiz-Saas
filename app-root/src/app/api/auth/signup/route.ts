@@ -24,11 +24,9 @@ import {
   INVALID_EMAIL_ERROR,
   INVALID_PASSWORD_ERROR,
   INVALID_REDIRECT_URL_ERROR,
-  KVKK_CONSENT_REQUIRED_ERROR,
   MISSING_FIELDS_ERROR,
   normalizeEmail,
   PASSWORD_MISMATCH_ERROR,
-  PRIVACY_POLICY_NOT_ACCEPTED_ERROR,
   RATE_LIMITED_ERROR,
   TERMS_NOT_ACCEPTED_ERROR,
   TURNSTILE_FAILED_ERROR,
@@ -74,8 +72,6 @@ type SignupResult =
   | { ok: false; step: "turnstile" | "user" | "profile" | "email"; error: string; message: string };
 
 type SignupRequestBody = {
-  acceptedKvkk?: unknown;
-  acceptedPrivacyPolicy?: unknown;
   acceptedTerms?: unknown;
   confirmPassword?: unknown;
   deviceFingerprint?: unknown;
@@ -482,13 +478,11 @@ type BootstrapResult =
   | { ok: true }
   | { ok: false; error: Error; stage: "profile" | "notification_settings" | "user_consents" };
 
-// STRICT ATOMIC INSERT - NO UPSERT: Using insert() to catch duplicates/constraint violations
+// STRICT ATOMIC INSERT - Using insert() to catch duplicates/constraint violations
+// UNIFIED SCHEMA: Only accepted_terms stored (covers KVKK and privacy policy)
 const persistSignupBootstrapRecords = async (input: {
-  acceptedKvkk: boolean;
-  acceptedPrivacyPolicy: boolean;
   acceptedTerms: boolean;
   adminClient: ReturnType<typeof createAdminClient>;
-  email: string;
   ip: string;
   userAgent: string | null;
   userId: string;
@@ -544,35 +538,37 @@ const persistSignupBootstrapRecords = async (input: {
   }
 
   // Stage 3: User consents (REQUIRED)
-  // Using UPSERT - allows idempotent retry
+  // UNIFIED SCHEMA INSERT - Only 3 fields: user_id, accepted_terms, consented_at
+  // STRICT INSERT (no upsert) - duplicate user_id will fail loudly
+  const consentPayload = {
+    user_id: input.userId,
+    accepted_terms: input.acceptedTerms,
+    consented_at: consentedAt,
+  };
+
+  // Log payload for debugging
+  console.log("CONSENT_INSERT_ATTEMPT", {
+    userId: input.userId,
+    payload: consentPayload,
+    schema: "unified_v2",
+  });
+
   const { error: consentError } = await input.adminClient
     .from("user_consents")
-    .upsert(
-      {
-        accepted_kvkk: input.acceptedKvkk,
-        accepted_privacy_policy: input.acceptedPrivacyPolicy,
-        accepted_terms: input.acceptedTerms,
-        consented_at: consentedAt,
-        email: input.email,
-        ip: input.ip,
-        user_agent: input.userAgent,
-        user_id: input.userId,
-      },
-      { onConflict: "user_id" }
-    );
+    .insert(consentPayload);
 
-  console.log("CONSENT_UPSERT_RESULT", {
+  console.log("CONSENT_INSERT_RESULT", {
     ok: !consentError,
     userId: input.userId,
     error: consentError?.message ?? null,
     code: (consentError as { code?: string })?.code ?? null,
   });
 
-  // Only fail on REAL errors (not duplicate/constraint violations)
-  if (consentError && (consentError as { code?: string }).code !== "23505") {
+  // Fail on ANY error (including 23505 duplicate key - this ensures schema integrity)
+  if (consentError) {
     return {
       ok: false,
-      error: new Error(`Failed to upsert user consent: ${consentError.message}`),
+      error: new Error(`Failed to insert user consent: ${consentError.message}`),
       stage: "user_consents",
     };
   }
@@ -1057,8 +1053,6 @@ export async function POST(request: Request) {
 
   // Extract and validate required fields
   const acceptedTerms = body.acceptedTerms === true;
-  const acceptedPrivacyPolicy = body.acceptedPrivacyPolicy === true;
-  const acceptedKvkk = body.acceptedKvkk === true;
   const firstName = isNonEmptyString(body.firstName) ? body.firstName.trim() : "";
   const lastName = isNonEmptyString(body.lastName) ? body.lastName.trim() : "";
   const email = isNonEmptyString(body.email) ? body.email.trim() : "";
@@ -1099,7 +1093,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!acceptedTerms || !acceptedPrivacyPolicy || !acceptedKvkk) {
+  if (!acceptedTerms) {
     return NextResponse.json(
       { ok: false, step: "user", error: TERMS_NOT_ACCEPTED_ERROR },
       { status: 400 }
@@ -1125,8 +1119,6 @@ export async function POST(request: Request) {
   // Create the signup promise and store it
   const signupPromise = executeAtomicSignup({
     adminClient,
-    acceptedKvkk,
-    acceptedPrivacyPolicy,
     acceptedTerms,
     deviceFingerprint,
     email: normalizedEmail,
@@ -1155,8 +1147,6 @@ export async function POST(request: Request) {
 // ATOMIC SIGNUP EXECUTION - All or nothing
 async function executeAtomicSignup(input: {
   adminClient: ReturnType<typeof createAdminClient> | null;
-  acceptedKvkk: boolean;
-  acceptedPrivacyPolicy: boolean;
   acceptedTerms: boolean;
   deviceFingerprint: string;
   email: string;
@@ -1236,9 +1226,8 @@ async function executeAtomicSignup(input: {
     first_name: input.firstName,
     full_name: input.fullName,
     last_name: input.lastName,
+    // UNIFIED SCHEMA: Single accepted_terms field covers all legal consents
     legal_consents: {
-      accepted_kvkk: input.acceptedKvkk,
-      accepted_privacy_policy: input.acceptedPrivacyPolicy,
       accepted_terms: input.acceptedTerms,
       consented_at: new Date().toISOString(),
     },
@@ -1312,11 +1301,8 @@ async function executeAtomicSignup(input: {
 
   // STEP 4: Create Profile (ATOMIC - failure triggers rollback)
   const bootstrapResult = await persistSignupBootstrapRecords({
-    acceptedKvkk: input.acceptedKvkk,
-    acceptedPrivacyPolicy: input.acceptedPrivacyPolicy,
     acceptedTerms: input.acceptedTerms,
     adminClient: input.adminClient,
-    email: input.email,
     ip: input.requestIp,
     userAgent: input.requestUserAgent,
     userId: theUserId,

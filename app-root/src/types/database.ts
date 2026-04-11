@@ -407,6 +407,23 @@ export type Database = {
           source?: string;
         };
       };
+      user_consents: {
+        Row: {
+          user_id: string;
+          accepted_terms: boolean;
+          consented_at: string;
+        };
+        Insert: {
+          user_id: string;
+          accepted_terms: boolean;
+          consented_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          accepted_terms?: boolean;
+          consented_at?: string;
+        };
+      };
     };
   };
 };
