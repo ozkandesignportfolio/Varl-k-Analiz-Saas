@@ -68,10 +68,10 @@ const SIGNUP_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1_000;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
 const isDevelopmentEnvironment = () => process.env.NODE_ENV === "development";
 
-// Result types for atomic flow
+// Result types for atomic flow - WITH FULL ERROR VISIBILITY
 type SignupResult =
   | { ok: true; userId: string; emailStatus: "queued" | "sent" | "failed"; verified: true; warnings?: string[] }
-  | { ok: false; step: "turnstile" | "user" | "profile"; error: string };
+  | { ok: false; step: "turnstile" | "user" | "profile" | "email"; error: string; message: string };
 
 type SignupRequestBody = {
   acceptedKvkk?: unknown;
@@ -497,22 +497,23 @@ const persistSignupBootstrapRecords = async (input: {
 
   // Stage 1: Profile (REQUIRED - user cannot exist without profile)
   // Using INSERT - will fail if profile already exists (idempotency violation)
-  const { error: profileError } = await input.adminClient.from("profiles").insert({
-    id: input.userId,
-    plan: "free",
-  });
+  const profilePayload = { id: input.userId, plan: "free" };
+  console.log("PROFILE_INSERT_ATTEMPT", { userId: input.userId, payload: profilePayload });
+
+  const { data: profileData, error: profileError } = await input.adminClient.from("profiles").insert(profilePayload);
 
   console.log("PROFILE_INSERT_RESULT", {
     ok: !profileError,
     userId: input.userId,
     error: profileError?.message ?? null,
     code: (profileError as { code?: string })?.code ?? null,
+    data: profileData,
   });
 
   if (profileError) {
     return {
       ok: false,
-      error: new Error(`Failed to insert profile: ${profileError.message}`),
+      error: new Error(`Failed to insert profile: ${profileError.message} (code: ${(profileError as { code?: string }).code ?? "unknown"})`),
       stage: "profile",
     };
   }
@@ -647,33 +648,31 @@ const buildSignupEmailText = (input: {
     input.actionLink,
   ].join("\n");
 
-// PRODUCTION-SAFE: Fire-and-forget email sending
-// Email failures do NOT block signup response
+// VISIBLE EMAIL SENDING: With timeout and clear logging
 const sendSignupConfirmationEmailAsync = async (input: {
   actionLink: string;
   email: string;
   firstName: string;
   userId: string;
-}): Promise<"sent" | "failed"> => {
+}): Promise<{ status: "sent" | "failed"; message: string }> => {
   const resendApiKey = getOptionalEnv("RESEND_API_KEY");
   const fromEmail = getOptionalEnv("AUTOMATION_FROM_EMAIL") ?? DEFAULT_FROM_EMAIL;
   const replyTo = getOptionalEnv("AUTOMATION_REPLY_TO_EMAIL");
 
-  console.log("EMAIL_QUEUED", {
+  console.log("EMAIL_ATTEMPT", {
     email: input.email,
     userId: input.userId,
+    hasApiKey: Boolean(resendApiKey),
+    fromEmail,
   });
 
   if (!resendApiKey) {
-    console.log("EMAIL_FAILED", {
-      email: input.email,
-      userId: input.userId,
-      reason: "missing_api_key",
-    });
-    return "failed";
+    const failMsg = "RESEND_API_KEY env değişkeni eksik";
+    console.log("EMAIL_RESULT", { email: input.email, userId: input.userId, status: "failed", reason: failMsg });
+    return { status: "failed", message: failMsg };
   }
 
-  try {
+  const sendEmailPromise = async () => {
     const response = await fetch(RESEND_API_URL, {
       method: "POST",
       headers: {
@@ -689,40 +688,42 @@ const sendSignupConfirmationEmailAsync = async (input: {
         to: [input.email],
       }),
       cache: "no-store",
-      signal: AbortSignal.timeout(10_000),
     });
 
     const responseText = await response.text();
-    let parsedResponse: unknown = null;
-
-    try {
-      parsedResponse = responseText ? JSON.parse(responseText) : null;
-    } catch {
-      parsedResponse = responseText;
-    }
 
     if (!response.ok) {
-      console.log("EMAIL_FAILED", {
-        email: input.email,
-        userId: input.userId,
-        status: response.status,
-        error: responseText,
-      });
-      return "failed";
+      return { status: "failed" as const, message: `Resend API hatası: ${response.status} - ${responseText}` };
     }
 
-    console.log("EMAIL_SENT", {
+    return { status: "sent" as const, message: "Email sent successfully" };
+  };
+
+  try {
+    const result = await Promise.race([
+      sendEmailPromise(),
+      new Promise<{ status: "failed"; message: string }>((resolve) =>
+        setTimeout(() => resolve({ status: "failed", message: "Email sending timeout (10s)" }), 10_000)
+      ),
+    ]);
+
+    console.log("EMAIL_RESULT", {
       email: input.email,
       userId: input.userId,
+      status: result.status,
+      message: result.message,
     });
-    return "sent";
+
+    return result;
   } catch (error) {
-    console.log("EMAIL_FAILED", {
+    const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+    console.log("EMAIL_RESULT", {
       email: input.email,
       userId: input.userId,
-      error: error instanceof Error ? error.message : "unknown_error",
+      status: "failed",
+      message: errorMsg,
     });
-    return "failed";
+    return { status: "failed", message: errorMsg };
   }
 };
 
@@ -1176,10 +1177,15 @@ async function executeAtomicSignup(input: {
   });
 
   if (!turnstileVerification.ok || turnstileVerification.hostnameMismatch) {
+    const turnstileMessage = turnstileVerification.hostnameMismatch
+      ? `Turnstile hostname mismatch: expected ${turnstileVerification.requestHostname}, got ${turnstileVerification.hostname}`
+      : `Turnstile verification failed: ${turnstileVerification.errorCodes.join(", ") || "unknown error"}`;
+    console.log("TURNSTILE_FAILED", { errorCodes: turnstileVerification.errorCodes, hostnameMismatch: turnstileVerification.hostnameMismatch });
     return {
       ok: false,
       step: "turnstile",
       error: TURNSTILE_FAILED_ERROR,
+      message: turnstileMessage,
     };
   }
 
@@ -1193,7 +1199,7 @@ async function executeAtomicSignup(input: {
   });
 
   if (!ipRateLimit.allowed && !ipRateLimit.bypassed) {
-    return { ok: false, step: "user", error: RATE_LIMITED_ERROR };
+    return { ok: false, step: "user", error: RATE_LIMITED_ERROR, message: "Çok fazla kayıt denemesi yapıldı. Lütfen 1 dakika bekleyip tekrar deneyin." };
   }
 
   const emailRateLimit = await takeRateLimitSafely({
@@ -1205,12 +1211,13 @@ async function executeAtomicSignup(input: {
   });
 
   if (!emailRateLimit.allowed && !emailRateLimit.bypassed) {
-    return { ok: false, step: "user", error: EMAIL_RATE_LIMITED_ERROR };
+    return { ok: false, step: "user", error: EMAIL_RATE_LIMITED_ERROR, message: "Bu e-posta adresi için çok fazla deneme yapıldı. Lütfen 1 dakika bekleyin." };
   }
 
   // STEP 3: Create Supabase Auth User
   if (!input.adminClient) {
-    return { ok: false, step: "user", error: INTERNAL_ERROR };
+    console.log("ADMIN_CLIENT_MISSING", { reason: "Supabase admin client initialization failed - check SUPABASE_SERVICE_ROLE_KEY" });
+    return { ok: false, step: "user", error: INTERNAL_ERROR, message: "Supabase admin client oluşturulamadı. SERVICE_ROLE_KEY env değişkenini kontrol edin." };
   }
 
   const initialUserMetadata = {
@@ -1257,9 +1264,9 @@ async function executeAtomicSignup(input: {
           method: "magiclink_fallback",
         });
       } else if (isWeakPasswordError(signupError)) {
-        return { ok: false, step: "user", error: INVALID_PASSWORD_ERROR };
+        return { ok: false, step: "user", error: INVALID_PASSWORD_ERROR, message: "Şifre çok zayıf. En az 8 karakter, büyük/küçük harf ve rakam içermeli." };
       } else if (isEmailRateLimitError(signupError)) {
-        return { ok: false, step: "user", error: EMAIL_RATE_LIMITED_ERROR };
+        return { ok: false, step: "user", error: EMAIL_RATE_LIMITED_ERROR, message: "Bu e-posta adresi için çok fazla deneme yapıldı. Lütfen 1 dakika bekleyin." };
       } else {
         console.log("USER_CREATE_RESULT", {
           ok: false,
@@ -1267,7 +1274,7 @@ async function executeAtomicSignup(input: {
           error: signupError.message,
           code: (signupError as { code?: string }).code,
         });
-        return { ok: false, step: "user", error: INTERNAL_ERROR };
+        return { ok: false, step: "user", error: INTERNAL_ERROR, message: `Kullanıcı oluşturma hatası: ${signupError.message}` };
       }
     } else {
       theUserId = signupData?.user?.id ?? null;
@@ -1278,16 +1285,18 @@ async function executeAtomicSignup(input: {
       });
     }
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
     console.log("USER_CREATE_RESULT", {
       ok: false,
       email: input.email,
-      error: error instanceof Error ? error.message : "unknown",
+      error: errorMsg,
     });
-    return { ok: false, step: "user", error: INTERNAL_ERROR };
+    return { ok: false, step: "user", error: INTERNAL_ERROR, message: `Kullanıcı oluşturma hatası: ${errorMsg}` };
   }
 
   if (!theUserId) {
-    return { ok: false, step: "user", error: INTERNAL_ERROR };
+    console.log("USER_CREATE_RESULT", { ok: false, email: input.email, error: "No user ID returned from Supabase" });
+    return { ok: false, step: "user", error: INTERNAL_ERROR, message: "Kullanıcı oluşturuldu ancak ID alınamadı. Lütfen tekrar deneyin." };
   }
 
   // STEP 4: Create Profile (ATOMIC - failure triggers rollback)
@@ -1321,7 +1330,7 @@ async function executeAtomicSignup(input: {
       error: rollbackResult.error?.message ?? null,
     });
 
-    return { ok: false, step: "profile", error: INTERNAL_ERROR };
+    return { ok: false, step: "profile", error: INTERNAL_ERROR, message: `Profil oluşturma hatası: ${bootstrapResult.error.message}` };
   }
 
   // STEP 5: Fire confirmation email asynchronously (do NOT block response)
@@ -1339,8 +1348,9 @@ async function executeAtomicSignup(input: {
       // Update user metadata with email status (best effort)
       input.adminClient?.auth.admin.updateUserById(theUserId, {
         user_metadata: {
-          email_status: emailStatus,
-          email_sent_at: emailStatus === "sent" ? new Date().toISOString() : null,
+          email_status: emailStatus.status,
+          email_failure_reason: emailStatus.status === "failed" ? emailStatus.message : null,
+          email_sent_at: emailStatus.status === "sent" ? new Date().toISOString() : null,
         },
       }).catch(() => {
         // Metadata update failure is not critical

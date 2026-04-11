@@ -764,12 +764,8 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
           triggerReset();
         }
 
-        // Show real backend error message
-        const backendError = errorResult?.message || errorResult?.error;
-        const userMessage =
-          getSignupErrorMessage(errorResult?.error, backendError, errorResult?.turnstile) ??
-          errorResult?.message ??
-          "Kayıt işlemi tamamlanamadı. Lütfen tekrar deneyin.";
+        // Show real backend error message - PRIORITIZE backend message
+        const userMessage = errorResult?.message || getSignupErrorMessage(errorResult?.error, undefined, errorResult?.turnstile) || "Kayıt işlemi tamamlanamadı. Lütfen tekrar deneyin.";
 
         // RESET TOKEN so user can retry
         tokenLifecycleRef.current = { type: "empty" };
@@ -810,15 +806,18 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
         userMessage,
       });
 
-      // Show appropriate toast
+      // Show appropriate toast or alert fallback
+      const toastMessage = isEmailFailed
+        ? "Hesabınız oluşturuldu ancak doğrulama maili gönderilemedi."
+        : "Hesabınız başarıyla oluşturuldu! Doğrulama e-postası gönderildi.";
       if (typeof window !== "undefined" && (window as unknown as { showToast?: (msg: string, type: string) => void }).showToast) {
-        const toastMessage = isEmailFailed
-          ? "Hesabınız oluşturuldu ancak doğrulama maili gönderilemedi."
-          : "Hesabınız başarıyla oluşturuldu! Doğrulama e-postası gönderildi.";
         (window as unknown as { showToast: (msg: string, type: string) => void }).showToast(
           toastMessage,
           isEmailFailed ? "warning" : "success"
         );
+      } else {
+        // Fallback to alert if no toast system
+        alert(toastMessage);
       }
 
       // Navigate to verification page for all success cases (even if email failed)
