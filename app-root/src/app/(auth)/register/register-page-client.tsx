@@ -18,7 +18,7 @@ export default function RegisterPageClient({ emailRedirectTo }: RegisterPageClie
       return;
     }
 
-    setResolvedEmailRedirectTo(`${window.location.origin}/verify-email`);
+    setResolvedEmailRedirectTo(`${window.location.origin}/auth/callback`);
     setRedirectWarning(
       "APP_URL ayari bulunamadigi icin dogrulama yonlendirmesi mevcut origin ile yapilacak.",
     );

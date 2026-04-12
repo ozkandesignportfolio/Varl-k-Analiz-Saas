@@ -1,5 +1,5 @@
-const PRODUCTION_CANONICAL_HOST = "assetly.network";
-const PRODUCTION_HOST_ALIASES = new Set([PRODUCTION_CANONICAL_HOST, `www.${PRODUCTION_CANONICAL_HOST}`]);
+const PRODUCTION_CANONICAL_HOST = "www.assetly.network";
+const PRODUCTION_HOST_ALIASES = new Set([PRODUCTION_CANONICAL_HOST, "assetly.network"]);
 
 const normalizeConfiguredUrl = (value?: string | null) => {
   if (!value) {

@@ -29,10 +29,45 @@ class MissingEnvVarError extends Error {
 }
 
 const RESEND_API_URL = "https://api.resend.com/emails";
-const EMAIL_FROM = "Assetly <onboarding@resend.dev>";
+const EMAIL_TIMEOUT_MS = 10_000;
+const INVALID_DOMAINS = ["resend.dev", "example.com"];
+
+// EMAIL_ATTEMPT log
+const logEmailAttempt = (email: string, fromEmail: string) => {
+  console.log("EMAIL_ATTEMPT", {
+    email,
+    fromEmail,
+    ts: new Date().toISOString(),
+  });
+};
+
+// EMAIL_SUCCESS log
+const logEmailSuccess = (email: string, providerId?: string) => {
+  console.log("EMAIL_SUCCESS", {
+    email,
+    providerId,
+    ts: new Date().toISOString(),
+  });
+};
+
+// EMAIL_FAILED log
+const logEmailFailed = (email: string, reason: string, error: string) => {
+  console.log("EMAIL_FAILED", {
+    email,
+    reason,
+    error,
+    ts: new Date().toISOString(),
+  });
+};
 
 const isNonEmptyString = (value: unknown): value is string => {
   return typeof value === "string" && value.trim().length > 0;
+};
+
+// Validate from email domain (reject resend.dev, example.com)
+const isValidFromEmail = (email: string): boolean => {
+  const lowerEmail = email.toLowerCase();
+  return !INVALID_DOMAINS.some((domain) => lowerEmail.includes(domain));
 };
 
 const getRequiredEnv = (name: "RESEND_API_KEY" | "SEND_EMAIL_HOOK_SECRET") => {
@@ -100,29 +135,57 @@ const getEmailContent = (actionType: SupportedEmailActionType, token: string): E
   };
 };
 
-const sendEmail = async (email: string, content: EmailContent, resendApiKey: string) => {
-  const response = await fetch(RESEND_API_URL, {
+const sendEmail = async (
+  email: string,
+  content: EmailContent,
+  resendApiKey: string,
+  fromEmail: string
+): Promise<{ status: "sent" | "failed"; message: string; providerId?: string }> => {
+  const body = JSON.stringify({
+    from: fromEmail,
+    to: email,
+    subject: content.subject,
+    html: content.html,
+    text: content.text,
+  });
+
+  const sendPromise = fetch(RESEND_API_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${resendApiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      from: EMAIL_FROM,
-      to: email,
-      subject: content.subject,
-      html: content.html,
-      text: content.text,
-    }),
+    body,
     cache: "no-store",
   });
 
-  if (response.ok) {
-    return;
+  const timeoutPromise = new Promise<Response>(() => {
+    // Timeout'da reject et, caller yakalar
+    setTimeout(() => {
+      throw new Error("Email gönderim zaman aşımı (10s)");
+    }, EMAIL_TIMEOUT_MS);
+  });
+
+  const response = await Promise.race([sendPromise, timeoutPromise]);
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    return {
+      status: "failed",
+      message: `Resend API hatası: ${response.status} - ${errorBody}`,
+    };
   }
 
-  const errorBody = await response.text();
-  throw new Error(`Resend request failed with status ${response.status}: ${errorBody}`);
+  const responseText = await response.text();
+  let providerId: string | undefined;
+  try {
+    const parsed = JSON.parse(responseText) as { id?: string };
+    providerId = parsed.id;
+  } catch {
+    // ignore parse error
+  }
+
+  return { status: "sent", message: "Email sent", providerId };
 };
 
 export async function POST(request: Request) {
@@ -177,11 +240,37 @@ export async function POST(request: Request) {
     }
 
     const resendApiKey = getRequiredEnv("RESEND_API_KEY");
+    const fromEmail = process.env.AUTOMATION_FROM_EMAIL?.trim() ?? "";
+
+    // Validate from email
+    if (!fromEmail || !isValidFromEmail(fromEmail)) {
+      const errorMsg = `Geçersiz AUTOMATION_FROM_EMAIL: ${fromEmail || "boş"}. ${INVALID_DOMAINS.join(", ")} domainleri reddedildi.`;
+      logEmailFailed(email, "invalid_from_email", errorMsg);
+      // Do not block signup - return success even if email fails
+      return NextResponse.json(
+        { ok: true, warning: "Email config invalid, but signup succeeded" },
+        { status: 200 }
+      );
+    }
+
     const emailContent = getEmailContent(normalizedActionType, token.trim());
+    const fullFrom = `Assetly <${fromEmail}>`;
 
-    await sendEmail(email.trim(), emailContent, resendApiKey);
+    logEmailAttempt(email, fullFrom);
 
-    return NextResponse.json({ ok: true }, { status: 200 });
+    const result = await sendEmail(email.trim(), emailContent, resendApiKey, fullFrom);
+
+    if (result.status === "sent") {
+      logEmailSuccess(email, result.providerId);
+      return NextResponse.json({ ok: true }, { status: 200 });
+    } else {
+      logEmailFailed(email, "send_failed", result.message);
+      // Do not block signup - return success even if email fails
+      return NextResponse.json(
+        { ok: true, warning: "Email failed but signup succeeded", emailError: result.message },
+        { status: 200 }
+      );
+    }
   } catch (error) {
     if (error instanceof MissingEnvVarError) {
       console.error("[auth.send-email] Missing env var.", error.envVarName);
