@@ -7,16 +7,16 @@ import { isEmailRateLimitError } from "@/lib/supabase/auth-errors";
 import { createClient } from "@/lib/supabase/client";
 
 const emailVerificationPromptMessage =
-  "E-posta adresinizi dogrulamak icin gelen kutunuzu kontrol edin.";
+  "E-posta adresinizi doğrulamak için gelen kutunuzu kontrol edin.";
 
 const emailVerificationSentMessage =
-  "E-posta adresinize dogrulama baglantisi gonderildi.";
+  "E-posta adresinize doğrulama bağlantısı gönderildi.";
 
 const emailVerificationResentMessage =
-  "Dogrulama e-postasi tekrar gonderildi.";
+  "Doğrulama e-postası tekrar gönderildi.";
 
 const invalidVerificationLinkMessage =
-  "Dogrulama baglantisi gecersiz veya suresi dolmus. Lutfen yeni bir baglanti isteyin.";
+  "Doğrulama bağlantısı geçersiz veya süresi dolmuş. Lütfen yeni bir bağlantı isteyin.";
 
 type MessageTone = "error" | "info" | "success";
 
@@ -68,7 +68,7 @@ export default function VerifyEmailClient({ emailRedirectTo }: VerifyEmailClient
   const onResendVerification = async () => {
     if (!email) {
       setFeedback({
-        text: "Yeni baglanti gonderebilmek icin e-posta adresi gerekli.",
+        text: "Yeni bağlantı gönderebilmek için e-posta adresi gerekli.",
         tone: "error",
       });
       return;
@@ -89,12 +89,12 @@ export default function VerifyEmailClient({ emailRedirectTo }: VerifyEmailClient
       if (error) {
         if (isEmailRateLimitError(error)) {
           setFeedback({
-            text: "E-posta limiti asildi. Lutfen kisa bir sure sonra tekrar deneyin.",
+            text: "E-posta limiti aşıldı. Lütfen kısa bir süre sonra tekrar deneyin.",
             tone: "error",
           });
         } else {
           setFeedback({
-            text: error.message || "Dogrulama baglantisi gonderilemedi. Lutfen tekrar deneyin.",
+            text: "Doğrulama bağlantısı gönderilemedi. Lütfen tekrar deneyin.",
             tone: "error",
           });
         }
@@ -107,7 +107,7 @@ export default function VerifyEmailClient({ emailRedirectTo }: VerifyEmailClient
       });
     } catch {
       setFeedback({
-        text: "Dogrulama baglantisi gonderilirken beklenmeyen bir hata olustu.",
+        text: "Doğrulama bağlantısı gönderilirken beklenmeyen bir hata oluştu.",
         tone: "error",
       });
     } finally {

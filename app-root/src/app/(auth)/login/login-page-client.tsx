@@ -75,11 +75,11 @@ export default function LoginPageClient({ emailRedirectTo }: LoginPageClientProp
     setFeedback({ text: "", tone: "info" });
 
     const formData = new FormData(event.currentTarget);
-    const email = String(formData.get("email") ?? "").trim();
+    const email = String(formData.get("email") ?? "").trim().toLowerCase();
     const password = String(formData.get("password") ?? "");
 
     if (!email || !password) {
-      setFeedback({ text: "E-posta ve sifre zorunludur.", tone: "error" });
+      setFeedback({ text: "E-posta ve şifre zorunludur.", tone: "error" });
       return;
     }
 
@@ -90,7 +90,7 @@ export default function LoginPageClient({ emailRedirectTo }: LoginPageClientProp
 
       if (error) {
         if (isEmailRateLimitError(error)) {
-          setFeedback({ text: "E-posta limiti asildi. Lutfen kisa bir sure sonra tekrar deneyin.", tone: "error" });
+          setFeedback({ text: "E-posta limiti aşıldı. Lütfen kısa bir süre sonra tekrar deneyin.", tone: "error" });
           return;
         }
 
@@ -100,12 +100,12 @@ export default function LoginPageClient({ emailRedirectTo }: LoginPageClientProp
           return;
         }
 
-        setFeedback({ text: error.message || "Giris yapilamadi. Lutfen tekrar deneyin.", tone: "error" });
+        setFeedback({ text: "E-posta veya şifre hatalı. Lütfen tekrar deneyin.", tone: "error" });
         return;
       }
 
       if (!data.session || !data.user) {
-        setFeedback({ text: "Giris tamamlanamadi. Lutfen tekrar deneyin.", tone: "error" });
+        setFeedback({ text: "Giriş tamamlanamadı. Lütfen tekrar deneyin.", tone: "error" });
         return;
       }
 
@@ -119,7 +119,7 @@ export default function LoginPageClient({ emailRedirectTo }: LoginPageClientProp
       router.push(nextPath);
       router.refresh();
     } catch {
-      setFeedback({ text: "Giris sirasinda beklenmeyen bir hata olustu. Lutfen tekrar deneyin.", tone: "error" });
+        setFeedback({ text: "Giriş sırasında beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.", tone: "error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -127,7 +127,7 @@ export default function LoginPageClient({ emailRedirectTo }: LoginPageClientProp
 
   const onResendVerification = async () => {
     if (!verificationEmail) {
-      setFeedback({ text: "Once e-posta adresini girip giris yapmayi deneyin.", tone: "error" });
+      setFeedback({ text: "Önce e-posta adresini girip giriş yapmayı deneyin.", tone: "error" });
       return;
     }
 
@@ -145,17 +145,17 @@ export default function LoginPageClient({ emailRedirectTo }: LoginPageClientProp
 
       if (error) {
         if (isEmailRateLimitError(error)) {
-          setFeedback({ text: "E-posta limiti asildi. Lutfen kisa bir sure sonra tekrar deneyin.", tone: "error" });
+          setFeedback({ text: "E-posta limiti aşıldı. Lütfen kısa bir süre sonra tekrar deneyin.", tone: "error" });
           return;
         }
 
-        setFeedback({ text: error.message || "Dogrulama e-postasi gonderilemedi. Lutfen tekrar deneyin.", tone: "error" });
+        setFeedback({ text: "Doğrulama e-postası gönderilemedi. Lütfen tekrar deneyin.", tone: "error" });
         return;
       }
 
       setFeedback({ text: emailVerificationResentMessage, tone: "info" });
     } catch {
-      setFeedback({ text: "Dogrulama e-postasi gonderilirken beklenmeyen bir hata olustu.", tone: "error" });
+      setFeedback({ text: "Doğrulama e-postası gönderilirken beklenmeyen bir hata oluştu.", tone: "error" });
     } finally {
       setIsResendingVerification(false);
     }

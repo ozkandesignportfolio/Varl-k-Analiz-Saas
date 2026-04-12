@@ -1,8 +1,8 @@
-# AssetCare PRD
+# Assetly PRD
 
 ## Amac
 
-AssetCare, kullanicinin varlik, servis, belge, gider ve abonelik kayitlarini tek panelde yonetmesini saglayan bir SaaS uygulamasidir.
+ASSETLY , kullanicinin varlik, servis, belge, gider ve abonelik kayitlarini tek panelde yonetmesini saglayan bir SaaS uygulamasidir.
 
 Bu belge, 2026-03-16 itibariyla repoda gorulen aktif kapsamı ozetler.
 

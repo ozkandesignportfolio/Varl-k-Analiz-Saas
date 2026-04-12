@@ -139,6 +139,7 @@ export function NotificationsPageContainer() {
     return true;
   }, [automationClient]);
 
+  // Realtime subscription + polling fallback
   useEffect(() => {
     const load = async () => {
       setIsLoading(true);
@@ -160,6 +161,41 @@ export function NotificationsPageContainer() {
 
     void load();
   }, [loadNotificationsForUser, router, supabase.auth]);
+
+  // Realtime subscription for new notifications
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    // Subscribe to INSERT events on automation_events
+    const channel = supabase
+      .channel("notifications-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "automation_events",
+          filter: `user_id=eq.${currentUserId}`,
+        },
+        (_payload: unknown) => {
+          // Reload notifications when new event arrives
+          void loadNotificationsForUser(currentUserId);
+        }
+      )
+      .subscribe((status: string) => {
+        console.log("[notifications] Realtime status:", status);
+      });
+
+    // Fallback polling every 30 seconds
+    const pollingInterval = setInterval(() => {
+      void loadNotificationsForUser(currentUserId);
+    }, 30_000);
+
+    return () => {
+      channel.unsubscribe();
+      clearInterval(pollingInterval);
+    };
+  }, [currentUserId, loadNotificationsForUser, supabase]);
 
   const onDateRangeChange = (nextRange: DateRangeFilter) => {
     setDateRange(nextRange);

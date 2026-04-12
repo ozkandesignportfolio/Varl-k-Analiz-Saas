@@ -1,28 +1,28 @@
 import { getAuthRedirectUrl } from "@/lib/supabase/auth-redirect";
 
 export const emailVerificationSentMessage =
-  "E-posta adresinize dogrulama baglantisi gonderildi.";
+  "E-posta adresinize doğrulama bağlantısı gönderildi.";
 
 export const emailVerificationPromptMessage =
-  "E-posta adresinizi dogrulamak icin gelen kutunuzu kontrol edin.";
+  "E-posta adresinizi doğrulamak için gelen kutunuzu kontrol edin.";
 
 export const emailVerificationLoginBlockedMessage =
-  "Giris yapmadan once e-posta adresinizi dogrulamaniz gerekiyor.";
+  "E-posta adresinizi doğrulamadan giriş yapamazsınız.";
 
 export const emailVerificationResentMessage =
-  "Dogrulama e-postasi tekrar gonderildi.";
+  "Doğrulama e-postası tekrar gönderildi.";
 
 export const emailVerificationCompletedMessage =
-  "E-posta adresiniz dogrulandi.";
+  "E-posta adresiniz doğrulandı.";
 
 export const emailVerificationRedirectConfigErrorMessage =
-  "E-posta dogrulama yonlendirmesi olusturulamadi. NEXT_PUBLIC_APP_URL, APP_URL ve Supabase Auth Redirect URLs ayarlarini kontrol edin.";
+  "E-posta doğrulama yönlendirmesi oluşturulamadı. NEXT_PUBLIC_APP_URL, APP_URL ve Supabase Auth Redirect URLs ayarlarını kontrol edin.";
 
 export const emailVerificationConfigMismatchMessage =
-  'Supabase e-posta dogrulamasi su anda guvenli bicimde tamamlanamiyor. Auth > Providers > Email altinda "Confirm email" acik olmali.';
+  'Supabase e-posta doğrulaması şu anda güvenli biçimde tamamlanamıyor. Auth > Providers > Email altında "Confirm email" açık olmalı.';
 
 export const invalidVerificationLinkMessage =
-  "Dogrulama baglantisi gecersiz veya suresi dolmus. Lutfen yeni bir baglanti isteyin.";
+  "Doğrulama bağlantısı geçersiz veya süresi dolmuş. Lütfen yeni bir bağlantı isteyin.";
 
 const getSafeNextPath = (candidate?: string | null) => {
   if (!candidate) {

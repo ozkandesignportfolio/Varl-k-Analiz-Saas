@@ -121,27 +121,27 @@ const translateTurnstileMessage = (message?: string | null) => {
     normalizedMessage.includes("bot protection is not available") ||
     normalizedMessage.includes("turnstile verification is not configured on the server") ||
     normalizedMessage.includes("turnstile server verification is not configured") ||
-    normalizedMessage.includes("turnstile server dogrulamasi yapilandirilmamis")
+    normalizedMessage.includes("turnstile server doğrulaması yapılandırılmamış")
   ) {
-    return "Guvenlik dogrulamasi yapilandirilmamis. Lutfen daha sonra tekrar deneyin veya yoneticiyle iletisime gecin.";
+    return "Güvenlik doğrulaması yapılandırılmamış. Lütfen daha sonra tekrar deneyin veya yöneticiyle iletişime geçin.";
   }
 
   if (
     normalizedMessage.includes("turnstile verification could not be completed") ||
-    normalizedMessage.includes("turnstile dogrulamasi tamamlanamadi")
+    normalizedMessage.includes("turnstile doğrulaması tamamlanamadı")
   ) {
-    return "Guvenlik dogrulamasi su anda tamamlanamadi. Lutfen tekrar deneyin.";
+    return "Güvenlik doğrulaması şu anda tamamlanamadı. Lütfen tekrar deneyin.";
   }
 
   if (
     normalizedMessage.includes("turnstile verification failed") ||
-    normalizedMessage.includes("turnstile dogrulamasi basarisiz oldu")
+    normalizedMessage.includes("turnstile doğrulaması başarısız oldu")
   ) {
-    return "Guvenlik dogrulamasi basarisiz oldu. Lutfen tekrar deneyin.";
+    return "Güvenlik doğrulaması başarısız oldu. Lütfen tekrar deneyin.";
   }
 
   if (normalizedMessage.includes("please complete the turnstile verification")) {
-    return "Lutfen bot dogrulamasini tamamlayin.";
+    return "Lütfen bot doğrulamasını tamamlayın.";
   }
 
   if (
@@ -178,19 +178,19 @@ const getTurnstileDiagnosticsMessage = (turnstile?: SignupApiErrorResponse["turn
   }
 
   if (turnstile.errorCodes.includes("invalid-input-secret") || turnstile.issue === "key") {
-    return "Guvenlik dogrulamasi sunucu anahtari gecersiz. Site yoneticisi Turnstile secret ayarini kontrol etmeli.";
+    return "Güvenlik doğrulaması sunucu anahtarı geçersiz. Site yöneticisi Turnstile secret ayarını kontrol etmeli.";
   }
 
   if (turnstile.errorCodes.includes("invalid-input-response") || turnstile.issue === "token") {
-    return "Guvenlik dogrulamasi tokeni gecersiz veya suresi dolmus. Lutfen yeniden dogrulayin.";
+    return "Güvenlik doğrulaması tokeni geçersiz veya süresi dolmuş. Lütfen yeniden doğrulayın.";
   }
 
   if (turnstile.issue === "env") {
-    return "Guvenlik dogrulamasi server tarafinda yapilandirilmamis. Site yoneticisi env degerlerini kontrol etmeli.";
+    return "Güvenlik doğrulaması sunucu tarafında yapılandırılmamış. Site yöneticisi env değerlerini kontrol etmeli.";
   }
 
   if (turnstile.issue === "network") {
-    return "Guvenlik dogrulamasi su anda tamamlanamadi. Lutfen tekrar deneyin.";
+    return "Güvenlik doğrulaması şu anda tamamlanamadı. Lütfen tekrar deneyin.";
   }
 
   return null;
@@ -217,11 +217,11 @@ const getTurnstileSiteKeyWarning = (
     normalizedSiteKey.includes("secret") ||
     normalizedSiteKey.includes("your_turnstile")
   ) {
-    return "Guvenlik dogrulamasi ayari gecersiz. Lutfen Turnstile env degerlerini kontrol edin.";
+    return "Güvenlik doğrulaması ayarı geçersiz. Lütfen Turnstile env değerlerini kontrol edin.";
   }
 
   if (!canUseLocalhostTurnstileTestKeys(hostname) && isLocalhostTestTurnstileSiteKey(siteKey)) {
-    return "Guvenlik dogrulamasi ayari gecersiz. Production icin gercek Turnstile anahtarlarini tanimlayin.";
+    return "Güvenlik doğrulaması ayarı geçersiz. Production için gerçek Turnstile anahtarlarını tanımlayın.";
   }
 
   return null;
@@ -241,19 +241,19 @@ const getTurnstileValidationMessage = ({
   }
 
   if (!turnstileToken?.trim()) {
-    return "Lutfen bot dogrulamasini tamamlayin.";
+    return "Lütfen bot doğrulamasını tamamlayın.";
   }
 
   if (turnstileStatus === "expired") {
-    return "Bot dogrulamasinin suresi doldu. Lutfen yeniden tamamlayin.";
+    return "Bot doğrulamasının süresi doldu. Lütfen yeniden tamamlayın.";
   }
 
   if (turnstileStatus === "error") {
-    return "Bot dogrulamasi basarisiz oldu. Lutfen tekrar deneyin.";
+    return "Bot doğrulaması başarısız oldu. Lütfen tekrar deneyin.";
   }
 
   if (turnstileStatus !== "verified") {
-    return "Lutfen bot dogrulamasini tamamlayin.";
+    return "Lütfen bot doğrulamasını tamamlayın.";
   }
 
   return null;
@@ -261,27 +261,27 @@ const getTurnstileValidationMessage = ({
 
 const getSignupValidationMessage = (input: SignupFormValidationInput) => {
   if (!input.firstName || !input.lastName || !input.email || !input.password || !input.confirmPassword) {
-    return "Ad, soyad, e-posta, sifre ve sifre tekrari zorunludur.";
+    return "Ad, soyad, e-posta, şifre ve şifre tekrarı zorunludur.";
   }
 
   if (!EMAIL_REGEX.test(input.email)) {
-    return "Lutfen gecerli bir e-posta adresi girin.";
+    return "Lütfen geçerli bir e-posta adresi girin.";
   }
 
   if (input.password.length < PASSWORD_MIN_LENGTH) {
-    return `Sifre en az ${PASSWORD_MIN_LENGTH} karakter olmali.`;
+    return `Şifre en az ${PASSWORD_MIN_LENGTH} karakter olmalı.`;
   }
 
   if (input.password !== input.confirmPassword) {
-    return "Sifre ve sifre tekrari ayni olmali.";
+    return "Şifre ve şifre tekrarı aynı olmalı.";
   }
 
   if (!input.acceptedLegalDocuments) {
-    return "Kullanim Sartlari ve Gizlilik Politikasini kabul etmelisiniz.";
+    return "Kullanım Şartları ve Gizlilik Politikası'nı kabul etmelisiniz.";
   }
 
   if (!input.acceptedKvkk) {
-    return "KVKK acik riza metnini kabul etmelisiniz.";
+    return "KVKK açık rıza metnini kabul etmelisiniz.";
   }
 
   return getTurnstileValidationMessage(input);
@@ -491,7 +491,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
     turnstileSiteKey,
     turnstileStatus,
     turnstileToken: currentToken,
-    turnstileWarning: combinedTurnstileWarning ?? (!emailRedirectTo ? "Kayit yonlendirmesi hazirlaniyor." : null),
+    turnstileWarning: combinedTurnstileWarning ?? (!emailRedirectTo ? "Kayıt yönlendirmesi hazırlanıyor." : null),
   });
 
   const clearErrorState = useCallback(() => {
@@ -864,16 +864,16 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
             >
               Assetly
             </Link>
-            <h1 className="mt-5 text-4xl font-semibold leading-[1.1] text-white">Hesap Olustur</h1>
+            <h1 className="mt-5 text-4xl font-semibold leading-[1.1] text-white">Hesap Oluştur</h1>
             <p className="mt-4 text-sm leading-7 text-slate-300">
-              Deneme planinda {trialAssetLimit} varlik, {trialDocumentLimit} belge, {trialSubscriptionLimit} abonelik ve{" "}
-              {trialInvoiceUploadLimit} fatura yukleme ile baslayin. Istediginiz zaman {PREMIUM_MONTHLY_PRICE_LABEL} premium plana gecin.
+              Deneme planında {trialAssetLimit} varlık, {trialDocumentLimit} belge, {trialSubscriptionLimit} abonelik ve{" "}
+              {trialInvoiceUploadLimit} fatura yükleme ile başlayın. İstediğiniz zaman {PREMIUM_MONTHLY_PRICE_LABEL} premium plana geçin.
             </p>
           </section>
 
           <section className="premium-panel p-4 sm:p-6">
-          <h2 className="text-xl sm:text-2xl font-semibold text-white">Kayit Ol</h2>
-          <p className="mt-2 text-sm text-slate-300">Ad, soyad, e-posta, sifre ve yasal onaylarla yeni hesabinizi guvenle olusturun.</p>
+          <h2 className="text-xl sm:text-2xl font-semibold text-white">Kayıt Ol</h2>
+          <p className="mt-2 text-sm text-slate-300">Ad, soyad, e-posta, şifre ve yasal onaylarla yeni hesabınızı güvenle oluşturun.</p>
 
           <form onSubmit={onSubmit} className="mt-4 sm:mt-6 space-y-3 sm:space-y-4" data-testid="register-form">
             <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
@@ -931,7 +931,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
             </label>
 
             <label className="block">
-              <span className="mb-1.5 block text-sm text-slate-300">Sifre</span>
+              <span className="mb-1.5 block text-sm text-slate-300">Şifre</span>
               <input
                 autoComplete="new-password"
                 className={inputClassName}
@@ -950,7 +950,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
             </label>
 
             <label className="block">
-              <span className="mb-1.5 block text-sm text-slate-300">Sifre Tekrari</span>
+              <span className="mb-1.5 block text-sm text-slate-300">Şifre Tekrarı</span>
               <input
                 autoComplete="new-password"
                 className={inputClassName}
@@ -960,7 +960,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
                   clearErrorState();
                   setConfirmPassword(event.target.value);
                 }}
-                placeholder="Sifrenizi tekrar girin"
+                placeholder="Şifrenizi tekrar girin"
                 required
                 type="password"
                 value={confirmPassword}
@@ -1027,7 +1027,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
               disabled={isSubmitDisabled}
               type="submit"
             >
-              {isSubmitting ? "Hesap Olusturuluyor..." : isCooldownActive ? `Tekrar deneme: ${cooldownRemainingSeconds}s` : "Kayit Ol"}
+              {isSubmitting ? "Hesap Oluşturuluyor..." : isCooldownActive ? `Tekrar deneme: ${cooldownRemainingSeconds}s` : "Kayıt Ol"}
             </button>
 
             {message ? (
@@ -1042,18 +1042,18 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
               <p className="text-sm text-amber-200">{pageWarning}</p>
             ) : (
               <p className="text-sm text-slate-400">
-                {fingerprintStatus === "ready" && "Cihaz guvenlik sinyalleri hazir."}
-                {fingerprintStatus === "loading" && "Cihaz guvenlik sinyalleri arka planda hazirlaniyor."}
+                {fingerprintStatus === "ready" && "Cihaz güvenlik sinyalleri hazır."}
+                {fingerprintStatus === "loading" && "Cihaz güvenlik sinyalleri arka planda hazırlanıyor."}
                 {fingerprintStatus === "fallback" &&
-                  "Cihaz parmak izi alinamadi, kayit islemi sinirli guvenlik sinyalleriyle devam edecek."}
+                  "Cihaz parmak izi alınamadı, kayıt işlemi sınırlı güvenlik sinyalleriyle devam edecek."}
               </p>
             )}
           </form>
 
           <p className="mt-5 text-sm text-slate-300">
-            Zaten hesabin var mi?{" "}
+            Zaten hesabın var mı?{" "}
             <Link href="/login" className="font-semibold text-sky-200">
-              Giris yap
+              Giriş yap
             </Link>
           </p>
         </section>
