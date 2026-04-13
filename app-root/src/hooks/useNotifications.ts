@@ -63,10 +63,10 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
       const { data, error: supabaseError } = await supabase
         .from("notifications")
         .select("*")
+        .eq("user_id", userId)
         .order("created_at", { ascending: false });
 
-      console.log("NOTIF_DATA", data)
-      console.log("RAW_RESPONSE", { data, error: supabaseError, count: data?.length ?? 0 });
+      console.log("NOTIF_DATA", data, supabaseError)
 
       if (supabaseError) {
         console.log("NOTIFICATION_FETCH", {
