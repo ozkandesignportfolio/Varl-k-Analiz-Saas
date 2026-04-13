@@ -3,6 +3,9 @@ import "server-only";
 import { logApiError } from "@/lib/api/logging";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
+// Log server-side Supabase URL for debugging
+console.log("SERVER_SUPABASE_URL", process.env.NEXT_PUBLIC_SUPABASE_URL);
+
 export type NotificationType = "Bakım" | "Garanti" | "Belge" | "Ödeme" | "Sistem" | "info";
 
 export type CreateNotificationParams = {

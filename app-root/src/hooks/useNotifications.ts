@@ -64,10 +64,9 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
         .from("notifications")
         .select("*")
         .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(100);
+        .order("created_at", { ascending: false });
 
-      console.log("FETCH_RESULT", { data, error: supabaseError });
+      console.log("RAW_RESPONSE", { data, error: supabaseError, count: data?.length ?? 0 });
 
       if (supabaseError) {
         console.log("NOTIFICATION_FETCH", {
@@ -76,7 +75,6 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
           status: "error",
           error: supabaseError.message,
         });
-        setError(supabaseError.message);
         setNotifications([]);
         return;
       }
