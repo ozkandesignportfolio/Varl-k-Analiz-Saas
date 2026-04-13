@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { bootstrapUserRecords } from '@/lib/auth/user-bootstrap'
+import { createNotification } from '@/lib/notifications/notification-service'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -34,6 +35,15 @@ export async function GET(request: Request) {
   // If we have a session, bootstrap user records and redirect to dashboard
   if (session && user.email_confirmed_at) {
     console.log('AUTH_CALLBACK_BOOTSTRAP_START', { userId: user.id })
+    console.log('NOTIFICATION_TRIGGERED', user.id)
+
+    // Create welcome notification directly in callback (SERVICE ROLE)
+    await createNotification({
+      userId: user.id,
+      title: "Hoş geldiniz",
+      message: "Hesabınız başarıyla oluşturuldu.",
+      type: "info"
+    })
 
     // Bootstrap user records (profile, notification settings, welcome notification)
     const bootstrapResult = await bootstrapUserRecords({
