@@ -301,6 +301,7 @@ export async function POST(request: Request) {
   const startTime = Date.now();
 
   // Log that the email reminder was triggered
+  console.log("CRON STARTED");
   console.log("EMAIL_REMINDER_TRIGGERED", {
     ts: new Date().toISOString(),
     url: request.url,

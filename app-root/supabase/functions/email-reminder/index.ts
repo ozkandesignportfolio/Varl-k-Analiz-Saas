@@ -414,6 +414,8 @@ async function processUserReminder(user: ReminderUser): Promise<ProcessingResult
 
 // Main handler
 Deno.serve(async (request) => {
+  console.log("CRON STARTED");
+
   // Validate method
   if (request.method !== "POST") {
     return json({ error: "Only POST is allowed." }, 405);
