@@ -3,10 +3,10 @@ import "server-only";
 import { randomUUID } from "crypto";
 import { logApiError } from "@/lib/api/logging";
 
-type TestNotificationType = "Bakım" | "Garanti" | "Ödeme" | "Sistem";
-type TestTriggerType = "maintenance_7_days" | "warranty_30_days" | "subscription_due" | "service_log_created";
+export type TestNotificationType = "Bakım" | "Garanti" | "Ödeme" | "Sistem";
+export type TestTriggerType = "maintenance_7_days" | "warranty_30_days" | "subscription_due" | "service_log_created";
 
-type TestNotificationDraft = {
+export type TestNotificationDraft = {
   title: string;
   message: string;
   type: TestNotificationType;

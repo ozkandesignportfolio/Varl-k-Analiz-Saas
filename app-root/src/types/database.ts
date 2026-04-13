@@ -424,6 +424,34 @@ export type Database = {
           consented_at?: string;
         };
       };
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          message: string;
+          type: string;
+          is_read: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          title: string;
+          message: string;
+          type?: string;
+          is_read?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          title?: string;
+          message?: string;
+          type?: string;
+          is_read?: boolean;
+          created_at?: string;
+        };
+      };
     };
   };
 };

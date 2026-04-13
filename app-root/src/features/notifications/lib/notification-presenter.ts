@@ -19,18 +19,18 @@ type NotificationText = {
   detail?: string;
 };
 
-const notificationTypes = ["BakÄ±m", "Garanti", "Belge", "Ã–deme", "Sistem"] as const;
+const notificationTypes = ["Bakım", "Garanti", "Belge", "Ödeme", "Sistem"] as const;
 
 const fieldLabelByKey: Record<string, string> = {
-  name: "Varlik adi",
+  name: "Varlık adı",
   category: "Kategori",
-  serial_number: "Seri numarasi",
+  serial_number: "Seri numarası",
   brand: "Marka",
   model: "Model",
-  purchase_price: "Satin alma bedeli",
-  purchase_date: "Satin alma tarihi",
-  warranty_end_date: "Garanti bitis tarihi",
-  photo_path: "Fotograf",
+  purchase_price: "Satın alma bedeli",
+  purchase_date: "Satın alma tarihi",
+  warranty_end_date: "Garanti bitiş tarihi",
+  photo_path: "Fotoğraf",
   qr_code: "QR kodu",
 };
 
@@ -84,7 +84,7 @@ const resolveChangedFieldsText = (value: unknown) => {
     return "";
   }
 
-  return `Guncellenen bilgiler: ${[...new Set(changedFields)].join(", ")}.`;
+  return `Güncellenen bilgiler: ${[...new Set(changedFields)].join(", ")}.`;
 };
 
 const resolveDocumentTypeLabel = (value: unknown) => {
@@ -112,7 +112,7 @@ const resolveTypeFromEvent = (
   }
 
   if (triggerType === "maintenance_7_days") {
-    return "BakÄ±m";
+    return "Bakım";
   }
 
   if (triggerType === "warranty_30_days") {
@@ -120,7 +120,7 @@ const resolveTypeFromEvent = (
   }
 
   if (triggerType === "subscription_due" || triggerType === "expense_threshold") {
-    return "Ã–deme";
+    return "Ödeme";
   }
 
   if (triggerType === "document_expiry_reminder" || toSafeString(payload?.document_type).length > 0) {
@@ -145,9 +145,9 @@ const resolveText = (
   }
 
   const assetName = toSafeString(payload?.asset_name);
-  const assetSubject = assetName ? `${assetName} varliginiz` : "Varliginiz";
+  const assetSubject = assetName ? `${assetName} varlığınız` : "Varlığınız";
   const notificationKind = toSafeString(payload?.notification_kind);
-  const ruleTitle = toSafeString(payload?.rule_title, "planli bakim");
+  const ruleTitle = toSafeString(payload?.rule_title, "planlı bakım");
   const warrantyDate = formatDate(toSafeString(payload?.warranty_end_date));
   const nextDueDate = formatDate(toSafeString(payload?.next_due_date));
   const serviceType = toSafeString(payload?.service_type, "servis");
@@ -158,51 +158,51 @@ const resolveText = (
 
   if (notificationKind === "asset_created") {
     return {
-      title: "Yeni varlik eklendi",
-      description: `${assetSubject} sisteme basariyla eklendi.`,
+      title: "Yeni varlık eklendi",
+      description: `${assetSubject} sisteme başarıyla eklendi.`,
     };
   }
 
   if (notificationKind === "asset_updated") {
     return {
-      title: "Varlik bilgileri guncellendi",
-      description: `${assetSubject} guncellendi.`,
+      title: "Varlık bilgileri güncellendi",
+      description: `${assetSubject} güncellendi.`,
       detail: changedFieldsText || undefined,
     };
   }
 
   if (triggerType === "warranty_30_days") {
     return {
-      title: "Garanti bitis tarihi yaklasiyor",
+      title: "Garanti bitiş tarihi yaklaşıyor",
       description: warrantyDate
-        ? `${assetSubject} icin garanti bitis tarihi ${warrantyDate}.`
-        : `${assetSubject} icin garanti suresi yakinda sona eriyor.`,
+        ? `${assetSubject} için garanti bitiş tarihi ${warrantyDate}.`
+        : `${assetSubject} için garanti süresi yakında sona eriyor.`,
     };
   }
 
   if (triggerType === "maintenance_7_days") {
     return {
-      title: "Bakim zamani yaklasiyor",
+      title: "Bakım zamanı yaklaşıyor",
       description: nextDueDate
-        ? `${assetSubject} icin ${ruleTitle} tarihi ${nextDueDate}.`
-        : `${assetSubject} icin yaklasan bir bakim plani bulunuyor.`,
+        ? `${assetSubject} için ${ruleTitle} tarihi ${nextDueDate}.`
+        : `${assetSubject} için yaklaşan bir bakım planı bulunuyor.`,
     };
   }
 
   if (triggerType === "subscription_due") {
     const subscriptionLabel = providerName ? `${providerName} - ${subscriptionName}` : subscriptionName;
     return {
-      title: "Odeme tarihi yaklasiyor",
+      title: "Ödeme tarihi yaklaşıyor",
       description: nextBillingDate
-        ? `${subscriptionLabel} icin odeme tarihi ${nextBillingDate}.`
-        : `${subscriptionLabel} icin odeme zamani yaklasiyor.`,
+        ? `${subscriptionLabel} için ödeme tarihi ${nextBillingDate}.`
+        : `${subscriptionLabel} için ödeme zamanı yaklaşıyor.`,
     };
   }
 
   if (triggerType === "service_log_created") {
     return {
-      title: "Yeni servis kaydi eklendi",
-      description: `${assetSubject} icin ${serviceType} kaydi olusturuldu.`,
+      title: "Yeni servis kaydı eklendi",
+      description: `${assetSubject} için ${serviceType} kaydı oluşturuldu.`,
     };
   }
 
@@ -212,33 +212,33 @@ const resolveText = (
       toSafeString(payload?.expiry_date ?? payload?.expires_at ?? payload?.document_expiry_date),
     );
     return {
-      title: "Belge suresi dolmak uzere",
+      title: "Belge süresi dolmak üzere",
       description: expiryDate
-        ? `${assetSubject} icin ${documentTypeLabel.toLocaleLowerCase("tr-TR")} tarihi ${expiryDate}.`
-        : `${assetSubject} icin bir belgenin suresi yaklasiyor.`,
+        ? `${assetSubject} için ${documentTypeLabel.toLocaleLowerCase("tr-TR")} tarihi ${expiryDate}.`
+        : `${assetSubject} için bir belgenin süresi yaklaşıyor.`,
     };
   }
 
   if (triggerType === "expense_threshold") {
     return {
-      title: "Gider kaydi kontrol gerektiriyor",
-      description: "Belirlediginiz tutarin uzerinde bir gider kaydi olustu. Kontrol etmeniz onerilir.",
+      title: "Gider kaydı kontrol gerektiriyor",
+      description: "Belirlediğiniz tutarın üzerinde bir gider kaydı oluştu. Kontrol etmeniz önerilir.",
     };
   }
 
   if (toSafeString(payload?.document_type)) {
     const documentTypeLabel = resolveDocumentTypeLabel(payload?.document_type);
     return {
-      title: "Belgeyle ilgili bir islem zamani geldi",
+      title: "Belgeyle ilgili bir işlem zamanı geldi",
       description: assetName
-        ? `${assetName} varliginiz icin ${documentTypeLabel.toLocaleLowerCase("tr-TR")} ile ilgili bir bildirim var.`
+        ? `${assetName} varlığınız için ${documentTypeLabel.toLocaleLowerCase("tr-TR")} ile ilgili bir bildirim var.`
         : `${documentTypeLabel} ile ilgili bir bildirim var.`,
     };
   }
 
   return {
     title: "Sistem bildirimi",
-    description: "Takip etmeniz gereken yeni bir gelisme var.",
+    description: "Takip etmeniz gereken yeni bir gelişme var.",
   };
 };
 
@@ -247,7 +247,7 @@ const resolveReadStatusFromEvent = (status: string) => {
     return "Okundu";
   }
 
-    return "OkunmadÄ±";
+    return "Okunmadı";
 };
 
 const resolveActionHref = (
@@ -310,6 +310,6 @@ export function mapAutomationEventToNotification(
     status: resolveReadStatusFromEvent(input.status) as NotificationStatus,
     source: "automation",
     actionHref: actionHref || undefined,
-    actionLabel: actionHref ? "Detaylara Bak" : undefined,
+    actionLabel: actionHref ? "Detaylara Bakın" : undefined,
   };
 }

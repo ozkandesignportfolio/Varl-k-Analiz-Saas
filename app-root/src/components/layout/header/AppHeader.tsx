@@ -6,8 +6,9 @@ type AppHeaderProps = {
   title: string;
   breadcrumb: string;
   userEmail?: string | null;
+  userId?: string | null;
 };
 
-export function AppHeader({ title, breadcrumb, userEmail }: AppHeaderProps) {
-  return <Topbar title={title} breadcrumb={breadcrumb} userEmail={userEmail} />;
+export function AppHeader({ title, breadcrumb, userEmail, userId }: AppHeaderProps) {
+  return <Topbar title={title} breadcrumb={breadcrumb} userEmail={userEmail} userId={userId} />;
 }

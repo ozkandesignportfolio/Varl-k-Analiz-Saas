@@ -161,7 +161,12 @@ export function AppShell({
         <Sidebar className="auth-shell-sidebar fixed left-0 top-0 z-50 hidden h-screen w-[var(--auth-sidebar-width)] lg:flex" />
 
         <div className="auth-shell-layout lg:pl-[var(--auth-sidebar-width)]">
-          <AppHeader title={resolvedTitle} breadcrumb={breadcrumb} userEmail={sessionState.userEmail} />
+          <AppHeader 
+            title={resolvedTitle} 
+            breadcrumb={breadcrumb} 
+            userEmail={sessionState.userEmail} 
+            userId={sessionState.userId} 
+          />
 
         <main className="auth-shell-main px-4 py-4 sm:px-6 lg:px-8" data-testid={resolvedPageRootTestId}>
           <nav aria-label="Mobil menü" className="auth-mobile-nav mb-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">

@@ -7,11 +7,12 @@
  * Rules:
  * - ONLY runs after email is confirmed
  * - Uses upsert for idempotency
- * - Creates: profiles, user_consents, notification_settings
+ * - Creates: profiles, user_consents, notification_settings, welcome notification
  * - Handles partial states (some records exist, others don't)
  */
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createWelcomeNotification } from "@/lib/notifications/notification-service";
 
 const REQUIRED_ENV = {
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -112,6 +113,35 @@ export async function bootstrapUserRecords(input: {
         error: `User consents creation failed: ${consentError.message}`,
         stage: "user_consents",
       };
+    }
+
+    // Stage 4: Welcome notification (only for new users)
+    if (!isAlreadyBootstrapped) {
+      console.log("NOTIFICATION_CREATE_ATTEMPT", {
+        userId,
+        type: "welcome",
+        stage: "user_bootstrap",
+      });
+
+      const welcomeResult = await createWelcomeNotification(userId);
+
+      if (!welcomeResult.ok) {
+        // Log but don't fail - notification is not critical for signup
+        console.log("NOTIFICATION_CREATE_FAILED", {
+          userId,
+          type: "welcome",
+          error: welcomeResult.error,
+          stage: "user_bootstrap",
+        });
+        // Continue - don't block signup for notification failure
+      } else {
+        console.log("NOTIFICATION_CREATE_SUCCESS", {
+          userId,
+          notificationId: welcomeResult.id,
+          type: "welcome",
+          stage: "user_bootstrap",
+        });
+      }
     }
 
     return {

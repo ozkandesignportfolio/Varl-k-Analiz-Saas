@@ -122,16 +122,126 @@ const getEmailContent = (actionType: SupportedEmailActionType, token: string): E
 
   if (actionType === "signup") {
     return {
-      subject: "Confirm your account",
-      html: `<p>Your code is <strong>${safeToken}</strong></p>`,
-      text: `Your code is ${token}`,
+      subject: "Hesabınızı Doğrulayın - Assetly",
+      html: `<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hesap Doğrulama</title>
+</head>
+<body style="margin:0;padding:0;background:#f8fafc;font-family:system-ui,-apple-system,sans-serif;">
+    <table role="presentation" style="width:100%;border-collapse:collapse;background:#f8fafc;">
+        <tr>
+            <td align="center" style="padding:40px 20px;">
+                <table role="presentation" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
+                    <tr>
+                        <td style="padding:40px 32px 24px;background:#0f172a;text-align:center;">
+                            <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:600;">Assetly</h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:32px;">
+                            <h2 style="margin:0 0 16px;color:#0f172a;font-size:20px;font-weight:600;">Hesabınızı Doğrulayın</h2>
+                            <p style="margin:0 0 24px;color:#334155;line-height:1.6;">
+                                Assetly'e hoş geldiniz! Hesabınızı doğrulamak için aşağıdaki kodu kullanın:
+                            </p>
+                            <table role="presentation" style="margin:32px 0;background:#f1f5f9;border-radius:8px;padding:24px;">
+                                <tr>
+                                    <td style="text-align:center;">
+                                        <code style="font-size:32px;font-weight:600;color:#0f172a;letter-spacing:4px;">${safeToken}</code>
+                                    </td>
+                                </tr>
+                            </table>
+                            <p style="margin:24px 0 0;color:#64748b;font-size:14px;line-height:1.5;">
+                                Bu kod 1 saat içinde geçerliliğini yitirecektir.
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:24px 32px;background:#f1f5f9;text-align:center;">
+                            <p style="margin:0;color:#64748b;font-size:12px;">
+                                Assetly - Varlık Yönetim Sistemi
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>`,
+      text: `Assetly - Hesap Doğrulama
+
+Hoş geldiniz! Hesabınızı doğrulamak için aşağıdaki kodu kullanın:
+
+Doğrulama kodunuz: ${token}
+
+Bu kod 1 saat içinde geçerliliğini yitirecektir.
+
+Assetly - Varlık Yönetim Sistemi`,
     };
   }
 
   return {
-    subject: "Reset your password",
-    html: `<p>Your password reset code is <strong>${safeToken}</strong></p>`,
-    text: `Your password reset code is ${token}`,
+    subject: "Şifrenizi Sıfırlayın - Assetly",
+    html: `<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Şifre Sıfırlama</title>
+</head>
+<body style="margin:0;padding:0;background:#f8fafc;font-family:system-ui,-apple-system,sans-serif;">
+    <table role="presentation" style="width:100%;border-collapse:collapse;background:#f8fafc;">
+        <tr>
+            <td align="center" style="padding:40px 20px;">
+                <table role="presentation" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
+                    <tr>
+                        <td style="padding:40px 32px 24px;background:#0f172a;text-align:center;">
+                            <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:600;">Assetly</h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:32px;">
+                            <h2 style="margin:0 0 16px;color:#0f172a;font-size:20px;font-weight:600;">Şifrenizi Sıfırlayın</h2>
+                            <p style="margin:0 0 24px;color:#334155;line-height:1.6;">
+                                Şifrenizi sıfırlamak için aşağıdaki kodu kullanın:
+                            </p>
+                            <table role="presentation" style="margin:32px 0;background:#f1f5f9;border-radius:8px;padding:24px;">
+                                <tr>
+                                    <td style="text-align:center;">
+                                        <code style="font-size:32px;font-weight:600;color:#0f172a;letter-spacing:4px;">${safeToken}</code>
+                                    </td>
+                                </tr>
+                            </table>
+                            <p style="margin:24px 0 0;color:#64748b;font-size:14px;line-height:1.5;">
+                                Bu kod 1 saat içinde geçerliliğini yitirecektir. Eğer şifre sıfırlama talebinde bulunmadıysanız, bu e-postayı görmezden gelebilirsiniz.
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:24px 32px;background:#f1f5f9;text-align:center;">
+                            <p style="margin:0;color:#64748b;font-size:12px;">
+                                Assetly - Varlık Yönetim Sistemi
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>`,
+    text: `Assetly - Şifre Sıfırlama
+
+Şifrenizi sıfırlamak için aşağıdaki kodu kullanın:
+
+Şifre sıfırlama kodunuz: ${token}
+
+Bu kod 1 saat içinde geçerliliğini yitirecektir. Eğer şifre sıfırlama talebinde bulunmadıysanız, bu e-postayı görmezden gelebilirsiniz.
+
+Assetly - Varlık Yönetim Sistemi`,
   };
 };
 
@@ -153,7 +263,8 @@ const sendEmail = async (
     method: "POST",
     headers: {
       Authorization: `Bearer ${resendApiKey}`,
-      "Content-Type": "application/json",
+      "Content-Type": "application/json; charset=utf-8",
+      Accept: "application/json; charset=utf-8",
     },
     body,
     cache: "no-store",

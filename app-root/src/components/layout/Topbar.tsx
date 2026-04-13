@@ -2,14 +2,16 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bell, ChevronDown } from "lucide-react";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useNotifications } from "@/hooks/useNotifications";
 
 type TopbarProps = {
   title: string;
   breadcrumb: string;
   userEmail?: string | null;
+  userId?: string | null;
 };
 
 const getUserInitial = (email?: string | null) => {
@@ -20,14 +22,32 @@ const getUserInitial = (email?: string | null) => {
   return email.charAt(0).toLocaleUpperCase("tr-TR");
 };
 
-export function Topbar({ title, breadcrumb, userEmail }: TopbarProps) {
+export function Topbar({ title, breadcrumb, userEmail, userId }: TopbarProps) {
   const router = useRouter();
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const userMenuRef = useRef<HTMLDetailsElement | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  
+  // Fetch notifications for badge count
+  const { unreadCount } = useNotifications(userId || null);
+
+  // Log badge render
+  useEffect(() => {
+    if (userId) {
+      console.log("NOTIFICATION_BADGE_RENDER", {
+        userId,
+        unreadCount,
+      });
+    }
+  }, [unreadCount, userId]);
+
   const handleOpenNotifications = useCallback(() => {
+    console.log("NOTIFICATION_NAVIGATE", {
+      userId,
+      from: "topbar_bell",
+    });
     router.push("/notifications");
-  }, [router]);
+  }, [router, userId]);
 
   const handleSignOut = useCallback(async () => {
     if (isSigningOut) {
@@ -62,12 +82,16 @@ export function Topbar({ title, breadcrumb, userEmail }: TopbarProps) {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            aria-label="Bildirimler"
+            aria-label={unreadCount > 0 ? `${unreadCount} okunmamış bildirim` : "Bildirimler"}
             onClick={handleOpenNotifications}
             className="auth-topbar-control auth-focus-ring relative inline-flex h-9 w-9 items-center justify-center rounded-lg"
           >
             <Bell className="h-4 w-4" />
-            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[var(--auth-primary)]" />
+            {unreadCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1 text-xs font-medium text-white shadow-sm">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
           </button>
 
           <span className="auth-topbar-separator" aria-hidden />

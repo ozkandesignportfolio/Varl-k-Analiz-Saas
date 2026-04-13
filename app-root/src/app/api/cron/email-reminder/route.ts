@@ -254,7 +254,8 @@ async function sendReminderEmail(
     method: "POST",
     headers: {
       Authorization: `Bearer ${resendApiKey}`,
-      "Content-Type": "application/json",
+      "Content-Type": "application/json; charset=utf-8",
+      Accept: "application/json; charset=utf-8",
     },
     body: JSON.stringify(body),
   });
@@ -298,6 +299,12 @@ async function sendReminderEmail(
 
 export async function POST(request: Request) {
   const startTime = Date.now();
+
+  // Log that the email reminder was triggered
+  console.log("EMAIL_REMINDER_TRIGGERED", {
+    ts: new Date().toISOString(),
+    url: request.url,
+  });
 
   try {
     // Validate configuration
