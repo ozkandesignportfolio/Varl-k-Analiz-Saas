@@ -32,6 +32,8 @@ const HOOK_TAG = "[useNotifications]";
  * Logs: NOTIFICATION_FETCH, NOTIFICATION_RENDER, realtime events
  */
 export function useNotifications(userId: string | null): UseNotificationsReturn {
+  console.log("USER_ID_IN_HOOK", userId);
+
   const supabase = useMemo(() => createClient(), []);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,6 +66,8 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(100);
+
+      console.log("FETCH_RESULT", { data, error: supabaseError });
 
       if (supabaseError) {
         console.log("NOTIFICATION_FETCH", {

@@ -432,7 +432,8 @@ async function sendEmailAction(supabase: SupabaseClient, event: AutomationEvent)
       method: "POST",
       headers: {
         Authorization: `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json",
+        "Content-Type": "application/json; charset=utf-8",
+        Accept: "application/json; charset=utf-8",
         "Idempotency-Key": `automation-email:${event.id}`,
       },
       body: JSON.stringify({

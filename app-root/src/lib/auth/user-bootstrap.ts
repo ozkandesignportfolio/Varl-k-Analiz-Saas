@@ -48,6 +48,8 @@ export async function bootstrapUserRecords(input: {
 }): Promise<BootstrapResult> {
   const { userId, acceptedTerms = true } = input;
 
+  console.log("BOOTSTRAP_USER_ID", userId);
+
   try {
     const adminClient = createAdminClient();
     const consentedAt = new Date().toISOString();

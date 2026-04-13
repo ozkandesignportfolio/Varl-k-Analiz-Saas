@@ -541,13 +541,14 @@ const sendSignupConfirmationEmailAsync = async (input: {
       method: "POST",
       headers: {
         Authorization: `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json",
+        "Content-Type": "application/json; charset=utf-8",
+        Accept: "application/json; charset=utf-8",
       },
       body: JSON.stringify({
         from: fromEmail,
         html: buildSignupEmailHtml(input),
         reply_to: replyTo ? [replyTo] : undefined,
-        subject: "Assetly hesabinizi dogrulayin",
+        subject: "Assetly hesabınızı doğrulayın",
         text: buildSignupEmailText(input),
         to: [input.email],
       }),

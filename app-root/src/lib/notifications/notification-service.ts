@@ -90,6 +90,8 @@ export async function createNotification(params: CreateNotificationParams): Prom
       .select("id")
       .single();
 
+    console.log("NOTIFICATION_INSERT_RESULT", { data, error });
+
     if (error) {
       console.log("NOTIFICATION_CREATE_FAILED", {
         userId,
