@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { bootstrapUserRecords } from '@/lib/auth/user-bootstrap'
-import { createNotification } from '@/lib/notifications/notification-service'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -17,6 +17,24 @@ export async function GET(request: Request) {
   const supabase = await createClient()
 
   const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+
+  console.log("CALLBACK_RUNNING")
+
+  if (data?.user) {
+    console.log("USER_ID", data.user.id)
+
+    const { error: insertError } = await supabaseAdmin
+      .from("notifications")
+      .insert({
+        user_id: data.user.id,
+        title: "Hoş geldiniz",
+        message: "Bildirim sistemi çalışıyor",
+        type: "info",
+        is_read: false
+      })
+
+    console.log("INSERT_RESULT", insertError)
+  }
 
   if (error || !data.user) {
     console.log('AUTH_CALLBACK_EXCHANGE_ERROR', { error: error?.message })
@@ -37,13 +55,6 @@ export async function GET(request: Request) {
     console.log('AUTH_CALLBACK_BOOTSTRAP_START', { userId: user.id })
     console.log('NOTIFICATION_TRIGGERED', user.id)
 
-    // Create welcome notification directly in callback (SERVICE ROLE)
-    await createNotification({
-      userId: user.id,
-      title: "Hoş geldiniz",
-      message: "Hesabınız başarıyla oluşturuldu.",
-      type: "info"
-    })
 
     // Bootstrap user records (profile, notification settings, welcome notification)
     const bootstrapResult = await bootstrapUserRecords({
