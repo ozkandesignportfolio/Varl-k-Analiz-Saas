@@ -132,18 +132,18 @@ const formatRemainingDays = (value: number | null) => {
   }
 
   if (value < 0) {
-    return `${Math.abs(value)} gun gecikti`;
+    return `${Math.abs(value)} gün gecikti`;
   }
 
   if (value === 0) {
-    return "Bugun";
+    return "Bugün";
   }
 
   if (value === 1) {
-    return "1 gun kaldi";
+    return "1 gün kaldı";
   }
 
-  return `${value} gun kaldi`;
+  return `${value} gün kaldı`;
 };
 
 const formatRequiredRemainingDays = (value: number | null) => {
@@ -290,7 +290,7 @@ const buildRequiredDetails = (params: {
   return [
     ["Varlik adi", params.assetName],
     ["Tarih", params.dateLabel],
-    ["Kalan gun", formatRequiredRemainingDays(params.remainingDays)],
+    ["Kalan gün", formatRequiredRemainingDays(params.remainingDays)],
     ["Durum", params.status],
     ["Aksiyon linki", params.ctaUrl || "Baglanti bulunamadi"],
     ["Tip", params.templateType],

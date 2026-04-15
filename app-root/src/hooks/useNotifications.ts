@@ -69,12 +69,12 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
       console.log("NOTIF_DATA", data, supabaseError)
 
       if (supabaseError) {
-        console.log("NOTIFICATION_FETCH", {
+        console.log("FETCH_ERROR", {
           userId,
           fetchId,
-          status: "error",
           error: supabaseError.message,
         });
+        setError(supabaseError.message);
         setNotifications([]);
         return;
       }

@@ -6,7 +6,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 // Log server-side Supabase URL for debugging
 console.log("SERVER_SUPABASE_URL", process.env.NEXT_PUBLIC_SUPABASE_URL);
 
-export type NotificationType = "Bakım" | "Garanti" | "Belge" | "Ödeme" | "Sistem" | "info";
+export type NotificationType = "Bakım" | "Garanti" | "Belge" | "Ödeme" | "Sistem";
 
 export type CreateNotificationParams = {
   userId: string;
