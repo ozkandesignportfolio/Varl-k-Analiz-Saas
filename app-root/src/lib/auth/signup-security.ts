@@ -112,16 +112,18 @@ export const insertUserConsent = async (params: UserConsentInsertParams) => {
     console.log("[insertUserConsent] Final validated payload:", payload);
   }
 
-  // STRICT INSERT - no upsert, will fail on duplicate/constraint violation
-  const { error } = await client.from("user_consents").insert(payload);
+  // IDEMPOTENT UPSERT - safe to call multiple times, no duplicate key errors
+  const { error } = await client
+    .from("user_consents")
+    .upsert(payload, { onConflict: "user_id" });
 
   if (error) {
-    console.error("[insertUserConsent] Database insert failed:", {
+    console.error("[insertUserConsent] Database upsert failed:", {
       error: error.message,
       code: (error as { code?: string }).code,
       userId: params.userId,
     });
-    throw new Error(`Failed to insert user consent: ${error.message}`);
+    throw new Error(`Failed to upsert user consent: ${error.message}`);
   }
 };
 

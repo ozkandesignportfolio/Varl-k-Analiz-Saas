@@ -64,16 +64,24 @@ const fetchProfilePlan = async (client: DbClient, userId: string) =>
     error: { message: string; code?: string | null } | null;
   }>);
 
-const createDefaultProfile = async (client: DbClient, userId: string) => {
+/**
+ * Create or update profile using upsert (idempotent)
+ * No duplicate key errors possible
+ */
+const upsertDefaultProfile = async (client: DbClient, userId: string) => {
   const profilesTable = client.from("profiles") as unknown as {
-    insert: (values: { id: string; plan: ProfilePlan }) => Promise<{ error: { message: string; code?: string | null } | null }>;
+    upsert: (
+      values: { id: string; plan: ProfilePlan },
+      options: { onConflict: string }
+    ) => Promise<{ error: { message: string; code?: string | null } | null }>;
   };
 
-  return profilesTable.insert({ id: userId, plan: "free" });
+  // Using upsert with onConflict - no duplicate key errors possible
+  return profilesTable.upsert(
+    { id: userId, plan: "free" },
+    { onConflict: "id" }
+  );
 };
-
-const isDuplicateProfileError = (error: { message: string; code?: string | null } | null) =>
-  Boolean(error && (error.code === "23505" || /duplicate key/i.test(error.message)));
 
 const shouldAttemptProfileCreate = (userId: string) => {
   const now = Date.now();
@@ -145,17 +153,36 @@ export async function getProfilePlan(
   return { plan: normalizeProfilePlan(profile.data.plan), error: null };
 }
 
+/**
+ * Ensure profile exists (idempotent)
+ * Safe to call multiple times - no duplicate key errors
+ */
+export async function ensureProfileExists(
+  client: DbClient,
+  userId: string,
+): Promise<{ error: string | null }> {
+  const result = await upsertDefaultProfile(client, userId);
+
+  if (result.error) {
+    console.error("[profile-plan] PROFILE_UPSERT_ERROR", {
+      userId,
+      error: result.error.message,
+    });
+    return { error: result.error.message };
+  }
+
+  return { error: null };
+}
+
+/**
+ * @deprecated Use ensureProfileExists instead (idempotent, no duplicate errors)
+ */
 export async function createProfileIfMissing(
   client: DbClient,
   userId: string,
 ): Promise<{ error: string | null }> {
-  const insertedProfile = await createDefaultProfile(client, userId);
-
-  if (insertedProfile.error && !isDuplicateProfileError(insertedProfile.error)) {
-    return { error: insertedProfile.error.message };
-  }
-
-  return { error: null };
+  // Delegates to the new upsert-based implementation
+  return ensureProfileExists(client, userId);
 }
 
 export async function getOrCreateProfilePlan(
@@ -187,9 +214,9 @@ export async function ensureProfile(
     return { plan: "free", error: null };
   }
 
-  const insertResult = await createProfileIfMissing(client, userId);
-  if (insertResult.error) {
-    return { plan: "free", error: `profiles insert error: ${insertResult.error}` };
+  const upsertResult = await ensureProfileExists(client, userId);
+  if (upsertResult.error) {
+    return { plan: "free", error: `profiles upsert error: ${upsertResult.error}` };
   }
 
   const profile = await getProfilePlan(client, userId);

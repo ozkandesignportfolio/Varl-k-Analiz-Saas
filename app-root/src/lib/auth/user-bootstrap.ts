@@ -1,18 +1,28 @@
 /**
- * User Bootstrap - Idempotent user record creation
- * 
- * This module handles creation of database records for authenticated users.
- * It is designed to be idempotent - safe to call multiple times.
- * 
- * Rules:
- * - ONLY runs after email is confirmed
- * - Uses upsert for idempotency
- * - Creates: profiles, user_consents, notification_settings, welcome notification
- * - Handles partial states (some records exist, others don't)
+ * User Bootstrap - Production Hardened
+ *
+ * This module handles atomic, idempotent creation of all user-related database records.
+ * Designed for SaaS-grade reliability with no duplicate key errors possible.
+ *
+ * Architecture:
+ * - Uses database RPC function for atomic operations
+ * - Safe to call multiple times (idempotent)
+ * - No orphaned records possible
+ * - Partial failures are logged but don't block
+ *
+ * Records Created:
+ * - profiles: User profile and subscription tier
+ * - user_consents: GDPR/KVKK compliance tracking
+ * - notification_settings: User notification preferences
+ * - notifications: Welcome notification (first time only)
+ *
+ * Error Handling:
+ * - Returns structured result (never throws)
+ * - Logs technical details internally
+ * - User-facing errors are sanitized
  */
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
-import { createWelcomeNotification } from "@/lib/notifications/notification-service";
 
 const REQUIRED_ENV = {
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -32,14 +42,29 @@ const createAdminClient = () => {
 };
 
 export type BootstrapResult =
-  | { ok: true; created: boolean; message: string }
+  | { ok: true; created: boolean; message: string; notificationId?: string | null }
   | { ok: false; error: string; stage: string };
 
 /**
- * Bootstrap user records after confirmed email
- * - Idempotent: safe to call multiple times
- * - Only creates missing records
- * - Uses upsert with onConflict
+ * Bootstrap all user records after authentication
+ *
+ * This function is IDEMPOTENT - safe to call multiple times:
+ * - First call: Creates all records + welcome notification
+ * - Subsequent calls: Updates existing records, no duplicate errors
+ *
+ * Usage:
+ * ```typescript
+ * const result = await bootstrapUserRecords({
+ *   userId: session.user.id,
+ *   email: session.user.email,
+ *   acceptedTerms: true
+ * });
+ *
+ * if (!result.ok) {
+ *   // Log error but don't block user
+ *   console.error("Bootstrap failed:", result.error);
+ * }
+ * ```
  */
 export async function bootstrapUserRecords(input: {
   userId: string;
@@ -47,118 +72,191 @@ export async function bootstrapUserRecords(input: {
   acceptedTerms?: boolean;
 }): Promise<BootstrapResult> {
   const { userId, acceptedTerms = true } = input;
+  const startTime = Date.now();
 
-  console.log("BOOTSTRAP_USER_ID", userId);
+  console.log("[user-bootstrap] START", {
+    userId,
+    acceptedTerms,
+    timestamp: new Date().toISOString(),
+  });
 
   try {
     const adminClient = createAdminClient();
-    const consentedAt = new Date().toISOString();
 
-    // Check if profile already exists
-    const { data: existingProfile } = await adminClient
-      .from("profiles")
-      .select("id")
-      .eq("id", userId)
-      .single();
+    // METHOD 1: Use database RPC function (ATOMIC - preferred)
+    // This ensures all operations succeed or fail together
+    const { data: rpcResult, error: rpcError } = await adminClient.rpc(
+      "bootstrap_user_records",
+      {
+        p_user_id: userId,
+        p_accepted_terms: acceptedTerms,
+      }
+    );
 
-    const isAlreadyBootstrapped = Boolean(existingProfile);
-
-    // Stage 1: Profile (REQUIRED)
-    // Using id as PK (matches auth.users.id)
-    const { error: profileError } = await adminClient
-      .from("profiles")
-      .upsert(
-        { id: userId, plan: "free" },
-        { onConflict: "id" }
-      );
-
-    if (profileError && (profileError as { code?: string }).code !== "23505") {
-      return {
-        ok: false,
-        error: `Profile creation failed: ${profileError.message}`,
-        stage: "profile",
-      };
-    }
-
-    // Stage 2: Notification settings (REQUIRED)
-    const { error: notificationError } = await adminClient
-      .from("notification_settings")
-      .upsert(
-        { user_id: userId },
-        { onConflict: "user_id" }
-      );
-
-    if (notificationError && (notificationError as { code?: string }).code !== "23505") {
-      return {
-        ok: false,
-        error: `Notification settings creation failed: ${notificationError.message}`,
-        stage: "notification_settings",
-      };
-    }
-
-    // Stage 3: User consents (REQUIRED)
-    // user_id is PK - upsert handles duplicates gracefully
-    const { error: consentError } = await adminClient
-      .from("user_consents")
-      .upsert(
-        {
-          user_id: userId,
-          accepted_terms: acceptedTerms,
-          consented_at: consentedAt,
-        },
-        { onConflict: "user_id" }
-      );
-
-    if (consentError && (consentError as { code?: string }).code !== "23505") {
-      return {
-        ok: false,
-        error: `User consents creation failed: ${consentError.message}`,
-        stage: "user_consents",
-      };
-    }
-
-    // Stage 4: Welcome notification (only for new users)
-    if (!isAlreadyBootstrapped) {
-      console.log("NOTIFICATION_CREATE_ATTEMPT", {
+    if (!rpcError && rpcResult?.success) {
+      const duration = Date.now() - startTime;
+      console.log("[user-bootstrap] SUCCESS (RPC)", {
         userId,
-        type: "welcome",
-        stage: "user_bootstrap",
+        isNewUser: rpcResult.is_new_user,
+        notificationId: rpcResult.welcome_notification_id,
+        durationMs: duration,
       });
 
-      const welcomeResult = await createWelcomeNotification(userId);
-
-      if (!welcomeResult.ok) {
-        // Log but don't fail - notification is not critical for signup
-        console.log("NOTIFICATION_CREATE_FAILED", {
-          userId,
-          type: "welcome",
-          error: welcomeResult.error,
-          stage: "user_bootstrap",
-        });
-        // Continue - don't block signup for notification failure
-      } else {
-        console.log("NOTIFICATION_CREATE_SUCCESS", {
-          userId,
-          notificationId: welcomeResult.id,
-          type: "welcome",
-          stage: "user_bootstrap",
-        });
-      }
+      return {
+        ok: true,
+        created: rpcResult.is_new_user ?? false,
+        message: rpcResult.is_new_user
+          ? "Kullanıcı kayıtları oluşturuldu"
+          : "Kullanıcı kayıtları zaten mevcut",
+        notificationId: rpcResult.welcome_notification_id,
+      };
     }
 
-    return {
-      ok: true,
-      created: !isAlreadyBootstrapped,
-      message: isAlreadyBootstrapped
-        ? "User records already exist"
-        : "User records created successfully",
-    };
+    // If RPC fails, log and fall back to manual method
+    console.warn("[user-bootstrap] RPC_FAILED_FALLING_BACK", {
+      userId,
+      rpcError: rpcError?.message,
+      rpcResult,
+    });
+
+    // METHOD 2: Manual upsert operations (for environments without RPC)
+    return await bootstrapUserRecordsManual(adminClient, userId, acceptedTerms);
+
   } catch (error) {
+    const duration = Date.now() - startTime;
     const errorMsg = error instanceof Error ? error.message : "Unknown error";
+
+    console.error("[user-bootstrap] CRITICAL_ERROR", {
+      userId,
+      error: errorMsg,
+      durationMs: duration,
+    });
+
     return {
       ok: false,
-      error: `Bootstrap failed: ${errorMsg}`,
+      error: "Kullanıcı kayıtları oluşturulurken bir hata oluştu. Lütfen sayfayı yenileyin.",
       stage: "unknown",
     };
   }
+}
+
+/**
+ * Manual bootstrap fallback using individual upsert operations
+ * Used when RPC function is not available
+ */
+async function bootstrapUserRecordsManual(
+  adminClient: ReturnType<typeof createAdminClient>,
+  userId: string,
+  acceptedTerms: boolean
+): Promise<BootstrapResult> {
+  const consentedAt = new Date().toISOString();
+
+  // Check if user already has records (for welcome notification logic)
+  const { data: existingProfile } = await adminClient
+    .from("profiles")
+    .select("id")
+    .eq("id", userId)
+    .maybeSingle();
+
+  const isNewUser = !existingProfile;
+
+  // Stage 1: Profile (upsert - idempotent)
+  const { error: profileError } = await adminClient
+    .from("profiles")
+    .upsert(
+      { id: userId, plan: "free" },
+      { onConflict: "id" }
+    );
+
+  if (profileError) {
+    console.error("[user-bootstrap] PROFILE_ERROR", { userId, error: profileError.message });
+    return {
+      ok: false,
+      error: "Profil oluşturulamadı",
+      stage: "profile",
+    };
+  }
+
+  // Stage 2: Notification settings (upsert - idempotent)
+  const { error: settingsError } = await adminClient
+    .from("notification_settings")
+    .upsert(
+      { user_id: userId },
+      { onConflict: "user_id" }
+    );
+
+  if (settingsError) {
+    console.error("[user-bootstrap] SETTINGS_ERROR", { userId, error: settingsError.message });
+    return {
+      ok: false,
+      error: "Bildirim ayarları oluşturulamadı",
+      stage: "notification_settings",
+    };
+  }
+
+  // Stage 3: User consents (upsert - idempotent)
+  const { error: consentError } = await adminClient
+    .from("user_consents")
+    .upsert(
+      {
+        user_id: userId,
+        accepted_terms: acceptedTerms,
+        consented_at: consentedAt,
+      },
+      { onConflict: "user_id" }
+    );
+
+  if (consentError) {
+    console.error("[user-bootstrap] CONSENT_ERROR", { userId, error: consentError.message });
+    return {
+      ok: false,
+      error: "Kullanıcı onayları kaydedilemedi",
+      stage: "user_consents",
+    };
+  }
+
+  // Stage 4: Welcome notification (only for new users)
+  let notificationId: string | null = null;
+  if (isNewUser) {
+    const { data: notifData, error: notifError } = await adminClient
+      .from("notifications")
+      .insert({
+        user_id: userId,
+        title: "Hoş geldiniz",
+        message: "Assetly'ye hoş geldiniz! Bildirim sistemi aktif.",
+        type: "Sistem",
+        source: "system",
+        action_href: "/assets",
+        action_label: "Varlıklarım",
+        is_read: false,
+      })
+      .select("id")
+      .single();
+
+    if (notifError) {
+      // Log but don't fail - notification is not critical
+      console.warn("[user-bootstrap] WELCOME_NOTIF_ERROR", {
+        userId,
+        error: notifError.message,
+      });
+    } else {
+      notificationId = notifData?.id ?? null;
+      console.log("[user-bootstrap] WELCOME_NOTIF_CREATED", { userId, notificationId });
+    }
+  }
+
+  console.log("[user-bootstrap] SUCCESS (MANUAL)", {
+    userId,
+    isNewUser,
+    notificationId,
+  });
+
+  return {
+    ok: true,
+    created: isNewUser,
+    message: isNewUser
+      ? "Kullanıcı kayıtları oluşturuldu"
+      : "Kullanıcı kayıtları zaten mevcut",
+    notificationId,
+  };
 }

@@ -1,44 +1,122 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from "@supabase/supabase-js";
+import { bootstrapUserRecords } from "@/lib/auth/user-bootstrap";
 
+/**
+ * Auth Callback Route - Production Hardened
+ *
+ * Flow:
+ * 1. Exchange code for session
+ * 2. Bootstrap all user records (idempotent)
+ * 3. Redirect to dashboard
+ *
+ * Safety:
+ * - Bootstrap can run multiple times without errors
+ * - Partial failures are logged but don't block redirect
+ * - Service role used for admin operations only
+ */
 export async function GET(req: Request) {
-  console.log("CALLBACK_RUNNING")
+  const requestId = crypto.randomUUID();
+  const baseUrl = new URL(req.url).origin;
+  const url = new URL(req.url);
+  const code = url.searchParams.get("code");
 
-  const baseUrl = new URL(req.url).origin
-  const url = new URL(req.url)
-  const code = url.searchParams.get("code")
+  console.log("[auth.callback] START", { requestId, hasCode: Boolean(code) });
 
   if (!code) {
-    console.log("CALLBACK_ERROR", { error: "missing_code" })
-    return Response.redirect(`${baseUrl}/verify-email?error=missing_code`)
+    console.log("[auth.callback] ERROR missing_code", { requestId });
+    return Response.redirect(`${baseUrl}/verify-email?error=missing_code`);
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  // Validate environment
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+  if (!supabaseUrl || !serviceRoleKey) {
+    console.error("[auth.callback] ERROR missing_env", {
+      requestId,
+      hasUrl: Boolean(supabaseUrl),
+      hasKey: Boolean(serviceRoleKey),
+    });
+    return Response.redirect(`${baseUrl}/verify-email?error=server_config`);
+  }
+
+  // Create admin client
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+
+  // Exchange code for session
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error || !data?.user) {
-    console.log("CALLBACK_ERROR", { error: error?.message || "invalid" })
-    return Response.redirect(`${baseUrl}/verify-email?error=invalid`)
+    console.log("[auth.callback] ERROR exchange_failed", {
+      requestId,
+      error: error?.message || "no_user",
+    });
+    return Response.redirect(
+      `${baseUrl}/verify-email?error=invalid&error_description=${encodeURIComponent(
+        error?.message || "Geçersiz veya süresi dolmuş doğrulama kodu"
+      )}`
+    );
   }
 
-  console.log("USER_ID", data.user.id)
+  const user = data.user;
+  console.log("[auth.callback] USER_AUTHENTICATED", {
+    requestId,
+    userId: user.id,
+    email: user.email,
+    emailConfirmed: user.email_confirmed_at != null,
+  });
 
-  const { data: insertData, error: insertError } = await supabase
-    .from("notifications")
-    .insert({
-      user_id: data.user.id,
-      title: "Hoş geldiniz",
-      message: "Bildirim sistemi aktif",
-      type: "Sistem",
-      is_read: false
-    })
-    .select("id")
-    .single()
+  // Bootstrap all user records (IDEMPOTENT)
+  // This creates: profile, notification_settings, user_consents, welcome notification
+  const metadata = user.user_metadata as Record<string, unknown> | null;
+  const acceptedTerms =
+    metadata?.["legal_consents"] != null
+      ? Boolean(
+          (metadata["legal_consents"] as Record<string, unknown>)?.["accepted_terms"]
+        )
+      : true;
 
-  console.log("INSERT_RESULT", { insertData, insertError })
+  console.log("[auth.callback] BOOTSTRAP_START", {
+    requestId,
+    userId: user.id,
+    acceptedTerms,
+  });
 
-  return Response.redirect(`${baseUrl}/dashboard`)
+  const bootstrapResult = await bootstrapUserRecords({
+    userId: user.id,
+    email: user.email ?? "",
+    acceptedTerms,
+  });
+
+  if (!bootstrapResult.ok) {
+    // Log but don't block - user is already authenticated
+    console.error("[auth.callback] BOOTSTRAP_WARNING", {
+      requestId,
+      userId: user.id,
+      error: bootstrapResult.error,
+      stage: bootstrapResult.stage,
+    });
+    // Continue to redirect - don't block user for bootstrap failure
+  } else {
+    console.log("[auth.callback] BOOTSTRAP_SUCCESS", {
+      requestId,
+      userId: user.id,
+      created: bootstrapResult.created,
+    });
+  }
+
+  console.log("[auth.callback] COMPLETE", {
+    requestId,
+    userId: user.id,
+    redirectTo: "/dashboard",
+  });
+
+  // Redirect to dashboard
+  return Response.redirect(`${baseUrl}/dashboard`);
 }
+

@@ -8,6 +8,11 @@
  * - accepted_terms: boolean (NOT NULL)
  * - consented_at: timestamptz (NOT NULL, default now())
  * 
+ * IDEMPOTENT OPERATIONS:
+ * - Always use upsert({ onConflict: "user_id" }) instead of insert()
+ * - Safe to call multiple times - no duplicate key errors
+ * - Database function: upsert_user_consent(p_user_id, p_accepted_terms, p_consented_at)
+ * 
  * DELETED FIELDS (permanently removed):
  * - accepted_kvkk ❌
  * - accepted_privacy_policy ❌

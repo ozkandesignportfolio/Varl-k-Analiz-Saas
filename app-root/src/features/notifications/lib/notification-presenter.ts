@@ -62,7 +62,11 @@ const toSafeStringArray = (value: unknown) => {
     .filter(Boolean);
 };
 
-const formatDate = (value: string) => {
+const formatDate = (value: string | null | undefined) => {
+  if (!value || typeof value !== "string") {
+    return "";
+  }
+  
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
     return "";
@@ -294,22 +298,50 @@ const resolveActionHref = (
 };
 
 export function mapAutomationEventToNotification(
-  input: AutomationEventNotificationInput,
-): NotificationRecord {
-  const type = resolveTypeFromEvent(input.triggerType, input.payload) as NotificationType;
-  const text = resolveText(input.triggerType, input.payload);
-  const actionHref = resolveActionHref(input.triggerType, input.payload, input.assetId);
+  input: AutomationEventNotificationInput | null | undefined,
+): NotificationRecord | null {
+  // Defensive: handle null/undefined input
+  if (!input) {
+    console.warn("[notification-presenter] mapAutomationEventToNotification received null input");
+    return null;
+  }
 
-  return {
-    id: input.id,
-    type,
-    title: text.title,
-    description: text.description,
-    detail: text.detail,
-    createdAt: input.createdAt,
-    status: resolveReadStatusFromEvent(input.status) as NotificationStatus,
-    source: "automation",
-    actionHref: actionHref || undefined,
-    actionLabel: actionHref ? "Detaylara Bakın" : undefined,
-  };
+  // Defensive: ensure required fields exist
+  if (!input.id || !input.triggerType) {
+    console.warn("[notification-presenter] mapAutomationEventToNotification missing required fields", {
+      hasId: !!input.id,
+      hasTriggerType: !!input.triggerType,
+    });
+    return null;
+  }
+
+  try {
+    const type = resolveTypeFromEvent(input.triggerType, input.payload) as NotificationType;
+    const text = resolveText(input.triggerType, input.payload);
+    const actionHref = resolveActionHref(input.triggerType, input.payload, input.assetId);
+
+    // Ensure safe defaults
+    const safeTitle = text.title || "Bildirim";
+    const safeDescription = text.description || "Yeni bir bildirim var.";
+    const safeCreatedAt = input.createdAt || new Date().toISOString();
+
+    return {
+      id: input.id,
+      type,
+      title: safeTitle,
+      description: safeDescription,
+      detail: text.detail,
+      createdAt: safeCreatedAt,
+      status: resolveReadStatusFromEvent(input.status) as NotificationStatus,
+      source: "automation",
+      actionHref: actionHref || undefined,
+      actionLabel: actionHref ? "Detaylara Bakın" : undefined,
+    };
+  } catch (error) {
+    console.error("[notification-presenter] mapAutomationEventToNotification error", {
+      input,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+    return null;
+  }
 }
