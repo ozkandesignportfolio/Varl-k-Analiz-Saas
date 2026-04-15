@@ -315,7 +315,7 @@ async function suggestDescription(params: {
   if (!openAiApiKey) {
     const parts = [
       `${params.serviceDate} tarihinde ${params.serviceType} islemi kaydedildi.`,
-      params.provider ? `Saglayici: ${params.provider}.` : null,
+      params.provider ? `Sağlayıcı: ${params.provider}.` : null,
       params.existingNotes ? `Not: ${params.existingNotes}.` : null,
     ].filter(Boolean);
     return parts.join(" ");
@@ -460,7 +460,7 @@ async function processJob(job: JobRow) {
       .maybeSingle();
 
     if (serviceLogError || !serviceLog) {
-      throw new Error("Servis kaydi bulunamadi.");
+      throw new Error("Servis kaydı bulunamadı.");
     }
 
     const { data: documents, error: documentsError } = await supabase

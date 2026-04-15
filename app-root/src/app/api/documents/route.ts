@@ -235,7 +235,7 @@ export async function POST(request: Request) {
 
     if (insertError || !insertedDocument?.id) {
       await supabase.storage.from(STORAGE_BUCKET).remove([storagePath]);
-      return NextResponse.json({ error: insertError?.message ?? "Belge kaydi olusturulamadi." }, { status: 500 });
+      return NextResponse.json({ error: insertError?.message ?? "Belge kaydı oluşturulamadı." }, { status: 500 });
     }
 
     logAuditEvent({
@@ -266,7 +266,7 @@ export async function POST(request: Request) {
       error,
       message: "Document upload request failed unexpectedly",
     });
-    return NextResponse.json({ error: "Belge yukleme istegi islenemedi." }, { status: 500 });
+    return NextResponse.json({ error: "Belge yükleme isteği işlenemedi." }, { status: 500 });
   }
 }
 
@@ -296,7 +296,7 @@ export async function DELETE(request: Request) {
     const payload = await readDeleteBody(request);
     const documentId = parseUuid(payload?.id ?? new URL(request.url).searchParams.get("id"));
     if (!documentId) {
-      return NextResponse.json({ error: "Belge kimligi gecersiz." }, { status: 400 });
+      return NextResponse.json({ error: "Belge kimliği geçersiz." }, { status: 400 });
     }
 
     const { data: existingDocument, error: existingDocumentError } = await supabase
@@ -311,7 +311,7 @@ export async function DELETE(request: Request) {
     }
 
     if (!existingDocument?.id) {
-      return NextResponse.json({ error: "Belge bulunamadi." }, { status: 404 });
+      return NextResponse.json({ error: "Belge bulunamadı." }, { status: 404 });
     }
 
     const { data: deletedDocument, error: deleteError } = await supabase
@@ -327,7 +327,7 @@ export async function DELETE(request: Request) {
     }
 
     if (!deletedDocument?.id) {
-      return NextResponse.json({ error: "Belge bulunamadi." }, { status: 404 });
+      return NextResponse.json({ error: "Belge bulunamadı." }, { status: 404 });
     }
 
     let warning: string | null = null;
@@ -335,7 +335,7 @@ export async function DELETE(request: Request) {
     if (storagePath) {
       const { error: storageDeleteError } = await supabase.storage.from(STORAGE_BUCKET).remove([storagePath]);
       if (storageDeleteError) {
-        warning = "Belge kaydi silindi fakat depolama dosyasi temizlenemedi.";
+        warning = "Belge kaydı silindi fakat depolama dosyası temizlenemedi.";
         logApiError({
           route: "/api/documents",
           method: "DELETE",

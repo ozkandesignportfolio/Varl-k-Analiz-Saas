@@ -238,7 +238,7 @@ function resolveAssetStatus(event: AutomationEvent, asset: AssetContextRow | nul
   }
 
   if (event.trigger_type === "subscription_due") {
-    return "Odeme kontrolu gerekli";
+    return "Ödeme kontrolü gerekli";
   }
 
   if (event.trigger_type === "expense_threshold") {

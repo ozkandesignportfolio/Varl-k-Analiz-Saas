@@ -80,22 +80,22 @@ const REMINDER_FIELDS: Array<{
   {
     key: "maintenanceDaysBefore",
     label: "Bakim",
-    description: "Planli bakim icin kac gun once hatirlatma gonderilsin.",
+    description: "Planlı bakım için kaç gün önce hatırlatma gönderilsin.",
   },
   {
     key: "warrantyDaysBefore",
     label: "Garanti",
-    description: "Garanti bitisi icin kac gun once hatirlatma gonderilsin.",
+    description: "Garanti bitişi için kaç gün önce hatırlatma gönderilsin.",
   },
   {
     key: "documentDaysBefore",
     label: "Belge",
-    description: "Belge gecerlilik tarihi icin kac gun once hatirlatma gonderilsin.",
+    description: "Belge geçerlilik tarihi için kaç gün önce hatırlatma gönderilsin.",
   },
   {
     key: "billingDaysBefore",
     label: "Odeme",
-    description: "Tahsilat veya yenileme tarihi icin kac gun once hatirlatma gonderilsin.",
+    description: "Tahsilat veya yenileme tarihi için kaç gün önce hatırlatma gönderilsin.",
   },
 ];
 
@@ -244,9 +244,9 @@ export function NotificationPrefs({
       </article>
 
       <article className="premium-card border-white/10 bg-white/[0.02] p-5">
-        <h4 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-300">Hatirlatma Gunleri</h4>
+        <h4 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-300">Hatırlatma Günleri</h4>
         <p className="mt-1 text-sm text-slate-400">
-          Her bildirim tipi icin kac gun once hatirlatma gonderilecegini belirleyin.
+          Her bildirim tipi için kaç gün önce hatırlatma gönderileceğini belirleyin.
         </p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           {REMINDER_FIELDS.map((field) => (

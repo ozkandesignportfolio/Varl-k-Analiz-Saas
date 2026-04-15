@@ -195,7 +195,7 @@ const syncRuleSchedulesFromLatestLogs = async (params: {
       message: "Service log rule sync failed while loading latest logs",
       meta: { ruleIds: targetRuleIds },
     });
-    return ["Son servis kaydi bilgileri alinamadi."];
+    return ["Son servis kaydı bilgileri alınamadı."];
   }
 
   const rules = rulesRes.data ?? [];
@@ -438,7 +438,7 @@ export async function POST(request: Request) {
         meta: { assetId, ruleId },
       });
       return NextResponse.json(
-        toPublicErrorBody("SERVICE_LOG_CREATE_FAILED", "Servis kaydi olusturulamadi."),
+        toPublicErrorBody("SERVICE_LOG_CREATE_FAILED", "Servis kaydı oluşturulamadı."),
         { status: 400 },
       );
     }
@@ -684,7 +684,7 @@ export async function PATCH(request: Request) {
         meta: { serviceLogId },
       });
       return NextResponse.json(
-        toPublicErrorBody("SERVICE_LOG_UPDATE_FAILED", "Servis kaydi guncellenemedi."),
+        toPublicErrorBody("SERVICE_LOG_UPDATE_FAILED", "Servis kaydı güncellenemedi."),
         { status: 400 },
       );
     }

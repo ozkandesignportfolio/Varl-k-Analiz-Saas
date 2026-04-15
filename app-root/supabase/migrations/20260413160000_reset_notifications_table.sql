@@ -11,7 +11,7 @@ create table public.notifications (
   user_id uuid not null references auth.users(id) on delete cascade,
   title text not null,
   message text not null,
-  type text default 'info',
+  type text default 'Sistem',
   is_read boolean default false,
   created_at timestamptz default now()
 );

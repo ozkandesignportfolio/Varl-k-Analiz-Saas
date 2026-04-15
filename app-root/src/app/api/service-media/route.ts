@@ -297,7 +297,7 @@ async function uploadSingleMedia(params: {
     await params.supabase.storage.from(STORAGE_BUCKET).remove([storagePath]);
     return {
       ok: false,
-      error: `${params.entry.kind} dokuman kaydi olusturulamadi.`,
+      error: `${params.entry.kind} doküman kaydı oluşturulamadı.`,
       orphanedStoragePath: storagePath,
     };
   }
@@ -397,7 +397,7 @@ export async function POST(request: Request) {
     const userNotesField = readFormText(formData, "notes", { maxLength: MAX_NOTES_LENGTH });
 
     if (assetIdField.invalidType || serviceLogIdField.invalidType) {
-      return respond({ error: "Varlik veya servis kaydi kimligi gecersiz." }, { status: 400 });
+      return respond({ error: "Varlık veya servis kaydı kimliği geçersiz." }, { status: 400 });
     }
 
     if (
@@ -406,19 +406,19 @@ export async function POST(request: Request) {
       providerField.invalidType ||
       userNotesField.invalidType
     ) {
-      return respond({ error: "Metin alanlari gecersiz." }, { status: 400 });
+      return respond({ error: "Metin alanları geçersiz." }, { status: 400 });
     }
 
     if (serviceTypeField.tooLong) {
-      return respond({ error: "Servis turu cok uzun." }, { status: 400 });
+      return respond({ error: "Servis türü çok uzun." }, { status: 400 });
     }
 
     if (providerField.tooLong) {
-      return respond({ error: "Saglayici bilgisi cok uzun." }, { status: 400 });
+      return respond({ error: "Sağlayıcı bilgisi çok uzun." }, { status: 400 });
     }
 
     if (userNotesField.tooLong) {
-      return respond({ error: "Not alani cok uzun." }, { status: 400 });
+      return respond({ error: "Not alanı çok uzun." }, { status: 400 });
     }
 
     const assetId = parseUuid(assetIdField.value);
@@ -426,7 +426,7 @@ export async function POST(request: Request) {
     const serviceType = serviceTypeField.value;
     const serviceDate = serviceDateField.value;
     if (!assetId || !serviceLogId) {
-      return respond({ error: "Varlik veya servis kaydi kimligi gecersiz." }, { status: 400 });
+      return respond({ error: "Varlık veya servis kaydı kimliği geçersiz." }, { status: 400 });
     }
 
     if (!serviceType || !serviceDate) {
@@ -434,7 +434,7 @@ export async function POST(request: Request) {
     }
 
     if (!parseDateOnly(serviceDate)) {
-      return respond({ error: "Servis tarihi gecersiz." }, { status: 400 });
+      return respond({ error: "Servis tarihi geçersiz." }, { status: 400 });
     }
 
     const oneMinuteAgoIso = new Date(Date.now() - 60_000).toISOString();
@@ -448,13 +448,13 @@ export async function POST(request: Request) {
       error: { message?: string } | null;
     };
     if (recentJobsResult.error) {
-      return respond({ error: recentJobsResult.error.message ?? "Islem gecici olarak tamamlanamadi." }, { status: 400 });
+      return respond({ error: recentJobsResult.error.message ?? "İşlem geçici olarak tamamlanamadı." }, { status: 400 });
     }
     const recentJobCount = recentJobsResult.count;
 
     if ((recentJobCount ?? 0) >= MAX_QUEUE_JOBS_PER_MINUTE) {
       return respond(
-        { error: "Cok fazla medya istegi gonderildi. Lutfen biraz bekleyip tekrar deneyin." },
+        { error: "Çok fazla medya isteği gönderildi. Lütfen biraz bekleyip tekrar deneyin." },
         { status: 429, headers: { "Retry-After": "60" } },
       );
     }
@@ -471,7 +471,7 @@ export async function POST(request: Request) {
     }
 
     if (!assetExists) {
-      return respond({ error: "Secilen varliga erisim izniniz yok." }, { status: 403 });
+      return respond({ error: "Seçilen varlığa erişim izniniz yok." }, { status: 403 });
     }
 
     const { data: serviceLog, error: serviceLogError } = await timeDb(() =>
@@ -484,12 +484,12 @@ export async function POST(request: Request) {
     );
 
     if (serviceLogError || !serviceLog) {
-      return respond({ error: "Servis kaydi bulunamadi." }, { status: 404 });
+      return respond({ error: "Servis kaydı bulunamadı." }, { status: 404 });
     }
 
     const relationAssetId = typeof serviceLog.asset_id === "string" ? serviceLog.asset_id.toLowerCase() : "";
     if (serviceLog.user_id !== user.id || !relationAssetId || relationAssetId !== assetId) {
-      return respond({ error: "Bu servis kaydina erisim izniniz yok." }, { status: 403 });
+      return respond({ error: "Bu servis kaydına erişim izniniz yok." }, { status: 403 });
     }
 
     const photoFile = getFileEntry(formData, "photo");

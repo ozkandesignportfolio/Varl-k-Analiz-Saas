@@ -135,7 +135,7 @@ const toSystemStatus = (args: {
       return {
         tone: "warning",
         headline: `${args.warningCount} risk var`,
-        detail: "Yaklasan takvimler icin onleyici adim alinmasi onerilir.",
+        detail: "Yaklaşan takvimler için önleyici adım alınması önerilir.",
         riskCount: args.warningCount,
         risk: { type: "document_missing", entityId: null, riskKey: "document_missing:global" },
       };
@@ -144,7 +144,7 @@ const toSystemStatus = (args: {
       return {
         tone: "warning",
         headline: `${args.warningCount} risk var`,
-        detail: "Yaklasan takvimler icin onleyici adim alinmasi onerilir.",
+        detail: "Yaklaşan takvimler için önleyici adım alınması önerilir.",
         riskCount: args.warningCount,
         risk: { type: "invoice_due", entityId: null, riskKey: "invoice_due:global" },
       };
@@ -152,7 +152,7 @@ const toSystemStatus = (args: {
     return {
       tone: "warning",
       headline: `${args.warningCount} risk var`,
-      detail: "Yaklasan takvimler icin onleyici adim alinmasi onerilir.",
+      detail: "Yaklaşan takvimler için önleyici adım alınması önerilir.",
       riskCount: args.warningCount,
       risk: { type: "maintenance_due", entityId: null, riskKey: "maintenance_due:global" },
     };
@@ -160,8 +160,8 @@ const toSystemStatus = (args: {
 
   return {
     tone: "healthy",
-    headline: "Her sey yolunda",
-    detail: "Kritik veya yaklasan risk kaydi su an bulunmuyor.",
+    headline: "Her şey yolunda",
+    detail: "Kritik veya yaklaşan risk kaydı şu an bulunmuyor.",
     riskCount: 0,
     risk: { type: "notification_prefs", entityId: null, riskKey: "notification_prefs:global" },
   };
@@ -351,24 +351,24 @@ const buildLegacySnapshot = (): DashboardSnapshot => {
     ...seed.services.map((service) => ({
       id: `service-${service.id}`,
       type: "service" as const,
-      title: "Servis kaydi eklendi",
-      description: `${assetsById.get(service.assetId)?.name ?? "Bilinmeyen Varlik"} - ${service.serviceType}`,
+      title: "Servis kaydı eklendi",
+      description: `${assetsById.get(service.assetId)?.name ?? "Bilinmeyen Varlık"} - ${service.serviceType}`,
       date: service.createdAt,
       href: `/services?asset=${service.assetId}`,
     })),
     ...seed.documents.map((document) => ({
       id: `document-${document.id}`,
       type: "document" as const,
-      title: "Belge yuklendi",
-      description: `${assetsById.get(document.assetId)?.name ?? "Bilinmeyen Varlik"} - ${document.fileName}`,
+      title: "Belge yüklendi",
+      description: `${assetsById.get(document.assetId)?.name ?? "Bilinmeyen Varlık"} - ${document.fileName}`,
       date: document.uploadedAt,
       href: `/documents?asset=${document.assetId}`,
     })),
     ...seed.rules.map((rule) => ({
       id: `rule-${rule.id}`,
       type: "rule" as const,
-      title: "Bakim kurali olusturuldu",
-      description: `${assetsById.get(rule.assetId)?.name ?? "Bilinmeyen Varlik"} - ${rule.title}`,
+      title: "Bakım kuralı oluşturuldu",
+      description: `${assetsById.get(rule.assetId)?.name ?? "Bilinmeyen Varlık"} - ${rule.title}`,
       date: rule.createdAt,
       href: `/maintenance?asset=${rule.assetId}`,
     })),
@@ -377,7 +377,7 @@ const buildLegacySnapshot = (): DashboardSnapshot => {
       .map((invoice) => ({
         id: `payment-${invoice.id}`,
         type: "payment" as const,
-        title: "Odeme islendi",
+        title: "Ödeme işlendi",
         description: `${subscriptionNameById.get(invoice.subscriptionId) ?? "Abonelik"} - ${invoice.totalAmount.toFixed(2)} TL`,
         date: invoice.paidAt as string,
         href: "/invoices",

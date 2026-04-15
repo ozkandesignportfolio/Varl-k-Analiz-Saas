@@ -172,21 +172,21 @@ const escapeHtml = (value: string) =>
 
 const resolveUrgency = (
   remainingDays: number | null,
-  fallback: "Dusuk" | "Orta" | "Yuksek" = "Orta",
+  fallback: "Düşük" | "Orta" | "Yüksek" = "Orta",
 ) => {
   if (remainingDays === null) {
     return fallback;
   }
 
   if (remainingDays <= 3) {
-    return "Yuksek";
+    return "Yüksek";
   }
 
   if (remainingDays <= 14) {
     return "Orta";
   }
 
-  return "Dusuk";
+  return "Düşük";
 };
 
 const resolveNotificationKind = (event: AutomationEvent) => {
@@ -388,12 +388,12 @@ export function buildEmailMessage(
       event.payload?.event_date ?? event.payload?.created_at ?? event.payload?.updated_at,
       defaultDateLabel,
     );
-    statusLabel = assetStatus || "Yeni kayit";
-    title = "Yeni varlik eklendi";
-    subject = `${organizationName}: Yeni varlik kaydi olusturuldu - ${assetName}`;
-    summary = `${assetName} varligi sisteme eklendi ve kayit basariyla olusturuldu.`;
-    intro = `${assetName} varligi icin yeni bir kayit olusturuldu. Kaydin temel bilgilerini gozden gecirmeniz ve eksik alan varsa tamamlamaniz onerilir.`;
-    actionSummary = "Yeni varlik kaydini acip kategori, garanti ve satin alma bilgilerini dogrulayin.";
+    statusLabel = assetStatus || "Yeni kayıt";
+    title = "Yeni varlık eklendi";
+    subject = `${organizationName}: Yeni varlık kaydı oluşturuldu - ${assetName}`;
+    summary = `${assetName} varlığı sisteme eklendi ve kayıt başarıyla oluşturuldu.`;
+    intro = `${assetName} varlığı için yeni bir kayıt oluşturuldu. Kaydın temel bilgilerini gözden geçirmeniz ve eksik alan varsa tamamlamanız önerilir.`;
+    actionSummary = "Yeni varlık kaydını açıp kategori, garanti ve satın alma bilgilerini doğrulayın.";
     extraDetails = [
       ...(assetCategory ? [["Kategori", assetCategory] as [string, string]] : []),
       ["Oncelik", "Orta"],
@@ -407,10 +407,10 @@ export function buildEmailMessage(
       defaultDateLabel,
     );
     statusLabel = assetStatus || "Guncellendi";
-    title = "Varlik bilgileri guncellendi";
-    subject = `${organizationName}: Varlik guncellendi - ${assetName}`;
-    summary = `${assetName} varligina ait bilgiler guncellendi.`;
-    intro = `${assetName} varligi icin bir degisiklik kaydedildi. Ozellikle operasyonel alanlar degisti ise ekibinizin kaydi dogrulamasi iyi olur.`;
+    title = "Varlık bilgileri güncellendi";
+    subject = `${organizationName}: Varlık güncellendi - ${assetName}`;
+    summary = `${assetName} varlığına ait bilgiler güncellendi.`;
+    intro = `${assetName} varlığı için bir değişiklik kaydedildi. Özellikle operasyonel alanlar değişti ise ekibinizin kaydı doğrulaması iyi olur.`;
     actionSummary = "Guncellenen alanlari kontrol edin ve degisikligin operasyonel etkisini onaylayin.";
     extraDetails = [
       ...(assetCategory ? [["Kategori", assetCategory] as [string, string]] : []),
@@ -438,17 +438,17 @@ export function buildEmailMessage(
         event.payload?.expires_at ??
         event.payload?.document_expiry_date,
     );
-    statusLabel = assetStatus || "Yeni yukleme";
-    title = "Yeni belge yuklendi";
-    subject = `${organizationName}: Belge kaydi olusturuldu - ${assetName}`;
-    summary = `${assetName} icin yeni bir belge kaydi olusturuldu.`;
-    intro = `${assetName} varligi ile iliskili yeni bir belge sisteme eklendi. Belgenin tipi ve icerigini kontrol etmeniz onerilir.`;
-    actionSummary = "Belgeyi acip dosyanin dogru varliga ve dogru belge tipine baglandigini dogrulayin.";
+    statusLabel = assetStatus || "Yeni yükleme";
+    title = "Yeni belge yüklendi";
+    subject = `${organizationName}: Belge kaydı oluşturuldu - ${assetName}`;
+    summary = `${assetName} için yeni bir belge kaydı oluşturuldu.`;
+    intro = `${assetName} varlığı ile ilişkili yeni bir belge sisteme eklendi. Belgenin tipi ve içeriğini kontrol etmeniz önerilir.`;
+    actionSummary = "Belgeyi açıp dosyanın doğru varlığa ve doğru belge tipine bağlandığını doğrulayın.";
     extraDetails = [
       ...(assetCategory ? [["Kategori", assetCategory] as [string, string]] : []),
       ["Belge tipi", documentType],
-      ...(documentExpiryDate ? [["Gecerlilik tarihi", documentExpiryDate] as [string, string]] : []),
-      ["Oncelik", "Dusuk"],
+      ...(documentExpiryDate ? [["Geçerlilik tarihi", documentExpiryDate] as [string, string]] : []),
+      ["Öncelik", "Düşük"],
     ];
   } else if (notificationKind === "document_expiry" || event.trigger_type === "document_expiry_reminder") {
     const documentType = toTrimmedString(event.payload?.document_type, "Belge");
@@ -466,16 +466,16 @@ export function buildEmailMessage(
     eventDateLabel = expiryDate || defaultDateLabel;
     statusLabel = assetStatus || "Yenileme gerekiyor";
     const urgency = resolveUrgency(remainingDays);
-    title = "Belge gecerlilik suresi yaklasiyor";
-    subject = `${organizationName}: Belge suresi doluyor - ${assetName}`;
-    summary = `${assetName} icin kayitli ${documentType.toLocaleLowerCase("tr-TR")} belgesinin gecerlilik suresi yaklasiyor.`;
-    intro = `${assetName} varligi ile iliskili ${documentType.toLocaleLowerCase("tr-TR")} belgesinin gecerlilik tarihi yaklasiyor. Operasyonel kesinti yasamamak icin yenileme surecini planlamaniz tavsiye edilir.`;
-    actionSummary = "Belgeyi yenileyin veya yeni kopyasini yukleyin; gerekirse sorumlu ekibi bilgilendirin.";
+    title = "Belge geçerlilik süresi yaklaşıyor";
+    subject = `${organizationName}: Belge süresi doluyor - ${assetName}`;
+    summary = `${assetName} için kayıtlı ${documentType.toLocaleLowerCase("tr-TR")} belgesinin geçerlilik süresi yaklaşıyor.`;
+    intro = `${assetName} varlığı ile ilişkili ${documentType.toLocaleLowerCase("tr-TR")} belgesinin geçerlilik tarihi yaklaşıyor. Operasyonel kesinti yaşamamak için yenileme sürecini planlamanız tavsiye edilir.`;
+    actionSummary = "Belgeyi yenileyin veya yeni kopyasını yükleyin; gerekirse sorumlu ekibi bilgilendirin.";
     extraDetails = [
       ...(assetCategory ? [["Kategori", assetCategory] as [string, string]] : []),
       ["Belge tipi", documentType],
-      ...(expiryDate ? [["Son gecerlilik tarihi", expiryDate] as [string, string]] : []),
-      ["Oncelik", urgency],
+      ...(expiryDate ? [["Son geçerlilik tarihi", expiryDate] as [string, string]] : []),
+      ["Öncelik", urgency],
     ];
   } else if (event.trigger_type === "warranty_30_days") {
     const warrantyDate = formatDate(event.payload?.warranty_end_date);
@@ -484,37 +484,37 @@ export function buildEmailMessage(
     eventDateLabel = warrantyDate || defaultDateLabel;
     statusLabel = assetStatus || "Garanti bitiyor";
     const urgency = resolveUrgency(remainingDays);
-    title = "Garanti bitis tarihi yaklasiyor";
-    subject = `${organizationName}: Garanti hatirlatmasi - ${assetName}`;
-    summary = `${assetName} icin garanti suresi yaklasiyor.`;
-    intro = `${assetName} varliginin garanti kapsami yakinda sona erecek. Garanti yenilemesi, servis planlamasi veya degisim karari icin kaydi onceden degerlendirmeniz iyi olur.`;
-    actionSummary = "Garanti bitis tarihini kontrol edin ve gerekli ise servis veya yenileme planini baslatin.";
+    title = "Garanti bitiş tarihi yaklaşıyor";
+    subject = `${organizationName}: Garanti hatırlatması - ${assetName}`;
+    summary = `${assetName} için garanti süresi yaklaşıyor.`;
+    intro = `${assetName} varlığının garanti kapsamı yakında sona erecek. Garanti yenilemesi, servis planlaması veya değişim kararı için kaydı önceden değerlendirmeniz iyi olur.`;
+    actionSummary = "Garanti bitiş tarihini kontrol edin ve gerekli ise servis veya yenileme planını başlatın.";
     extraDetails = [
       ...(assetCategory ? [["Kategori", assetCategory] as [string, string]] : []),
-      ...(warrantyDate ? [["Garanti bitis tarihi", warrantyDate] as [string, string]] : []),
-      ["Oncelik", urgency],
+      ...(warrantyDate ? [["Garanti bitiş tarihi", warrantyDate] as [string, string]] : []),
+      ["Öncelik", urgency],
     ];
   } else if (event.trigger_type === "maintenance_7_days") {
-    const ruleTitle = toTrimmedString(event.payload?.rule_title, "Planli bakim");
+    const ruleTitle = toTrimmedString(event.payload?.rule_title, "Planlı bakım");
     const dueDate = formatDate(event.payload?.next_due_date);
     remainingDays = calculateRemainingDays(event.payload?.days_left ?? event.payload?.next_due_date);
     templateType = "Maintenance";
     eventDateLabel = dueDate || defaultDateLabel;
-    statusLabel = assetStatus || "Bakim planlandi";
+    statusLabel = assetStatus || "Bakım planlandı";
     const urgency = resolveUrgency(remainingDays);
-    title = "Bakim tarihi yaklasiyor";
-    subject = `${organizationName}: Bakim hatirlatmasi - ${assetName}`;
-    summary = `${assetName} icin planli bakim tarihi yaklasiyor.`;
-    intro = `${assetName} varligina ait ${ruleTitle.toLocaleLowerCase("tr-TR")} kaydi icin yaklasan bir bakim tarihi var. Planlanan tarihten once servis randevusunu ve gerekli parcayi netlestirmeniz onerilir.`;
-    actionSummary = "Bakim planini acin, tarihi kontrol edin ve servis is emrini olusturun veya guncelleyin.";
+    title = "Bakım tarihi yaklaşıyor";
+    subject = `${organizationName}: Bakım hatırlatması - ${assetName}`;
+    summary = `${assetName} için planlı bakım tarihi yaklaşıyor.`;
+    intro = `${assetName} varlığına ait ${ruleTitle.toLocaleLowerCase("tr-TR")} kaydı için yaklaşan bir bakım tarihi var. Planlanan tarihten önce servis randevusunu ve gerekli parçayı netleştirmeniz önerilir.`;
+    actionSummary = "Bakım planını açın, tarihi kontrol edin ve servis iş emrini oluşturun veya güncelleyin.";
     extraDetails = [
       ...(assetCategory ? [["Kategori", assetCategory] as [string, string]] : []),
-      ["Bakim plani", ruleTitle],
+      ["Bakım planı", ruleTitle],
       ...(dueDate ? [["Planlanan tarih", dueDate] as [string, string]] : []),
-      ["Oncelik", urgency],
+      ["Öncelik", urgency],
     ];
   } else if (event.trigger_type === "subscription_due") {
-    const providerName = toTrimmedString(event.payload?.provider_name, "Saglayici");
+    const providerName = toTrimmedString(event.payload?.provider_name, "Sağlayıcı");
     const subscriptionName = toTrimmedString(event.payload?.subscription_name, "Abonelik");
     const planName = toTrimmedString(event.payload?.plan_name);
     const billingCycle = toTrimmedString(event.payload?.billing_cycle);
@@ -524,21 +524,21 @@ export function buildEmailMessage(
     remainingDays = calculateRemainingDays(event.payload?.days_left ?? event.payload?.next_billing_date);
     templateType = "Billing";
     eventDateLabel = billingDate || defaultDateLabel;
-    statusLabel = toTrimmedString(event.payload?.status, "Odeme takibi gerekli");
-    const urgency = resolveUrgency(remainingDays, "Yuksek");
-    title = "Odeme tarihi geldi";
-    subject = `${organizationName}: Odeme hatirlatmasi - ${providerName} / ${subscriptionName}`;
-    summary = `${providerName} / ${subscriptionName} odemesi icin takip gereken bir tarih var.`;
-    intro = `${providerName} saglayicisina ait ${subscriptionName} odemesi icin planlanan faturalama tarihi geldi veya yaklasti. Gecikme yasamamak icin odeme detaylarini ve abonelik durumunu simdi kontrol etmeniz onerilir.`;
-    actionSummary = "Faturalama kaydini acin, odeme durumunu dogrulayin ve gerekiyorsa muhasebe veya satin alma ekibiyle paylasin.";
+    statusLabel = toTrimmedString(event.payload?.status, "Ödeme takibi gerekli");
+    const urgency = resolveUrgency(remainingDays, "Yüksek");
+    title = "Ödeme tarihi geldi";
+    subject = `${organizationName}: Ödeme hatırlatması - ${providerName} / ${subscriptionName}`;
+    summary = `${providerName} / ${subscriptionName} ödemesi için takip gereken bir tarih var.`;
+    intro = `${providerName} sağlayıcısına ait ${subscriptionName} ödemesi için planlanan faturalama tarihi geldi veya yaklaştı. Gecikme yaşamamak için ödeme detaylarını ve abonelik durumunu şimdi kontrol etmeniz önerilir.`;
+    actionSummary = "Faturalama kaydını açın, ödeme durumunu doğrulayın ve gerekiyorsa muhasebe veya satın alma ekibiyle paylaşın.";
     extraDetails = [
-      ["Saglayici", providerName],
+      ["Sağlayıcı", providerName],
       ["Abonelik", subscriptionName],
       ...(planName ? [["Plan", planName] as [string, string]] : []),
-      ...(billingCycle ? [["Donem", billingCycle] as [string, string]] : []),
-      ...(billingDate ? [["Odeme tarihi", billingDate] as [string, string]] : []),
+      ...(billingCycle ? [["Dönem", billingCycle] as [string, string]] : []),
+      ...(billingDate ? [["Ödeme tarihi", billingDate] as [string, string]] : []),
       ...(amount ? [["Tutar", `${amount} ${currency}`] as [string, string]] : []),
-      ["Oncelik", urgency],
+      ["Öncelik", urgency],
     ];
   } else if (event.trigger_type === "expense_threshold") {
     const expenseTitle = toTrimmedString(event.payload?.title, "Gider");
@@ -554,18 +554,18 @@ export function buildEmailMessage(
       event.payload?.remaining_days ?? event.payload?.days_left ?? event.payload?.due_date,
     );
     statusLabel = "Kontrol bekliyor";
-    title = "Yuksek tutarli gider kaydi";
-    subject = `${organizationName}: Yuksek gider uyarisi - ${expenseTitle}`;
-    summary = `${expenseTitle} icin belirlenen esigi asan bir gider kaydi olusturuldu.`;
-    intro = `${expenseTitle} baslikli gider kaydi, tanimli kontrol esiginin uzerinde olusturuldu. Bu kaydin dogrulanmasi ve gerekiyorsa yonetsel onaya yonlendirilmesi tavsiye edilir.`;
-    actionSummary = "Gider kaydini inceleyin, belge ve onay akisini tamamlayin ve beklenmeyen masraf varsa kaynagini kontrol edin.";
+    title = "Yüksek tutarlı gider kaydı";
+    subject = `${organizationName}: Yüksek gider uyarısı - ${expenseTitle}`;
+    summary = `${expenseTitle} için belirlenen eşiği aşan bir gider kaydı oluşturuldu.`;
+    intro = `${expenseTitle} başlıklı gider kaydı, tanımlı kontrol eşiğinin üzerinde oluşturuldu. Bu kaydın doğrulanması ve gerekiyorsa yönetsel onaya yönlendirilmesi tavsiye edilir.`;
+    actionSummary = "Gider kaydını inceleyin, belge ve onay akışını tamamlayın ve beklenmeyen masraf varsa kaynağını kontrol edin.";
     extraDetails = [
-      ...(assetName !== "Bagli varlik yok" ? [["Varlik baglami", assetName] as [string, string]] : []),
+      ...(assetName !== "Bağlı varlık yok" ? [["Varlık bağlamı", assetName] as [string, string]] : []),
       ...(assetCategory ? [["Kategori", assetCategory] as [string, string]] : []),
-      ["Kayit", expenseTitle],
+      ["Kayıt", expenseTitle],
       ...(amount ? [["Tutar", `${amount} ${currency}`] as [string, string]] : []),
-      ...(threshold ? [["Esik", `${threshold} ${currency}`] as [string, string]] : []),
-      ["Oncelik", "Yuksek"],
+      ...(threshold ? [["Eşik", `${threshold} ${currency}`] as [string, string]] : []),
+      ["Öncelik", "Yüksek"],
     ];
   } else if (event.trigger_type === "service_log_created") {
     const serviceType = toTrimmedString(event.payload?.service_type, "Servis");
@@ -576,17 +576,17 @@ export function buildEmailMessage(
       defaultDateLabel,
     );
     remainingDays = calculateRemainingDays(event.payload?.remaining_days ?? event.payload?.days_left);
-    statusLabel = assetStatus || "Servis kaydi acildi";
-    title = "Yeni servis kaydi olusturuldu";
-    subject = `${organizationName}: Servis kaydi olusturuldu - ${assetName}`;
-    summary = `${assetName} icin yeni bir servis kaydi olusturuldu.`;
-    intro = `${assetName} varligi icin ${serviceType.toLocaleLowerCase("tr-TR")} kaydi sisteme eklendi. Yapilan islemin detaylarini ve varsa ilgili bakim planini gozden gecirmeniz onerilir.`;
-    actionSummary = "Servis kaydini acin, notlari ve maliyet alanlarini kontrol edin; gerekiyorsa ilgili bakim kuralini guncelleyin.";
+    statusLabel = assetStatus || "Servis kaydı açıldı";
+    title = "Yeni servis kaydı oluşturuldu";
+    subject = `${organizationName}: Servis kaydı oluşturuldu - ${assetName}`;
+    summary = `${assetName} için yeni bir servis kaydı oluşturuldu.`;
+    intro = `${assetName} varlığı için ${serviceType.toLocaleLowerCase("tr-TR")} kaydı sisteme eklendi. Yapılan işlemin detaylarını ve varsa ilgili bakım planını gözden geçirmeniz önerilir.`;
+    actionSummary = "Servis kaydını açın, notları ve maliyet alanlarını kontrol edin; gerekiyorsa ilgili bakım kuralını güncelleyin.";
     extraDetails = [
       ...(assetCategory ? [["Kategori", assetCategory] as [string, string]] : []),
       ["Servis tipi", serviceType],
       ...(serviceDate ? [["Servis tarihi", serviceDate] as [string, string]] : []),
-      ["Oncelik", "Dusuk"],
+      ["Öncelik", "Düşük"],
     ];
   } else {
     templateType = "System";
