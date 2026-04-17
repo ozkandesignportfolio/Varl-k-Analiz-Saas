@@ -12,6 +12,8 @@ import { DashboardPreviewLazy } from "@/modules/landing-v2/components/dashboard-
 import styles from "@/modules/landing-v2/landing-v2.module.css";
 
 export function LandingV2Page() {
+  // RUNTIME DEBUG - MUST APPEAR IN PROD BROWSER CONSOLE
+  console.log("[ASSETLY DEBUG] LANDING V2 RENDERED", new Date().toISOString());
   return (
     <main className={`${styles.scope} relative min-h-screen min-h-[100svh] overflow-x-hidden bg-background`}>
       {/* DEBUG MARKER - MUST BE VISIBLE IN PROD */}
