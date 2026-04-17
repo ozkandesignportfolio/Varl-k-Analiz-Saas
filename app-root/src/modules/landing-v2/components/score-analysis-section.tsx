@@ -43,7 +43,7 @@ export function ScoreAnalysisSection() {
   const [showFormula, setShowFormula] = useState(false);
 
   return (
-    <section id="skor-analizi" className="relative isolate py-32" ref={ref}>
+    <section id="skor-analizi" className="relative isolate py-20 sm:py-28 lg:py-32" ref={ref}>
       <div className="pointer-events-none absolute left-0 right-0 top-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
       <div className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-chart-3/10 blur-[80px] sm:h-96 sm:w-96 sm:blur-[140px]" />
 

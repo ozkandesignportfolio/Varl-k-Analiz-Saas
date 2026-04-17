@@ -46,9 +46,9 @@ export function BildirimSection() {
   const { ref, inView } = useInView()
 
   return (
-    <section id="bildirimler" className="relative isolate py-32" ref={ref}>
+    <section id="bildirimler" className="relative isolate py-20 sm:py-28 lg:py-32" ref={ref}>
       <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-      <div className="pointer-events-none absolute top-1/3 right-0 z-0 h-80 w-80 rounded-full bg-chart-4/5 blur-[120px]" />
+      <div className="pointer-events-none absolute top-1/3 right-0 z-0 hidden h-80 w-80 rounded-full bg-chart-4/5 blur-[120px] sm:block" />
 
       <div className="mx-auto max-w-7xl px-6">
         <div className="grid gap-16 lg:grid-cols-2 lg:items-center">

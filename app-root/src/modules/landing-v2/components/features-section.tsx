@@ -78,7 +78,7 @@ export function FeaturesSection() {
   const { ref, inView } = useInView(0.1)
 
   return (
-    <section id="ozellikler" className="relative isolate py-32" ref={ref}>
+    <section id="ozellikler" className="relative isolate py-20 sm:py-28 lg:py-32" ref={ref}>
       <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
       <div className="mx-auto max-w-7xl px-6">

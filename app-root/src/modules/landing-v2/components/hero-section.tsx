@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 
 export function HeroSection() {
   return (
-    <section className="relative isolate flex min-h-screen min-h-[100svh] items-center justify-center overflow-x-hidden overflow-y-visible pb-10 pt-20 sm:pb-16">
+    <section className="relative isolate flex min-h-screen min-h-[100svh] items-center justify-center overflow-x-hidden overflow-y-visible pb-12 pt-24 sm:pb-20 sm:pt-28">
       <div className="hero-glow pointer-events-none absolute inset-0 -z-10" />
 
       <div aria-hidden="true" className="landing-v2-hero-motion pointer-events-none absolute inset-0 -z-10 overflow-hidden">
@@ -18,7 +18,10 @@ export function HeroSection() {
       <div className="pointer-events-none absolute top-1/4 left-1/4 -z-10 hidden h-96 w-96 rounded-full bg-primary/5 blur-[120px] sm:block" />
       <div className="pointer-events-none absolute right-1/4 bottom-1/4 -z-10 hidden h-80 w-80 rounded-full bg-accent/5 blur-[100px] sm:block" />
 
-      <div className="pointer-events-none absolute top-1/2 left-1/2 -z-10 h-72 w-72 -translate-x-1/2 -translate-y-1/2 opacity-[0.15]">
+      {/* Orbiting dots are decorative-only and continuously repaint; hide on
+          mobile where GPU budget is tighter and visual noise competes with
+          the value proposition. Keep on sm+ where desktop GPUs can afford it. */}
+      <div className="pointer-events-none absolute top-1/2 left-1/2 -z-10 hidden h-72 w-72 -translate-x-1/2 -translate-y-1/2 opacity-[0.15] sm:block">
         <div className="animate-orbit absolute">
           <div className="h-3 w-3 rounded-full bg-primary" />
         </div>
@@ -53,18 +56,34 @@ export function HeroSection() {
           Bakım, garanti, servis ve belge süreçlerinizi tek panelde takip edin. Akıllı bildirimler, abonelik yönetimi
           ve skor analizi ile her zaman kontrolde kalın.
         </p>
-        <div className="animate-slide-up mb-8 mt-12 flex flex-col items-center justify-center gap-4 sm:mb-12 sm:flex-row" style={{ animationDelay: "0.3s" }}>
+        <div className="animate-slide-up mb-4 mt-10 flex flex-col items-center justify-center gap-3 sm:mt-12 sm:flex-row sm:gap-4" style={{ animationDelay: "0.3s" }}>
           <Button
             asChild
             size="lg"
-            className="group bg-primary px-8 py-6 text-base text-primary-foreground shadow-xl shadow-primary/25 hover:bg-primary/90 focus-visible:ring-primary/70"
+            className="group w-full bg-primary px-8 py-6 text-base text-primary-foreground shadow-xl shadow-primary/25 hover:bg-primary/90 focus-visible:ring-primary/70 sm:w-auto"
           >
             <Link href="/register">
               Ücretsiz Başla
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
           </Button>
+          <Button
+            asChild
+            size="lg"
+            variant="outline"
+            className="group w-full border-primary/25 bg-background/40 px-8 py-6 text-base text-foreground backdrop-blur-sm hover:border-primary/50 hover:bg-primary/5 focus-visible:ring-primary/50 sm:w-auto"
+          >
+            <Link href="#ozellikler">
+              Özellikleri keşfet
+            </Link>
+          </Button>
         </div>
+        <p
+          className="animate-slide-up mb-8 text-xs text-muted-foreground/80 sm:mb-12"
+          style={{ animationDelay: "0.4s" }}
+        >
+          Ücretsiz plan · Kredi kartı gerekmez · 2 dakikada kurulum
+        </p>
       </div>
 
       <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />

@@ -17,9 +17,9 @@ export function AbonelikSection() {
   const currencyFormatter = new Intl.NumberFormat("tr-TR")
 
   return (
-    <section id="abonelik" className="relative isolate py-32" ref={ref}>
+    <section id="abonelik" className="relative isolate py-20 sm:py-28 lg:py-32" ref={ref}>
       <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-      <div className="pointer-events-none absolute top-1/2 left-0 z-0 h-96 w-96 rounded-full bg-primary/5 blur-[150px]" />
+      <div className="pointer-events-none absolute top-1/2 left-0 z-0 hidden h-96 w-96 rounded-full bg-primary/5 blur-[150px] sm:block" />
 
       <div className="mx-auto max-w-7xl px-6">
         <div className="grid gap-16 lg:grid-cols-2 lg:items-center">

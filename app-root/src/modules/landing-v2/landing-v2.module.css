@@ -389,6 +389,26 @@
  * globally-declared keyframes.
  */
 
+/*
+ * Defer rendering of below-fold landing sections until they are near the
+ * viewport. `content-visibility: auto` is a huge paint-budget win on
+ * mid-range Android devices where each section (large grids, glass-cards,
+ * Chart.js canvases) would otherwise paint eagerly on first scroll.
+ *
+ * `contain-intrinsic-size` provides a stable placeholder so the scrollbar
+ * and anchor-links keep the correct position before a section paints.
+ * Browsers without support treat these properties as no-ops.
+ */
+.scope :global(#ozellikler),
+.scope :global(#bildirimler),
+.scope :global(#abonelik),
+.scope :global(#fatura),
+.scope :global(#skor-analizi),
+.scope :global(#fiyatlandirma) {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 900px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .scope :global(.landing-v2-hero-motion-plane),
   .scope :global(.landing-v2-hero-blob) {
