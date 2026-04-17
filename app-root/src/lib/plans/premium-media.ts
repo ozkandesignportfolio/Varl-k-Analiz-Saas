@@ -36,7 +36,11 @@ export const canPlanUsePremiumMedia = (plan: PremiumPlanState) => {
 };
 
 export const canUserUsePremiumMedia = (user: Pick<User, "app_metadata" | "user_metadata">) => {
-  const metadataHasPlan = hasPlanMetadata(user.app_metadata) || hasPlanMetadata(user.user_metadata);
+  // SECURITY: Only app_metadata (service-role writable) is trusted for plan
+  // resolution. user_metadata is writable by the authenticated user itself
+  // via supabase.auth.updateUser() and would allow a free account to
+  // self-upgrade from the browser console.
+  const metadataHasPlan = hasPlanMetadata(user.app_metadata);
 
   if (!metadataHasPlan) {
     return isPremiumMediaFeatureFlagEnabled();

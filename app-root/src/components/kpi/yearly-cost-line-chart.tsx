@@ -3,6 +3,14 @@
 import type { ChartData, ChartOptions } from "chart.js";
 import { Line } from "react-chartjs-2";
 import "./chartjs-setup";
+import {
+  mobileAxisGrid,
+  mobileAxisNoBorder,
+  mobileAxisNoGrid,
+  mobileCategoryAxisTicks,
+  mobileChartBase,
+  mobileLinearAxisTicks,
+} from "@/lib/charts/mobile-defaults";
 
 type YearlyCostPoint = {
   label: string;
@@ -47,12 +55,7 @@ export function YearlyCostLineChart({ points }: YearlyCostLineChartProps) {
   };
 
   const options: ChartOptions<"line"> = {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: {
-      mode: "index",
-      intersect: false,
-    },
+    ...mobileChartBase,
     plugins: {
       legend: { display: false },
       tooltip: {
@@ -63,28 +66,18 @@ export function YearlyCostLineChart({ points }: YearlyCostLineChartProps) {
     },
     scales: {
       x: {
-        ticks: {
-          color: "#cbd5e1",
-          autoSkip: true,
-          maxTicksLimit: 6,
-          maxRotation: 0,
-          font: { size: 11 },
-        },
-        grid: { display: false },
-        border: { display: false },
+        ticks: mobileCategoryAxisTicks,
+        grid: mobileAxisNoGrid,
+        border: mobileAxisNoBorder,
       },
       y: {
         beginAtZero: true,
         ticks: {
-          color: "#cbd5e1",
-          maxTicksLimit: 4,
-          font: { size: 11 },
+          ...mobileLinearAxisTicks,
           callback: (value) => compactCurrencyFormatter.format(Number(value)),
         },
-        grid: {
-          color: "rgba(148, 163, 184, 0.08)",
-        },
-        border: { display: false },
+        grid: mobileAxisGrid,
+        border: mobileAxisNoBorder,
       },
     },
   };

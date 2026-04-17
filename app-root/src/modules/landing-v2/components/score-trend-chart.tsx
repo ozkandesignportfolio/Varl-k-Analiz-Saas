@@ -4,6 +4,13 @@ import { useMemo } from "react";
 import type { ChartData, ChartOptions } from "chart.js";
 import { Line } from "react-chartjs-2";
 import "@/components/kpi/chartjs-setup";
+import {
+  mobileAxisNoBorder,
+  mobileAxisNoGrid,
+  mobileCategoryAxisTicks,
+  mobileChartBase,
+  mobileLinearAxisTicks,
+} from "@/lib/charts/mobile-defaults";
 
 type ScoreTrendPoint = {
   month: string;
@@ -34,16 +41,9 @@ export function ScoreTrendChart({ points }: { points: ScoreTrendPoint[] }) {
 
   const options = useMemo<ChartOptions<"line">>(
     () => ({
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: {
-        mode: "index",
-        intersect: false,
-      },
+      ...mobileChartBase,
       plugins: {
-        legend: {
-          display: false,
-        },
+        legend: { display: false },
         tooltip: {
           backgroundColor: "rgba(15, 23, 42, 0.92)",
           borderColor: "rgba(103, 232, 249, 0.35)",
@@ -56,23 +56,19 @@ export function ScoreTrendChart({ points }: { points: ScoreTrendPoint[] }) {
       },
       scales: {
         x: {
-          ticks: {
-            color: "#94a3b8",
-          },
-          grid: {
-            color: "rgba(148, 163, 184, 0.08)",
-          },
+          ticks: mobileCategoryAxisTicks,
+          grid: mobileAxisNoGrid,
+          border: mobileAxisNoBorder,
         },
         y: {
           min: 70,
           max: 85,
           ticks: {
+            ...mobileLinearAxisTicks,
             stepSize: 5,
-            color: "#94a3b8",
           },
-          grid: {
-            color: "rgba(148, 163, 184, 0.12)",
-          },
+          grid: { color: "rgba(148, 163, 184, 0.08)" },
+          border: mobileAxisNoBorder,
         },
       },
     }),

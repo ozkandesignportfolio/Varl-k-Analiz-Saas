@@ -41,6 +41,20 @@
 
 .auth-mobile-nav {
   scrollbar-width: none;
+  /* Containment scopes style/layout/paint invalidation to the nav subtree,
+     so an active-chip repaint cannot trigger layout or paint outside the
+     horizontal scroller. Primary fix for mobile menu scroll jitter. */
+  contain: layout paint style;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  /* Promote the scroll container to its own compositor layer so the browser
+     can scroll pixels rather than repaint the nav on every frame. */
+  transform: translateZ(0);
+  will-change: scroll-position;
+}
+
+.auth-mobile-nav > * {
+  scroll-snap-align: start;
 }
 
 .auth-mobile-nav::-webkit-scrollbar {

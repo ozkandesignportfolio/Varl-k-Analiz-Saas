@@ -117,9 +117,13 @@ const normalizePlanCode = (raw: unknown): PlanCode => {
 export const getPlanConfig = (code: PlanCode) => PLAN_CONFIGS[code];
 
 export const getUserPlanConfig = (user: Pick<User, "app_metadata" | "user_metadata"> | null | undefined) => {
+  // SECURITY: user_metadata is writable by the authenticated user itself via
+  // supabase.auth.updateUser(). It MUST NOT be trusted as a plan source —
+  // otherwise a free user could self-upgrade to premium from the browser
+  // console. Only app_metadata (service-role writable) is accepted here.
+  // For DB-backed plan resolution use `getProfilePlan` / `requireRouteUser`.
   const appMetadataCode = pickPlanMetadataValue(user?.app_metadata);
-  const userMetadataCode = pickPlanMetadataValue(user?.user_metadata);
-  const code = normalizePlanCode(appMetadataCode ?? userMetadataCode);
+  const code = normalizePlanCode(appMetadataCode);
   return PLAN_CONFIGS[code];
 };
 

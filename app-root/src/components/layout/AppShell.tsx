@@ -97,6 +97,31 @@ type MobileNavProps = {
   isHydrated: boolean;
 };
 
+type MobileNavChipProps = {
+  href: string;
+  label: string;
+  shortCode: string;
+  active: boolean;
+};
+
+// Each chip is memoized so pathname transitions only repaint the two chips
+// whose `active` flag actually flipped (previous active + new active).
+// Without this, every route change repaints the entire horizontal nav list
+// which is the main source of mobile scroll jitter.
+const MobileNavChip = memo(function MobileNavChip({ href, label, shortCode, active }: MobileNavChipProps) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      data-state={active ? "active" : "inactive"}
+      className="auth-shell-chip auth-focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs"
+    >
+      <span>{label}</span>
+      <span className="auth-nav-short-badge">{shortCode}</span>
+    </Link>
+  );
+});
+
 const MobileNav = memo(function MobileNav({ pathname, isHydrated }: MobileNavProps) {
   return (
     <nav
@@ -104,22 +129,15 @@ const MobileNav = memo(function MobileNav({ pathname, isHydrated }: MobileNavPro
       className="auth-mobile-nav mb-4 flex gap-2 overflow-x-auto overscroll-x-contain pb-1 lg:hidden"
       style={{ touchAction: "pan-x", WebkitOverflowScrolling: "touch" }}
     >
-      {SIDEBAR_NAV_ITEMS.map((item) => {
-        const active = isHydrated ? isActivePath(pathname, item.href) : false;
-
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            aria-current={active ? "page" : undefined}
-            data-state={active ? "active" : "inactive"}
-            className="auth-shell-chip auth-focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs"
-          >
-            <span>{item.label}</span>
-            <span className="auth-nav-short-badge">{item.shortCode}</span>
-          </Link>
-        );
-      })}
+      {SIDEBAR_NAV_ITEMS.map((item) => (
+        <MobileNavChip
+          key={item.href}
+          href={item.href}
+          label={item.label}
+          shortCode={item.shortCode}
+          active={isHydrated ? isActivePath(pathname, item.href) : false}
+        />
+      ))}
     </nav>
   );
 });

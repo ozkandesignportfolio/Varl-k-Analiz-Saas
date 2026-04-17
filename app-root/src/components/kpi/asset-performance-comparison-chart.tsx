@@ -3,6 +3,14 @@
 import type { ChartData, ChartOptions } from "chart.js";
 import { Chart } from "react-chartjs-2";
 import "./chartjs-setup";
+import {
+  mobileAxisGrid,
+  mobileAxisNoBorder,
+  mobileAxisNoGrid,
+  mobileCategoryAxisTicks,
+  mobileChartBase,
+  mobileLinearAxisTicks,
+} from "@/lib/charts/mobile-defaults";
 
 type AssetPerformancePoint = {
   assetName: string;
@@ -45,18 +53,16 @@ export function AssetPerformanceComparisonChart({
   };
 
   const options: ChartOptions<"bar" | "line"> = {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: {
-      mode: "index",
-      intersect: false,
-    },
+    ...mobileChartBase,
     plugins: {
       legend: {
+        position: "bottom",
         labels: {
           color: "#e2e8f0",
-          boxWidth: 14,
-          boxHeight: 14,
+          boxWidth: 10,
+          boxHeight: 10,
+          padding: 12,
+          font: { size: 11 },
         },
       },
       tooltip: {
@@ -72,42 +78,27 @@ export function AssetPerformanceComparisonChart({
     },
     scales: {
       x: {
-        ticks: {
-          color: "#cbd5e1",
-          autoSkip: true,
-          maxTicksLimit: 6,
-          maxRotation: 0,
-          font: { size: 11 },
-        },
-        grid: { display: false },
-        border: { display: false },
+        ticks: mobileCategoryAxisTicks,
+        grid: mobileAxisNoGrid,
+        border: mobileAxisNoBorder,
       },
       y: {
         beginAtZero: true,
         max: 100,
-        ticks: {
-          color: "#cbd5e1",
-          maxTicksLimit: 4,
-          font: { size: 11 },
-        },
-        grid: {
-          color: "rgba(148, 163, 184, 0.08)",
-        },
-        border: { display: false },
+        ticks: mobileLinearAxisTicks,
+        grid: mobileAxisGrid,
+        border: mobileAxisNoBorder,
       },
       y1: {
         beginAtZero: true,
         position: "right",
         ticks: {
+          ...mobileLinearAxisTicks,
           color: "#fcd34d",
           precision: 0,
-          maxTicksLimit: 4,
-          font: { size: 11 },
         },
-        grid: {
-          drawOnChartArea: false,
-        },
-        border: { display: false },
+        grid: { drawOnChartArea: false },
+        border: mobileAxisNoBorder,
       },
     },
   };

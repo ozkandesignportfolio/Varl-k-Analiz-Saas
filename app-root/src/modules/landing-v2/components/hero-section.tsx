@@ -15,8 +15,8 @@ export function HeroSection() {
         </div>
       </div>
 
-      <div className="pointer-events-none absolute top-1/4 left-1/4 -z-10 h-96 w-96 rounded-full bg-primary/5 blur-[120px]" />
-      <div className="pointer-events-none absolute right-1/4 bottom-1/4 -z-10 h-80 w-80 rounded-full bg-accent/5 blur-[100px]" />
+      <div className="pointer-events-none absolute top-1/4 left-1/4 -z-10 hidden h-96 w-96 rounded-full bg-primary/5 blur-[120px] sm:block" />
+      <div className="pointer-events-none absolute right-1/4 bottom-1/4 -z-10 hidden h-80 w-80 rounded-full bg-accent/5 blur-[100px] sm:block" />
 
       <div className="pointer-events-none absolute top-1/2 left-1/2 -z-10 h-72 w-72 -translate-x-1/2 -translate-y-1/2 opacity-[0.15]">
         <div className="animate-orbit absolute">
