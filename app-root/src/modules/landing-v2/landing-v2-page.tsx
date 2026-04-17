@@ -14,7 +14,7 @@ import styles from "@/modules/landing-v2/landing-v2.module.css";
 export function LandingV2Page() {
   return (
     <main className={`${styles.scope} relative min-h-screen min-h-[100svh] overflow-x-hidden bg-background`}>
-      {/* DEBUG MARKER - REMOVE AFTER VERIFICATION */}
+      {/* DEBUG MARKER - MUST BE VISIBLE IN PROD */}
       <div
         data-debug="landing-v2-active"
         style={{
@@ -23,16 +23,16 @@ export function LandingV2Page() {
           left: 0,
           right: 0,
           zIndex: 99999,
-          background: '#10efb5',
-          color: '#000',
-          padding: '8px 16px',
-          fontSize: '12px',
+          background: '#ef4444',
+          color: '#fff',
+          padding: '12px 20px',
+          fontSize: '14px',
           fontWeight: 'bold',
           textAlign: 'center',
-          fontFamily: 'monospace',
+          fontFamily: 'system-ui, sans-serif',
         }}
       >
-        LANDING V2 ACTIVE - 2026 DEBUG MARKER
+        LANDING V2 ACTIVE - MUST BE VISIBLE IN PROD
       </div>
       <div className="relative z-10">
         <Navbar />
