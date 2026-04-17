@@ -79,14 +79,17 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
         return;
       }
 
-      const notificationsData = data || [];
-      
+      const notificationsData = Array.isArray(data)
+        ? data.filter((n): n is Notification => Boolean(n && n.id))
+        : [];
+
+      console.log("notifications:", notificationsData);
       console.log("NOTIFICATION_FETCH", {
         userId,
         fetchId,
         status: "success",
         count: notificationsData.length,
-        unread: notificationsData.filter((n: Notification) => !n.is_read).length,
+        unread: notificationsData.filter((n: Notification) => !n?.is_read).length,
       });
 
       setNotifications(notificationsData);
@@ -141,14 +144,18 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
             title: payload.new?.title,
           });
           
-          // Add new notification to state
+          // Add new notification to state (safe)
           setNotifications((prev) => {
-            const newNotification = payload.new as unknown as Notification;
-            // Avoid duplicates
-            if (prev.some((n: Notification) => n.id === newNotification.id)) {
-              return prev;
+            const safePrev = prev ?? [];
+            const newNotification = payload?.new as unknown as Notification | undefined;
+            if (!newNotification || !newNotification.id) {
+              return safePrev;
             }
-            return [newNotification, ...prev];
+            // Avoid duplicates
+            if (safePrev.some((n: Notification) => n?.id === newNotification.id)) {
+              return safePrev;
+            }
+            return [newNotification, ...safePrev];
           });
         }
       )

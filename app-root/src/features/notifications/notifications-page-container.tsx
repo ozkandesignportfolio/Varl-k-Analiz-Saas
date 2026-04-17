@@ -20,95 +20,40 @@ import {
 } from "@/features/notifications/components/NotificationsFilters";
 import { NotificationsList } from "@/features/notifications/components/NotificationsList";
 import { type NotificationRecord } from "@/features/notifications/data/mock-notifications";
-import { mapAutomationEventToNotification } from "@/features/notifications/lib/notification-presenter";
+import { useNotifications, type Notification } from "@/hooks/useNotifications";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
-
-type SupabaseError = {
-  message: string;
-};
-
-type AutomationEventRow = {
-  id: string;
-  asset_id: string | null;
-  trigger_type: string;
-  payload: Record<string, unknown> | null;
-  status: string;
-  created_at: string;
-};
-
-type AutomationEventsResponse = {
-  data: AutomationEventRow[] | null;
-  error: SupabaseError | null;
-};
-
-type MutationResponse = {
-  error: SupabaseError | null;
-};
 
 type CreateTestNotificationsResponse = {
   count?: number;
   error?: string;
 };
 
-type LooseSupabaseAutomationClient = {
-  from: (table: string) => {
-    select: (columns: string) => {
-      eq: (column: string, value: string) => {
-        order: (column: string, options: { ascending: boolean }) => {
-          limit: (value: number) => Promise<AutomationEventsResponse>;
-        };
-      };
-    };
-    update: (values: Record<string, unknown>) => {
-      eq: (column: string, value: string) => {
-        eq: (column: string, value: string) => Promise<MutationResponse>;
-        in: (column: string, values: string[]) => Promise<MutationResponse>;
-      };
-    };
-    delete: () => {
-      eq: (column: string, value: string) => {
-        eq: (column: string, value: string) => Promise<MutationResponse>;
-      };
-    };
-  };
-};
-
-const fetchNotificationsByUserId = async (
-  automationClient: LooseSupabaseAutomationClient,
-  userId: string,
-) =>
-  automationClient
-    .from("automation_events")
-    .select("id,asset_id,trigger_type,payload,status,created_at")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(200);
-
-const toNotificationRecord = (row: AutomationEventRow): NotificationRecord | null => {
-  if (row.payload && typeof row.payload.email_only === "boolean" && row.payload.email_only) {
-    return null;
-  }
-
-  return mapAutomationEventToNotification({
-    id: row.id,
-    assetId: row.asset_id,
-    triggerType: row.trigger_type,
-    payload: row.payload,
-    status: row.status,
-    createdAt: row.created_at,
+/**
+ * Map database Notification to UI NotificationRecord format
+ * Logs: NOTIFICATION_MAP for debugging
+ */
+const mapNotificationToRecord = (notification: Notification): NotificationRecord => {
+  console.log("NOTIFICATION_MAP", {
+    id: notification?.id,
+    type: notification?.type,
+    title: notification?.title,
   });
+
+  return {
+    id: notification?.id ?? "",
+    type: notification?.type ?? "Sistem",
+    title: notification?.title ?? "Bildirim",
+    description: notification?.message ?? "",
+    createdAt: notification?.created_at ?? new Date().toISOString(),
+    status: notification?.is_read ? "Okundu" : "Okunmadı",
+    source: "automation",
+  };
 };
 
 export function NotificationsPageContainer() {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const router = useRouter();
-  const automationClient = useMemo(
-    () => supabase as unknown as LooseSupabaseAutomationClient,
-    [supabase],
-  );
-  const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isGeneratingTestNotifications, setIsGeneratingTestNotifications] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
@@ -118,84 +63,67 @@ export function NotificationsPageContainer() {
   const [dateRange, setDateRange] = useState<DateRangeFilter>(30);
   const [dateRangeAnchorMs, setDateRangeAnchorMs] = useState(() => Date.now());
 
-  const loadNotificationsForUser = useCallback(async (userId: string) => {
-    setIsLoading(true);
+  // Use the unified notifications hook - single source of truth
+  const {
+    notifications: rawNotifications,
+    isLoading,
+    error,
+    markAsRead: hookMarkAsRead,
+    markAllAsRead: hookMarkAllAsRead,
+    deleteNotification: hookDeleteNotification,
+    refetch,
+  } = useNotifications(currentUserId);
 
-    const response = await fetchNotificationsByUserId(automationClient, userId);
+  // Map notifications to UI format (ALWAYS safe — never undefined)
+  const notifications = useMemo(() => {
+    const safeRaw = rawNotifications ?? [];
+    console.log("NOTIFICATION_UI_MAP", {
+      rawCount: safeRaw.length,
+      userId: currentUserId,
+    });
+    return safeRaw
+      .filter((n): n is Notification => Boolean(n && n.id))
+      .map(mapNotificationToRecord);
+  }, [rawNotifications, currentUserId]);
 
-    if (response.error) {
-      setNotifications([]);
-      setFeedback(`Bildirimler veritabanından alınamadı. ${response.error.message}`);
-      setIsLoading(false);
-      return false;
-    }
+  const safeNotifications = notifications ?? [];
 
-    const nextNotifications = (response.data ?? [])
-      .map(toNotificationRecord)
-      .filter((item): item is NotificationRecord => item !== null);
-    setNotifications(nextNotifications);
-    setFeedback(nextNotifications.length === 0 ? "Henüz bildiriminiz yok." : "");
-    setIsLoading(false);
-    return true;
-  }, [automationClient]);
+  // Debug log
+  console.log("notifications:", safeNotifications);
 
-  // Realtime subscription + polling fallback
+  // Set feedback based on hook state
   useEffect(() => {
-    const load = async () => {
-      setIsLoading(true);
+    if (error) {
+      setFeedback(`Bildirimler yüklenirken hata: ${error}`);
+    } else if (!isLoading && safeNotifications.length === 0) {
+      setFeedback("Henüz bildirim yok");
+    } else {
       setFeedback("");
+    }
+  }, [error, isLoading, safeNotifications.length]);
 
+  // Load user and set currentUserId
+  useEffect(() => {
+    const loadUser = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
       if (!user) {
         router.replace("/login?next=/notifications");
-        setIsLoading(false);
         return;
       }
 
-      setCurrentUserId(user.id);
-      await loadNotificationsForUser(user.id);
-    };
-
-    void load();
-  }, [loadNotificationsForUser, router, supabase.auth]);
-
-  // Realtime subscription for new notifications
-  useEffect(() => {
-    if (!currentUserId) return;
-
-    // Subscribe to INSERT events on automation_events
-    const channel = supabase
-      .channel("notifications-realtime")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "automation_events",
-          filter: `user_id=eq.${currentUserId}`,
-        },
-        (_payload: unknown) => {
-          // Reload notifications when new event arrives
-          void loadNotificationsForUser(currentUserId);
-        }
-      )
-      .subscribe((status: string) => {
-        console.log("[notifications] Realtime status:", status);
+      console.log("NOTIFICATION_PAGE_USER", {
+        userId: user.id,
+        email: user.email,
       });
 
-    // Fallback polling every 30 seconds
-    const pollingInterval = setInterval(() => {
-      void loadNotificationsForUser(currentUserId);
-    }, 30_000);
-
-    return () => {
-      channel.unsubscribe();
-      clearInterval(pollingInterval);
+      setCurrentUserId(user.id);
     };
-  }, [currentUserId, loadNotificationsForUser, supabase]);
+
+    void loadUser();
+  }, [router, supabase.auth]);
 
   const onDateRangeChange = (nextRange: DateRangeFilter) => {
     setDateRange(nextRange);
@@ -206,17 +134,18 @@ export function NotificationsPageContainer() {
     const thresholdMs = dateRangeAnchorMs - dateRange * 24 * 60 * 60 * 1000;
     const normalizedQuery = query.trim().toLocaleLowerCase("tr-TR");
 
-    return notifications.filter((item) => {
-      const createdTime = new Date(item.createdAt).getTime();
+    return safeNotifications.filter((item) => {
+      if (!item) return false;
+      const createdTime = new Date(item?.createdAt ?? 0).getTime();
       if (Number.isFinite(createdTime) && createdTime < thresholdMs) {
         return false;
       }
 
-      if (type !== "Tümü" && item.type !== type) {
+      if (type !== "Tümü" && item?.type !== type) {
         return false;
       }
 
-      if (status !== "Tümü" && item.status !== status) {
+      if (status !== "Tümü" && item?.status !== status) {
         return false;
       }
 
@@ -224,36 +153,40 @@ export function NotificationsPageContainer() {
         return true;
       }
 
-      const searchable = `${item.title} ${item.description} ${item.detail ?? ""}`.toLocaleLowerCase("tr-TR");
+      const searchable = `${item?.title ?? ""} ${item?.description ?? ""} ${item?.detail ?? ""}`.toLocaleLowerCase("tr-TR");
       return searchable.includes(normalizedQuery);
     });
-  }, [dateRange, dateRangeAnchorMs, notifications, query, status, type]);
+  }, [dateRange, dateRangeAnchorMs, safeNotifications, query, status, type]);
 
   const unreadCount = useMemo(
-    () => notifications.filter((item) => item.status === "Okunmadı").length,
-    [notifications],
+    () => safeNotifications.filter((item) => item?.status === "Okunmadı").length,
+    [safeNotifications],
   );
 
   const onMarkRead = async (id: string) => {
-    const target = notifications.find((item) => item.id === id);
-    if (!target || target.status === "Okundu" || !currentUserId) {
+    const target = safeNotifications.find((item) => item?.id === id);
+    if (!target || target?.status === "Okundu" || !currentUserId) {
       return;
     }
 
-    const response = await automationClient
-      .from("automation_events")
-      .update({ status: "completed" })
-      .eq("user_id", currentUserId)
-      .eq("id", id);
+    console.log("NOTIFICATION_MARK_READ_UI", {
+      userId: currentUserId,
+      notificationId: id,
+      status: "attempt",
+    });
 
-    if (response.error) {
-      setFeedback(`Bildirim güncellenemedi. ${response.error.message}`);
+    const success = await hookMarkAsRead(id);
+
+    if (!success) {
+      setFeedback("Bildirim okundu olarak işaretlenemedi.");
       return;
     }
 
-    setNotifications((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, status: "Okundu" } : item)),
-    );
+    console.log("NOTIFICATION_MARK_READ_UI", {
+      userId: currentUserId,
+      notificationId: id,
+      status: "success",
+    });
   };
 
   const onDelete = async (id: string) => {
@@ -261,46 +194,51 @@ export function NotificationsPageContainer() {
       return;
     }
 
-    const response = await automationClient
-      .from("automation_events")
-      .delete()
-      .eq("user_id", currentUserId)
-      .eq("id", id);
+    console.log("NOTIFICATION_DELETE_UI", {
+      userId: currentUserId,
+      notificationId: id,
+      status: "attempt",
+    });
 
-    if (response.error) {
-      setFeedback(`Bildirim silinemedi. ${response.error.message}`);
+    const success = await hookDeleteNotification(id);
+
+    if (!success) {
+      setFeedback("Bildirim silinemedi.");
       return;
     }
 
-    setNotifications((prev) => prev.filter((item) => item.id !== id));
+    console.log("NOTIFICATION_DELETE_UI", {
+      userId: currentUserId,
+      notificationId: id,
+      status: "success",
+    });
   };
 
   const onMarkAllAsRead = async () => {
-    const unreadAutomationIds = notifications
-      .filter((item) => item.status === "Okunmadı")
-      .map((item) => item.id);
+    const unreadCount = safeNotifications.filter((item) => item?.status === "Okunmadı").length;
 
-    if (unreadAutomationIds.length === 0 || !currentUserId) {
+    if (unreadCount === 0 || !currentUserId) {
       return;
     }
 
-    const response = await automationClient
-      .from("automation_events")
-      .update({ status: "completed" })
-      .eq("user_id", currentUserId)
-      .in("id", unreadAutomationIds);
+    console.log("NOTIFICATION_MARK_ALL_READ_UI", {
+      userId: currentUserId,
+      unreadCount,
+      status: "attempt",
+    });
 
-    if (response.error) {
-      setFeedback(`Bildirimler güncellenemedi. ${response.error.message}`);
+    const markedCount = await hookMarkAllAsRead();
+
+    if (markedCount === 0) {
+      setFeedback("Bildirimler okundu olarak işaretlenemedi.");
       return;
     }
 
-    setNotifications((prev) =>
-      prev.map((item) => ({
-        ...item,
-        status: "Okundu",
-      })),
-    );
+    console.log("NOTIFICATION_MARK_ALL_READ_UI", {
+      userId: currentUserId,
+      markedCount,
+      status: "success",
+    });
   };
 
   const onGenerateTestNotifications = async () => {
@@ -322,10 +260,9 @@ export function NotificationsPageContainer() {
         return;
       }
 
-      const didReload = await loadNotificationsForUser(currentUserId);
-      if (didReload) {
-        setFeedback(`${body?.count ?? 4} test bildirimi oluşturuldu.`);
-      }
+      // Refetch notifications after creating test data
+      await refetch();
+      setFeedback(`${body?.count ?? 4} test bildirimi oluşturuldu.`);
     } catch {
       setFeedback("Test bildirimleri oluşturulamadı.");
     } finally {
@@ -358,7 +295,7 @@ export function NotificationsPageContainer() {
               type="button"
               variant="outline"
               onClick={onMarkAllAsRead}
-              disabled={notifications.length === 0 || unreadCount === 0}
+              disabled={safeNotifications.length === 0 || unreadCount === 0}
               className="border-white/20 bg-white/5 text-slate-100 hover:bg-white/10"
             >
               <CheckCheck className="h-4 w-4" />

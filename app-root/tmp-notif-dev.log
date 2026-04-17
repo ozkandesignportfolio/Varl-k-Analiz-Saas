@@ -1,0 +1,22 @@
+
+> assetcare@0.1.0 dev
+> next dev --webpack --port 3000
+
+[turnstile.env] Startup validation summary. {
+  context: 'next-config',
+  hasMisplacedEnvLocal: false,
+  missing: [],
+  nodeEnv: 'development',
+  productionUsesTestKeys: false,
+  rootEnvLocalPath: 'C:\\Users\\Osman\\Desktop\\Varlık Takip Saas\\app-root\\.env.local',
+  secretKeyKind: 'configured',
+  secretKeyLength: 35,
+  siteKeyKind: 'configured',
+  siteKeyLength: 24
+}
+▲ Next.js 16.1.6 (webpack)
+- Local:         http://localhost:3000
+- Network:       http://100.76.190.47:3000
+- Environments: .env.local
+
+✓ Starting...

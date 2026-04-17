@@ -6,7 +6,7 @@ import {
   resolveNotificationPreferenceKey,
   type AutomationEvent,
 } from "./notification.ts";
-import { getEmailEnvState, requireEmailEnv } from "./email-env.ts";
+import { getEmailEnvState, requireEmailEnv, validateEmailSender } from "./email-env.ts";
 
 export type EventActionResult = { ok: boolean; results: Record<string, unknown> };
 
@@ -276,7 +276,19 @@ async function getAssetContext(
 }
 
 async function sendEmailAction(supabase: SupabaseClient, event: AutomationEvent): Promise<Record<string, unknown>> {
+  // Log email trigger
+  logAutomation("info", {
+    action: "email_trigger",
+    event_id: event.id,
+    user_id: event.user_id,
+    trigger_type: event.trigger_type,
+    actions: event.actions,
+    ts: new Date().toISOString(),
+  });
+
   const emailEnvState = getEmailEnvState();
+  
+  // Check for missing env vars
   if (emailEnvState.missingEnv.length > 0) {
     logAutomation("error", {
       action: "email_env_invalid",
@@ -286,19 +298,54 @@ async function sendEmailAction(supabase: SupabaseClient, event: AutomationEvent)
       missing_env: emailEnvState.missingEnv,
       app_url_source: emailEnvState.appUrlSource,
     });
-    failEmail(event, {
+    return failEmail(event, {
       reason: "missing_email_env",
       missing_env: emailEnvState.missingEnv,
       app_url_source: emailEnvState.appUrlSource,
     });
   }
 
-  const requiredEnv = requireEmailEnv();
+  // Check for invalid env vars
+  if (emailEnvState.invalidEnv.length > 0) {
+    logAutomation("error", {
+      action: "email_env_invalid",
+      event_id: event.id,
+      user_id: event.user_id,
+      trigger_type: event.trigger_type,
+      invalid_env: emailEnvState.invalidEnv,
+    });
+    return failEmail(event, {
+      reason: "invalid_email_env",
+      invalid_env: emailEnvState.invalidEnv,
+    });
+  }
+
+  let requiredEnv: ReturnType<typeof requireEmailEnv>;
+  try {
+    requiredEnv = requireEmailEnv();
+  } catch (envError) {
+    const errorMsg = envError instanceof Error ? envError.message : "Unknown env error";
+    logAutomation("error", {
+      action: "email_env_exception",
+      event_id: event.id,
+      user_id: event.user_id,
+      trigger_type: event.trigger_type,
+      error: errorMsg,
+    });
+    return failEmail(event, {
+      reason: "email_env_exception",
+      error: errorMsg,
+    });
+  }
+
   const resendApiKey = requiredEnv.RESEND_API_KEY;
   const fromEmail = requiredEnv.AUTOMATION_FROM_EMAIL;
   const replyToEmail = Deno.env.get("AUTOMATION_REPLY_TO_EMAIL")?.trim() ?? "";
   const serviceRoleKey = requiredEnv.SUPABASE_SERVICE_ROLE_KEY;
   const appUrl = normalizeAppUrl(requiredEnv.APP_URL);
+
+  // Validate sender email with domain verification
+  const emailValidation = validateEmailSender(fromEmail);
 
   logAutomation("info", {
     action: "email_env_validation",
@@ -308,47 +355,52 @@ async function sendEmailAction(supabase: SupabaseClient, event: AutomationEvent)
     resend_api_key_configured: isConfiguredSecret(resendApiKey),
     resend_api_key_masked: maskSecret(resendApiKey),
     from_email: fromEmail,
+    from_email_valid: emailValidation.valid,
+    from_email_reason: emailValidation.reason || null,
     reply_to_email: replyToEmail || null,
     app_url: appUrl,
     app_url_source: emailEnvState.appUrlSource,
     missing_env: emailEnvState.missingEnv,
+    invalid_env: emailEnvState.invalidEnv,
     service_role_key_configured: isConfiguredSecret(serviceRoleKey),
   });
 
   if (!isConfiguredSecret(resendApiKey)) {
-    failEmail(event, {
+    return failEmail(event, {
       reason: "invalid_resend_api_key",
     });
   }
 
   if (!fromEmail) {
-    failEmail(event, {
+    return failEmail(event, {
       reason: "missing_from_email",
     });
   }
 
-  if (!isValidEmail(fromEmail)) {
-    failEmail(event, {
+  // Use enhanced email validation with domain verification
+  if (!emailValidation.valid) {
+    return failEmail(event, {
       reason: "invalid_sender_email",
       from_email: fromEmail,
+      validation_reason: emailValidation.reason,
     });
   }
 
   if (replyToEmail && !isValidEmail(replyToEmail)) {
-    failEmail(event, {
+    return failEmail(event, {
       reason: "invalid_reply_to_email",
       reply_to_email: replyToEmail,
     });
   }
 
   if (!isConfiguredSecret(serviceRoleKey)) {
-    failEmail(event, {
+    return failEmail(event, {
       reason: "invalid_supabase_service_role_key",
     });
   }
 
   if (!appUrl) {
-    failEmail(event, {
+    return failEmail(event, {
       reason: "invalid_app_url",
     });
   }

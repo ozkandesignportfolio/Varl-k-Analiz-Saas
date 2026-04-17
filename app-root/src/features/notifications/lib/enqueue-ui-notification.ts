@@ -15,6 +15,21 @@ type EnqueueUiNotificationParams = {
   payload?: Record<string, unknown>;
 };
 
+type NotificationsInsertClient = {
+  from: (table: "notifications") => {
+    insert: (
+      values: Record<string, unknown>,
+    ) => {
+      select: (columns: string) => {
+        single: () => Promise<{
+          data: { id: string } | null;
+          error: { message?: string; code?: string } | null;
+        }>;
+      };
+    };
+  };
+};
+
 type LooseAutomationEventsClient = {
   from: (table: "automation_events") => {
     upsert: (
@@ -24,12 +39,26 @@ type LooseAutomationEventsClient = {
   };
 };
 
-const UI_NOTIFICATION_RUN_AFTER = "2099-12-31T23:59:59.000Z";
+function buildUiCopy(kind: UiNotificationKind, assetName: string) {
+  const safeName = assetName?.trim() || "Varlık";
+  if (kind === "asset_created") {
+    return {
+      title: "Yeni varlık eklendi",
+      message: `"${safeName}" varlığı başarıyla oluşturuldu.`,
+    };
+  }
+  return {
+    title: "Varlık güncellendi",
+    message: `"${safeName}" varlığının bilgileri güncellendi.`,
+  };
+}
 
 export async function enqueueUiNotification(params: EnqueueUiNotificationParams) {
+  let notificationsClient: NotificationsInsertClient;
   let automationClient: LooseAutomationEventsClient;
   try {
     const { supabaseAdmin } = await import("@/lib/supabase-admin");
+    notificationsClient = supabaseAdmin as unknown as NotificationsInsertClient;
     automationClient = supabaseAdmin as unknown as LooseAutomationEventsClient;
   } catch (error) {
     logApiError({
@@ -63,36 +92,52 @@ export async function enqueueUiNotification(params: EnqueueUiNotificationParams)
     ...params.payload,
   };
 
-  const { error: uiError } = await automationClient.from("automation_events").upsert(
-    {
+  // Direct insert into notifications table (UI in-app channel)
+  const copy = buildUiCopy(params.kind, params.assetName);
+  console.log("NOTIFICATION_UI_INSERT_ATTEMPT", {
+    userId: params.userId,
+    assetId: params.assetId,
+    kind: params.kind,
+    title: copy.title,
+  });
+
+  const { data: notifData, error: uiError } = await notificationsClient
+    .from("notifications")
+    .insert({
       user_id: params.userId,
-      asset_id: params.assetId,
-      trigger_type: "service_log_created",
-      actions: [],
-      payload: sharedPayload,
-      dedupe_key: `${params.dedupeKey}:ui`,
-      run_after: UI_NOTIFICATION_RUN_AFTER,
-    },
-    {
-      onConflict: "dedupe_key",
-      ignoreDuplicates: true,
-    },
-  );
+      title: copy.title || "Bildirim",
+      message: copy.message || "",
+      type: "Sistem",
+      is_read: false,
+    })
+    .select("id")
+    .single();
 
   if (uiError) {
+    console.log("NOTIFICATION_UI_INSERT_FAILED", {
+      userId: params.userId,
+      error: uiError.message,
+      code: uiError.code,
+    });
     logApiError({
       route: params.route,
       method: params.method,
       userId: params.userId,
       error: uiError,
       status: 500,
-      message: "UI notification enqueue failed",
+      message: "UI notification insert failed",
       meta: {
         assetId: params.assetId,
         dedupeKey: params.dedupeKey,
         kind: params.kind,
         channel: "in_app",
       },
+    });
+  } else {
+    console.log("NOTIFICATION_UI_INSERT_SUCCESS", {
+      userId: params.userId,
+      notificationId: notifData?.id,
+      kind: params.kind,
     });
   }
 
