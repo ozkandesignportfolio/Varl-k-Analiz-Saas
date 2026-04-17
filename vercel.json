@@ -1,0 +1,14 @@
+{
+  "framework": "nextjs",
+  "rootDirectory": "app-root",
+  "crons": [
+    {
+      "path": "/api/automation/dispatch",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/email-reminder",
+      "schedule": "0 * * * *"
+    }
+  ]
+}
