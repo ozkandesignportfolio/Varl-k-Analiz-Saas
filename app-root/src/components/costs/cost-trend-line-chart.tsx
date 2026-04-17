@@ -16,6 +16,13 @@ const currencyFormatter = new Intl.NumberFormat("tr-TR", {
   maximumFractionDigits: 0,
 });
 
+const compactCurrencyFormatter = new Intl.NumberFormat("tr-TR", {
+  style: "currency",
+  currency: "TRY",
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
 export function CostTrendLineChart({ points }: CostTrendLineChartProps) {
   const data: ChartData<"line"> = {
     labels: points.map((point) => point.label),
@@ -27,9 +34,9 @@ export function CostTrendLineChart({ points }: CostTrendLineChartProps) {
         backgroundColor: "rgba(56, 189, 248, 0.16)",
         pointBorderColor: "#38bdf8",
         pointBackgroundColor: "#22d3ee",
-        pointRadius: 3,
+        pointRadius: 2,
         pointHoverRadius: 5,
-        tension: 0.32,
+        tension: 0.25,
         fill: true,
       },
     ],
@@ -56,20 +63,26 @@ export function CostTrendLineChart({ points }: CostTrendLineChartProps) {
       x: {
         ticks: {
           color: "#cbd5e1",
+          autoSkip: true,
+          maxTicksLimit: 6,
+          maxRotation: 0,
+          font: { size: 11 },
         },
-        grid: {
-          color: "rgba(148, 163, 184, 0.08)",
-        },
+        grid: { display: false },
+        border: { display: false },
       },
       y: {
         beginAtZero: true,
         ticks: {
           color: "#cbd5e1",
-          callback: (value) => currencyFormatter.format(Number(value)),
+          maxTicksLimit: 4,
+          font: { size: 11 },
+          callback: (value) => compactCurrencyFormatter.format(Number(value)),
         },
         grid: {
-          color: "rgba(148, 163, 184, 0.12)",
+          color: "rgba(148, 163, 184, 0.08)",
         },
+        border: { display: false },
       },
     },
   };

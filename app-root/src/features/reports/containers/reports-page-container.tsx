@@ -258,6 +258,33 @@ export function ReportsPageContainer() {
     setFeedback("");
 
     try {
+      // Server-side authoritative permission check. The client-side
+      // `canExportPdfReports` flag is UX only and is bypassable via devtools,
+      // so re-verify with the backend before doing any work.
+      const permissionResponse = await fetch("/api/reports/can-export", {
+        method: "GET",
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+
+      if (!permissionResponse.ok) {
+        setFeedback(
+          permissionResponse.status === 401
+            ? "Oturumunuz sona ermiş olabilir. Lütfen tekrar giriş yapın."
+            : PDF_PREMIUM_MESSAGE,
+        );
+        return;
+      }
+
+      const permissionPayload = (await permissionResponse.json().catch(() => null)) as
+        | { canExport?: boolean }
+        | null;
+
+      if (!permissionPayload?.canExport) {
+        setFeedback(PDF_PREMIUM_MESSAGE);
+        return;
+      }
+
       const pdfDetails = await loadPdfExportDetails();
 
       await exportReportsPdf({

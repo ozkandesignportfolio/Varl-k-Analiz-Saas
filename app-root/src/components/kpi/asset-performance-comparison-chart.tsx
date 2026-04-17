@@ -74,20 +74,26 @@ export function AssetPerformanceComparisonChart({
       x: {
         ticks: {
           color: "#cbd5e1",
+          autoSkip: true,
+          maxTicksLimit: 6,
+          maxRotation: 0,
+          font: { size: 11 },
         },
-        grid: {
-          color: "rgba(148, 163, 184, 0.08)",
-        },
+        grid: { display: false },
+        border: { display: false },
       },
       y: {
         beginAtZero: true,
         max: 100,
         ticks: {
           color: "#cbd5e1",
+          maxTicksLimit: 4,
+          font: { size: 11 },
         },
         grid: {
-          color: "rgba(148, 163, 184, 0.12)",
+          color: "rgba(148, 163, 184, 0.08)",
         },
+        border: { display: false },
       },
       y1: {
         beginAtZero: true,
@@ -95,10 +101,13 @@ export function AssetPerformanceComparisonChart({
         ticks: {
           color: "#fcd34d",
           precision: 0,
+          maxTicksLimit: 4,
+          font: { size: 11 },
         },
         grid: {
           drawOnChartArea: false,
         },
+        border: { display: false },
       },
     },
   };

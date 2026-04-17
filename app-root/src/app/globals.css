@@ -365,3 +365,250 @@ a {
     transform: none;
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Landing v2 animations (moved out of CSS Modules for cross-browser support). */
+/* Chromium's CSS-Modules pipeline can rename keyframe identifiers declared    */
+/* inside a *.module.css file while the `animation:` reference lives in a      */
+/* `:global(...)` selector, causing animations to silently break on Chrome     */
+/* Desktop / Chrome Android while still working on iOS Safari. Keeping the     */
+/* animations here avoids that mismatch.                                      */
+/* -------------------------------------------------------------------------- */
+
+.animate-float {
+  animation: landingV2Float 6s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-float-delay {
+  animation: landingV2FloatDelay 5s ease-in-out 1s infinite;
+  will-change: transform;
+}
+
+.animate-pulse-glow {
+  animation: landingV2PulseGlow 3s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(16, 239, 181, 0.18) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: landingV2Shimmer 3s linear infinite;
+  pointer-events: none;
+}
+
+.animate-slide-up {
+  animation: landingV2SlideUp 0.8s ease-out forwards;
+  will-change: transform, opacity;
+}
+
+.animate-slide-in-left {
+  animation: landingV2SlideInLeft 0.8s ease-out forwards;
+  will-change: transform, opacity;
+}
+
+.animate-fade-in {
+  animation: landingV2FadeIn 1s ease-out forwards;
+}
+
+.animate-count-up {
+  animation: landingV2CountUp 0.6s ease-out forwards;
+}
+
+.animate-gradient-shift {
+  background-size: 200% 200%;
+  animation: landingV2GradientShift 8s ease infinite;
+}
+
+.animate-orbit {
+  animation: landingV2Orbit 20s linear infinite;
+  will-change: transform;
+}
+
+@keyframes landingV2Float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes landingV2FloatDelay {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-15px);
+  }
+}
+
+@keyframes landingV2PulseGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 24px rgba(16, 239, 181, 0.24);
+  }
+  50% {
+    box-shadow:
+      0 0 56px rgba(16, 239, 181, 0.34),
+      0 0 28px rgba(44, 247, 255, 0.2);
+  }
+}
+
+@keyframes landingV2Shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes landingV2SlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes landingV2SlideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes landingV2FadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes landingV2CountUp {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes landingV2GradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes landingV2Orbit {
+  from {
+    transform: rotate(0deg) translateX(140px) rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg) translateX(140px) rotate(-360deg);
+  }
+}
+
+/* Hero drift/pulse and aurora keyframes use fixed pixel offsets instead of    */
+/* percentages so Chromium and WebKit agree on the final transform target.    */
+@keyframes landingV2HeroDrift {
+  0% {
+    transform: translate3d(-18px, -12px, 0) scale(1);
+    opacity: 0.82;
+  }
+  50% {
+    transform: translate3d(14px, 20px, 0) scale(1.04);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(18px, -16px, 0) scale(1.02);
+    opacity: 0.88;
+  }
+}
+
+@keyframes landingV2HeroPulse {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.18;
+  }
+  50% {
+    transform: translate3d(16px, -24px, 0) scale(1.06);
+    opacity: 0.28;
+  }
+}
+
+@keyframes landingV2AuroraShiftA {
+  0% {
+    transform: translate3d(-20px, -16px, 0) rotate(-1.8deg) scale(1.02);
+  }
+  50% {
+    transform: translate3d(14px, 20px, 0) rotate(1.4deg) scale(1.06);
+  }
+  100% {
+    transform: translate3d(22px, -12px, 0) rotate(2deg) scale(1.03);
+  }
+}
+
+@keyframes landingV2AuroraShiftB {
+  0% {
+    transform: translate3d(16px, 18px, 0) rotate(1.6deg) scale(1.01);
+  }
+  50% {
+    transform: translate3d(-18px, -14px, 0) rotate(-1.2deg) scale(1.05);
+  }
+  100% {
+    transform: translate3d(14px, -20px, 0) rotate(1deg) scale(1.03);
+  }
+}
+
+@keyframes landingV2AuroraShiftC {
+  0% {
+    transform: translate3d(-8px, -12px, 0) rotate(0deg) scale(1.01);
+  }
+  50% {
+    transform: translate3d(10px, 10px, 0) rotate(0.7deg) scale(1.03);
+  }
+  100% {
+    transform: translate3d(-10px, 12px, 0) rotate(-0.8deg) scale(1.02);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float,
+  .animate-float-delay,
+  .animate-pulse-glow,
+  .animate-shimmer,
+  .animate-slide-up,
+  .animate-slide-in-left,
+  .animate-fade-in,
+  .animate-count-up,
+  .animate-gradient-shift,
+  .animate-orbit {
+    animation: none !important;
+  }
+}

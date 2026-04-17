@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   createContext,
+  memo,
   useContext,
   useEffect,
   useMemo,
@@ -91,6 +92,38 @@ const buildBreadcrumb = (pathname: string) => {
 
 export const useAppShellSession = () => useContext(AppShellSessionContext);
 
+type MobileNavProps = {
+  pathname: string;
+  isHydrated: boolean;
+};
+
+const MobileNav = memo(function MobileNav({ pathname, isHydrated }: MobileNavProps) {
+  return (
+    <nav
+      aria-label="Mobil menü"
+      className="auth-mobile-nav mb-4 flex gap-2 overflow-x-auto overscroll-x-contain pb-1 lg:hidden"
+      style={{ touchAction: "pan-x", WebkitOverflowScrolling: "touch" }}
+    >
+      {SIDEBAR_NAV_ITEMS.map((item) => {
+        const active = isHydrated ? isActivePath(pathname, item.href) : false;
+
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            aria-current={active ? "page" : undefined}
+            data-state={active ? "active" : "inactive"}
+            className="auth-shell-chip auth-focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs"
+          >
+            <span>{item.label}</span>
+            <span className="auth-nav-short-badge">{item.shortCode}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+});
+
 export function AppShell({
   title,
   subtitle,
@@ -169,24 +202,7 @@ export function AppShell({
           />
 
         <main className="auth-shell-main px-4 py-4 sm:px-6 lg:px-8" data-testid={resolvedPageRootTestId}>
-          <nav aria-label="Mobil menü" className="auth-mobile-nav mb-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
-            {SIDEBAR_NAV_ITEMS.map((item) => {
-              const active = isHydrated ? isActivePath(pathname ?? "", item.href) : false;
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-current={active ? "page" : undefined}
-                  data-state={active ? "active" : "inactive"}
-                  className="auth-shell-chip auth-focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs"
-                >
-                  <span>{item.label}</span>
-                  <span className="auth-nav-short-badge">{item.shortCode}</span>
-                </Link>
-              );
-            })}
-          </nav>
+          <MobileNav pathname={pathname ?? ""} isHydrated={isHydrated} />
 
           {badge || subtitle || actions ? (
             <section className="auth-shell-card auth-shell-intro mb-5 rounded-2xl p-4">

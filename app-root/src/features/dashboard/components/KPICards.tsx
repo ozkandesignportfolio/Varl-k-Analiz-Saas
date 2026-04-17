@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { memo } from "react";
 import {
   ArrowDownRight,
   ArrowRight,
@@ -116,7 +117,7 @@ export function KPICards({ metrics, trends, selectedRange }: KPICardsProps) {
   );
 }
 
-function KpiCard({ card }: { card: KpiCardItem }) {
+const KpiCard = memo(function KpiCard({ card }: { card: KpiCardItem }) {
   const trendMeta = TREND_META[card.trend.direction];
   const TrendIcon = trendMeta.icon;
   const Icon = card.icon;
@@ -158,7 +159,7 @@ function KpiCard({ card }: { card: KpiCardItem }) {
       </Link>
     </article>
   );
-}
+});
 
 function Sparkline({ points, pathClass }: { points: number[]; pathClass: string }) {
   const safePoints = points.length > 0 ? points : Array.from({ length: 6 }, () => 10);

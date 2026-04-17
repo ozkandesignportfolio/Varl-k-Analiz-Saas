@@ -372,235 +372,24 @@
   pointer-events: none;
 }
 
-.scope :global(.hero-glow),
-.scope :global(.animate-shimmer) {
+.scope :global(.hero-glow) {
   pointer-events: none;
 }
 
-.scope :global(.animate-float) {
-  animation: landingV2Float 6s ease-in-out infinite;
-}
-
-.scope :global(.animate-float-delay) {
-  animation: landingV2FloatDelay 5s ease-in-out 1s infinite;
-}
-
-.scope :global(.animate-pulse-glow) {
-  animation: landingV2PulseGlow 3s ease-in-out infinite;
-}
-
-.scope :global(.animate-shimmer) {
-  background: linear-gradient(90deg, transparent 0%, rgb(16 239 181 / 18%) 50%, transparent 100%);
-  background-size: 200% 100%;
-  animation: landingV2Shimmer 3s linear infinite;
-}
-
-.scope :global(.animate-slide-up) {
-  animation: landingV2SlideUp 0.8s ease-out forwards;
-}
-
-.scope :global(.animate-slide-in-left) {
-  animation: landingV2SlideInLeft 0.8s ease-out forwards;
-}
-
-.scope :global(.animate-fade-in) {
-  animation: landingV2FadeIn 1s ease-out forwards;
-}
-
-.scope :global(.animate-count-up) {
-  animation: landingV2CountUp 0.6s ease-out forwards;
-}
-
-.scope :global(.animate-gradient-shift) {
-  background-size: 200% 200%;
-  animation: landingV2GradientShift 8s ease infinite;
-}
-
-.scope :global(.animate-orbit) {
-  animation: landingV2Orbit 20s linear infinite;
-}
-
-@keyframes landingV2Float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-20px);
-  }
-}
-
-@keyframes landingV2FloatDelay {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-15px);
-  }
-}
-
-@keyframes landingV2PulseGlow {
-  0%,
-  100% {
-    box-shadow: 0 0 24px rgb(16 239 181 / 24%);
-  }
-  50% {
-    box-shadow:
-      0 0 56px rgb(16 239 181 / 34%),
-      0 0 28px rgb(44 247 255 / 20%);
-  }
-}
-
-@keyframes landingV2Shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-@keyframes landingV2SlideUp {
-  from {
-    opacity: 0;
-    transform: translateY(40px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes landingV2SlideInLeft {
-  from {
-    opacity: 0;
-    transform: translateX(-40px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes landingV2FadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes landingV2CountUp {
-  from {
-    opacity: 0;
-    transform: scale(0.5);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes landingV2GradientShift {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-@keyframes landingV2Orbit {
-  from {
-    transform: rotate(0deg) translateX(140px) rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg) translateX(140px) rotate(-360deg);
-  }
-}
-
-@keyframes landingV2HeroDrift {
-  0% {
-    transform: translate3d(-2.5%, -1.5%, 0) scale(1);
-    opacity: 0.82;
-  }
-  50% {
-    transform: translate3d(1.8%, 2.6%, 0) scale(1.04);
-    opacity: 1;
-  }
-  100% {
-    transform: translate3d(2.4%, -2.2%, 0) scale(1.02);
-    opacity: 0.88;
-  }
-}
-
-@keyframes landingV2HeroPulse {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-    opacity: 0.18;
-  }
-  50% {
-    transform: translate3d(2%, -3%, 0) scale(1.06);
-    opacity: 0.28;
-  }
-}
-
-@keyframes landingV2AuroraShiftA {
-  0% {
-    transform: translate3d(-2.2%, -1.8%, 0) rotate(-1.8deg) scale(1.02);
-  }
-  50% {
-    transform: translate3d(1.5%, 2.4%, 0) rotate(1.4deg) scale(1.06);
-  }
-  100% {
-    transform: translate3d(2.6%, -1.4%, 0) rotate(2deg) scale(1.03);
-  }
-}
-
-@keyframes landingV2AuroraShiftB {
-  0% {
-    transform: translate3d(1.8%, 2.2%, 0) rotate(1.6deg) scale(1.01);
-  }
-  50% {
-    transform: translate3d(-2.1%, -1.6%, 0) rotate(-1.2deg) scale(1.05);
-  }
-  100% {
-    transform: translate3d(1.7%, -2.3%, 0) rotate(1deg) scale(1.03);
-  }
-}
-
-@keyframes landingV2AuroraShiftC {
-  0% {
-    transform: translate3d(-0.8%, -1.4%, 0) rotate(0deg) scale(1.01);
-  }
-  50% {
-    transform: translate3d(1.1%, 1.1%, 0) rotate(0.7deg) scale(1.03);
-  }
-  100% {
-    transform: translate3d(-1.2%, 1.4%, 0) rotate(-0.8deg) scale(1.02);
-  }
-}
+/*
+ * NOTE: .animate-* utility classes and their @keyframes (landingV2Float,
+ * landingV2SlideUp, landingV2HeroDrift, landingV2AuroraShiftA/B/C, ...) live
+ * in src/app/globals.css. They were moved out of this CSS module because
+ * Chromium's CSS-Modules pipeline can rename keyframe identifiers declared
+ * inside a *.module.css file while `animation:` references in `:global(...)`
+ * selectors remain un-rewritten, which silently breaks animations on
+ * Chrome Desktop / Chrome Android while still working on iOS Safari.
+ * The remaining `animation:` references elsewhere in this module (e.g.
+ * .landing-v2-hero-motion-plane -> landingV2HeroDrift) resolve against the
+ * globally-declared keyframes.
+ */
 
 @media (prefers-reduced-motion: reduce) {
-  .scope :global(.animate-float),
-  .scope :global(.animate-float-delay),
-  .scope :global(.animate-pulse-glow),
-  .scope :global(.animate-shimmer),
-  .scope :global(.animate-slide-up),
-  .scope :global(.animate-slide-in-left),
-  .scope :global(.animate-fade-in),
-  .scope :global(.animate-count-up),
-  .scope :global(.animate-gradient-shift),
-  .scope :global(.animate-orbit) {
-    animation: none !important;
-  }
-
   .scope :global(.landing-v2-hero-motion-plane),
   .scope :global(.landing-v2-hero-blob) {
     animation: none !important;

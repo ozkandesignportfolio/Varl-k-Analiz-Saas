@@ -116,20 +116,22 @@ const normalizePlanToken = (rawValue: unknown): ProfilePlan | null => {
 export const getProfilePlanFromUserMetadata = (
   user: Pick<User, "app_metadata" | "user_metadata"> | null | undefined,
 ): ProfilePlan | null => {
-  const metadataSources = [user?.app_metadata ?? null, user?.user_metadata ?? null];
+  // SECURITY: user_metadata is writable by the authenticated user itself via
+  // supabase.auth.updateUser(). It must NEVER be trusted as a plan source,
+  // otherwise any free user could self-upgrade to premium from the browser
+  // console. Only app_metadata (service-role writable) is accepted here.
+  const source = user?.app_metadata ?? null;
   const metadataKeys = ["plan", "tier", "subscription_plan", "subscriptionPlan", "plan_code", "planCode"] as const;
 
-  for (const source of metadataSources) {
-    if (!source || typeof source !== "object") {
-      continue;
-    }
+  if (!source || typeof source !== "object") {
+    return null;
+  }
 
-    for (const key of metadataKeys) {
-      const value = (source as Record<string, unknown>)[key];
-      const planFromToken = normalizePlanToken(value);
-      if (planFromToken) {
-        return planFromToken;
-      }
+  for (const key of metadataKeys) {
+    const value = (source as Record<string, unknown>)[key];
+    const planFromToken = normalizePlanToken(value);
+    if (planFromToken) {
+      return planFromToken;
     }
   }
 

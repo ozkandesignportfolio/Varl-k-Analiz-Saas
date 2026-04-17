@@ -31,6 +31,13 @@ export function YearlyCostBarChart({ points }: YearlyCostBarChartProps) {
     ],
   };
 
+  const compactCurrencyFormatter = new Intl.NumberFormat("tr-TR", {
+    style: "currency",
+    currency: "TRY",
+    notation: "compact",
+    maximumFractionDigits: 1,
+  });
+
   const options: ChartOptions<"bar"> = {
     responsive: true,
     maintainAspectRatio: false,
@@ -48,20 +55,26 @@ export function YearlyCostBarChart({ points }: YearlyCostBarChartProps) {
       x: {
         ticks: {
           color: "#cbd5e1",
+          autoSkip: true,
+          maxTicksLimit: 6,
+          maxRotation: 0,
+          font: { size: 11 },
         },
-        grid: {
-          color: "rgba(148, 163, 184, 0.08)",
-        },
+        grid: { display: false },
+        border: { display: false },
       },
       y: {
         beginAtZero: true,
         ticks: {
           color: "#cbd5e1",
-          callback: (value) => currencyFormatter.format(Number(value)),
+          maxTicksLimit: 4,
+          font: { size: 11 },
+          callback: (value) => compactCurrencyFormatter.format(Number(value)),
         },
         grid: {
-          color: "rgba(148, 163, 184, 0.12)",
+          color: "rgba(148, 163, 184, 0.08)",
         },
+        border: { display: false },
       },
     },
   };

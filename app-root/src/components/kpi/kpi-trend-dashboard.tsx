@@ -1,13 +1,28 @@
 ﻿"use client";
 
-import { AssetPerformanceComparisonChart } from "@/components/kpi/asset-performance-comparison-chart";
+import dynamic from "next/dynamic";
 import {
   type KpiAssetInput,
   type KpiRuleInput,
   type KpiServiceLogInput,
   useKpiTrendData,
 } from "@/components/kpi/hooks/use-kpi-trend-data";
-import { YearlyCostLineChart } from "@/components/kpi/yearly-cost-line-chart";
+
+// Lazy-load heavy Chart.js charts so they don't ship in the main bundle.
+// The dashboard renders the surrounding layout immediately; charts mount when
+// data is ready. ssr:false because react-chartjs-2 uses canvas (client-only).
+const YearlyCostLineChart = dynamic(
+  () => import("@/components/kpi/yearly-cost-line-chart").then((mod) => mod.YearlyCostLineChart),
+  { ssr: false },
+);
+
+const AssetPerformanceComparisonChart = dynamic(
+  () =>
+    import("@/components/kpi/asset-performance-comparison-chart").then(
+      (mod) => mod.AssetPerformanceComparisonChart,
+    ),
+  { ssr: false },
+);
 
 type KpiTrendDashboardProps = {
   assets: KpiAssetInput[];
