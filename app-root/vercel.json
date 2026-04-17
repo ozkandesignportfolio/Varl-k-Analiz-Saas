@@ -1,13 +1,3 @@
 {
-  "framework": "nextjs",
-  "crons": [
-    {
-      "path": "/api/automation/dispatch",
-      "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/cron/email-reminder",
-      "schedule": "0 * * * *"
-    }
-  ]
+  "framework": "nextjs"
 }
