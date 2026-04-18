@@ -14,7 +14,7 @@ import type {
   FraudStatsResponse,
   FraudVolumePoint,
 } from "@/lib/fraud/types";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { getSupabaseAdmin } from "@/lib/services/supabase-admin";
 import type { SignupRiskLevel } from "@/lib/supabase/signup";
 
 export const dynamic = "force-dynamic";
@@ -264,6 +264,7 @@ const buildRankedEntities = (attempts: FraudAttempt[], field: "email" | "ip"): F
 };
 
 const buildBaseQuery = (filters: FraudStatsFilters, sinceIso: string) => {
+  const supabaseAdmin = getSupabaseAdmin();
   const client = supabaseAdmin as typeof supabaseAdmin & {
     from: (table: "auth_security_logs") => {
       select: (columns: string) => unknown;
@@ -312,6 +313,7 @@ const fetchConsentMap = async (userIds: string[]) => {
     return new Map<string, string>();
   }
 
+  const supabaseAdmin = getSupabaseAdmin();
   const client = supabaseAdmin as typeof supabaseAdmin & {
     from: (
       table: "user_consents",

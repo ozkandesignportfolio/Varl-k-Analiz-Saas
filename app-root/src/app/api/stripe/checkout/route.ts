@@ -4,35 +4,15 @@ import { logApiError } from "@/lib/api/logging";
 import { enforceRateLimit, getRequestIp } from "@/lib/api/rate-limit";
 import { PREMIUM_MONTHLY_PRICE_KURUS } from "@/lib/plans/pricing";
 import { requireConfiguredAppOrigin } from "@/lib/config/app-url";
-import { getStripeSecretKeyValidationError, stripe } from "@/lib/stripe";
+import { getStripeClient } from "@/lib/services/stripe";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
 
-const readMissingEnvVars = () => {
-  const missing: string[] = [];
-
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()) {
-    missing.push("NEXT_PUBLIC_SUPABASE_URL");
-  }
-
-  if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()) {
-    missing.push("NEXT_PUBLIC_SUPABASE_ANON_KEY");
-  }
-
-  if (!process.env.STRIPE_SECRET_KEY?.trim()) {
-    missing.push("STRIPE_SECRET_KEY");
-  }
-
-  const premiumPriceId =
-    process.env.STRIPE_PRICE_PREMIUM?.trim() || process.env.STRIPE_PRICE_PREMIUM_MONTHLY?.trim();
-  if (!premiumPriceId) {
-    missing.push("STRIPE_PRICE_PREMIUM|STRIPE_PRICE_PREMIUM_MONTHLY");
-  }
-
-  return {
-    missing,
-    premiumPriceId,
-  };
-};
+// Stripe price id'si merkezi schema'da yok (opsiyonel operasyonel flag). Bunu
+// CONFIG'e taşımak isteyen biri schema'yı genişletir.
+const readPremiumPriceId = (): string | null =>
+  process.env.STRIPE_PRICE_PREMIUM?.trim() ||
+  process.env.STRIPE_PRICE_PREMIUM_MONTHLY?.trim() ||
+  null;
 
 const PREMIUM_CHECKOUT_CURRENCY = "try";
 
@@ -60,12 +40,13 @@ const buildFallbackPremiumLineItem = (
 const resolvePremiumCheckoutLineItem = async (
   configuredPriceId: string | undefined,
 ): Promise<Stripe.Checkout.SessionCreateParams.LineItem> => {
-  if (!stripe || !configuredPriceId) {
+  if (!configuredPriceId) {
     return buildFallbackPremiumLineItem();
   }
 
+  const stripeClient = getStripeClient();
   try {
-    const configuredPrice = await stripe.prices.retrieve(configuredPriceId);
+    const configuredPrice = await stripeClient.prices.retrieve(configuredPriceId);
     const usesExpectedMonthlyPremiumPrice =
       configuredPrice.active &&
       configuredPrice.currency === PREMIUM_CHECKOUT_CURRENCY &&
@@ -109,26 +90,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const stripeKeyError = getStripeSecretKeyValidationError();
-  if (stripeKeyError) {
-    return NextResponse.json({ error: stripeKeyError }, { status: 500 });
-  }
+  const { user } = auth;
 
-  const envCheck = readMissingEnvVars();
-  if (envCheck.missing.length > 0) {
+  const priceId = readPremiumPriceId();
+  if (!priceId) {
     return NextResponse.json(
-      { error: `Eksik ortam degiskenleri: ${envCheck.missing.join(", ")}` },
+      { error: "Eksik ortam degiskenleri: STRIPE_PRICE_PREMIUM|STRIPE_PRICE_PREMIUM_MONTHLY" },
       { status: 500 },
     );
   }
 
-  const { user } = auth;
-
-  if (!stripe) {
-    return NextResponse.json({ error: "Stripe yapilandirmasi eksik." }, { status: 500 });
-  }
-
-  const priceId = envCheck.premiumPriceId as string;
+  // getStripeClient() — CONFIG geçersizse buradan throw eder (runtime-env zinciri);
+  // global error handler 500 döner. Ayrıca burada null-check gerekmez.
+  const stripeClient = getStripeClient();
   let appUrl: string;
   try {
     appUrl = requireConfiguredAppOrigin();
@@ -141,7 +115,7 @@ export async function POST(request: Request) {
 
   try {
     const premiumLineItem = await resolvePremiumCheckoutLineItem(priceId);
-    const session = await stripe.checkout.sessions.create({
+    const session = await stripeClient.checkout.sessions.create({
       mode: "subscription",
       line_items: [premiumLineItem],
       client_reference_id: user.id,

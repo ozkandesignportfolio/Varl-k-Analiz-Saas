@@ -1,10 +1,10 @@
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { logApiError } from "@/lib/api/logging";
 import Stripe from "stripe";
 import { enforceUserRateLimit } from "@/lib/api/rate-limit";
-import { getStripeSecretKeyValidationError, stripe } from "@/lib/stripe";
+import { getStripeClient } from "@/lib/services/stripe";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
+import { getSupabaseAdmin } from "@/lib/services/supabase-admin";
 
 type ConfirmPayload = {
   session_id?: unknown;
@@ -63,11 +63,6 @@ export async function POST(request: Request) {
     );
   }
 
-  const stripeKeyError = getStripeSecretKeyValidationError();
-  if (stripeKeyError) {
-    return NextResponse.json({ error: stripeKeyError }, { status: 500 });
-  }
-
   const payload = (await request.json().catch(() => null)) as ConfirmPayload | null;
   const sessionId = String(payload?.session_id ?? "").trim();
 
@@ -75,13 +70,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "session_id zorunludur." }, { status: 400 });
   }
 
-  if (!stripe) {
-    return NextResponse.json({ error: "Stripe yapılandırması eksik." }, { status: 500 });
-  }
+  // getStripeClient() CONFIG geçersizse throw eder — deterministik guard.
+  const stripeClient = getStripeClient();
 
   let session: Stripe.Checkout.Session;
   try {
-    session = await stripe.checkout.sessions.retrieve(sessionId);
+    session = await stripeClient.checkout.sessions.retrieve(sessionId);
   } catch {
     return NextResponse.json({ error: "Checkout oturumu doğrulanamadı." }, { status: 400 });
   }
@@ -124,55 +118,26 @@ export async function POST(request: Request) {
   const nextUserMetadata = buildPremiumMetadata((user.user_metadata ?? {}) as Record<string, unknown>);
   const nextAppMetadata = buildPremiumMetadata((user.app_metadata ?? {}) as Record<string, unknown>);
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // getSupabaseAdmin() CONFIG üzerinden deterministik init; env geçersizse throw.
+  const adminClient = getSupabaseAdmin();
+  const { error: adminUpdateError } = await adminClient.auth.admin.updateUserById(user.id, {
+    app_metadata: nextAppMetadata,
+    user_metadata: nextUserMetadata,
+  });
 
-  if (supabaseUrl && serviceRoleKey) {
-    const adminClient = createSupabaseClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
+  if (adminUpdateError) {
+    logApiError({
+      route: "/api/stripe/confirm",
+      method: "POST",
+      status: 500,
+      error: adminUpdateError,
+      message: "Admin metadata update failed during Stripe confirm.",
+      userId: user.id,
+      meta: {
+        code: adminUpdateError.code ?? null,
       },
     });
-
-    const { error } = await adminClient.auth.admin.updateUserById(user.id, {
-      app_metadata: nextAppMetadata,
-      user_metadata: nextUserMetadata,
-    });
-
-    if (error) {
-      logApiError({
-        route: "/api/stripe/confirm",
-        method: "POST",
-        status: 500,
-        error,
-        message: "Admin metadata update failed during Stripe confirm.",
-        userId: user.id,
-        meta: {
-          code: error.code ?? null,
-        },
-      });
-      return NextResponse.json({ error: "Premium planı aktifleştirilemedi." }, { status: 500 });
-    }
-  } else {
-    const { error } = await supabase.auth.updateUser({
-      data: nextUserMetadata,
-    });
-
-    if (error) {
-      logApiError({
-        route: "/api/stripe/confirm",
-        method: "POST",
-        status: 500,
-        error,
-        message: "User metadata update failed during Stripe confirm.",
-        userId: user.id,
-        meta: {
-          code: error.code ?? null,
-        },
-      });
-      return NextResponse.json({ error: "Premium planı aktifleştirilemedi." }, { status: 500 });
-    }
+    return NextResponse.json({ error: "Premium planı aktifleştirilemedi." }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true }, { status: 200 });

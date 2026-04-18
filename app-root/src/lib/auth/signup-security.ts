@@ -1,6 +1,6 @@
 import "server-only";
 
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { getSupabaseAdmin } from "@/lib/services/supabase-admin";
 import {
   createUserConsentsInsert,
   type UserConsentsInsert,
@@ -91,6 +91,7 @@ type UserConsentInsertParams = {
 };
 
 export const insertUserConsent = async (params: UserConsentInsertParams) => {
+  const supabaseAdmin = getSupabaseAdmin();
   const client = supabaseAdmin as typeof supabaseAdmin & {
     from: <T extends keyof SignupSecurityDatabase["public"]["Tables"]>(
       table: T,
@@ -129,6 +130,7 @@ export const insertUserConsent = async (params: UserConsentInsertParams) => {
 
 export const logAuthSecurityEvent = async (params: AuthSecurityEventParams) => {
   try {
+    const supabaseAdmin = getSupabaseAdmin();
     const client = supabaseAdmin as typeof supabaseAdmin & {
       from: <T extends keyof SignupSecurityDatabase["public"]["Tables"]>(
         table: T,

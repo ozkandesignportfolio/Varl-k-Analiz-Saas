@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { logApiError, logApiRequest, logAuditEvent } from "@/lib/api/logging";
 import { toPublicErrorBody } from "@/lib/api/public-error";
-import { enqueueUiNotification } from "@/features/notifications/lib/enqueue-ui-notification";
+import { getNotificationService, AppEventType } from "@/lib/notifications";
 import { enforceUserRateLimit } from "@/lib/api/rate-limit";
 import type { Update as TableUpdate } from "@/lib/repos/_shared";
 import {
@@ -418,19 +418,19 @@ export async function POST(request: Request) {
       action: "create",
     });
 
-    await enqueueUiNotification({
-      route: "/api/assets",
-      method: "POST",
-      userId: auth.user.id,
-      dedupeKey: `asset-created:${data.id}`,
-      kind: "asset_created",
-      assetId: data.id,
-      assetName: name,
-      payload: {
-        category,
-        created_at: data.created_at ?? null,
+    await getNotificationService().dispatch(
+      {
+        type: AppEventType.ASSET_CREATED,
+        userId: auth.user.id,
+        assetId: data.id,
+        assetName: name,
+        payload: {
+          category,
+          created_at: data.created_at ?? null,
+        },
       },
-    });
+      { route: "/api/assets", method: "POST" },
+    );
 
     logApiRequest({
       route: "/api/assets",
@@ -680,19 +680,21 @@ export async function PATCH(request: Request) {
       meta: { fields: Object.keys(patch) },
     });
 
-    await enqueueUiNotification({
-      route: "/api/assets",
-      method: "PATCH",
-      userId: auth.user.id,
-      dedupeKey: `asset-updated:${data.id}:${data.updated_at ?? Object.keys(patch).sort().join(",")}`,
-      kind: "asset_updated",
-      assetId: data.id,
-      assetName: patch.name ?? existingAsset.name,
-      payload: {
-        changed_fields: Object.keys(patch),
-        updated_at: data.updated_at ?? null,
+    await getNotificationService().dispatch(
+      {
+        type: AppEventType.ASSET_UPDATED,
+        userId: auth.user.id,
+        assetId: data.id,
+        assetName: patch.name ?? existingAsset.name,
+        changeVersion:
+          data.updated_at ?? Object.keys(patch).sort().join(","),
+        payload: {
+          changed_fields: Object.keys(patch),
+          updated_at: data.updated_at ?? null,
+        },
       },
-    });
+      { route: "/api/assets", method: "PATCH" },
+    );
 
     return NextResponse.json({ ok: true, id: data.id }, { status: 200 });
   } catch (error) {

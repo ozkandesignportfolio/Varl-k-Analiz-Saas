@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { logApiError, logApiRequest } from "@/lib/api/logging";
-import { generateTestNotifications } from "@/lib/notifications/generate-test-notifications";
+import { getNotificationService, AppEventType } from "@/lib/notifications";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
 
 export async function POST(request: Request) {
@@ -17,7 +17,21 @@ export async function POST(request: Request) {
 
     userId = auth.user.id;
 
-    const notifications = await generateTestNotifications(auth.user.id);
+    const result = await getNotificationService().dispatch(
+      { type: AppEventType.TEST_NOTIFICATION, userId: auth.user.id },
+      { route: "/api/notifications/test", method: "POST" },
+    );
+
+    if (!result.ok) {
+      return NextResponse.json(
+        { ok: false, error: result.error, code: result.code },
+        { status: 500 },
+      );
+    }
+
+    // Discriminated union daraltması — TEST_NOTIFICATION başarı varyantı.
+    const successful = result.type === AppEventType.TEST_NOTIFICATION ? result.successful : 0;
+    const failed = result.type === AppEventType.TEST_NOTIFICATION ? result.failed : 0;
 
     logApiRequest({
       route: "/api/notifications/test",
@@ -26,12 +40,17 @@ export async function POST(request: Request) {
       durationMs: Date.now() - startedAt,
       userId: auth.user.id,
       requestId,
-      meta: {
-        generatedCount: notifications.length,
-      },
+      meta: { generatedCount: successful, failedCount: failed },
     });
 
-    return NextResponse.json({ ok: true, count: notifications.length }, { status: 201 });
+    if (failed > 0 && successful === 0) {
+      return NextResponse.json(
+        { ok: false, error: "Test bildirimleri oluşturulamadı." },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({ ok: true, count: successful, failed }, { status: 201 });
   } catch (error) {
     logApiError({
       route: "/api/notifications/test",

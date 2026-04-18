@@ -1,34 +1,7 @@
 import "server-only";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    "Missing Supabase env vars. Check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
-  );
-}
-
-export const createClient = async () => {
-  const cookieStore = await cookies();
-
-  return createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return cookieStore.getAll();
-      },
-      setAll(cookiesToSet) {
-        try {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        } catch {
-          // Cookie mutation can fail in some server contexts (e.g. pure Server Components).
-          // Middleware refresh flow keeps auth cookies in sync for those cases.
-        }
-      },
-    },
-  });
-};
+// Compat shim — yeni tüketiciler `@/lib/services/supabase-server` import etsin.
+// Eski `createClient()` ismi alias olarak korunur.
+export { getSupabaseServerClient as createClient } from "@/lib/services/supabase-server";
+export { getSupabaseServerClient } from "@/lib/services/supabase-server";
+export type { SupabaseServerClientContext } from "@/lib/services/supabase-server";

@@ -95,3 +95,4 @@ playwright-report/
 
 
 .vercel
+.env*.local

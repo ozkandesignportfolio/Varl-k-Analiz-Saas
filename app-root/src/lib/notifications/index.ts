@@ -1,15 +1,28 @@
 export {
-  createNotification,
-  createWelcomeNotification,
-  createAssetCreatedNotification,
-  createAssetUpdatedNotification,
-  batchCreateNotifications,
-  type CreateNotificationParams,
-  type NotificationResult,
+  createNotificationService,
+  getNotificationService,
+  type NotificationService,
   type NotificationType,
+  type NotificationResult,
+  type NotificationBatchResult,
+  type CreateNotificationInput,
+  type EnqueueAutomationEventInput,
+  type AutomationEnqueueResult,
+  type AutomationTriggerType,
+  type AssetEventType,
+  type NotifyAssetEventInput,
+  type NotifyAssetEventResult,
 } from "./notification-service";
 
+// Event contract — business logic yalnızca bunları tüketmeli.
 export {
-  generateTestNotifications,
-  type TestNotificationDraft,
-} from "./generate-test-notifications";
+  AppEventType,
+  type AppEvent,
+  type AssetCreatedEvent,
+  type AssetUpdatedEvent,
+  type UserWelcomeEvent,
+  type TestNotificationEvent,
+  type DispatchResult,
+  type DispatchSuccess,
+  type DispatchFailure,
+} from "@/lib/events/app-event";

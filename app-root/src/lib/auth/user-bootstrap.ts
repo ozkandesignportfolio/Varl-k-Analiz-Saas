@@ -215,33 +215,25 @@ async function bootstrapUserRecordsManual(
     };
   }
 
-  // Stage 4: Welcome notification (only for new users)
+  // Stage 4: Welcome notification (only for new users) — event contract.
   let notificationId: string | null = null;
   if (isNewUser) {
-    const { data: notifData, error: notifError } = await adminClient
-      .from("notifications")
-      .insert({
-        user_id: userId,
-        title: "Hoş geldiniz",
-        message: "Assetly'ye hoş geldiniz! Bildirim sistemi aktif.",
-        type: "Sistem",
-        source: "system",
-        action_href: "/assets",
-        action_label: "Varlıklarım",
-        is_read: false,
-      })
-      .select("id")
-      .single();
+    const { getNotificationService, AppEventType } = await import("@/lib/notifications");
+    const result = await getNotificationService().dispatch(
+      { type: AppEventType.USER_WELCOME, userId },
+      { route: "user-bootstrap", method: "POST" },
+    );
 
-    if (notifError) {
-      // Log but don't fail - notification is not critical
+    if (result.ok && result.type === AppEventType.USER_WELCOME) {
+      notificationId = result.notificationId;
+      console.log("[user-bootstrap] WELCOME_NOTIF_CREATED", { userId, notificationId });
+    } else if (!result.ok) {
+      // Log but don't fail — notification is not critical.
       console.warn("[user-bootstrap] WELCOME_NOTIF_ERROR", {
         userId,
-        error: notifError.message,
+        error: result.error,
+        code: result.code,
       });
-    } else {
-      notificationId = notifData?.id ?? null;
-      console.log("[user-bootstrap] WELCOME_NOTIF_CREATED", { userId, notificationId });
     }
   }
 

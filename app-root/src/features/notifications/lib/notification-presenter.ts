@@ -3,6 +3,25 @@ import type {
   NotificationStatus,
   NotificationType,
 } from "@/features/notifications/data/mock-notifications";
+import { AppEventType } from "@/lib/events/app-event";
+
+/**
+ * DB payload'undan event kimliğini çözer. Tek kaynak `AppEventType`; payload'da
+ * yer alabilecek geçerli değerler enum stringleridir (örn. `"ASSET_CREATED"`).
+ * Tanımlanmamış veya yabancı değerlerde `null` döner; ikinci bir kelime sistemi
+ * tanınmaz.
+ */
+const resolveAppEventType = (
+  payload: Record<string, unknown> | null,
+): AppEventType | null => {
+  const raw = payload?.event_type;
+  if (typeof raw !== "string") {
+    return null;
+  }
+  return (Object.values(AppEventType) as string[]).includes(raw)
+    ? (raw as AppEventType)
+    : null;
+};
 
 export type AutomationEventNotificationInput = {
   id: string;
@@ -150,7 +169,7 @@ const resolveText = (
 
   const assetName = toSafeString(payload?.asset_name);
   const assetSubject = assetName ? `${assetName} varlığınız` : "Varlığınız";
-  const notificationKind = toSafeString(payload?.notification_kind);
+  const appEventType = resolveAppEventType(payload);
   const ruleTitle = toSafeString(payload?.rule_title, "planlı bakım");
   const warrantyDate = formatDate(toSafeString(payload?.warranty_end_date));
   const nextDueDate = formatDate(toSafeString(payload?.next_due_date));
@@ -160,14 +179,14 @@ const resolveText = (
   const nextBillingDate = formatDate(toSafeString(payload?.next_billing_date));
   const changedFieldsText = resolveChangedFieldsText(payload?.changed_fields);
 
-  if (notificationKind === "asset_created") {
+  if (appEventType === AppEventType.ASSET_CREATED) {
     return {
       title: "Yeni varlık eklendi",
       description: `${assetSubject} sisteme başarıyla eklendi.`,
     };
   }
 
-  if (notificationKind === "asset_updated") {
+  if (appEventType === AppEventType.ASSET_UPDATED) {
     return {
       title: "Varlık bilgileri güncellendi",
       description: `${assetSubject} güncellendi.`,
@@ -264,9 +283,12 @@ const resolveActionHref = (
     return customActionHref;
   }
 
-  const notificationKind = toSafeString(payload?.notification_kind);
+  const appEventType = resolveAppEventType(payload);
 
-  if (notificationKind === "asset_created" || notificationKind === "asset_updated") {
+  if (
+    appEventType === AppEventType.ASSET_CREATED ||
+    appEventType === AppEventType.ASSET_UPDATED
+  ) {
     return assetId ? `/assets/${assetId}` : "/assets";
   }
 

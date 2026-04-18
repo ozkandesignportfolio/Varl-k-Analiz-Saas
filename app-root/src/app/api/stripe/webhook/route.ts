@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { logApiError } from "@/lib/api/logging";
 import { enforceRateLimit, getRequestIp } from "@/lib/api/rate-limit";
 import Stripe from "stripe";
-import { getStripeSecretKeyValidationError, stripe } from "@/lib/stripe";
+import { getStripeClient } from "@/lib/services/stripe";
+import { getSupabaseAdmin } from "@/lib/services/supabase-admin";
 
 export const runtime = "nodejs";
 
@@ -27,11 +28,6 @@ export async function POST(request: Request) {
     return new Response(JSON.stringify({ error: "rate_limited" }), { status: 429 });
   }
 
-  const stripeKeyError = getStripeSecretKeyValidationError();
-  if (stripeKeyError) {
-    return NextResponse.json({ error: stripeKeyError }, { status: 500 });
-  }
-
   const sig = request.headers.get("stripe-signature");
   const rawBody = await request.text();
 
@@ -50,45 +46,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Webhook secret missing." }, { status: 500 });
   }
 
-  if (!stripe) {
-    return NextResponse.json({ error: "Stripe is not configured." }, { status: 500 });
-  }
+  // getStripeClient() ve getSupabaseAdmin() CONFIG zinciri üzerinden
+  // ilk çağrıda doğrulanır; env geçersizse throw eder ve global error handler
+  // 500 döner (deterministik). Route içinde ayrıca guard gerekmez.
+  const stripeClient = getStripeClient();
+  const supabaseAdmin = getSupabaseAdmin();
 
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(rawBody, sig!, process.env.STRIPE_WEBHOOK_SECRET!);
+    event = stripeClient.webhooks.constructEvent(rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET);
   } catch {
     return NextResponse.json({ error: "Gecersiz Stripe imzasi." }, { status: 400 });
-  }
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    logApiError({
-      route: "/api/stripe/webhook",
-      method: "POST",
-      status: 500,
-      error: new Error("Missing Supabase admin env vars for Stripe webhook dedupe."),
-      message: "Supabase admin env vars missing for Stripe webhook dedupe.",
-    });
-    return NextResponse.json({ error: "Supabase admin configuration missing." }, { status: 500 });
-  }
-
-  let supabaseAdmin: (typeof import("@/lib/supabase-admin"))["supabaseAdmin"];
-
-  try {
-    ({ supabaseAdmin } = await import("@/lib/supabase-admin"));
-  } catch (error) {
-    logApiError({
-      route: "/api/stripe/webhook",
-      method: "POST",
-      status: 500,
-      error,
-      message: "Failed to initialize Supabase admin client for Stripe webhook.",
-    });
-    return NextResponse.json({ error: "Webhook processing failed." }, { status: 500 });
   }
 
   const eventId = event.id;

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { getNotificationService, AppEventType } from "@/lib/notifications";
 
 /**
  * DEBUG TEST ROUTE - Force notification insert
@@ -35,60 +35,32 @@ export async function GET(request: Request) {
       ts: new Date().toISOString(),
     });
 
-    // Direct insert with explicit logging
-    const { data, error } = await supabaseAdmin
-      .from("notifications")
-      .insert({
-        user_id: userId,
-        title: "TEST - Hoş geldiniz",
-        message: "TEST - Hesabınız oluşturuldu",
-        type: "Sistem",
-        is_read: false,
-      })
-      .select();
+    // Event contract üzerinden — debug route bile string literal kullanmaz.
+    const result = await getNotificationService().dispatch(
+      { type: AppEventType.USER_WELCOME, userId },
+      { route: "/api/test-notification-insert", method: "GET" },
+    );
 
     console.log("TEST_NOTIFICATION_INSERT_RESULT", {
       userId,
-      data,
-      error,
-      errorMessage: error?.message ?? null,
-      errorCode: error?.code ?? null,
+      result,
       ts: new Date().toISOString(),
     });
 
-    if (error) {
-      console.log("TEST_NOTIFICATION_INSERT_FAILED", {
-        userId,
-        error: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint,
-        ts: new Date().toISOString(),
-      });
-
+    if (!result.ok) {
       return NextResponse.json(
-        {
-          success: false,
-          error: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint,
-          userId,
-        },
-        { status: 500 }
+        { success: false, error: result.error, code: result.code, userId },
+        { status: 500 },
       );
     }
 
-    console.log("TEST_NOTIFICATION_INSERT_SUCCESS", {
-      userId,
-      notificationId: data?.[0]?.id ?? null,
-      ts: new Date().toISOString(),
-    });
+    const notificationId =
+      result.type === AppEventType.USER_WELCOME ? result.notificationId : null;
 
     return NextResponse.json({
       success: true,
       userId,
-      notification: data?.[0] ?? null,
+      notificationId,
       message: "Notification inserted successfully",
     });
 
