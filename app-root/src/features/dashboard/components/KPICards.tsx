@@ -24,41 +24,54 @@ type KPICardsProps = {
 
 type KpiCardId = "assets" | "rules" | "costs" | "documents";
 
+type KpiInsightTone = "positive" | "negative" | "neutral";
+
+type KpiInsight = {
+  tone: KpiInsightTone;
+  label: string;
+};
+
 type KpiCardItem = {
   id: KpiCardId;
   title: string;
   value: string;
   context: string;
   isEmpty: boolean;
-  insight: string | null;
+  insight: KpiInsight | null;
   emptyHint: string;
   ctaLabel: string;
-  trend: DashboardSnapshot["trends"]["totalAssets"];
   icon: LucideIcon;
   href: string;
 };
 
 const formatCurrency = (value: number) => `${CURRENCY_FORMATTER.format(value)} TL`;
 
-const buildCountInsight = (
-  trend: DashboardSnapshot["trends"]["totalAssets"],
-  rangeDays: number,
-): string | null => {
-  const points = trend.sparkline;
-  if (points.length < 2) return null;
-  const delta = Math.round(points[points.length - 1] - points[0]);
-  if (delta > 0) return `Son ${rangeDays} günde +${NUMBER_FORMATTER.format(delta)} yeni`;
-  if (delta < 0) return `Son ${rangeDays} günde ${NUMBER_FORMATTER.format(delta)}`;
-  return "Son dönemde değişim yok";
+const INSIGHT_TONE_STYLES: Record<KpiInsightTone, { text: string; dot: string }> = {
+  positive: { text: "text-emerald-300/80", dot: "bg-emerald-400/70" },
+  negative: { text: "text-amber-300/80", dot: "bg-amber-400/70" },
+  neutral: { text: "text-[#8DA6C8]/60", dot: "bg-slate-400/50" },
 };
 
+// Count-like metrics (varlık/kural/belge): up = pozitif, down = dikkat, düz = aktivite yok
+const buildCountInsight = (
+  trend: DashboardSnapshot["trends"]["totalAssets"],
+): KpiInsight | null => {
+  const points = trend.sparkline;
+  if (points.length < 2 && trend.direction === "flat") {
+    return { tone: "neutral", label: "Aktivite yok" };
+  }
+  if (trend.direction === "up") return { tone: "positive", label: "İyi seviyede" };
+  if (trend.direction === "down") return { tone: "negative", label: "Dikkat" };
+  return { tone: "neutral", label: "Aktivite yok" };
+};
+
+// Maliyet metriği: down = iyi, up = dikkat, düz = sabit
 const buildCostInsight = (
   trend: DashboardSnapshot["trends"]["totalServiceCost"],
-  rangeDays: number,
-): string | null => {
-  if (trend.direction === "flat") return "Bu dönemde değişim yok";
-  const prefix = trend.direction === "up" ? "artış" : "düşüş";
-  return `Son ${rangeDays} günde ${prefix}`;
+): KpiInsight | null => {
+  if (trend.direction === "down") return { tone: "positive", label: "İyi seviyede" };
+  if (trend.direction === "up") return { tone: "negative", label: "Dikkat" };
+  return { tone: "neutral", label: "Değişim yok" };
 };
 
 export function KPICards({ metrics, trends, selectedRange }: KPICardsProps) {
@@ -70,10 +83,9 @@ export function KPICards({ metrics, trends, selectedRange }: KPICardsProps) {
       value: NUMBER_FORMATTER.format(metrics.totalAssets),
       context: "Kayıtlı varlık sayısı",
       isEmpty: metrics.totalAssets === 0,
-      insight: buildCountInsight(trends.totalAssets, selectedRange),
+      insight: buildCountInsight(trends.totalAssets),
       emptyHint: "Henüz varlık eklenmedi",
       ctaLabel: "Varlık ekle",
-      trend: trends.totalAssets,
       icon: Package,
       href: "/assets",
     },
@@ -83,10 +95,9 @@ export function KPICards({ metrics, trends, selectedRange }: KPICardsProps) {
       value: NUMBER_FORMATTER.format(metrics.activeRules),
       context: "Tanımlı aktif kural",
       isEmpty: metrics.activeRules === 0,
-      insight: buildCountInsight(trends.activeRules, selectedRange),
+      insight: buildCountInsight(trends.activeRules),
       emptyHint: "Henüz bakım kuralı yok",
       ctaLabel: "Kural oluştur",
-      trend: trends.activeRules,
       icon: Wrench,
       href: "/maintenance",
     },
@@ -96,10 +107,9 @@ export function KPICards({ metrics, trends, selectedRange }: KPICardsProps) {
       value: formatCurrency(metrics.totalServiceCost),
       context: rangeLabel,
       isEmpty: metrics.totalServiceCost === 0,
-      insight: buildCostInsight(trends.totalServiceCost, selectedRange),
+      insight: buildCostInsight(trends.totalServiceCost),
       emptyHint: "Bu dönem servis kaydı yok",
       ctaLabel: "Servis ekle",
-      trend: trends.totalServiceCost,
       icon: TrendingUp,
       href: "/costs",
     },
@@ -109,10 +119,9 @@ export function KPICards({ metrics, trends, selectedRange }: KPICardsProps) {
       value: NUMBER_FORMATTER.format(metrics.documentCount),
       context: "Yüklü belge sayısı",
       isEmpty: metrics.documentCount === 0,
-      insight: buildCountInsight(trends.documentCount, selectedRange),
+      insight: buildCountInsight(trends.documentCount),
       emptyHint: "Henüz belge yüklenmedi",
       ctaLabel: "Belge yükle",
-      trend: trends.documentCount,
       icon: FileText,
       href: "/documents",
     },
@@ -159,10 +168,14 @@ const KpiCard = memo(function KpiCard({ card }: { card: KpiCardItem }) {
       </p>
       {!card.isEmpty && card.insight ? (
         <p
-          className="mt-1 text-xs text-[#8DA6C8]/60"
+          className={`mt-1 inline-flex items-center gap-1.5 text-xs ${INSIGHT_TONE_STYLES[card.insight.tone].text}`}
           data-testid={`dashboard-kpi-${card.id}-insight`}
         >
-          {card.insight}
+          <span
+            aria-hidden
+            className={`h-1.5 w-1.5 rounded-full ${INSIGHT_TONE_STYLES[card.insight.tone].dot}`}
+          />
+          {card.insight.label}
         </p>
       ) : null}
 

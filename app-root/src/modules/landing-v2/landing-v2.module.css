@@ -105,19 +105,21 @@
 
 .scope :global(.landing-v2-ambient-layer) {
   position: absolute;
-  inset: -20%;
+  /* Smaller bleed keeps the promoted texture memory bounded while still
+     hiding edges during transform drift. */
+  inset: -12%;
   opacity: 0.08;
-  filter: blur(112px);
-  /* Promote to a dedicated GPU layer so the compositor can animate transforms
-     without re-rasterizing the blurred surface every frame. */
-  transform: translateZ(0);
-  backface-visibility: hidden;
+  /* Responsive, GPU-safe blur: small on phones, full on desktop. */
+  filter: blur(clamp(40px, 8vw, 80px));
+  pointer-events: none;
   will-change: transform;
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
   animation-direction: alternate;
-  /* Isolate repaints to this layer only. */
+  animation-play-state: running;
+  /* Isolate repaints + stacking so nothing above forces a repaint cascade. */
   contain: layout paint style;
+  isolation: isolate;
 }
 
 .scope :global(.landing-v2-ambient-layer-a) {
@@ -136,7 +138,7 @@
     radial-gradient(34% 40% at 26% 74%, rgb(147 51 234 / 20%), transparent 76%),
     linear-gradient(165deg, rgb(99 102 241 / 11%), rgb(7 14 32 / 0%) 52%, rgb(147 51 234 / 12%));
   opacity: 0.09;
-  filter: blur(118px);
+  filter: blur(clamp(40px, 9vw, 85px));
   animation-name: landingV2AuroraShiftB;
   animation-duration: 36s;
 }
@@ -267,24 +269,26 @@
 
 .scope :global(.landing-v2-hero-motion-plane) {
   position: absolute;
-  inset: -14%;
+  inset: -12%;
+  pointer-events: none;
   animation: landingV2HeroDrift 24s ease-in-out infinite alternate;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  will-change: transform, opacity;
+  animation-play-state: running;
+  will-change: transform;
   contain: layout paint style;
+  isolation: isolate;
 }
 
 .scope :global(.landing-v2-hero-blob) {
   position: absolute;
   border-radius: 999px;
   opacity: 0.22;
-  filter: blur(68px);
+  filter: blur(clamp(24px, 6vw, 48px));
+  pointer-events: none;
   animation: landingV2HeroPulse 18s ease-in-out infinite;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  will-change: transform, opacity;
+  animation-play-state: running;
+  will-change: transform;
   contain: layout paint style;
+  isolation: isolate;
 }
 
 .scope :global(.landing-v2-hero-blob-a) {
@@ -421,61 +425,76 @@
   contain-intrinsic-size: 1px 900px;
 }
 
+/*
+ * Safer GPU promotion: only compose the blurred textures onto dedicated GPU
+ * layers on desktop, where the memory cost of a promoted ~viewport-sized
+ * blurred surface is cheap. On mobile we intentionally skip this so the
+ * browser can tear the layers down and keep GPU memory bounded.
+ */
+@media (min-width: 769px) {
+  .scope :global(.landing-v2-hero-blob),
+  .scope :global(.landing-v2-hero-motion-plane),
+  .scope :global(.landing-v2-ambient-layer) {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .scope :global(.landing-v2-hero-motion-plane),
-  .scope :global(.landing-v2-hero-blob) {
-    animation: none !important;
-    /* Drop heavy filter once frozen so the compositor doesn't keep a huge
-       blurred texture alive for a purely static visual. */
-    filter: blur(40px);
-    opacity: 0.14;
+  .scope :global(.landing-v2-hero-blob),
+  .scope :global(.landing-v2-ambient-layer) {
     will-change: auto;
+    animation: none;
+    animation-play-state: paused;
   }
 
-  .scope :global(.landing-v2-ambient-layer) {
-    animation: none !important;
-    filter: blur(60px);
-    will-change: auto;
+  .scope :global(.landing-v2-hero-blob) {
+    opacity: 0.14;
   }
 }
 
 /*
  * Low-power / mobile fallback.
  *
- * The ambient aurora and hero blobs use `filter: blur(68-118px)` on elements
- * that cover ~140% of the viewport. Animating those layers burns GPU memory
- * and fill-rate on phones (iOS Safari throttles, Android Chrome stutters) for
- * a purely decorative effect.
+ * The ambient aurora and hero blobs would otherwise animate huge blurred
+ * surfaces covering >viewport area, which burns GPU memory and fill-rate on
+ * phones (iOS Safari throttles, Android Chrome stutters) for a purely
+ * decorative effect.
  *
  * On small viewports and touch-primary devices we:
  *   - stop the infinite keyframe animations (no repaints, no rAF cost),
- *   - drop blur radii dramatically (less texture to rasterize + composite),
- *   - release `will-change` so the browser can free the promoted layers,
+ *   - drop blur radii to ~30px (small composited texture, cheap to rasterize),
+ *   - tighten inset to -8% (less overdraw area),
+ *   - release `will-change` so the browser can free any promoted layer,
  *   - keep the gradients visible so the hero still has depth (static bg).
  *
  * DOM/JSX is untouched - this is a pure rendering-layer optimization.
  */
 @media (max-width: 768px), (hover: none) and (pointer: coarse) {
   .scope :global(.landing-v2-ambient-layer) {
-    animation: none !important;
-    filter: blur(32px);
+    animation: none;
+    animation-play-state: paused;
+    filter: blur(30px);
     will-change: auto;
-    /* Nudge inset back so the oversized bleed doesn't balloon the layer. */
     inset: -8%;
   }
 
   .scope :global(.landing-v2-ambient-layer-b) {
-    filter: blur(36px);
+    filter: blur(30px);
   }
 
   .scope :global(.landing-v2-hero-motion-plane) {
-    animation: none !important;
+    animation: none;
+    animation-play-state: paused;
     will-change: auto;
+    inset: -8%;
   }
 
   .scope :global(.landing-v2-hero-blob) {
-    animation: none !important;
-    filter: blur(28px);
+    animation: none;
+    animation-play-state: paused;
+    filter: blur(30px);
     will-change: auto;
   }
 }

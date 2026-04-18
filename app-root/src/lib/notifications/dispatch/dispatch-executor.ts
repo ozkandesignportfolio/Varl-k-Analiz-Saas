@@ -57,8 +57,15 @@ export const dispatchWithMetrics = async (
       case AppEventType.TEST_NOTIFICATION:
         outcome = "created";
         break;
-      default:
+      default: {
+        // Exhaustiveness guard — if a new DispatchSuccess variant is added,
+        // this line fails to compile, forcing the maintainer to handle it
+        // explicitly. Runtime fallback preserved for forward compatibility.
+        const _exhaustive: never = result;
+        void _exhaustive;
         outcome = "created";
+        break;
+      }
     }
   } else {
     outcome = "failed";

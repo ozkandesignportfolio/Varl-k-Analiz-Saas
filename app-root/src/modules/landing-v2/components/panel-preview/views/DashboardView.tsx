@@ -22,12 +22,27 @@ type RowTone = "critical" | "warning" | "info";
 
 const DASHBOARD_FILTERS = [7, 30, 90];
 
-const KPI_ITEMS = [
+type PreviewInsightTone = "positive" | "negative" | "neutral";
+
+const PREVIEW_INSIGHT_STYLES: Record<PreviewInsightTone, { text: string; dot: string }> = {
+  positive: { text: "text-emerald-300/70", dot: "bg-emerald-400/60" },
+  negative: { text: "text-amber-300/70", dot: "bg-amber-400/60" },
+  neutral: { text: "text-[#8DA6C8]/50", dot: "bg-slate-400/40" },
+};
+
+const KPI_ITEMS: Array<{
+  title: string;
+  value: string;
+  context: string;
+  insight: { tone: PreviewInsightTone; label: string };
+  icon: LucideIcon;
+  hrefLabel: string;
+}> = [
   {
     title: "Toplam Varlık",
     value: "148",
     context: "Kayıtlı varlık sayısı",
-    insight: "Son 30 günde +12 yeni",
+    insight: { tone: "positive", label: "İyi seviyede" },
     icon: Package,
     hrefLabel: "Detaya git",
   },
@@ -35,7 +50,7 @@ const KPI_ITEMS = [
     title: "Aktif Bakım Kuralı",
     value: "26",
     context: "Tanımlı aktif kural",
-    insight: "Son 30 günde +4 yeni",
+    insight: { tone: "positive", label: "İyi seviyede" },
     icon: Wrench,
     hrefLabel: "Detaya git",
   },
@@ -43,7 +58,7 @@ const KPI_ITEMS = [
     title: "Toplam Servis Maliyeti",
     value: "84.750 TL",
     context: "Son 30 gün",
-    insight: "Son 30 günde düşüş",
+    insight: { tone: "positive", label: "İyi seviyede" },
     icon: TrendingUp,
     hrefLabel: "Detaya git",
   },
@@ -51,7 +66,7 @@ const KPI_ITEMS = [
     title: "Belge Sayısı",
     value: "412",
     context: "Yüklü belge sayısı",
-    insight: "Son 30 günde +18 yeni",
+    insight: { tone: "neutral", label: "Aktivite yok" },
     icon: FileText,
     hrefLabel: "Detaya git",
   },
@@ -226,13 +241,19 @@ function DashboardViewComponent({ menuItem }: PanelPreviewViewProps) {
 
       <section className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-2">
-          <h4 className="text-base font-semibold tracking-tight text-[#F8FAFC]">Özet Metrikler</h4>
+          <div className="flex items-center gap-2">
+            <h4 className="text-base font-semibold tracking-tight text-[#F8FAFC]">Özet Metrikler</h4>
+            <span className="rounded-full border border-white/5 bg-white/[0.03] px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-[#8DA6C8]/60">
+              Örnek veri
+            </span>
+          </div>
           <p className="text-xs text-[#8DA6C8]">Son 30 gün</p>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {KPI_ITEMS.map((card) => {
             const Icon = card.icon;
+            const insightStyle = PREVIEW_INSIGHT_STYLES[card.insight.tone];
 
             return (
               <article
@@ -245,8 +266,11 @@ function DashboardViewComponent({ menuItem }: PanelPreviewViewProps) {
                 </div>
 
                 <p className="mt-6 text-3xl font-semibold tracking-tight text-[#F8FAFC]">{card.value}</p>
-                <p className="mt-1.5 text-xs text-[#8DA6C8]/70">{card.context}</p>
-                <p className="mt-1 text-xs text-[#8DA6C8]/60">{card.insight}</p>
+                <p className="mt-1.5 text-xs text-[#8DA6C8]/60">{card.context}</p>
+                <p className={`mt-1 inline-flex items-center gap-1.5 text-xs ${insightStyle.text}`}>
+                  <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${insightStyle.dot}`} />
+                  {card.insight.label}
+                </p>
 
                 <span className="mt-4 inline-flex items-center gap-1 text-xs text-[#8DA6C8] opacity-70 transition-opacity duration-200 group-hover:text-[#E2ECFF] group-hover:opacity-100">
                   {card.hrefLabel}
