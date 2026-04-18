@@ -1,11 +1,13 @@
 import "server-only";
 
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { logApiError } from "@/lib/api/logging";
 import { getSupabaseAdmin } from "@/lib/services/supabase-admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   AppEventType,
+  DispatchStage,
+  DispatchErrorCode,
   assertNever,
   type AppEvent,
   type DispatchResult,
@@ -43,11 +45,23 @@ export type NotificationResult =
 
 export type NotificationBatchResult = {
   successful: string[];
+  /**
+   * Batch dispatch'te oluşan `automation_events.id`'leri (traceability).
+   * `createBatch` kullanımında notification id'ler; `generateTestNotifications`
+   * kullanımında anchor event id'leri.
+   */
+  eventIds: string[];
   failed: Array<{ error: string; code?: string }>;
 };
 
 export type CreateNotificationInput = {
   userId: string;
+  /**
+   * Zorunlu traceability anchor: her notification tam olarak bir
+   * `automation_events` satırına referans verir. Bu alan olmadan yazım yapılmaz
+   * ve DB seviyesinde NOT NULL + FK tarafından tekrar zorlanır.
+   */
+  eventId: string;
   title: string;
   message: string;
   type: NotificationType;
@@ -62,7 +76,8 @@ export type AutomationTriggerType =
   | "maintenance_7_days"
   | "warranty_30_days"
   | "subscription_due"
-  | "service_log_created";
+  | "service_log_created"
+  | "app_event";
 
 export type EnqueueAutomationEventInput = {
   userId: string;
@@ -72,13 +87,29 @@ export type EnqueueAutomationEventInput = {
   assetId?: string | null;
   ruleId?: string | null;
   serviceLogId?: string | null;
+  /**
+   * Uygulama event kimliği. `automation_events.event_type` tipli kolonuna
+   * yazılır. Null ise bu satır bir DB-domain trigger'ı (ör. cron kaynaklı
+   * `maintenance_7_days`) sayılır ve kolon null kalır. Payload içine event
+   * kimliği YAZILMAZ (CHECK constraint ile yasak).
+   */
+  eventType?: AppEventType | null;
   payload?: Record<string, unknown>;
   runAfter?: string;
   context?: { route?: string; method?: string };
 };
 
 export type AutomationEnqueueResult =
-  | { ok: true; inserted: boolean }
+  | {
+      ok: true;
+      inserted: boolean;
+      /**
+       * `automation_events.id` — başarılı her enqueue sonucunda (yeni eklendi
+       * VEYA dedupe ile mevcut satıra eriflildi) daima dolu. Downstream
+       * `createNotification` için traceability anchorıdır.
+       */
+      eventId: string;
+    }
   | { ok: false; error: string; code?: string };
 
 /**
@@ -86,9 +117,8 @@ export type AutomationEnqueueResult =
  *
  * Servis katında asset-spesifik bir string literal KULLANILMAZ — kimlik yalnızca
  * `AppEventType.ASSET_CREATED` veya `AppEventType.ASSET_UPDATED` olabilir.
- * DB payload'larına da tam olarak bu enum değerleri (`"ASSET_CREATED"` /
- * `"ASSET_UPDATED"`) `payload.event_type` olarak yazılır; paralel bir kelime
- * (örn. `notification_kind: "asset_created"`) üretilmez.
+ * DB tarafında event kimliği tipli `automation_events.event_type` kolonunda
+ * tutulur; payload'a asla yazılmaz (CHECK constraint + runtime guard).
  */
 export type AssetEventType =
   | AppEventType.ASSET_CREATED
@@ -106,9 +136,18 @@ export type NotifyAssetEventInput = {
 };
 
 export type NotifyAssetEventResult =
-  | { ok: true; deduped: false; notificationId: string }
-  | { ok: true; deduped: true }
-  | { ok: false; error: string; code?: string; stage: "automation" | "notification" };
+  | { ok: true; deduped: false; eventId: string; notificationId: string }
+  | { ok: true; deduped: true; eventId: string }
+  | {
+      ok: false;
+      error: string;
+      /** Zorunlu standart hata kodu. Serbest string yasak. */
+      code: DispatchErrorCode;
+      stage:
+        | DispatchStage.VALIDATE
+        | DispatchStage.PERSIST_EVENT
+        | DispatchStage.CREATE_NOTIFICATION;
+    };
 
 // ---------------------------------------------------------------------------
 // İç yardımcılar
@@ -120,10 +159,159 @@ const logEvent = (event: string, payload: Record<string, unknown>) => {
   console.log(`${SERVICE_TAG} ${event}`, payload);
 };
 
+// ---------------------------------------------------------------------------
+// Observability: dispatch metric emitter
+//
+// Her dispatch çağrısı için stdout'a tek satır yapılandırılmış JSON log yazar.
+// Log aggregator (Vercel / Supabase logs / Datadog) bu satırları counter ve
+// histogram olarak türetir:
+//   - outcome="created"  -> event_created_count, notification_created_count
+//   - outcome="deduped"  -> dedupe_suppressed_count
+//   - outcome="failed"   -> event_failed_count | notification_failed_count
+//   - latency_ms         -> dispatch_latency_ms histogramı
+// String literal kaçağı yok: stage/code alanları enum değerleriyle gelir.
+// ---------------------------------------------------------------------------
+type DispatchMetricOutcome = "created" | "deduped" | "failed";
+
+const emitDispatchMetric = (payload: {
+  outcome: DispatchMetricOutcome;
+  eventType: AppEventType | null;
+  userId: string | null;
+  eventId: string | null;
+  dedupeKey: string | null;
+  notificationId?: string | null;
+  latencyMs: number;
+  stage?: DispatchStage | null;
+  code?: string | null;
+  error?: string | null;
+  route?: string | null;
+  method?: string | null;
+}) => {
+  try {
+    process.stdout.write(
+      `${JSON.stringify({
+        level: "info",
+        event: "dispatch:outcome",
+        ts: new Date().toISOString(),
+        outcome: payload.outcome,
+        event_type: payload.eventType,
+        user_id: payload.userId,
+        event_id: payload.eventId,
+        dedupe_key: payload.dedupeKey,
+        notification_id: payload.notificationId ?? null,
+        latency_ms: Math.max(0, Math.round(payload.latencyMs)),
+        stage: payload.stage ?? null,
+        code: payload.code ?? null,
+        error: payload.error ?? null,
+        route: payload.route ?? null,
+        method: payload.method ?? null,
+      })}\n`,
+    );
+  } catch {
+    // Serialization hatası durumunda bile dispatch akışını bozmayız.
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Dead letter: kalıcı dispatch hatalarını kaydet
+//
+// Kaydın kendisi başarısız olsa bile dispatch akışını bozmaz (best-effort).
+// Böylece monitoring logları kaybolursa bile operator bir tablo üzerinden
+// hatalı event'leri sorgulayabilir.
+// ---------------------------------------------------------------------------
+const recordDeadLetter = async (
+  adminClient: SupabaseClient,
+  input: {
+    userId: string | null;
+    eventType: AppEventType | null;
+    dedupeKey: string | null;
+    triggerType: string | null;
+    stage: DispatchStage;
+    code: string | null;
+    message: string;
+    payload: Record<string, unknown>;
+    route?: string | null;
+    method?: string | null;
+  },
+): Promise<void> => {
+  try {
+    const { error } = await adminClient.from("dead_letter_events").insert({
+      user_id: input.userId,
+      event_type: input.eventType,
+      dedupe_key: input.dedupeKey,
+      trigger_type: input.triggerType,
+      stage: input.stage,
+      error_code: input.code,
+      error_message: input.message,
+      payload: input.payload ?? {},
+      route: input.route ?? null,
+      method: input.method ?? null,
+    });
+    if (error) {
+      logEvent("DEAD_LETTER_INSERT_FAILED", { error: error.message });
+    }
+  } catch (e) {
+    logEvent("DEAD_LETTER_EXCEPTION", {
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+};
+
 const normalizeContext = (ctx?: { route?: string; method?: string }) => ({
   route: ctx?.route?.trim() || "unknown",
   method: ctx?.method?.trim() || "POST",
 });
+
+/**
+ * Deterministik idempotency anahtarı. Aynı `(eventType, userId, entityId,
+ * timeBucket)` dizisi aynı anahtarı üretir; eşzamanlı yeniden deneme ve tekrar
+ * dispatch örneklerinde DB'deki UNIQUE(dedupe_key) + ON CONFLICT semantiği ile
+ * birleşip duplicate yazılmasını engeller. SHA-256 hex; kalıcı ve çarpışmaya
+ * dayanıklı.
+ */
+const buildDedupeKey = (parts: {
+  eventType: AppEventType;
+  userId: string;
+  /** Üretici varlığın ID'si (asset, subscription vb.) veya null. */
+  entityId?: string | null;
+  /**
+   * Zaman/versiyon bucket’ı. ASSET_UPDATED için `changeVersion`; tek-sefer
+   * event'ler (ASSET_CREATED, USER_WELCOME) için null.
+   */
+  timeBucket?: string | null;
+}): string => {
+  const raw = [
+    parts.eventType,
+    parts.userId,
+    parts.entityId ?? "",
+    parts.timeBucket ?? "",
+  ].join("|");
+  return createHash("sha256").update(raw).digest("hex");
+};
+
+/**
+ * Payload içinde event kimliği taşıyan legacy anahtarların yazılmasını runtime'da
+ * engeller. DB'de `automation_events_payload_no_event_identity_keys` CHECK
+ * constraint'i zaten bu ihlali reddeder; bu guard ilk savunma hattıdır ve hata
+ * mesajını uygulama katmanında anlaşılır kılar.
+ */
+const FORBIDDEN_PAYLOAD_KEYS = ["event_type", "notification_kind"] as const;
+
+const assertNoEventIdentityInPayload = (
+  payload: Record<string, unknown> | undefined,
+): { ok: true } | { ok: false; error: string; code: "forbidden_payload_key" } => {
+  if (!payload) return { ok: true };
+  for (const key of FORBIDDEN_PAYLOAD_KEYS) {
+    if (key in payload) {
+      return {
+        ok: false,
+        error: `Payload must not contain event identity key '${key}'. Use automation_events.event_type column instead.`,
+        code: "forbidden_payload_key",
+      };
+    }
+  }
+  return { ok: true };
+};
 
 const buildAssetUiCopy = (
   eventType: AssetEventType,
@@ -181,13 +369,19 @@ export const createNotificationService = (
   const createNotification = async (
     input: CreateNotificationInput,
   ): Promise<NotificationResult> => {
-    const { userId, title, message, type, source, actionHref, actionLabel } = input;
+    const { userId, eventId, title, message, type, source, actionHref, actionLabel } = input;
     const { route, method } = normalizeContext(input.context);
 
-    logEvent("CREATE_ATTEMPT", { userId, title, type, route });
+    logEvent("CREATE_ATTEMPT", { userId, eventId, title, type, route });
 
     if (!userId?.trim()) {
       return { ok: false, error: "User ID is required", code: "missing_user_id" };
+    }
+    if (!eventId?.trim()) {
+      // Traceability invariant: her notification bir automation_events satırına
+      // anchor olmalı. Bu kontrol uygulama seviyesinde ilk savunma hattı;
+      // DB'de NOT NULL + FK ile tekrar zorlanır.
+      return { ok: false, error: "eventId is required", code: "missing_event_id" };
     }
     if (!title?.trim()) {
       return { ok: false, error: "Title is required", code: "missing_title" };
@@ -199,6 +393,7 @@ export const createNotificationService = (
     try {
       const row: Record<string, unknown> = {
         user_id: userId,
+        event_id: eventId,
         title: title.trim(),
         message: message.trim(),
         type,
@@ -265,11 +460,12 @@ export const createNotificationService = (
   ): Promise<NotificationBatchResult> => {
     logEvent("BATCH_ATTEMPT", { count: inputs.length });
 
-    const result: NotificationBatchResult = { successful: [], failed: [] };
+    const result: NotificationBatchResult = { successful: [], eventIds: [], failed: [] };
     for (const input of inputs) {
       const r = await createNotification(input);
       if (r.ok) {
         result.successful.push(r.id);
+        result.eventIds.push(input.eventId);
       } else {
         result.failed.push({ error: r.error, code: r.code });
       }
@@ -299,12 +495,21 @@ export const createNotificationService = (
       return { ok: false, error: "dedupeKey is required", code: "missing_dedupe_key" };
     }
 
+    // Payload guard: event kimliği taşıyan legacy anahtarlar yasak. DB CHECK'i
+    // yanında runtime'da da reddediyoruz ki caller anlaşılır bir hata alsın.
+    const payloadGuard = assertNoEventIdentityInPayload(input.payload);
+    if (!payloadGuard.ok) {
+      logEvent("AUTOMATION_PAYLOAD_GUARD", { userId, dedupeKey, error: payloadGuard.error });
+      return { ok: false, error: payloadGuard.error, code: payloadGuard.code };
+    }
+
     const row = {
       user_id: userId,
       asset_id: input.assetId ?? null,
       rule_id: input.ruleId ?? null,
       service_log_id: input.serviceLogId ?? null,
       trigger_type: triggerType,
+      event_type: input.eventType ?? null,
       actions: input.actions ?? [],
       payload: input.payload ?? {},
       dedupe_key: dedupeKey,
@@ -342,8 +547,49 @@ export const createNotificationService = (
 
       // ignoreDuplicates=true → duplicate ise data boş dizi döner.
       const inserted = Array.isArray(data) && data.length > 0;
-      logEvent("AUTOMATION_UPSERT", { userId, dedupeKey, inserted });
-      return { ok: true, inserted };
+      let eventId: string | null = null;
+
+      if (inserted) {
+        eventId = (data?.[0]?.id as string | undefined) ?? null;
+      } else {
+        // Mevcut (duplicate) satırın id'sini dedupe_key üzerinden çöz — downstream
+        // createNotification için traceability anchor'ı zorunlu.
+        const existing = await adminClient
+          .from("automation_events")
+          .select("id")
+          .eq("dedupe_key", dedupeKey)
+          .maybeSingle();
+
+        if (existing.error) {
+          logApiError({
+            route,
+            method,
+            userId,
+            error: existing.error,
+            status: 500,
+            message: "Failed to resolve existing automation_event id for dedupe_key",
+            meta: { triggerType, dedupeKey },
+          });
+          return {
+            ok: false,
+            error: `Database error: ${existing.error.message}`,
+            code: existing.error.code,
+          };
+        }
+        eventId = (existing.data?.id as string | undefined) ?? null;
+      }
+
+      if (!eventId) {
+        logEvent("AUTOMATION_UPSERT_NO_ID", { userId, dedupeKey, inserted });
+        return {
+          ok: false,
+          error: "Could not resolve automation_events.id after upsert",
+          code: "event_id_unresolved",
+        };
+      }
+
+      logEvent("AUTOMATION_UPSERT", { userId, dedupeKey, inserted, eventId });
+      return { ok: true, inserted, eventId };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
       logApiError({
@@ -360,15 +606,21 @@ export const createNotificationService = (
   };
 
   // -------------------------------------------------------------------------
-  // notifyAssetEvent — dedupe-aware yüksek seviyeli API
-  //   1) Önce automation_events upsert (idempotency anchor).
-  //   2) Yeni ise `notifications` insert; duplicate ise atla.
+  // notifyAssetEvent — atomic (event + notification tek RPC'de)
+  //
+  // `dispatch_app_event` RPC iki kayıdı tek transaction'da ve retry-safe
+  // biçimde yazar. Eğer önceki bir deneme event'i yazmış ama notification'ı
+  // yazamadan başarısız olmuşsa, bu retry eksik notification'ı self-heal eder
+  // (RPC içindeki "event var / notification yok" kontrolü).
   // -------------------------------------------------------------------------
   const notifyAssetEvent = async (
     input: NotifyAssetEventInput,
   ): Promise<NotifyAssetEventResult> => {
-    const { userId, assetId, dedupeKey, eventType } = input;
-    const ctx = input.context;
+    const { userId, assetId, eventType } = input;
+    const { route, method } = normalizeContext(input.context);
+    // Downstream dedupe_key servisin ürettiği semantiğe sadık kalsın
+    // (mevcut ":email" suffix'i idempotency contract'ının parçası).
+    const dedupeKey = `${input.dedupeKey}:email`;
 
     const assetCategory =
       typeof input.payload?.asset_category === "string"
@@ -377,53 +629,168 @@ export const createNotificationService = (
           ? input.payload.category
           : null;
 
-    // DB payload'ı: event kimliği YALNIZCA `event_type` alanında, AppEventType
-    // değerinden türetilir. Paralel bir string marker (notification_kind vs.)
-    // yazılmaz.
-    const sharedPayload: Record<string, unknown> = {
+    // Payload yalnızca sunum/yardımcı alanları taşır. Event kimliği kolonda.
+    const eventPayload: Record<string, unknown> = {
       asset_name: input.assetName,
-      event_type: eventType,
       action_href: `/assets/${assetId}`,
+      email_only: true,
       ...(assetCategory ? { asset_category: assetCategory } : {}),
       ...input.payload,
     };
 
-    // 1) Idempotency: automation_events upsert
-    const automation = await enqueueAutomationEvent({
-      userId,
-      triggerType: "service_log_created",
-      dedupeKey: `${dedupeKey}:email`,
-      actions: ["email"],
-      assetId,
-      payload: { ...sharedPayload, email_only: true },
-      context: ctx,
-    });
-
-    if (!automation.ok) {
-      return { ok: false, error: automation.error, code: automation.code, stage: "automation" };
+    // Payload guard: legacy event identity anahtarları yasak.
+    const guard = assertNoEventIdentityInPayload(eventPayload);
+    if (!guard.ok) {
+      logEvent("ASSET_EVENT_PAYLOAD_GUARD", { userId, dedupeKey, error: guard.error });
+      await recordDeadLetter(adminClient, {
+        userId,
+        eventType,
+        dedupeKey,
+        triggerType: "service_log_created",
+        stage: DispatchStage.VALIDATE,
+        code: DispatchErrorCode.FORBIDDEN_PAYLOAD_KEY,
+        message: guard.error,
+        payload: eventPayload,
+        route,
+        method,
+      });
+      return {
+        ok: false,
+        error: guard.error,
+        code: DispatchErrorCode.FORBIDDEN_PAYLOAD_KEY,
+        stage: DispatchStage.VALIDATE,
+      };
     }
 
-    if (!automation.inserted) {
-      // Bu olay için UI bildirimi daha önce üretildi. Duplicate yazmıyoruz.
-      logEvent("ASSET_EVENT_DEDUPED", { userId, assetId, dedupeKey, eventType });
-      return { ok: true, deduped: true };
-    }
-
-    // 2) Yeni event → UI bildirimi oluştur
     const copy = buildAssetUiCopy(eventType, input.assetName);
-    const result = await createNotification({
-      userId,
-      title: copy.title,
-      message: copy.message,
-      type: "Sistem",
-      context: ctx,
-    });
 
-    if (!result.ok) {
-      return { ok: false, error: result.error, code: result.code, stage: "notification" };
+    try {
+      const { data, error } = await adminClient.rpc("dispatch_app_event", {
+        p_user_id: userId,
+        p_dedupe_key: dedupeKey,
+        p_trigger_type: "service_log_created",
+        p_event_type: eventType,
+        p_asset_id: assetId ?? null,
+        p_rule_id: null,
+        p_service_log_id: null,
+        p_actions: ["email"],
+        p_payload: eventPayload,
+        p_run_after: new Date().toISOString(),
+        p_notification_title: copy.title,
+        p_notification_message: copy.message,
+        p_notification_type: "Sistem",
+        p_notification_source: null,
+        p_notification_action_href: `/assets/${assetId}`,
+        p_notification_action_label: null,
+      });
+
+      if (error) {
+        logEvent("ASSET_EVENT_RPC_FAILED", {
+          userId,
+          dedupeKey,
+          error: error.message,
+          code: error.code,
+        });
+        logApiError({
+          route,
+          method,
+          userId,
+          error,
+          status: 500,
+          message: "dispatch_app_event RPC failed (asset event)",
+          meta: { eventType, dedupeKey },
+        });
+        await recordDeadLetter(adminClient, {
+          userId,
+          eventType,
+          dedupeKey,
+          triggerType: "service_log_created",
+          stage: DispatchStage.PERSIST_EVENT,
+          code: DispatchErrorCode.RPC_FAILED,
+          message: error.message,
+          payload: eventPayload,
+          route,
+          method,
+        });
+        return {
+          ok: false,
+          error: `Database error: ${error.message}`,
+          code: DispatchErrorCode.RPC_FAILED,
+          stage: DispatchStage.PERSIST_EVENT,
+        };
+      }
+
+      const row = Array.isArray(data) ? data[0] : data;
+      const eventId = (row?.event_id as string | undefined) ?? null;
+      const notificationId = (row?.notification_id as string | undefined) ?? null;
+      const eventInserted = Boolean(row?.event_inserted);
+      const notificationCreated = Boolean(row?.notification_created);
+
+      if (!eventId) {
+        await recordDeadLetter(adminClient, {
+          userId,
+          eventType,
+          dedupeKey,
+          triggerType: "service_log_created",
+          stage: DispatchStage.PERSIST_EVENT,
+          code: DispatchErrorCode.EVENT_ID_UNRESOLVED,
+          message: "dispatch_app_event returned no event_id",
+          payload: eventPayload,
+          route,
+          method,
+        });
+        return {
+          ok: false,
+          error: "dispatch_app_event returned no event_id",
+          code: DispatchErrorCode.EVENT_ID_UNRESOLVED,
+          stage: DispatchStage.PERSIST_EVENT,
+        };
+      }
+
+      logEvent("ASSET_EVENT_DISPATCHED", {
+        userId,
+        dedupeKey,
+        eventId,
+        eventInserted,
+        notificationCreated,
+      });
+
+      // Notification oluşturulduysa (ilk dispatch veya self-heal) deduped=false.
+      // Tam duplicate (event de notification da zaten vardı) → deduped=true.
+      if (notificationCreated && notificationId) {
+        return { ok: true, deduped: false, eventId, notificationId };
+      }
+      return { ok: true, deduped: true, eventId };
+    } catch (e) {
+      const errorMsg = e instanceof Error ? e.message : "Unknown error";
+      logApiError({
+        route,
+        method,
+        userId,
+        error: e,
+        status: 500,
+        message: "Exception in dispatch_app_event (asset event)",
+        meta: { eventType, dedupeKey },
+      });
+      await recordDeadLetter(adminClient, {
+        userId,
+        eventType,
+        dedupeKey,
+        triggerType: "service_log_created",
+        stage: DispatchStage.PERSIST_EVENT,
+        code: DispatchErrorCode.EXCEPTION,
+        message: errorMsg,
+        payload: eventPayload,
+        route,
+        method,
+      });
+      return {
+        ok: false,
+        error: `Exception: ${errorMsg}`,
+        code: DispatchErrorCode.EXCEPTION,
+        stage: DispatchStage.PERSIST_EVENT,
+      };
     }
-
-    return { ok: true, deduped: false, notificationId: result.id };
   };
 
   // -------------------------------------------------------------------------
@@ -436,6 +803,7 @@ export const createNotificationService = (
     message: string;
     type: NotificationType;
     triggerType: AutomationTriggerType;
+    eventType?: AppEventType;
     createdAt: string;
     actionHref: string;
     payload?: Record<string, unknown>;
@@ -449,9 +817,9 @@ export const createNotificationService = (
         message: "Bir varlığınızın bilgileri güncellendi.",
         type: "Sistem",
         triggerType: "service_log_created",
+        eventType: AppEventType.ASSET_UPDATED,
         createdAt: new Date(now).toISOString(),
         actionHref: "/assets",
-        payload: { event_type: AppEventType.ASSET_UPDATED },
       },
       {
         title: "Bakım zamanı yaklaşıyor",
@@ -484,7 +852,7 @@ export const createNotificationService = (
     userId: string,
   ): Promise<NotificationBatchResult> => {
     const ctx = { route: "/api/notifications/test", method: "POST" as const };
-    const result: NotificationBatchResult = { successful: [], failed: [] };
+    const result: NotificationBatchResult = { successful: [], eventIds: [], failed: [] };
 
     if (!userId?.trim()) {
       result.failed.push({ error: "User ID is required", code: "missing_user_id" });
@@ -497,6 +865,7 @@ export const createNotificationService = (
       const enqueue = await enqueueAutomationEvent({
         userId,
         triggerType: draft.triggerType,
+        eventType: draft.eventType ?? null,
         dedupeKey: `test-notification:${userId}:${draft.triggerType}:${randomUUID()}`,
         assetId: null,
         payload: {
@@ -517,6 +886,7 @@ export const createNotificationService = (
         continue;
       }
       result.successful.push(draft.triggerType);
+      result.eventIds.push(enqueue.eventId);
     }
 
     logEvent("TEST_NOTIFICATIONS_COMPLETE", {
@@ -534,7 +904,9 @@ export const createNotificationService = (
   //   normalleştirilir. Yeni bir AppEventType eklenirse assertNever derleme
   //   zamanında hata üretir.
   // -------------------------------------------------------------------------
-  const dispatch = async (
+  // Dispatch iç implementasyonu — dış `dispatch` wrapper'ı latency ölçüp
+  // `emitDispatchMetric` ile outcome'u yapılandırılmış log olarak yayar.
+  const dispatchInner = async (
     event: AppEvent,
     context?: { route?: string; method?: string },
   ): Promise<DispatchResult> => {
@@ -547,7 +919,11 @@ export const createNotificationService = (
           eventType: AppEventType.ASSET_CREATED,
           assetId: event.assetId,
           assetName: event.assetName,
-          dedupeKey: `asset-created:${event.assetId}`,
+          dedupeKey: buildDedupeKey({
+            eventType: AppEventType.ASSET_CREATED,
+            userId: event.userId,
+            entityId: event.assetId,
+          }),
           payload: event.payload,
           context,
         });
@@ -563,6 +939,7 @@ export const createNotificationService = (
         return {
           ok: true,
           type: event.type,
+          eventId: result.eventId,
           deduped: result.deduped,
           notificationId: result.deduped ? undefined : result.notificationId,
         };
@@ -574,7 +951,12 @@ export const createNotificationService = (
           eventType: AppEventType.ASSET_UPDATED,
           assetId: event.assetId,
           assetName: event.assetName,
-          dedupeKey: `asset-updated:${event.assetId}:${event.changeVersion}`,
+          dedupeKey: buildDedupeKey({
+            eventType: AppEventType.ASSET_UPDATED,
+            userId: event.userId,
+            entityId: event.assetId,
+            timeBucket: event.changeVersion,
+          }),
           payload: event.payload,
           context,
         });
@@ -590,32 +972,138 @@ export const createNotificationService = (
         return {
           ok: true,
           type: event.type,
+          eventId: result.eventId,
           deduped: result.deduped,
           notificationId: result.deduped ? undefined : result.notificationId,
         };
       }
 
       case AppEventType.USER_WELCOME: {
-        const result = await createNotification({
+        // USER_WELCOME atomic: event + notification tek RPC transaction'ında.
+        // Retry-safe: önceki kısmi başarısızlık varsa (event yazıldı,
+        // notification yazılamadı) RPC self-heal eder.
+        const { route, method } = normalizeContext(context);
+        const dedupeKey = buildDedupeKey({
+          eventType: AppEventType.USER_WELCOME,
           userId: event.userId,
-          title: "Hoş geldiniz",
-          message: "Assetly'ye hoş geldiniz! Bildirim sistemi aktif.",
-          type: "Sistem",
-          source: "system",
-          actionHref: "/assets",
-          actionLabel: "Varlıklarım",
-          context,
         });
-        if (!result.ok) {
+
+        try {
+          const { data, error } = await adminClient.rpc("dispatch_app_event", {
+            p_user_id: event.userId,
+            p_dedupe_key: dedupeKey,
+            p_trigger_type: "app_event",
+            p_event_type: AppEventType.USER_WELCOME,
+            p_asset_id: null,
+            p_rule_id: null,
+            p_service_log_id: null,
+            p_actions: [],
+            p_payload: {},
+            p_run_after: new Date().toISOString(),
+            p_notification_title: "Hoş geldiniz",
+            p_notification_message:
+              "Assetly'ye hoş geldiniz! Bildirim sistemi aktif.",
+            p_notification_type: "Sistem",
+            p_notification_source: "system",
+            p_notification_action_href: "/assets",
+            p_notification_action_label: "Varlıklarım",
+          });
+
+          if (error) {
+            logApiError({
+              route,
+              method,
+              userId: event.userId,
+              error,
+              status: 500,
+              message: "dispatch_app_event RPC failed (USER_WELCOME)",
+              meta: { dedupeKey },
+            });
+            await recordDeadLetter(adminClient, {
+              userId: event.userId,
+              eventType: AppEventType.USER_WELCOME,
+              dedupeKey,
+              triggerType: "app_event",
+              stage: DispatchStage.PERSIST_EVENT,
+              code: DispatchErrorCode.RPC_FAILED,
+              message: error.message,
+              payload: {},
+              route,
+              method,
+            });
+            return {
+              ok: false,
+              type: event.type,
+              error: `Database error: ${error.message}`,
+              code: DispatchErrorCode.RPC_FAILED,
+              stage: DispatchStage.PERSIST_EVENT,
+            };
+          }
+
+          const row = Array.isArray(data) ? data[0] : data;
+          const eventId = (row?.event_id as string | undefined) ?? null;
+          const notificationId =
+            (row?.notification_id as string | undefined) ?? null;
+
+          if (!eventId || !notificationId) {
+            await recordDeadLetter(adminClient, {
+              userId: event.userId,
+              eventType: AppEventType.USER_WELCOME,
+              dedupeKey,
+              triggerType: "app_event",
+              stage: DispatchStage.PERSIST_EVENT,
+              code: DispatchErrorCode.EVENT_ID_UNRESOLVED,
+              message: "dispatch_app_event returned incomplete row",
+              payload: { eventId, notificationId },
+              route,
+              method,
+            });
+            return {
+              ok: false,
+              type: event.type,
+              error: "dispatch_app_event returned incomplete row",
+              code: DispatchErrorCode.EVENT_ID_UNRESOLVED,
+              stage: DispatchStage.PERSIST_EVENT,
+            };
+          }
+
+          return {
+            ok: true,
+            type: event.type,
+            eventId,
+            notificationId,
+          };
+        } catch (e) {
+          const errorMsg = e instanceof Error ? e.message : "Unknown error";
+          logApiError({
+            route,
+            method,
+            userId: event.userId,
+            error: e,
+            status: 500,
+            message: "Exception in dispatch_app_event (USER_WELCOME)",
+            meta: { dedupeKey },
+          });
+          await recordDeadLetter(adminClient, {
+            userId: event.userId,
+            eventType: AppEventType.USER_WELCOME,
+            dedupeKey,
+            triggerType: "app_event",
+            stage: DispatchStage.PERSIST_EVENT,
+            code: DispatchErrorCode.EXCEPTION,
+            message: errorMsg,
+            payload: {},
+            route,
+            method,
+          });
           return {
             ok: false,
             type: event.type,
-            error: result.error,
-            code: result.code,
-            stage: "notification",
+            error: `Exception: ${errorMsg}`,
+            code: DispatchErrorCode.EXCEPTION,
+            stage: DispatchStage.PERSIST_EVENT,
           };
         }
-        return { ok: true, type: event.type, notificationId: result.id };
       }
 
       case AppEventType.TEST_NOTIFICATION: {
@@ -625,6 +1113,7 @@ export const createNotificationService = (
         return {
           ok: true,
           type: event.type,
+          eventIds: batch.eventIds,
           successful: batch.successful.length,
           failed: batch.failed.length,
         };
@@ -633,6 +1122,77 @@ export const createNotificationService = (
       default:
         return assertNever(event);
     }
+  };
+
+  // -------------------------------------------------------------------------
+  // dispatch — observability wrapper (timer + outcome metric)
+  //
+  // Tüm event girişlerini tek noktada ölçer ve `dispatch:outcome` yapılandırılmış
+  // log satırı yayar. Log aggregator bu satırlardan şu metrikleri türetir:
+  //   - event_created_count / notification_created_count (outcome="created")
+  //   - dedupe_suppressed_count (outcome="deduped")
+  //   - event_failed_count / notification_failed_count (outcome="failed")
+  //   - dispatch_latency_ms histogramı (latency_ms alanı)
+  // -------------------------------------------------------------------------
+  const dispatch = async (
+    event: AppEvent,
+    context?: { route?: string; method?: string },
+  ): Promise<DispatchResult> => {
+    const startedAt = Date.now();
+    const { route, method } = normalizeContext(context);
+    const result = await dispatchInner(event, context);
+    const latencyMs = Date.now() - startedAt;
+
+    // Outcome + alan çıkarımı (string literal kaçağı yok; hep enum/union).
+    let outcome: DispatchMetricOutcome;
+    let eventId: string | null = null;
+    let notificationId: string | null = null;
+    let stage: DispatchStage | null = null;
+    let code: string | null = null;
+    let errorMsg: string | null = null;
+
+    if (result.ok) {
+      switch (result.type) {
+        case AppEventType.ASSET_CREATED:
+        case AppEventType.ASSET_UPDATED:
+          eventId = result.eventId;
+          notificationId = result.notificationId ?? null;
+          outcome = result.deduped ? "deduped" : "created";
+          break;
+        case AppEventType.USER_WELCOME:
+          eventId = result.eventId;
+          notificationId = result.notificationId;
+          outcome = "created";
+          break;
+        case AppEventType.TEST_NOTIFICATION:
+          outcome = "created";
+          break;
+        default:
+          outcome = "created";
+      }
+    } else {
+      outcome = "failed";
+      stage = result.stage;
+      code = result.code ?? null;
+      errorMsg = result.error;
+    }
+
+    emitDispatchMetric({
+      outcome,
+      eventType: event.type,
+      userId: event.userId,
+      eventId,
+      dedupeKey: null,
+      notificationId,
+      latencyMs,
+      stage,
+      code,
+      error: errorMsg,
+      route,
+      method,
+    });
+
+    return result;
   };
 
   return {

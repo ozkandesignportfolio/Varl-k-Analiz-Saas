@@ -6,20 +6,16 @@ import type {
 import { AppEventType } from "@/lib/events/app-event";
 
 /**
- * DB payload'undan event kimliğini çözer. Tek kaynak `AppEventType`; payload'da
- * yer alabilecek geçerli değerler enum stringleridir (örn. `"ASSET_CREATED"`).
- * Tanımlanmamış veya yabancı değerlerde `null` döner; ikinci bir kelime sistemi
- * tanınmaz.
+ * DB kolonundan gelen event kimliğini enum'a normalize eder. YALNIZCA
+ * `automation_events.event_type` tipli kolonu kaynak olarak kullanır — payload
+ * içinden fallback YAPILMAZ (DB CHECK o anahtarı zaten yasaklıyor).
  */
-const resolveAppEventType = (
-  payload: Record<string, unknown> | null,
-): AppEventType | null => {
-  const raw = payload?.event_type;
-  if (typeof raw !== "string") {
+const normalizeAppEventType = (value: unknown): AppEventType | null => {
+  if (typeof value !== "string") {
     return null;
   }
-  return (Object.values(AppEventType) as string[]).includes(raw)
-    ? (raw as AppEventType)
+  return (Object.values(AppEventType) as string[]).includes(value)
+    ? (value as AppEventType)
     : null;
 };
 
@@ -27,6 +23,12 @@ export type AutomationEventNotificationInput = {
   id: string;
   assetId: string | null;
   triggerType: string;
+  /**
+   * Tipli `automation_events.event_type` kolonu. Sorgular bu alanı doğrudan
+   * seçmeli ve payload'a düşmemelidir. Null ise bu satır bir app event'e
+   * karşılık gelmeyen (DB-domain) bir trigger'dır.
+   */
+  appEventType: AppEventType | string | null;
   payload: Record<string, unknown> | null;
   status: string;
   createdAt: string;
@@ -156,6 +158,7 @@ const resolveTypeFromEvent = (
 const resolveText = (
   triggerType: string,
   payload: Record<string, unknown> | null,
+  appEventType: AppEventType | null,
 ): NotificationText => {
   const customTitle = toSafeString(payload?.title);
   const customMessage = toSafeString(payload?.message);
@@ -169,7 +172,6 @@ const resolveText = (
 
   const assetName = toSafeString(payload?.asset_name);
   const assetSubject = assetName ? `${assetName} varlığınız` : "Varlığınız";
-  const appEventType = resolveAppEventType(payload);
   const ruleTitle = toSafeString(payload?.rule_title, "planlı bakım");
   const warrantyDate = formatDate(toSafeString(payload?.warranty_end_date));
   const nextDueDate = formatDate(toSafeString(payload?.next_due_date));
@@ -277,13 +279,12 @@ const resolveActionHref = (
   triggerType: string,
   payload: Record<string, unknown> | null,
   assetId: string | null,
+  appEventType: AppEventType | null,
 ) => {
   const customActionHref = toSafeString(payload?.action_href);
   if (customActionHref) {
     return customActionHref;
   }
-
-  const appEventType = resolveAppEventType(payload);
 
   if (
     appEventType === AppEventType.ASSET_CREATED ||
@@ -338,9 +339,15 @@ export function mapAutomationEventToNotification(
   }
 
   try {
+    const appEventType = normalizeAppEventType(input.appEventType);
     const type = resolveTypeFromEvent(input.triggerType, input.payload) as NotificationType;
-    const text = resolveText(input.triggerType, input.payload);
-    const actionHref = resolveActionHref(input.triggerType, input.payload, input.assetId);
+    const text = resolveText(input.triggerType, input.payload, appEventType);
+    const actionHref = resolveActionHref(
+      input.triggerType,
+      input.payload,
+      input.assetId,
+      appEventType,
+    );
 
     // Ensure safe defaults
     const safeTitle = text.title || "Bildirim";

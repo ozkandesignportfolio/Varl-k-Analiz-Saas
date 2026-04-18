@@ -86,27 +86,74 @@ export type DispatchSuccess =
   | {
       ok: true;
       type: AppEventType.ASSET_CREATED | AppEventType.ASSET_UPDATED;
+      /** `automation_events.id` — her başarılı dispatch için tekil ve zorunlu. */
+      eventId: string;
       deduped: boolean;
+      /** Deduped ise undefined — ilk dispatch'ten gelen notificationId kalır. */
       notificationId?: string;
     }
   | {
       ok: true;
       type: AppEventType.USER_WELCOME;
+      eventId: string;
       notificationId: string;
     }
   | {
       ok: true;
       type: AppEventType.TEST_NOTIFICATION;
+      /** Batch dispatch — her draft için oluşturulan anchor event id'leri. */
+      eventIds: string[];
       successful: number;
       failed: number;
     };
 
+/**
+ * Dispatch pipeline aşamaları. Her `dispatch(event)` çağrısı bu sıradan geçer:
+ *   VALIDATE → PERSIST_EVENT → CREATE_NOTIFICATION → SIDE_EFFECTS → COMPLETE
+ *
+ * Failure sonucunda `stage` alanı hatanın hangi aşamada oluştuğunu tek kaynaktan
+ * gösterir. String literal kullanılmaz.
+ */
+export enum DispatchStage {
+  VALIDATE = "VALIDATE",
+  PERSIST_EVENT = "PERSIST_EVENT",
+  CREATE_NOTIFICATION = "CREATE_NOTIFICATION",
+  SIDE_EFFECTS = "SIDE_EFFECTS",
+  COMPLETE = "COMPLETE",
+}
+
+/**
+ * Standart dispatch hata kodları. Bir hata durumunda
+ * `{ code: DispatchErrorCode }` alanı observability ve dead-letter kayıtlarında
+ * tek kaynak olarak kullanılır. String literal ile kod üretmek YASAK.
+ */
+export enum DispatchErrorCode {
+  MISSING_USER_ID = "MISSING_USER_ID",
+  MISSING_DEDUPE_KEY = "MISSING_DEDUPE_KEY",
+  MISSING_EVENT_ID = "MISSING_EVENT_ID",
+  MISSING_TITLE = "MISSING_TITLE",
+  MISSING_MESSAGE = "MISSING_MESSAGE",
+  FORBIDDEN_PAYLOAD_KEY = "FORBIDDEN_PAYLOAD_KEY",
+  EVENT_INSERT_FAILED = "EVENT_INSERT_FAILED",
+  EVENT_ID_UNRESOLVED = "EVENT_ID_UNRESOLVED",
+  NOTIFICATION_CREATE_FAILED = "NOTIFICATION_CREATE_FAILED",
+  DUPLICATE_EVENT_SUPPRESSED = "DUPLICATE_EVENT_SUPPRESSED",
+  RPC_FAILED = "RPC_FAILED",
+  EXCEPTION = "EXCEPTION",
+}
+
 export type DispatchFailure = {
   ok: false;
   type: AppEventType;
+  /** İnsan okunur hata mesajı. Observability için serbest metin. */
   error: string;
-  code?: string;
-  stage?: string;
+  /**
+   * Standart hata kodu — zorunlu, yalnızca `DispatchErrorCode` enum üyelerinden
+   * biri olabilir. Serbest string yasak. Dead-letter ve metric aggregator tek
+   * kaynaktan okur.
+   */
+  code: DispatchErrorCode;
+  stage: DispatchStage;
 };
 
 export type DispatchResult = DispatchSuccess | DispatchFailure;

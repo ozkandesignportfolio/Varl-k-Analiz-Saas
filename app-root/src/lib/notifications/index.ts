@@ -17,6 +17,8 @@ export {
 // Event contract — business logic yalnızca bunları tüketmeli.
 export {
   AppEventType,
+  DispatchStage,
+  DispatchErrorCode,
   type AppEvent,
   type AssetCreatedEvent,
   type AssetUpdatedEvent,
