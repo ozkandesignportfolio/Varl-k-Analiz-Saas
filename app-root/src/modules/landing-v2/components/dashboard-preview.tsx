@@ -33,20 +33,20 @@ export function DashboardPreview() {
       <div className="pointer-events-none absolute left-0 right-0 top-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
       <div className="mx-auto max-w-7xl px-6">
-        <div className="mb-16 text-center">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5">
-            <span className="text-xs tracking-widest text-primary">Premium Kontrol Paneli</span>
-          </div>
-          <h2 className="text-balance text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl">
+        <div className="mb-14 text-center">
+          <p className="mb-4 text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">
+            Kontrol Paneli
+          </p>
+          <h2 className="text-balance text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
             Güçlü kontrol paneli, <span className="text-gradient">tek bakışta</span>
           </h2>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
+          <p className="mx-auto mt-5 max-w-2xl text-base text-muted-foreground sm:text-lg">
             Bildirimler, Abonelikler, Fatura Takip ve Skor Analizi dahil tüm modüller tek panelde
           </p>
         </div>
 
         <div className={cn(inView ? "animate-slide-up" : "opacity-0")}>
-          <div className="overflow-hidden rounded-[28px] border border-[rgba(53,80,113,0.72)] bg-[rgb(7_14_32_/_72%)] shadow-[0_24px_70px_rgb(5_10_24_/_56%),inset_0_1px_0_rgb(255_255_255_/_0.05),inset_0_0_42px_rgb(16_239_181_/_0.04)]">
+          <div className="overflow-hidden rounded-2xl border border-white/5 bg-[rgb(7_14_32_/_72%)] shadow-[0_20px_60px_-20px_rgba(2,8,20,0.6)]">
             <div
               className="auth-shell-theme flex h-[560px] max-h-[72vh] min-h-[500px] flex-col md:h-[640px] md:min-h-[560px] md:flex-row"
               style={previewThemeVars}

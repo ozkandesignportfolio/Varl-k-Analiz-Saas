@@ -8,6 +8,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
   type ReactNode,
@@ -122,9 +123,62 @@ const MobileNavChip = memo(function MobileNavChip({ href, label, shortCode, acti
   );
 });
 
+// Per-route scroll cache so each pathname keeps its own horizontal offset.
+// AppShell remounts MobileNav on every navigation, so a Map keyed by the
+// route path is the minimal way to survive remounts without adding context
+// or changing component APIs. An empty string key is used as a safe fallback
+// when pathname is not yet available.
+const mobileNavScrollByRoute = new Map<string, number>();
+
+const getRouteKey = (pathname: string) => pathname || "/";
+
 const MobileNav = memo(function MobileNav({ pathname, isHydrated }: MobileNavProps) {
+  const navRef = useRef<HTMLElement>(null);
+  const routeKey = getRouteKey(pathname);
+
+  // Restore previously saved scroll position on mount and whenever the active
+  // route changes, then ensure the active chip is actually visible.
+  useEffect(() => {
+    const node = navRef.current;
+    if (!node) return;
+
+    // Restore last known scroll position for THIS route synchronously to avoid
+    // a flash at 0. If we have never visited this route before, leave at 0.
+    const saved = mobileNavScrollByRoute.get(routeKey);
+    if (typeof saved === "number" && saved > 0) {
+      node.scrollLeft = saved;
+    }
+
+    if (!isHydrated) return;
+
+    const active = node.querySelector<HTMLElement>('[data-state="active"]');
+    if (!active) return;
+
+    const activeLeft = active.offsetLeft;
+    const activeRight = activeLeft + active.offsetWidth;
+    const viewLeft = node.scrollLeft;
+    const viewRight = viewLeft + node.clientWidth;
+
+    // Only scroll the active chip into view if it is actually out of view,
+    // so we never override a valid preserved position unnecessarily.
+    if (activeLeft < viewLeft || activeRight > viewRight) {
+      active.scrollIntoView({ block: "nearest", inline: "nearest" });
+      mobileNavScrollByRoute.set(routeKey, node.scrollLeft);
+    }
+  }, [routeKey, isHydrated]);
+
+  // Persist scroll position (per route) as the user scrolls chips horizontally.
+  const handleScroll = () => {
+    const node = navRef.current;
+    if (node) {
+      mobileNavScrollByRoute.set(routeKey, node.scrollLeft);
+    }
+  };
+
   return (
     <nav
+      ref={navRef}
+      onScroll={handleScroll}
       aria-label="Mobil menü"
       className="auth-mobile-nav mb-4 flex gap-2 overflow-x-auto overscroll-x-contain pb-1 lg:hidden"
       style={{ touchAction: "pan-x", WebkitOverflowScrolling: "touch" }}

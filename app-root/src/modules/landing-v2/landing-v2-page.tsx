@@ -11,31 +11,44 @@ import { ScoreAnalysisSection } from "@/modules/landing-v2/components/score-anal
 import { DashboardPreviewLazy } from "@/modules/landing-v2/components/dashboard-preview-lazy";
 import styles from "@/modules/landing-v2/landing-v2.module.css";
 
+// Debug badge visibility is controlled by environment + an explicit feature
+// flag so prod stays clean by default while the message itself is retained.
+// Enable explicitly by setting NEXT_PUBLIC_SHOW_LANDING_DEBUG_BADGE=true.
+const SHOW_LANDING_DEBUG_BADGE =
+  process.env.NODE_ENV !== "production" ||
+  process.env.NEXT_PUBLIC_SHOW_LANDING_DEBUG_BADGE === "true";
+
 export function LandingV2Page() {
-  // RUNTIME DEBUG - MUST APPEAR IN PROD BROWSER CONSOLE
-  console.log("[ASSETLY DEBUG] LANDING V2 RENDERED", new Date().toISOString());
   return (
     <main className={`${styles.scope} relative min-h-screen min-h-[100svh] overflow-x-hidden bg-background`}>
-      {/* DEBUG MARKER - MUST BE VISIBLE IN PROD */}
-      <div
-        data-debug="landing-v2-active"
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 99999,
-          background: '#ef4444',
-          color: '#fff',
-          padding: '12px 20px',
-          fontSize: '14px',
-          fontWeight: 'bold',
-          textAlign: 'center',
-          fontFamily: 'system-ui, sans-serif',
-        }}
-      >
-        LANDING V2 ACTIVE - MUST BE VISIBLE IN PROD
-      </div>
+      {/* DEBUG MARKER - shown only outside production or when flag enabled.
+          Message text is intentionally preserved. */}
+      {SHOW_LANDING_DEBUG_BADGE && (
+        <div
+          data-debug="landing-v2-active"
+          aria-hidden="true"
+          style={{
+            position: 'fixed',
+            top: 8,
+            right: 8,
+            zIndex: 99999,
+            background: 'rgba(15, 23, 42, 0.55)',
+            color: 'rgba(226, 232, 240, 0.85)',
+            padding: '2px 8px',
+            fontSize: '10px',
+            fontWeight: 500,
+            letterSpacing: '0.04em',
+            borderRadius: '9999px',
+            border: '1px solid rgba(148, 163, 184, 0.2)',
+            backdropFilter: 'blur(6px)',
+            fontFamily: 'system-ui, sans-serif',
+            pointerEvents: 'none',
+            opacity: 0.7,
+          }}
+        >
+          LANDING V2 ACTIVE - MUST BE VISIBLE IN PROD
+        </div>
+      )}
       <div className="relative z-10">
         <Navbar />
         <HeroSection />

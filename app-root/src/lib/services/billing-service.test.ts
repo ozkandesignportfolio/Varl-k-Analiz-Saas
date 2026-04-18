@@ -97,7 +97,7 @@ test("createBillingSubscription rejects an invalid maintenanceRuleId before link
 
   assert.deepEqual(result, {
     status: 400,
-    body: { error: "BakÄ±m kuralÄ± kimliÄŸi geÃ§ersiz." },
+    body: { error: "Bakım kuralı kimliği geçersiz." },
   });
   assert.equal(getInsertedValues(), null);
   assert.deepEqual(getLookedUpRuleIds(), []);

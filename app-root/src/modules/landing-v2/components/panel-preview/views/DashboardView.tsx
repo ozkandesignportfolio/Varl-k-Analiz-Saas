@@ -1,8 +1,6 @@
 import { memo } from "react";
 import {
-  ArrowDownRight,
   ArrowRight,
-  ArrowUpRight,
   CalendarDays,
   ChevronDown,
   Clock3,
@@ -20,66 +18,40 @@ import {
 } from "lucide-react";
 import type { PanelPreviewViewProps } from "@/modules/landing-v2/components/panel-preview/types";
 
-type TrendDirection = "up" | "down" | "flat";
 type RowTone = "critical" | "warning" | "info";
 
 const DASHBOARD_FILTERS = [7, 30, 90];
-
-const TREND_META: Record<
-  TrendDirection,
-  {
-    icon: LucideIcon;
-    textClass: string;
-    sparklineClass: string;
-    symbol: string;
-  }
-> = {
-  up: {
-    icon: ArrowUpRight,
-    textClass: "text-emerald-200",
-    sparklineClass: "stroke-emerald-300",
-    symbol: "+",
-  },
-  down: {
-    icon: ArrowDownRight,
-    textClass: "text-rose-200",
-    sparklineClass: "stroke-rose-300",
-    symbol: "-",
-  },
-  flat: {
-    icon: ArrowRight,
-    textClass: "text-slate-200",
-    sparklineClass: "stroke-slate-300",
-    symbol: "0",
-  },
-};
 
 const KPI_ITEMS = [
   {
     title: "Toplam Varlık",
     value: "148",
-    trend: { direction: "up" as const, percentage: 6, sparkline: [118, 122, 127, 133, 141, 148] },
+    context: "Kayıtlı varlık sayısı",
+    insight: "Son 30 günde +12 yeni",
     icon: Package,
     hrefLabel: "Detaya git",
   },
   {
     title: "Aktif Bakım Kuralı",
     value: "26",
-    trend: { direction: "up" as const, percentage: 9, sparkline: [18, 19, 20, 22, 24, 26] },
+    context: "Tanımlı aktif kural",
+    insight: "Son 30 günde +4 yeni",
     icon: Wrench,
     hrefLabel: "Detaya git",
   },
   {
     title: "Toplam Servis Maliyeti",
     value: "84.750 TL",
-    trend: { direction: "down" as const, percentage: 4, sparkline: [96, 94, 92, 90, 88, 84] },
+    context: "Son 30 gün",
+    insight: "Son 30 günde düşüş",
     icon: TrendingUp,
     hrefLabel: "Detaya git",
   },
   {
     title: "Belge Sayısı",
     value: "412",
-    trend: { direction: "up" as const, percentage: 11, sparkline: [352, 360, 372, 384, 398, 412] },
+    context: "Yüklü belge sayısı",
+    insight: "Son 30 günde +18 yeni",
     icon: FileText,
     hrefLabel: "Detaya git",
   },
@@ -156,7 +128,7 @@ const toneClass: Record<RowTone, string> = {
 function DashboardViewComponent({ menuItem }: PanelPreviewViewProps) {
   return (
     <div className="space-y-6 rounded-2xl bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.13),transparent_56%)] p-2 sm:p-3">
-      <section className="rounded-3xl border border-[#24344F] bg-[linear-gradient(145deg,rgba(8,20,45,0.92),rgba(9,17,33,0.84))] p-5 shadow-[0_20px_45px_rgba(3,8,20,0.42)] sm:p-6">
+      <section className="rounded-2xl border border-white/5 bg-[linear-gradient(145deg,rgba(10,22,44,0.5),rgba(11,19,33,0.35))] p-5 sm:p-6">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
@@ -252,51 +224,37 @@ function DashboardViewComponent({ menuItem }: PanelPreviewViewProps) {
         </div>
       </section>
 
-      <section className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h4 className="text-lg font-semibold text-[#F8FAFC]">Özet Metrikler</h4>
-          <p className="text-xs uppercase tracking-[0.14em] text-[#8DA6C8]">Son 30 gün trendi</p>
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <h4 className="text-base font-semibold tracking-tight text-[#F8FAFC]">Özet Metrikler</h4>
+          <p className="text-xs text-[#8DA6C8]">Son 30 gün</p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {KPI_ITEMS.map((card) => {
-            const trendMeta = TREND_META[card.trend.direction];
-            const TrendIcon = trendMeta.icon;
             const Icon = card.icon;
 
             return (
               <article
                 key={card.title}
-                className="rounded-2xl border border-[#273955] bg-[linear-gradient(160deg,rgba(10,22,44,0.92),rgba(11,19,33,0.84))] p-4 shadow-[0_16px_34px_rgba(2,8,20,0.36)]"
+                className="group flex flex-col rounded-xl border border-white/5 bg-white/[0.02] p-5 transition-colors hover:bg-white/[0.04]"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-xs uppercase tracking-[0.16em] text-[#89A2C5]">{card.title}</p>
-                  <span className="inline-flex rounded-lg border border-[#2E4467] bg-[#10223E] p-2 text-[#9AB2D1]">
-                    <Icon className="size-4" aria-hidden />
-                  </span>
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-[#8DA6C8]">{card.title}</p>
+                  <Icon className="size-4 text-[#8DA6C8]/70" aria-hidden />
                 </div>
 
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-[#F8FAFC]">{card.value}</p>
+                <p className="mt-6 text-3xl font-semibold tracking-tight text-[#F8FAFC]">{card.value}</p>
+                <p className="mt-1.5 text-xs text-[#8DA6C8]/70">{card.context}</p>
+                <p className="mt-1 text-xs text-[#8DA6C8]/60">{card.insight}</p>
 
-                <div className={`mt-3 inline-flex items-center gap-1 text-xs font-semibold ${trendMeta.textClass}`}>
-                  <TrendIcon className="size-3.5" aria-hidden />
-                  <span>
-                    {trendMeta.symbol}
-                    {card.trend.percentage}%
-                  </span>
-                </div>
-
-                <div className="mt-3 rounded-lg border border-[#2A3D5B] bg-[#0A162A]/70 p-2">
-                  <Sparkline points={card.trend.sparkline} pathClass={trendMeta.sparklineClass} />
-                </div>
-
-                <button
-                  type="button"
-                  className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#B8CEF0] transition hover:text-[#E2ECFF]"
-                >
+                <span className="mt-4 inline-flex items-center gap-1 text-xs text-[#8DA6C8] opacity-70 transition-opacity duration-200 group-hover:text-[#E2ECFF] group-hover:opacity-100">
                   {card.hrefLabel}
-                  <ArrowRight className="size-3.5" aria-hidden />
-                </button>
+                  <ArrowRight
+                    className="size-3.5 -translate-x-0.5 opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100"
+                    aria-hidden
+                  />
+                </span>
               </article>
             );
           })}
@@ -327,7 +285,7 @@ function RiskRowsPanel({
   showSettingsAction?: boolean;
 }) {
   return (
-    <article className="rounded-2xl border border-[#2B3F5D] bg-[linear-gradient(150deg,rgba(10,22,44,0.92),rgba(11,18,35,0.84))] p-5 shadow-[0_16px_34px_rgba(2,8,20,0.34)]">
+    <article className="rounded-xl border border-white/5 bg-white/[0.02] p-5">
       <div className="mb-4 flex items-center justify-between gap-2">
         <h4 className="text-lg font-semibold text-[#F8FAFC]">{title}</h4>
         <div className="flex items-center gap-2">
@@ -351,7 +309,7 @@ function RiskRowsPanel({
           const Icon = row.icon;
 
           return (
-            <li key={row.title} className="rounded-xl border border-[#314866] bg-[#0E1E37]/75 p-3">
+            <li key={row.title} className="rounded-lg border border-white/5 bg-[#0E1E37]/40 p-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex items-start gap-3">
                   <span className={`inline-flex rounded-lg border p-2 ${toneClass[row.tone]}`}>
@@ -385,36 +343,6 @@ function RiskRowsPanel({
         })}
       </ul>
     </article>
-  );
-}
-
-function Sparkline({ points, pathClass }: { points: number[]; pathClass: string }) {
-  const safePoints = points.length > 0 ? points : [10, 10, 10, 10, 10, 10];
-  const max = Math.max(...safePoints, 1);
-  const min = Math.min(...safePoints, 0);
-  const range = Math.max(1, max - min);
-  const xStep = 100 / Math.max(1, safePoints.length - 1);
-
-  const polylinePoints = safePoints
-    .map((point, index) => {
-      const x = index * xStep;
-      const normalized = (point - min) / range;
-      const y = 90 - normalized * 70;
-      return `${x},${y}`;
-    })
-    .join(" ");
-
-  return (
-    <svg viewBox="0 0 100 100" className="h-10 w-full" preserveAspectRatio="none">
-      <polyline
-        points={polylinePoints}
-        fill="none"
-        strokeWidth="6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className={pathClass}
-      />
-    </svg>
   );
 }
 
