@@ -1,3 +1,11 @@
+/**
+ * NOTIFICATION SYSTEM — PUBLIC API
+ * ============================================================================
+ * Sadece public API export edilir. Internal katmanlar doğrudan export edilmez.
+ * ============================================================================
+ */
+
+// Core orchestration (business logic uses these)
 export {
   createNotificationService,
   getNotificationService,
@@ -14,7 +22,7 @@ export {
   type NotifyAssetEventResult,
 } from "./notification-service";
 
-// Event contract — business logic yalnızca bunları tüketmeli.
+// Event contract (business logic uses these)
 export {
   AppEventType,
   DispatchStage,
@@ -29,5 +37,5 @@ export {
   type DispatchFailure,
 } from "@/lib/events/app-event";
 
-// Retry worker — orphan repair (production-grade)
-export { runRetryWorker, manualRepairOrphan } from "./retry-worker";
+// Retry worker (cron/operator use)
+export { runRetryWorker, manualRepairOrphan } from "@/lib/workers/notification-retry";

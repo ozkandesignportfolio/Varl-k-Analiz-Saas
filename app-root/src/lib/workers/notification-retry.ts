@@ -3,17 +3,18 @@ import "server-only";
 import { getSupabaseAdmin } from "@/lib/services/supabase-admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logApiError } from "@/lib/api/logging";
+import { emitRetryMetric } from "@/lib/observability/dispatch-metrics";
 
 /**
  * NOTIFICATION RETRY WORKER (Production-Grade)
  * ============================================================================
  * Outbox pattern'da kalan orphan event'leri tespit edip idempotent retry eder.
- * 
+ *
  * Kısıtlar:
  *   - Sadece SQL fonksiyonlarını çağırır (mevcut dispatch flow'u değiştirmez)
  *   - Idempotent: notification zaten varsa yeni oluşturmaz
  *   - Race-safe: concurrent execution'da duplicate oluşturmaz
- * 
+ *
  * SQL Dependencies:
  *   - v_outbox_incomplete: orphan detection view
  *   - retry_missing_notification(): idempotent retry function
@@ -23,6 +24,51 @@ import { logApiError } from "@/lib/api/logging";
  *   - increment_dead_letter_retry(): counter update
  * ============================================================================
  */
+
+// ---------------------------------------------------------------------------
+// Interface (decoupling from concrete implementation)
+// ---------------------------------------------------------------------------
+
+export interface NotificationDispatcher {
+  rehydrateMissingNotification(eventId: string): Promise<{
+    notification_id: string | null;
+    repaired: boolean;
+    message: string;
+  }>;
+  incrementDeadLetterRetry(
+    deadLetterId: string,
+    errorMessage?: string | null,
+  ): Promise<void>;
+}
+
+// Supabase implementation of the interface
+class SupabaseNotificationDispatcher implements NotificationDispatcher {
+  constructor(private readonly client: SupabaseClient) {}
+
+  async rehydrateMissingNotification(eventId: string) {
+    const { data: result, error } = await this.client.rpc(
+      "rehydrate_missing_notification",
+      { p_event_id: eventId }
+    );
+    if (error) throw error;
+    const resultRow = Array.isArray(result) ? result[0] : result;
+    return {
+      notification_id: resultRow?.notification_id ?? null,
+      repaired: resultRow?.repaired ?? false,
+      message: resultRow?.message ?? "Unknown result",
+    };
+  }
+
+  async incrementDeadLetterRetry(
+    deadLetterId: string,
+    errorMessage?: string | null,
+  ): Promise<void> {
+    await this.client.rpc("increment_dead_letter_retry", {
+      p_dead_letter_id: deadLetterId,
+      p_error_message: errorMessage ?? null,
+    });
+  }
+}
 
 const SERVICE_TAG = "[retry-worker]";
 
@@ -64,6 +110,7 @@ type DeadLetterMonitorRow = {
 /**
  * Retry worker ana fonksiyonu.
  * Cron/scheduler tarafından belirli aralıklarla çağrılır.
+ * Interface kullanarak decoupling sağlar.
  */
 export const runRetryWorker = async (
   adminClient: SupabaseClient = getSupabaseAdmin()
@@ -73,6 +120,7 @@ export const runRetryWorker = async (
   failed: number;
   deadLetterRetried: number;
 }> => {
+  const dispatcher: NotificationDispatcher = new SupabaseNotificationDispatcher(adminClient);
   const startedAt = Date.now();
   const stats = { processed: 0, repaired: 0, failed: 0, deadLetterRetried: 0 };
 
@@ -101,44 +149,29 @@ export const runRetryWorker = async (
   } else {
     logEvent("WORKER_CANDIDATES", { count: candidates.length });
 
-    // 2) Her candidate için idempotent retry
+    // 2) Her candidate için idempotent retry (via interface)
     for (const candidate of candidates) {
       stats.processed++;
 
       try {
-        const { data: result, error: retryError } = await adminClient.rpc(
-          "rehydrate_missing_notification",
-          { p_event_id: candidate.event_id }
-        );
+        const result = await dispatcher.rehydrateMissingNotification(candidate.event_id);
 
-        if (retryError) {
-          logEvent("RETRY_FAILED", {
-            eventId: candidate.event_id,
-            error: retryError.message,
-          });
-          stats.failed++;
-          continue;
-        }
-
-        // result: { notification_id, repaired, message }
-        const resultRow = Array.isArray(result) ? result[0] : result;
-        
-        if (resultRow?.repaired) {
+        if (result.repaired) {
           logEvent("RETRY_SUCCESS", {
             eventId: candidate.event_id,
-            notificationId: resultRow.notification_id,
+            notificationId: result.notification_id,
           });
           stats.repaired++;
         } else {
           logEvent("RETRY_IDEMPOTENT", {
             eventId: candidate.event_id,
-            notificationId: resultRow?.notification_id,
-            message: resultRow?.message,
+            notificationId: result.notification_id,
+            message: result.message,
           });
         }
       } catch (e) {
         const errorMsg = e instanceof Error ? e.message : "Unknown error";
-        logEvent("RETRY_EXCEPTION", {
+        logEvent("RETRY_FAILED", {
           eventId: candidate.event_id,
           error: errorMsg,
         });
@@ -160,12 +193,7 @@ export const runRetryWorker = async (
 
     for (const dl of eligibleDeadLetters) {
       try {
-        // Dead letter retry için özel logic buraya eklenebilir
-        // Şu an sadece counter artırıyoruz (placeholder)
-        await adminClient.rpc("increment_dead_letter_retry", {
-          p_dead_letter_id: dl.id,
-          p_error_message: null,
-        });
+        await dispatcher.incrementDeadLetterRetry(dl.id, null);
 
         stats.deadLetterRetried++;
         logEvent("DL_RETRY_ATTEMPT", {
@@ -188,22 +216,13 @@ export const runRetryWorker = async (
   });
 
   // Structured log for log aggregator
-  console.log(
-    JSON.stringify({
-      event: "retry:outcome",
-      processed: stats.processed,
-      repaired: stats.repaired,
-      failed: stats.failed,
-      deadLetterRetried: stats.deadLetterRetried,
-      latencyMs,
-      outcome:
-        stats.failed === 0 && stats.repaired > 0
-          ? "success"
-          : stats.failed > 0
-          ? "partial"
-          : "noop",
-    })
-  );
+  emitRetryMetric({
+    processed: stats.processed,
+    repaired: stats.repaired,
+    failed: stats.failed,
+    deadLetterRetried: stats.deadLetterRetried,
+    latencyMs,
+  });
 
   return stats;
 };
@@ -211,6 +230,7 @@ export const runRetryWorker = async (
 /**
  * Manual orphan repair (admin/operator kullanımı için).
  * Belirli bir event_id için notification'ı idempotent oluşturur.
+ * Interface kullanarak decoupling sağlar.
  */
 export const manualRepairOrphan = async (
   eventId: string,
@@ -220,21 +240,13 @@ export const manualRepairOrphan = async (
   notificationId?: string;
   message: string;
 }> => {
+  const dispatcher: NotificationDispatcher = new SupabaseNotificationDispatcher(adminClient);
   try {
-    const { data: result, error } = await adminClient.rpc(
-      "rehydrate_missing_notification",
-      { p_event_id: eventId }
-    );
-
-    if (error) {
-      return { ok: false, message: `Repair failed: ${error.message}` };
-    }
-
-    const resultRow = Array.isArray(result) ? result[0] : result;
+    const result = await dispatcher.rehydrateMissingNotification(eventId);
     return {
       ok: true,
-      notificationId: resultRow?.notification_id,
-      message: resultRow?.message || "Repair completed",
+      notificationId: result.notification_id ?? undefined,
+      message: result.message,
     };
   } catch (e) {
     return {
