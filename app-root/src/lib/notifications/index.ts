@@ -28,3 +28,6 @@ export {
   type DispatchSuccess,
   type DispatchFailure,
 } from "@/lib/events/app-event";
+
+// Retry worker — orphan repair (production-grade)
+export { runRetryWorker, manualRepairOrphan } from "./retry-worker";

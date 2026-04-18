@@ -41,7 +41,7 @@ export type NotificationType = "Bakım" | "Garanti" | "Belge" | "Ödeme" | "Sist
 
 export type NotificationResult =
   | { ok: true; id: string }
-  | { ok: false; error: string; code?: string };
+  | { ok: false; error: string; code: DispatchErrorCode };
 
 export type NotificationBatchResult = {
   successful: string[];
@@ -49,9 +49,9 @@ export type NotificationBatchResult = {
    * Batch dispatch'te oluşan `automation_events.id`'leri (traceability).
    * `createBatch` kullanımında notification id'ler; `generateTestNotifications`
    * kullanımında anchor event id'leri.
-   */
+  */
   eventIds: string[];
-  failed: Array<{ error: string; code?: string }>;
+  failed: Array<{ error: string; code: DispatchErrorCode }>;
 };
 
 export type CreateNotificationInput = {
@@ -110,7 +110,7 @@ export type AutomationEnqueueResult =
        */
       eventId: string;
     }
-  | { ok: false; error: string; code?: string };
+  | { ok: false; error: string; code: DispatchErrorCode };
 
 /**
  * Asset bildirimlerini tetikleyen app event kimliği.
@@ -143,10 +143,7 @@ export type NotifyAssetEventResult =
       error: string;
       /** Zorunlu standart hata kodu. Serbest string yasak. */
       code: DispatchErrorCode;
-      stage:
-        | DispatchStage.VALIDATE
-        | DispatchStage.PERSIST_EVENT
-        | DispatchStage.CREATE_NOTIFICATION;
+      stage: DispatchStage;
     };
 
 // ---------------------------------------------------------------------------
@@ -179,32 +176,26 @@ const emitDispatchMetric = (payload: {
   userId: string | null;
   eventId: string | null;
   dedupeKey: string | null;
-  notificationId?: string | null;
   latencyMs: number;
-  stage?: DispatchStage | null;
-  code?: string | null;
+  stage: DispatchStage | null;
+  code: DispatchErrorCode | null;
+  notificationId?: string | null;
   error?: string | null;
-  route?: string | null;
-  method?: string | null;
+  route?: string;
+  method?: string;
 }) => {
   try {
     process.stdout.write(
       `${JSON.stringify({
-        level: "info",
         event: "dispatch:outcome",
-        ts: new Date().toISOString(),
+        eventId: payload.eventId,
+        userId: payload.userId,
+        eventType: payload.eventType,
+        dedupeKey: payload.dedupeKey,
+        stage: payload.stage,
+        code: payload.code,
+        latencyMs: Math.max(0, Math.round(payload.latencyMs)),
         outcome: payload.outcome,
-        event_type: payload.eventType,
-        user_id: payload.userId,
-        event_id: payload.eventId,
-        dedupe_key: payload.dedupeKey,
-        notification_id: payload.notificationId ?? null,
-        latency_ms: Math.max(0, Math.round(payload.latencyMs)),
-        stage: payload.stage ?? null,
-        code: payload.code ?? null,
-        error: payload.error ?? null,
-        route: payload.route ?? null,
-        method: payload.method ?? null,
       })}\n`,
     );
   } catch {
@@ -227,7 +218,7 @@ const recordDeadLetter = async (
     dedupeKey: string | null;
     triggerType: string | null;
     stage: DispatchStage;
-    code: string | null;
+    code: DispatchErrorCode | null;
     message: string;
     payload: Record<string, unknown>;
     route?: string | null;
@@ -247,20 +238,68 @@ const recordDeadLetter = async (
       route: input.route ?? null,
       method: input.method ?? null,
     });
-    if (error) {
-      logEvent("DEAD_LETTER_INSERT_FAILED", { error: error.message });
-    }
-  } catch (e) {
-    logEvent("DEAD_LETTER_EXCEPTION", {
-      error: e instanceof Error ? e.message : String(e),
-    });
-  }
+    void error;
+  } catch {}
 };
 
 const normalizeContext = (ctx?: { route?: string; method?: string }) => ({
   route: ctx?.route?.trim() || "unknown",
   method: ctx?.method?.trim() || "POST",
 });
+
+class DispatchInvariantError extends Error {
+  readonly code: DispatchErrorCode;
+  readonly stage: DispatchStage;
+
+  constructor(message: string, code: DispatchErrorCode, stage: DispatchStage) {
+    super(message);
+    this.name = "DispatchInvariantError";
+    this.code = code;
+    this.stage = stage;
+  }
+}
+
+const isDispatchInvariantError = (error: unknown): error is DispatchInvariantError =>
+  error instanceof DispatchInvariantError;
+
+const failDispatch = (
+  message: string,
+  code: DispatchErrorCode,
+  stage: DispatchStage,
+): never => {
+  throw new DispatchInvariantError(message, code, stage);
+};
+
+const DISPATCH_STAGE_ORDER: DispatchStage[] = [
+  DispatchStage.VALIDATE,
+  DispatchStage.PERSIST_EVENT,
+  DispatchStage.CREATE_NOTIFICATION,
+  DispatchStage.SIDE_EFFECTS,
+  DispatchStage.COMPLETE,
+];
+
+const assertDispatchStageTransition = (
+  currentStage: DispatchStage,
+  nextStage: DispatchStage,
+): void => {
+  const currentIndex = DISPATCH_STAGE_ORDER.indexOf(currentStage);
+  const nextIndex = DISPATCH_STAGE_ORDER.indexOf(nextStage);
+  if (currentIndex === -1 || nextIndex === -1 || nextIndex < currentIndex) {
+    failDispatch(
+      `Invalid dispatch stage transition: ${currentStage} -> ${nextStage}`,
+      DispatchErrorCode.INVALID_STAGE_TRANSITION,
+      nextStage,
+    );
+  }
+};
+
+const advanceDispatchStage = (
+  currentStage: DispatchStage,
+  nextStage: DispatchStage,
+): DispatchStage => {
+  assertDispatchStageTransition(currentStage, nextStage);
+  return nextStage;
+};
 
 /**
  * Deterministik idempotency anahtarı. Aynı `(eventType, userId, entityId,
@@ -299,18 +338,124 @@ const FORBIDDEN_PAYLOAD_KEYS = ["event_type", "notification_kind"] as const;
 
 const assertNoEventIdentityInPayload = (
   payload: Record<string, unknown> | undefined,
-): { ok: true } | { ok: false; error: string; code: "forbidden_payload_key" } => {
-  if (!payload) return { ok: true };
+): void => {
+  if (!payload) return;
   for (const key of FORBIDDEN_PAYLOAD_KEYS) {
     if (key in payload) {
-      return {
-        ok: false,
-        error: `Payload must not contain event identity key '${key}'. Use automation_events.event_type column instead.`,
-        code: "forbidden_payload_key",
-      };
+      failDispatch(
+        `Payload must not contain event identity key '${key}'. Use automation_events.event_type column instead.`,
+        DispatchErrorCode.FORBIDDEN_PAYLOAD_KEY,
+        DispatchStage.VALIDATE,
+      );
     }
   }
-  return { ok: true };
+};
+
+const assertValidDispatchInput = (input: {
+  userId?: string | null;
+  dedupeKey?: string | null;
+  assetId?: string | null;
+  assetName?: string | null;
+  notificationTitle?: string | null;
+  notificationMessage?: string | null;
+}): void => {
+  if (!input.userId?.trim()) {
+    failDispatch("User ID is required", DispatchErrorCode.MISSING_USER_ID, DispatchStage.VALIDATE);
+  }
+  if (input.dedupeKey != null && !input.dedupeKey.trim()) {
+    failDispatch(
+      "dedupeKey is required",
+      DispatchErrorCode.MISSING_DEDUPE_KEY,
+      DispatchStage.VALIDATE,
+    );
+  }
+  if (input.assetId != null && !input.assetId.trim()) {
+    failDispatch(
+      "Asset ID is required",
+      DispatchErrorCode.INVALID_DISPATCH_INPUT,
+      DispatchStage.VALIDATE,
+    );
+  }
+  if (input.assetName != null && !input.assetName.trim()) {
+    failDispatch(
+      "Asset name is required",
+      DispatchErrorCode.INVALID_DISPATCH_INPUT,
+      DispatchStage.VALIDATE,
+    );
+  }
+  if (input.notificationTitle != null && !input.notificationTitle.trim()) {
+    failDispatch(
+      "Notification title is required",
+      DispatchErrorCode.MISSING_TITLE,
+      DispatchStage.VALIDATE,
+    );
+  }
+  if (input.notificationMessage != null && !input.notificationMessage.trim()) {
+    failDispatch(
+      "Notification message is required",
+      DispatchErrorCode.MISSING_MESSAGE,
+      DispatchStage.VALIDATE,
+    );
+  }
+};
+
+type DispatchIdentity = {
+  dedupeKey: string;
+  eventType: AppEventType;
+  userId: string;
+};
+
+type DispatchAppEventRow = {
+  event_id: string | null;
+  notification_id: string | null;
+  event_inserted: boolean | null;
+  notification_created: boolean | null;
+};
+
+const resolveDispatchIdentity = (event: AppEvent): DispatchIdentity => {
+  switch (event.type) {
+    case AppEventType.ASSET_CREATED:
+      return {
+        eventType: event.type,
+        userId: event.userId,
+        dedupeKey: buildDedupeKey({
+          eventType: AppEventType.ASSET_CREATED,
+          userId: event.userId,
+          entityId: event.assetId,
+        }),
+      };
+    case AppEventType.ASSET_UPDATED:
+      return {
+        eventType: event.type,
+        userId: event.userId,
+        dedupeKey: buildDedupeKey({
+          eventType: AppEventType.ASSET_UPDATED,
+          userId: event.userId,
+          entityId: event.assetId,
+          timeBucket: event.changeVersion,
+        }),
+      };
+    case AppEventType.USER_WELCOME:
+      return {
+        eventType: event.type,
+        userId: event.userId,
+        dedupeKey: buildDedupeKey({
+          eventType: AppEventType.USER_WELCOME,
+          userId: event.userId,
+        }),
+      };
+    case AppEventType.TEST_NOTIFICATION:
+      return {
+        eventType: event.type,
+        userId: event.userId,
+        dedupeKey: buildDedupeKey({
+          eventType: AppEventType.TEST_NOTIFICATION,
+          userId: event.userId,
+        }),
+      };
+    default:
+      return assertNever(event);
+  }
 };
 
 const buildAssetUiCopy = (
@@ -375,19 +520,19 @@ export const createNotificationService = (
     logEvent("CREATE_ATTEMPT", { userId, eventId, title, type, route });
 
     if (!userId?.trim()) {
-      return { ok: false, error: "User ID is required", code: "missing_user_id" };
+      return { ok: false, error: "User ID is required", code: DispatchErrorCode.MISSING_USER_ID };
     }
     if (!eventId?.trim()) {
       // Traceability invariant: her notification bir automation_events satırına
       // anchor olmalı. Bu kontrol uygulama seviyesinde ilk savunma hattı;
       // DB'de NOT NULL + FK ile tekrar zorlanır.
-      return { ok: false, error: "eventId is required", code: "missing_event_id" };
+      return { ok: false, error: "eventId is required", code: DispatchErrorCode.MISSING_EVENT_ID };
     }
     if (!title?.trim()) {
-      return { ok: false, error: "Title is required", code: "missing_title" };
+      return { ok: false, error: "Title is required", code: DispatchErrorCode.MISSING_TITLE };
     }
     if (!message?.trim()) {
-      return { ok: false, error: "Message is required", code: "missing_message" };
+      return { ok: false, error: "Message is required", code: DispatchErrorCode.MISSING_MESSAGE };
     }
 
     try {
@@ -428,13 +573,17 @@ export const createNotificationService = (
         return {
           ok: false,
           error: `Database error: ${error.message}`,
-          code: error.code,
+          code: DispatchErrorCode.NOTIFICATION_CREATE_FAILED,
         };
       }
 
       if (!data?.id) {
         logEvent("CREATE_FAILED", { userId, error: "No ID returned", route });
-        return { ok: false, error: "No ID returned from insert", code: "no_id_returned" };
+        return {
+          ok: false,
+          error: "No ID returned from insert",
+          code: DispatchErrorCode.NOTIFICATION_CREATE_FAILED,
+        };
       }
 
       logEvent("CREATE_SUCCESS", { userId, notificationId: data.id, type, route });
@@ -451,7 +600,7 @@ export const createNotificationService = (
         message: "Exception creating notification",
         meta: { title, type },
       });
-      return { ok: false, error: `Exception: ${errorMsg}`, code: "exception" };
+      return { ok: false, error: `Exception: ${errorMsg}`, code: DispatchErrorCode.EXCEPTION };
     }
   };
 
@@ -489,18 +638,26 @@ export const createNotificationService = (
     const { route, method } = normalizeContext(input.context);
 
     if (!userId?.trim()) {
-      return { ok: false, error: "User ID is required", code: "missing_user_id" };
+      return { ok: false, error: "User ID is required", code: DispatchErrorCode.MISSING_USER_ID };
     }
     if (!dedupeKey?.trim()) {
-      return { ok: false, error: "dedupeKey is required", code: "missing_dedupe_key" };
+      return {
+        ok: false,
+        error: "dedupeKey is required",
+        code: DispatchErrorCode.MISSING_DEDUPE_KEY,
+      };
     }
 
     // Payload guard: event kimliği taşıyan legacy anahtarlar yasak. DB CHECK'i
     // yanında runtime'da da reddediyoruz ki caller anlaşılır bir hata alsın.
-    const payloadGuard = assertNoEventIdentityInPayload(input.payload);
-    if (!payloadGuard.ok) {
-      logEvent("AUTOMATION_PAYLOAD_GUARD", { userId, dedupeKey, error: payloadGuard.error });
-      return { ok: false, error: payloadGuard.error, code: payloadGuard.code };
+    try {
+      assertNoEventIdentityInPayload(input.payload);
+    } catch (error) {
+      if (isDispatchInvariantError(error)) {
+        logEvent("AUTOMATION_PAYLOAD_GUARD", { userId, dedupeKey, error: error.message });
+        return { ok: false, error: error.message, code: error.code };
+      }
+      throw error;
     }
 
     const row = {
@@ -541,7 +698,7 @@ export const createNotificationService = (
         return {
           ok: false,
           error: `Database error: ${error.message}`,
-          code: error.code,
+          code: DispatchErrorCode.EVENT_INSERT_FAILED,
         };
       }
 
@@ -573,7 +730,7 @@ export const createNotificationService = (
           return {
             ok: false,
             error: `Database error: ${existing.error.message}`,
-            code: existing.error.code,
+            code: DispatchErrorCode.EVENT_ID_UNRESOLVED,
           };
         }
         eventId = (existing.data?.id as string | undefined) ?? null;
@@ -584,7 +741,7 @@ export const createNotificationService = (
         return {
           ok: false,
           error: "Could not resolve automation_events.id after upsert",
-          code: "event_id_unresolved",
+          code: DispatchErrorCode.EVENT_ID_UNRESOLVED,
         };
       }
 
@@ -601,7 +758,7 @@ export const createNotificationService = (
         message: "Exception upserting automation event",
         meta: { triggerType, dedupeKey },
       });
-      return { ok: false, error: `Exception: ${errorMsg}`, code: "exception" };
+      return { ok: false, error: `Exception: ${errorMsg}`, code: DispatchErrorCode.EXCEPTION };
     }
   };
 
@@ -637,34 +794,21 @@ export const createNotificationService = (
       ...(assetCategory ? { asset_category: assetCategory } : {}),
       ...input.payload,
     };
-
-    // Payload guard: legacy event identity anahtarları yasak.
-    const guard = assertNoEventIdentityInPayload(eventPayload);
-    if (!guard.ok) {
-      logEvent("ASSET_EVENT_PAYLOAD_GUARD", { userId, dedupeKey, error: guard.error });
-      await recordDeadLetter(adminClient, {
-        userId,
-        eventType,
-        dedupeKey,
-        triggerType: "service_log_created",
-        stage: DispatchStage.VALIDATE,
-        code: DispatchErrorCode.FORBIDDEN_PAYLOAD_KEY,
-        message: guard.error,
-        payload: eventPayload,
-        route,
-        method,
-      });
-      return {
-        ok: false,
-        error: guard.error,
-        code: DispatchErrorCode.FORBIDDEN_PAYLOAD_KEY,
-        stage: DispatchStage.VALIDATE,
-      };
-    }
-
     const copy = buildAssetUiCopy(eventType, input.assetName);
+    let stage = DispatchStage.VALIDATE;
 
     try {
+      assertValidDispatchInput({
+        userId,
+        dedupeKey,
+        assetId,
+        assetName: input.assetName,
+        notificationTitle: copy.title,
+        notificationMessage: copy.message,
+      });
+      assertNoEventIdentityInPayload(eventPayload);
+      stage = advanceDispatchStage(stage, DispatchStage.PERSIST_EVENT);
+
       const { data, error } = await adminClient.rpc("dispatch_app_event", {
         p_user_id: userId,
         p_dedupe_key: dedupeKey,
@@ -685,27 +829,12 @@ export const createNotificationService = (
       });
 
       if (error) {
-        logEvent("ASSET_EVENT_RPC_FAILED", {
-          userId,
-          dedupeKey,
-          error: error.message,
-          code: error.code,
-        });
-        logApiError({
-          route,
-          method,
-          userId,
-          error,
-          status: 500,
-          message: "dispatch_app_event RPC failed (asset event)",
-          meta: { eventType, dedupeKey },
-        });
         await recordDeadLetter(adminClient, {
           userId,
           eventType,
           dedupeKey,
           triggerType: "service_log_created",
-          stage: DispatchStage.PERSIST_EVENT,
+          stage,
           code: DispatchErrorCode.RPC_FAILED,
           message: error.message,
           payload: eventPayload,
@@ -720,10 +849,9 @@ export const createNotificationService = (
         };
       }
 
-      const row = Array.isArray(data) ? data[0] : data;
-      const eventId = (row?.event_id as string | undefined) ?? null;
-      const notificationId = (row?.notification_id as string | undefined) ?? null;
-      const eventInserted = Boolean(row?.event_inserted);
+      const row = (Array.isArray(data) ? data[0] : data) as DispatchAppEventRow | null;
+      const eventId = row?.event_id ?? null;
+      const notificationId = row?.notification_id ?? null;
       const notificationCreated = Boolean(row?.notification_created);
 
       if (!eventId) {
@@ -747,37 +875,66 @@ export const createNotificationService = (
         };
       }
 
-      logEvent("ASSET_EVENT_DISPATCHED", {
-        userId,
-        dedupeKey,
-        eventId,
-        eventInserted,
-        notificationCreated,
-      });
+      stage = advanceDispatchStage(stage, DispatchStage.CREATE_NOTIFICATION);
+
+      if (!notificationId) {
+        await recordDeadLetter(adminClient, {
+          userId,
+          eventType,
+          dedupeKey,
+          triggerType: "service_log_created",
+          stage,
+          code: DispatchErrorCode.NOTIFICATION_CREATE_FAILED,
+          message: "dispatch_app_event returned no notification_id",
+          payload: eventPayload,
+          route,
+          method,
+        });
+        return {
+          ok: false,
+          error: "dispatch_app_event returned no notification_id",
+          code: DispatchErrorCode.NOTIFICATION_CREATE_FAILED,
+          stage,
+        };
+      }
+
+      stage = advanceDispatchStage(stage, DispatchStage.COMPLETE);
 
       // Notification oluşturulduysa (ilk dispatch veya self-heal) deduped=false.
       // Tam duplicate (event de notification da zaten vardı) → deduped=true.
-      if (notificationCreated && notificationId) {
+      if (notificationCreated) {
         return { ok: true, deduped: false, eventId, notificationId };
       }
       return { ok: true, deduped: true, eventId };
     } catch (e) {
+      if (isDispatchInvariantError(e)) {
+        await recordDeadLetter(adminClient, {
+          userId,
+          eventType,
+          dedupeKey,
+          triggerType: "service_log_created",
+          stage: e.stage,
+          code: e.code,
+          message: e.message,
+          payload: eventPayload,
+          route,
+          method,
+        });
+        return {
+          ok: false,
+          error: e.message,
+          code: e.code,
+          stage: e.stage,
+        };
+      }
+
       const errorMsg = e instanceof Error ? e.message : "Unknown error";
-      logApiError({
-        route,
-        method,
-        userId,
-        error: e,
-        status: 500,
-        message: "Exception in dispatch_app_event (asset event)",
-        meta: { eventType, dedupeKey },
-      });
       await recordDeadLetter(adminClient, {
         userId,
         eventType,
         dedupeKey,
         triggerType: "service_log_created",
-        stage: DispatchStage.PERSIST_EVENT,
+        stage,
         code: DispatchErrorCode.EXCEPTION,
         message: errorMsg,
         payload: eventPayload,
@@ -788,7 +945,7 @@ export const createNotificationService = (
         ok: false,
         error: `Exception: ${errorMsg}`,
         code: DispatchErrorCode.EXCEPTION,
-        stage: DispatchStage.PERSIST_EVENT,
+        stage,
       };
     }
   };
@@ -855,7 +1012,10 @@ export const createNotificationService = (
     const result: NotificationBatchResult = { successful: [], eventIds: [], failed: [] };
 
     if (!userId?.trim()) {
-      result.failed.push({ error: "User ID is required", code: "missing_user_id" });
+      result.failed.push({
+        error: "User ID is required",
+        code: DispatchErrorCode.MISSING_USER_ID,
+      });
       return result;
     }
 
@@ -910,20 +1070,15 @@ export const createNotificationService = (
     event: AppEvent,
     context?: { route?: string; method?: string },
   ): Promise<DispatchResult> => {
-    logEvent("DISPATCH_ATTEMPT", { type: event.type, userId: event.userId });
-
     switch (event.type) {
       case AppEventType.ASSET_CREATED: {
+        const { dedupeKey } = resolveDispatchIdentity(event);
         const result = await notifyAssetEvent({
           userId: event.userId,
           eventType: AppEventType.ASSET_CREATED,
           assetId: event.assetId,
           assetName: event.assetName,
-          dedupeKey: buildDedupeKey({
-            eventType: AppEventType.ASSET_CREATED,
-            userId: event.userId,
-            entityId: event.assetId,
-          }),
+          dedupeKey,
           payload: event.payload,
           context,
         });
@@ -946,17 +1101,13 @@ export const createNotificationService = (
       }
 
       case AppEventType.ASSET_UPDATED: {
+        const { dedupeKey } = resolveDispatchIdentity(event);
         const result = await notifyAssetEvent({
           userId: event.userId,
           eventType: AppEventType.ASSET_UPDATED,
           assetId: event.assetId,
           assetName: event.assetName,
-          dedupeKey: buildDedupeKey({
-            eventType: AppEventType.ASSET_UPDATED,
-            userId: event.userId,
-            entityId: event.assetId,
-            timeBucket: event.changeVersion,
-          }),
+          dedupeKey,
           payload: event.payload,
           context,
         });
@@ -1148,7 +1299,7 @@ export const createNotificationService = (
     let eventId: string | null = null;
     let notificationId: string | null = null;
     let stage: DispatchStage | null = null;
-    let code: string | null = null;
+    let code: DispatchErrorCode | null = null;
     let errorMsg: string | null = null;
 
     if (result.ok) {

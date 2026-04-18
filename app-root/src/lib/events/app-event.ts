@@ -128,6 +128,8 @@ export enum DispatchStage {
  * tek kaynak olarak kullanılır. String literal ile kod üretmek YASAK.
  */
 export enum DispatchErrorCode {
+  INVALID_DISPATCH_INPUT = "INVALID_DISPATCH_INPUT",
+  INVALID_STAGE_TRANSITION = "INVALID_STAGE_TRANSITION",
   MISSING_USER_ID = "MISSING_USER_ID",
   MISSING_DEDUPE_KEY = "MISSING_DEDUPE_KEY",
   MISSING_EVENT_ID = "MISSING_EVENT_ID",
