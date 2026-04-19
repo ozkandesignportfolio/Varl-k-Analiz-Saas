@@ -1,4 +1,7 @@
+import "server-only";
+
 import { NextResponse } from "next/server";
+import { ServerEnv } from "@/lib/env/server-env";
 import { logApiError } from "@/lib/api/logging";
 import { enforceRateLimit, getRequestIp } from "@/lib/api/rate-limit";
 import { fetchWithRetry } from "@/lib/net/fetch-with-timeout";
@@ -501,8 +504,8 @@ const buildPredictions = async (
     (a, b) => b.riskScore - a.riskScore,
   );
 
-  const openAiKey = process.env.OPENAI_API_KEY;
-  const openAiModel = process.env.OPENAI_MODEL || DEFAULT_OPENAI_MODEL;
+  const openAiKey = ServerEnv.OPENAI_API_KEY;
+  const openAiModel = ServerEnv.OPENAI_MODEL || DEFAULT_OPENAI_MODEL;
 
   if (!openAiKey) {
     return {

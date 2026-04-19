@@ -1,5 +1,8 @@
+import "server-only";
+
 import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { ServerEnv } from "@/lib/env/server-env";
 import { logApiError } from "@/lib/api/logging";
 import { isSupabaseUserEmailConfirmed } from "@/lib/supabase/auth-errors";
 import { createClient } from "@/lib/supabase/server";
@@ -91,8 +94,8 @@ export async function POST() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+    const supabaseUrl = ServerEnv.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = ServerEnv.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json({ error: "Missing Supabase service role configuration." }, { status: 500 });

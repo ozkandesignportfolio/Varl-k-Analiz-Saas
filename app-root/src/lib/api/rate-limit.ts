@@ -1,3 +1,6 @@
+import { Runtime } from "@/lib/env/runtime";
+import { ServerEnv } from "@/lib/env/server-env";
+
 type RateLimitBucket = {
   count: number;
   resetAt: number;
@@ -169,11 +172,11 @@ export const enforceUserRateLimit = async (params: EnforceUserRateLimitParams): 
   const ttlSeconds = toPositiveInt(params.ttlSeconds ?? 180, 180, 5);
   const subject = normalizeSubject(params.userId);
   const fallbackWindowMs = Math.max(5_000, Math.round((capacity / refillPerSecond) * 1_000));
-  const isProd = process.env.NODE_ENV === "production";
-  const strictInTest = process.env.RATE_LIMIT_STRICT_IN_TEST === "1";
+  const isProd = Runtime.isBuild();
+  const strictInTest = ServerEnv.RATE_LIMIT_STRICT_IN_TEST === "1";
   const allowFallback = strictInTest
     ? false
-    : process.env.RATE_LIMIT_ALLOW_MEMORY_FALLBACK === "1" || !isProd;
+    : ServerEnv.RATE_LIMIT_ALLOW_MEMORY_FALLBACK === "1" || !isProd;
 
   try {
     const rpcClient = params.client as DbRateLimitRpcClient;
@@ -219,11 +222,11 @@ export const enforceServiceRateLimit = async (params: EnforceServiceRateLimitPar
   const ttlSeconds = toPositiveInt(params.ttlSeconds ?? 180, 180, 5);
   const subject = normalizeSubject(params.subject);
   const fallbackWindowMs = Math.max(5_000, Math.round((capacity / refillPerSecond) * 1_000));
-  const isProd = process.env.NODE_ENV === "production";
-  const strictInTest = process.env.RATE_LIMIT_STRICT_IN_TEST === "1";
+  const isProd = Runtime.isBuild();
+  const strictInTest = ServerEnv.RATE_LIMIT_STRICT_IN_TEST === "1";
   const allowFallback = strictInTest
     ? false
-    : process.env.RATE_LIMIT_ALLOW_MEMORY_FALLBACK === "1" || !isProd;
+    : ServerEnv.RATE_LIMIT_ALLOW_MEMORY_FALLBACK === "1" || !isProd;
 
   try {
     const rpcClient = params.client as DbRateLimitRpcClient;

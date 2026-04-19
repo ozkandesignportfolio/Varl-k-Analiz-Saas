@@ -13,10 +13,14 @@ export function useAssetMediaSelection(
 ) {
   const [selection, setSelection] = useState<AssetMediaSelection>(EMPTY_MEDIA_SELECTION);
 
-  useEffect(() => {
+  const resetSelection = useCallback(() => {
     setSelection(EMPTY_MEDIA_SELECTION);
     onSelectionChange(EMPTY_MEDIA_SELECTION);
-  }, [onSelectionChange, resetKey]);
+  }, [onSelectionChange]);
+
+  useEffect(() => {
+    queueMicrotask(resetSelection);
+  }, [resetKey, resetSelection]);
 
   const updateSelection = useCallback(
     (nextSelection: AssetMediaSelection) => {

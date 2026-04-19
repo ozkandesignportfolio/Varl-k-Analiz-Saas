@@ -1,5 +1,9 @@
+import "server-only";
+
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getAllowedAppOrigins } from "@/lib/env/public-env";
+import { ServerEnv } from "@/lib/env/server-env";
 
 export const runtime = "nodejs";
 
@@ -67,12 +71,14 @@ function getRequiredConfig(): {
   fromEmail: string;
   appUrl: string;
 } {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-  const cronSecret = process.env.EMAIL_REMINDER_CRON_SECRET?.trim() ?? "";
-  const resendApiKey = process.env.RESEND_API_KEY?.trim();
-  const fromEmail = process.env.AUTOMATION_FROM_EMAIL?.trim();
-  const appUrl = process.env.APP_URL?.trim() || process.env.NEXT_PUBLIC_APP_URL?.trim();
+  const supabaseUrl = ServerEnv.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = ServerEnv.SUPABASE_SERVICE_ROLE_KEY;
+  const cronSecret = ServerEnv.EMAIL_REMINDER_CRON_SECRET ?? "";
+  const resendApiKey = ServerEnv.RESEND_API_KEY;
+  const fromEmail = ServerEnv.AUTOMATION_FROM_EMAIL;
+  // Centralized env accessor; returns the first configured origin (server
+  // or public). We still treat an empty result as a missing env below.
+  const [appUrl] = getAllowedAppOrigins();
 
   const missing: string[] = [];
   const invalid: string[] = [];

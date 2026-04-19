@@ -15,6 +15,7 @@ import {
   isSupabaseUserEmailConfirmed,
 } from "@/lib/supabase/auth-errors";
 import { createClient } from "@/lib/supabase/client";
+import { Runtime } from "@/lib/env/runtime";
 
 const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
@@ -34,7 +35,7 @@ const getSafeNextPath = (candidate: string | null) => {
 type MessageTone = "error" | "info";
 
 const getInitialMessage = () => {
-  if (typeof window === "undefined") {
+  if (!Runtime.isClient()) {
     return { text: "", tone: "info" as MessageTone };
   }
 
@@ -62,11 +63,11 @@ export default function LoginPageClient({ emailRedirectTo }: LoginPageClientProp
   const [isResendingVerification, setIsResendingVerification] = useState(false);
   const [{ text: message, tone: messageTone }, setFeedback] = useState(getInitialMessage);
   const [verificationEmail, setVerificationEmail] = useState(() => {
-    if (typeof window === "undefined") return "";
+    if (!Runtime.isClient()) return "";
     return (new URLSearchParams(window.location.search).get("email") ?? "").trim();
   });
   const [nextPath] = useState(() => {
-    if (typeof window === "undefined") return "/dashboard";
+    if (!Runtime.isClient()) return "/dashboard";
     return getSafeNextPath(new URLSearchParams(window.location.search).get("next"));
   });
 

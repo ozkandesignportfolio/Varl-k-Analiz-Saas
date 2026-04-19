@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { PublicEnv } from "./src/lib/env/public-env";
 import { isAdminUser } from "./src/lib/auth/admin-user";
 import { isSupabaseUserEmailConfirmed } from "./src/lib/supabase/auth-errors";
 import { buildLoginPath } from "./src/lib/supabase/email-verification";
@@ -45,8 +46,8 @@ export async function middleware(request: NextRequest) {
   }
 
   const { search } = request.nextUrl;
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseUrl = PublicEnv.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = PublicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
     return buildLoginRedirectResponse(request, pathname, search);

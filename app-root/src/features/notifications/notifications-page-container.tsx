@@ -2,7 +2,7 @@
 
 import { BellPlus, CheckCheck, Funnel } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,15 +30,8 @@ type CreateTestNotificationsResponse = {
 
 /**
  * Map database Notification to UI NotificationRecord format
- * Logs: NOTIFICATION_MAP for debugging
  */
 const mapNotificationToRecord = (notification: Notification): NotificationRecord => {
-  console.log("NOTIFICATION_MAP", {
-    id: notification?.id,
-    type: notification?.type,
-    title: notification?.title,
-  });
-
   return {
     id: notification?.id ?? "",
     type: notification?.type ?? "Sistem",
@@ -77,19 +70,12 @@ export function NotificationsPageContainer() {
   // Map notifications to UI format (ALWAYS safe — never undefined)
   const notifications = useMemo(() => {
     const safeRaw = rawNotifications ?? [];
-    console.log("NOTIFICATION_UI_MAP", {
-      rawCount: safeRaw.length,
-      userId: currentUserId,
-    });
     return safeRaw
       .filter((n): n is Notification => Boolean(n && n.id))
       .map(mapNotificationToRecord);
   }, [rawNotifications, currentUserId]);
 
   const safeNotifications = notifications ?? [];
-
-  // Debug log
-  console.log("notifications:", safeNotifications);
 
   // Set feedback based on hook state
   useEffect(() => {
@@ -113,11 +99,6 @@ export function NotificationsPageContainer() {
         router.replace("/login?next=/notifications");
         return;
       }
-
-      console.log("NOTIFICATION_PAGE_USER", {
-        userId: user.id,
-        email: user.email,
-      });
 
       setCurrentUserId(user.id);
     };
@@ -169,12 +150,6 @@ export function NotificationsPageContainer() {
       return;
     }
 
-    console.log("NOTIFICATION_MARK_READ_UI", {
-      userId: currentUserId,
-      notificationId: id,
-      status: "attempt",
-    });
-
     const success = await hookMarkAsRead(id);
 
     if (!success) {
@@ -182,23 +157,12 @@ export function NotificationsPageContainer() {
       return;
     }
 
-    console.log("NOTIFICATION_MARK_READ_UI", {
-      userId: currentUserId,
-      notificationId: id,
-      status: "success",
-    });
   };
 
   const onDelete = async (id: string) => {
     if (!currentUserId) {
       return;
     }
-
-    console.log("NOTIFICATION_DELETE_UI", {
-      userId: currentUserId,
-      notificationId: id,
-      status: "attempt",
-    });
 
     const success = await hookDeleteNotification(id);
 
@@ -207,11 +171,6 @@ export function NotificationsPageContainer() {
       return;
     }
 
-    console.log("NOTIFICATION_DELETE_UI", {
-      userId: currentUserId,
-      notificationId: id,
-      status: "success",
-    });
   };
 
   const onMarkAllAsRead = async () => {
@@ -221,12 +180,6 @@ export function NotificationsPageContainer() {
       return;
     }
 
-    console.log("NOTIFICATION_MARK_ALL_READ_UI", {
-      userId: currentUserId,
-      unreadCount,
-      status: "attempt",
-    });
-
     const markedCount = await hookMarkAllAsRead();
 
     if (markedCount === 0) {
@@ -234,11 +187,6 @@ export function NotificationsPageContainer() {
       return;
     }
 
-    console.log("NOTIFICATION_MARK_ALL_READ_UI", {
-      userId: currentUserId,
-      markedCount,
-      status: "success",
-    });
   };
 
   const onGenerateTestNotifications = async () => {

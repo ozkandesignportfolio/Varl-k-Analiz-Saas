@@ -1,5 +1,8 @@
+import "server-only";
+
 import Stripe from "stripe";
 import { NextResponse } from "next/server";
+import { ServerEnv } from "@/lib/env/server-env";
 import { logApiError } from "@/lib/api/logging";
 import { enforceRateLimit, getRequestIp } from "@/lib/api/rate-limit";
 import { PREMIUM_MONTHLY_PRICE_KURUS } from "@/lib/plans/pricing";
@@ -10,8 +13,8 @@ import { requireRouteUser } from "@/lib/supabase/route-auth";
 // Stripe price id'si merkezi schema'da yok (opsiyonel operasyonel flag). Bunu
 // CONFIG'e taşımak isteyen biri schema'yı genişletir.
 const readPremiumPriceId = (): string | null =>
-  process.env.STRIPE_PRICE_PREMIUM?.trim() ||
-  process.env.STRIPE_PRICE_PREMIUM_MONTHLY?.trim() ||
+  ServerEnv.STRIPE_PRICE_PREMIUM ||
+  ServerEnv.STRIPE_PRICE_PREMIUM_MONTHLY ||
   null;
 
 const PREMIUM_CHECKOUT_CURRENCY = "try";

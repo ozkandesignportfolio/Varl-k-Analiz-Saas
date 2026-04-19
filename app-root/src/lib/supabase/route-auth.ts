@@ -8,6 +8,7 @@ import {
   getProfilePlanFromUserMetadata,
   type ProfilePlan,
 } from "@/lib/plans/profile-plan";
+import { ServerEnv } from "@/lib/env/server-env";
 import type { DbClient } from "@/lib/repos/_shared";
 import { isSupabaseUserEmailConfirmed } from "@/lib/supabase/auth-errors";
 import { createClient } from "@/lib/supabase/server";
@@ -27,7 +28,7 @@ export type RouteAuthFailure = {
 const UNAUTHORIZED_ERROR = "Unauthorized";
 const PROFILE_PLAN_CACHE_TTL_MS = 30_000;
 const profilePlanCache = new Map<string, { plan: ProfilePlan; expiresAt: number }>();
-const forceProfileFromDb = process.env.AUTH_FORCE_PROFILE_FROM_DB === "1";
+const forceProfileFromDb = ServerEnv.AUTH_FORCE_PROFILE_FROM_DB === "1";
 
 const getCachedProfilePlan = (userId: string): ProfilePlan | null => {
   const cacheEntry = profilePlanCache.get(userId);

@@ -1,3 +1,5 @@
+import { Runtime } from "@/lib/env/runtime";
+
 type SupabaseAuthErrorLike = {
   code?: string | null;
   message?: string | null;
@@ -15,7 +17,7 @@ type SupabaseUserLike = {
 
 const normalize = (value?: string | null) => value?.trim().toLowerCase() ?? "";
 
-export const isDevelopmentEnvironment = () => process.env.NODE_ENV === "development";
+export const isDevelopmentEnvironment = () => !Runtime.isBuild();
 
 export const isSupabaseUserEmailConfirmed = (user?: SupabaseUserLike | null) =>
   Boolean(user?.email_confirmed_at);

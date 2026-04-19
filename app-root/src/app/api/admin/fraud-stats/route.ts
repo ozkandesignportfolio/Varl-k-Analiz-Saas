@@ -271,7 +271,7 @@ const buildBaseQuery = (filters: FraudStatsFilters, sinceIso: string) => {
     };
   };
 
-  let query = client
+  const query = client
     .from("auth_security_logs")
     .select("id,user_id,email,ip,user_agent,event_type,metadata,created_at") as {
       gte: (column: "created_at", value: string) => unknown;

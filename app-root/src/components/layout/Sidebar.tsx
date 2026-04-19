@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { memo, useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { PlanContext } from "@/contexts/PlanContext";
@@ -10,6 +10,8 @@ import { sidebarNavItems } from "@/components/layout/sidebar/nav-items";
 import { SidebarFooter, type PlanDebugResponse } from "@/components/layout/sidebar/SidebarFooter";
 import { SidebarItem } from "@/components/layout/sidebar/SidebarItem";
 import { cn } from "@/lib/utils";
+import { BuildEnv } from "@/lib/env/build-env";
+import { PublicEnv } from "@/lib/env/public-env";
 
 type SidebarProps = {
   collapsed?: boolean;
@@ -27,13 +29,13 @@ const isActivePath = (pathname: string, href: string) => {
   return pathname === href || pathname.startsWith(`${href}/`);
 };
 
-export function Sidebar({ collapsed = false, brand, footer, className, onNavigate }: SidebarProps) {
+export const Sidebar = memo(function Sidebar({ collapsed = false, brand, footer, className, onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const isHydrated = useSyncExternalStore(subscribeToHydration, () => true, () => false);
   const [planDebug, setPlanDebug] = useState<PlanDebugResponse | null>(null);
   const planContext = useContext(PlanContext);
   const plan = planContext?.plan ?? "free";
-  const showPlanDebug = process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_PLAN_DEBUG === "true";
+  const showPlanDebug = BuildEnv.NODE_ENV !== "production" && PublicEnv.NEXT_PUBLIC_PLAN_DEBUG === "true";
   const sidebarPlanLabel = plan === "premium" ? "Premium" : "Deneme";
   const assetCount = planContext?.assetCount ?? 0;
   const assetLimit = planContext?.assetLimit ?? INITIAL_ASSET_LIMIT;
@@ -163,4 +165,4 @@ export function Sidebar({ collapsed = false, brand, footer, className, onNavigat
       </div>
     </aside>
   );
-}
+});

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { Runtime } from "@/lib/env/runtime";
 
 type IdleCallbackHandle = number;
 
@@ -27,14 +28,14 @@ const getSessionStorageSafely = () => {
 
 export function PwaRegister() {
   useEffect(() => {
-    if (typeof window === "undefined" || typeof navigator === "undefined") return;
+    if (!Runtime.isClient() || typeof navigator === "undefined") return;
     if (!("serviceWorker" in navigator) || !window.isSecureContext) return;
 
     const idleWindow = window as WindowWithIdleCallback;
     const sessionStorageRef = getSessionStorageSafely();
     const devCleanupReloadKey = "__assetcare_dev_sw_cleanup_reload__";
 
-    if (process.env.NODE_ENV !== "production") {
+    if (!Runtime.isBuild()) {
       const cleanupDevServiceWorkers = async () => {
         try {
           const hadController = Boolean(navigator.serviceWorker.controller);

@@ -6,12 +6,12 @@ import {
 } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getConfig } from "@/lib/env/runtime-env";
+import { ServerEnv } from "@/lib/env/server-env";
 
 /**
  * Supabase server (SSR) istemci accessor'ı.
  *
- *  - Sadece CONFIG'i tüketir; `process.env` veya `parseServerEnv`'i doğrudan
+ *  - Sadece CONFIG'i tüketir; ham ortam değişkenlerini veya `parseServerEnv`'i doğrudan
  *    kullanmaz.
  *  - **Documented exception (point 5)**: Supabase SSR istemci cookie'lere bağlıdır
  *    ve cookies Next.js'in per-request `cookies()` API'si üzerinden gelir.
@@ -48,12 +48,11 @@ const buildDefaultCookieAdapter = async (): Promise<CookieMethodsServer> => {
 export const getSupabaseServerClient = async (
   context?: SupabaseServerClientContext,
 ): Promise<SupabaseClient> => {
-  const config = getConfig();
   const cookieAdapter = context?.cookies ?? (await buildDefaultCookieAdapter());
 
   return createSupabaseSsrServerClient(
-    config.NEXT_PUBLIC_SUPABASE_URL,
-    config.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    ServerEnv.NEXT_PUBLIC_SUPABASE_URL,
+    ServerEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     { cookies: cookieAdapter },
   );
 };

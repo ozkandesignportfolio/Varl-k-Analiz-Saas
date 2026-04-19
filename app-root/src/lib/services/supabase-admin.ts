@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { getConfig } from "@/lib/env/runtime-env";
+import { ServerEnv } from "@/lib/env/server-env";
 
 /**
  * Supabase admin (service-role) singleton accessor.
@@ -20,10 +20,9 @@ export const getSupabaseAdmin = (): SupabaseClient => {
     return CLIENT;
   }
 
-  const config = getConfig();
   CLIENT = createClient(
-    config.NEXT_PUBLIC_SUPABASE_URL,
-    config.SUPABASE_SERVICE_ROLE_KEY,
+    ServerEnv.NEXT_PUBLIC_SUPABASE_URL,
+    ServerEnv.SUPABASE_SERVICE_ROLE_KEY,
     {
       auth: {
         autoRefreshToken: false,

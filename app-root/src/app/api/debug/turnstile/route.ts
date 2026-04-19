@@ -1,8 +1,11 @@
+import "server-only";
+
 import { NextResponse } from "next/server";
 import {
   getMaskedSiteKeyPreview,
   getTurnstileRequestContext,
 } from "@/lib/auth/turnstile-diagnostics";
+import { PublicEnv } from "@/lib/env/public-env";
 import { readTurnstileServerEnv } from "@/lib/env/turnstile-server";
 
 export const runtime = "nodejs";
@@ -41,7 +44,7 @@ export async function GET(request: Request) {
       secretKeyPresent: Boolean(env.secretKey),
       secretKeyKind: env.secretKeyKind,
       siteKeyKind: env.siteKeyKind,
-      siteKeyPreview: getMaskedSiteKeyPreview(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY),
+      siteKeyPreview: getMaskedSiteKeyPreview(PublicEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY),
     },
   });
 }

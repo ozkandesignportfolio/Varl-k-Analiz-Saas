@@ -1,9 +1,13 @@
+import "server-only";
+
 import { NextResponse } from "next/server";
 import { logApiError } from "@/lib/api/logging";
 import { enforceRateLimit, getRequestIp } from "@/lib/api/rate-limit";
 import Stripe from "stripe";
 import { getStripeClient } from "@/lib/services/stripe";
 import { getSupabaseAdmin } from "@/lib/services/supabase-admin";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { ServerEnv } from "@/lib/env/server-env";
 
 export const runtime = "nodejs";
 
@@ -13,6 +17,133 @@ const toStripeId = (value: string | Stripe.Customer | Stripe.Subscription | Stri
   }
 
   return typeof value === "string" ? value : value.id;
+};
+
+type WebhookContext = {
+  stripeClient: Stripe;
+  supabaseAdmin: SupabaseClient;
+  webhookSecret: string;
+};
+
+const getWebhookSecret = (): string => ServerEnv.STRIPE_WEBHOOK_SECRET;
+
+const getWebhookContext = (): WebhookContext | null => {
+  const webhookSecret = getWebhookSecret();
+
+  try {
+    return {
+      stripeClient: getStripeClient(),
+      supabaseAdmin: getSupabaseAdmin(),
+      webhookSecret,
+    };
+  } catch (error) {
+    logApiError({
+      route: "/api/stripe/webhook",
+      method: "POST",
+      status: 500,
+      error,
+      message: "Stripe webhook dependencies are not configured.",
+    });
+    return null;
+  }
+};
+
+const withWebhookIdempotency = async (
+  supabaseAdmin: SupabaseClient,
+  eventId: string,
+): Promise<{ proceed: true } | { proceed: false; response: NextResponse }> => {
+  const { error: insertEventError } = await supabaseAdmin.from("stripe_webhook_events").insert({ id: eventId });
+
+  if (!insertEventError) {
+    return { proceed: true };
+  }
+
+  const isDuplicateInsert =
+    insertEventError.code === "23505" || insertEventError.message?.toLowerCase().includes("duplicate key");
+
+  if (isDuplicateInsert) {
+    return { proceed: false, response: NextResponse.json({ received: true, deduped: true }, { status: 200 }) };
+  }
+
+  logApiError({
+    route: "/api/stripe/webhook",
+    method: "POST",
+    status: 500,
+    error: insertEventError,
+    message: "Failed to persist Stripe webhook event id.",
+    meta: {
+      code: insertEventError.code ?? null,
+    },
+  });
+
+  return {
+    proceed: false,
+    response: NextResponse.json({ error: "Webhook processing failed." }, { status: 500 }),
+  };
+};
+
+const executeWebhookBusinessLogic = async (event: Stripe.Event, supabaseAdmin: SupabaseClient): Promise<void> => {
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const userId = session.metadata?.userId;
+    const stripeCustomerId = toStripeId(session.customer);
+    const stripeSubscriptionId = toStripeId(session.subscription);
+
+    if (!userId) {
+      return;
+    }
+
+    if (stripeSubscriptionId) {
+      const { data: existingProfile, error: existingProfileError } = await supabaseAdmin
+        .from("profiles")
+        .select("plan, stripe_subscription_id")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (existingProfileError) {
+        throw existingProfileError;
+      }
+
+      if (existingProfile?.plan === "premium" && existingProfile.stripe_subscription_id === stripeSubscriptionId) {
+        return;
+      }
+    }
+
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .update({
+        plan: "premium",
+        stripe_customer_id: stripeCustomerId,
+        stripe_subscription_id: stripeSubscriptionId,
+      })
+      .eq("id", userId);
+
+    if (error) {
+      logApiError({
+        route: "/api/stripe/webhook",
+        method: "POST",
+        status: 500,
+        error,
+        message: "Failed to update profile from Stripe webhook.",
+      });
+    }
+  }
+};
+
+const withRetrySafeExecution = async (execute: () => Promise<void>): Promise<NextResponse> => {
+  try {
+    await execute();
+    return NextResponse.json({ received: true }, { status: 200 });
+  } catch (error) {
+    logApiError({
+      route: "/api/stripe/webhook",
+      method: "POST",
+      status: 400,
+      error,
+      message: "Stripe webhook processing failed.",
+    });
+    return NextResponse.json({ received: true, processed: false }, { status: 200 });
+  }
 };
 
 export async function POST(request: Request) {
@@ -35,111 +166,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing Stripe signature." }, { status: 400 });
   }
 
-  if (!process.env.STRIPE_WEBHOOK_SECRET) {
-    logApiError({
-      route: "/api/stripe/webhook",
-      method: "POST",
-      status: 500,
-      error: new Error("Missing STRIPE_WEBHOOK_SECRET"),
-      message: "Stripe webhook secret missing.",
-    });
+  const context = getWebhookContext();
+  if (!context) {
     return NextResponse.json({ error: "Webhook secret missing." }, { status: 500 });
   }
 
-  // getStripeClient() ve getSupabaseAdmin() CONFIG zinciri üzerinden
-  // ilk çağrıda doğrulanır; env geçersizse throw eder ve global error handler
-  // 500 döner (deterministik). Route içinde ayrıca guard gerekmez.
-  const stripeClient = getStripeClient();
-  const supabaseAdmin = getSupabaseAdmin();
+  const { stripeClient, supabaseAdmin, webhookSecret } = context;
 
   let event: Stripe.Event;
 
   try {
-    event = stripeClient.webhooks.constructEvent(rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    event = stripeClient.webhooks.constructEvent(rawBody, sig, webhookSecret);
   } catch {
     return NextResponse.json({ error: "Gecersiz Stripe imzasi." }, { status: 400 });
   }
 
-  const eventId = event.id;
-  const { error: insertEventError } = await supabaseAdmin.from("stripe_webhook_events").insert({ id: eventId });
-
-  if (insertEventError) {
-    const isDuplicateInsert =
-      insertEventError.code === "23505" || insertEventError.message?.toLowerCase().includes("duplicate key");
-
-    if (isDuplicateInsert) {
-      return NextResponse.json({ received: true, deduped: true }, { status: 200 });
-    }
-
-    logApiError({
-      route: "/api/stripe/webhook",
-      method: "POST",
-      status: 500,
-      error: insertEventError,
-      message: "Failed to persist Stripe webhook event id.",
-      meta: {
-        code: insertEventError.code ?? null,
-      },
-    });
-    return NextResponse.json({ error: "Webhook processing failed." }, { status: 500 });
+  const idempotency = await withWebhookIdempotency(supabaseAdmin, event.id);
+  if (!idempotency.proceed) {
+    return idempotency.response;
   }
 
-  try {
-    if (event.type === "checkout.session.completed") {
-      const session = event.data.object as Stripe.Checkout.Session;
-      const userId = session.metadata?.userId;
-      const stripeCustomerId = toStripeId(session.customer);
-      const stripeSubscriptionId = toStripeId(session.subscription);
-
-      if (!userId) {
-        return NextResponse.json({ received: true }, { status: 200 });
-      }
-
-      if (stripeSubscriptionId) {
-        const { data: existingProfile, error: existingProfileError } = await supabaseAdmin
-          .from("profiles")
-          .select("plan, stripe_subscription_id")
-          .eq("id", userId)
-          .maybeSingle();
-
-        if (existingProfileError) {
-          throw existingProfileError;
-        }
-
-        if (existingProfile?.plan === "premium" && existingProfile.stripe_subscription_id === stripeSubscriptionId) {
-          return NextResponse.json({ received: true }, { status: 200 });
-        }
-      }
-
-      const { error } = await supabaseAdmin
-        .from("profiles")
-        .update({
-          plan: "premium",
-          stripe_customer_id: stripeCustomerId,
-          stripe_subscription_id: stripeSubscriptionId,
-        })
-        .eq("id", userId);
-
-      if (error) {
-        logApiError({
-          route: "/api/stripe/webhook",
-          method: "POST",
-          status: 500,
-          error,
-          message: "Failed to update profile from Stripe webhook.",
-        });
-      }
-    }
-  } catch (error) {
-    logApiError({
-      route: "/api/stripe/webhook",
-      method: "POST",
-      status: 400,
-      error,
-      message: "Stripe webhook processing failed.",
-    });
-    return NextResponse.json({ error: "Webhook processing failed." }, { status: 400 });
-  }
-
-  return NextResponse.json({ received: true }, { status: 200 });
+  return withRetrySafeExecution(async () => {
+    await executeWebhookBusinessLogic(event, supabaseAdmin);
+  });
 }

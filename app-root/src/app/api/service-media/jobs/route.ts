@@ -1,6 +1,9 @@
+import "server-only";
+
 import { createHash } from "crypto";
 import { NextResponse } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { ServerEnv } from "@/lib/env/server-env";
 import { logApiError } from "@/lib/api/logging";
 import { enforceServiceRateLimit } from "@/lib/api/rate-limit";
 
@@ -21,11 +24,11 @@ const readBody = async (request: Request) =>
     | null;
 
 const getSupabaseUrl = () =>
-  process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || process.env.SUPABASE_URL?.trim() || null;
+  ServerEnv.NEXT_PUBLIC_SUPABASE_URL || ServerEnv.SUPABASE_URL || null;
 
 const getServiceRoleClient = () => {
   const supabaseUrl = getSupabaseUrl();
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const serviceRoleKey = ServerEnv.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !serviceRoleKey) {
     return null;
@@ -41,7 +44,7 @@ const getServiceRoleClient = () => {
 
 const getWorkerInvocation = () => {
   const supabaseUrl = getSupabaseUrl();
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || null;
+  const serviceRoleKey = ServerEnv.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !serviceRoleKey) {
     return null;
@@ -106,7 +109,7 @@ async function invokeCurrentWorker(body: Awaited<ReturnType<typeof readBody>>) {
 }
 
 export async function POST(request: Request) {
-  const jobSecret = process.env.SERVICE_MEDIA_JOB_SECRET?.trim();
+  const jobSecret = ServerEnv.SERVICE_MEDIA_JOB_SECRET;
   if (!jobSecret) {
     return NextResponse.json({ error: "SERVICE_MEDIA_JOB_SECRET tanimli degil." }, { status: 503 });
   }

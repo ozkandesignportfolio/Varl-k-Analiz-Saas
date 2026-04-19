@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import type { ChartData, ChartOptions } from "chart.js";
 import { Line } from "react-chartjs-2";
 import "@/components/kpi/chartjs-setup";
@@ -17,7 +17,7 @@ type ScoreTrendPoint = {
   score: number;
 };
 
-export function ScoreTrendChart({ points }: { points: ScoreTrendPoint[] }) {
+export const ScoreTrendChart = memo(function ScoreTrendChart({ points }: { points: ScoreTrendPoint[] }) {
   const data = useMemo<ChartData<"line">>(
     () => ({
       labels: points.map((point) => point.month),
@@ -76,4 +76,4 @@ export function ScoreTrendChart({ points }: { points: ScoreTrendPoint[] }) {
   );
 
   return <Line className="!h-full !w-full" data={data} options={options} />;
-}
+});

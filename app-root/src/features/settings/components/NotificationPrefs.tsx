@@ -143,7 +143,9 @@ export function NotificationPrefs({
   );
 
   useEffect(() => {
-    setReminderDraft(createReminderDraft(reminderDays));
+    queueMicrotask(() => {
+      setReminderDraft(createReminderDraft(reminderDays));
+    });
   }, [
     reminderDays.billingDaysBefore,
     reminderDays.documentDaysBefore,

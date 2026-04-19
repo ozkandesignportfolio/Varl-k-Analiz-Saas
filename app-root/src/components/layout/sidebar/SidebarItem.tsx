@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { memo } from "react";
 import {
   Bell,
   Clock3,
@@ -42,7 +43,7 @@ const iconByKey: Record<SidebarNavIconKey, LucideIcon> = {
   settings: Settings,
 };
 
-export function SidebarItem({ item, collapsed, active, onNavigate }: SidebarItemProps) {
+export const SidebarItem = memo(function SidebarItem({ item, collapsed, active, onNavigate }: SidebarItemProps) {
   const Icon = iconByKey[item.iconKey];
 
   return (
@@ -84,4 +85,4 @@ export function SidebarItem({ item, collapsed, active, onNavigate }: SidebarItem
       )}
     </Link>
   );
-}
+});

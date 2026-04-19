@@ -3,8 +3,6 @@ import "server-only";
 import {
   DispatchStage,
   DispatchErrorCode,
-  assertNever,
-  type AppEventType,
 } from "@/lib/events/app-event";
 
 /**

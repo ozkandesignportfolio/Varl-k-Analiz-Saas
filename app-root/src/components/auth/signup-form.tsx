@@ -43,6 +43,7 @@ import {
   type SignupApiErrorResponse,
   type SignupApiSuccessResponse,
 } from "@/lib/supabase/signup";
+import { Runtime } from "@/lib/env/runtime";
 
 // PRODUCTION-SAFE STATE MACHINE
 // Valid states: idle -> verifying_captcha -> creating_user -> sending_email -> success | rollback | error
@@ -413,7 +414,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
   }, []);
 
   useEffect(() => {
-    const hostname = typeof window !== "undefined" ? window.location.hostname : null;
+    const hostname = Runtime.isClient() ? window.location.hostname : null;
     const nextSiteKey = resolveTurnstileSiteKeyForHostname({
       configuredSiteKey: envTurnstileSiteKey,
       hostname,
@@ -444,7 +445,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
+    if (!Runtime.isClient()) {
       return;
     }
 
@@ -560,7 +561,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
         // CRITICAL FIX: Only reset if NOT currently in a request
         // If a request is in flight, let it complete - the error handler will deal with it
         if (lifecycle.type === "consumed") {
-          if (process.env.NODE_ENV === "development") {
+          if (!Runtime.isBuild()) {
             console.debug("[signup.turnstile] Token expired but request in flight - deferring reset.");
           }
           // Mark as expired but don't reset yet - the request completion will handle it
@@ -572,7 +573,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
           return;
         }
 
-        if (process.env.NODE_ENV === "development") {
+        if (!Runtime.isBuild()) {
           console.debug("[signup.turnstile] Token expired via timeout.");
         }
 
@@ -594,7 +595,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
         setResetCounter((prev) => prev + 1);
       }, TURNSTILE_TOKEN_MAX_AGE_MS);
 
-      if (process.env.NODE_ENV === "development") {
+      if (!Runtime.isBuild()) {
         console.debug("[signup.turnstile] Token received.", {
           tokenLength: value.length,
           expiresAt: new Date(expiresAt).toISOString(),
@@ -621,7 +622,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
   }, [clearErrorState]);
 
   const startSignupCooldown = () => {
-    if (typeof window === "undefined") {
+    if (!Runtime.isClient()) {
       return;
     }
 
@@ -702,7 +703,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
     const requestId = generateRequestId();
     tokenLifecycleRef.current = { type: "consumed", token: lifecycle.token, usedAt: now, requestId };
 
-    if (process.env.NODE_ENV === "development") {
+    if (!Runtime.isBuild()) {
       console.debug("[signup] Starting submission.", {
         requestId,
         tokenLength: lifecycle.token.length,
@@ -756,7 +757,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
           errorResult?.details?.shouldResetTurnstile === true;
 
         if (shouldResetTurnstile) {
-          if (process.env.NODE_ENV === "development") {
+          if (!Runtime.isBuild()) {
             console.debug("[signup] Backend requested Turnstile reset.", {
               error: errorResult?.error,
             });
@@ -812,7 +813,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
       const toastMessage = isEmailFailed
         ? "Hesabınız oluşturuldu ancak doğrulama maili gönderilemedi."
         : "Hesabınız başarıyla oluşturuldu! Doğrulama e-postası gönderildi.";
-      if (typeof window !== "undefined" && (window as unknown as { showToast?: (msg: string, type: string) => void }).showToast) {
+      if (Runtime.isClient() && (window as unknown as { showToast?: (msg: string, type: string) => void }).showToast) {
         (window as unknown as { showToast: (msg: string, type: string) => void }).showToast(
           toastMessage,
           isEmailFailed ? "warning" : "success"

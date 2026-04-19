@@ -1,0 +1,400 @@
+{
+  "generatedAt": "2026-04-19T13:28:18.167Z",
+  "findings": [
+    {
+      "file": "playwright.config.ts",
+      "line": 7,
+      "snippet": "const baseURL = process.env.TEST_BASE_URL || process.env.PLAYWRIGHT_BASE_URL || \"http://127.0.0.1:3100\";"
+    },
+    {
+      "file": "playwright.config.ts",
+      "line": 28,
+      "snippet": "webServer: process.env.TEST_BASE_URL || process.env.PLAYWRIGHT_BASE_URL"
+    },
+    {
+      "file": "playwright.config.ts",
+      "line": 33,
+      "snippet": "reuseExistingServer: !process.env.CI,"
+    },
+    {
+      "file": "scripts\\audit-process-env.mjs",
+      "line": 22,
+      "snippet": "if (!content.includes(\"process.env\")) continue;"
+    },
+    {
+      "file": "scripts\\audit-process-env.mjs",
+      "line": 26,
+      "snippet": "if (line.includes(\"process.env\")) {"
+    },
+    {
+      "file": "scripts\\e2e-seed.mjs",
+      "line": 13,
+      "snippet": "const SUPABASE_URL = must(process.env.NEXT_PUBLIC_SUPABASE_URL, \"NEXT_PUBLIC_SUPABASE_URL\");"
+    },
+    {
+      "file": "scripts\\e2e-seed.mjs",
+      "line": 14,
+      "snippet": "const SUPABASE_SERVICE_ROLE_KEY = must(process.env.SUPABASE_SERVICE_ROLE_KEY, \"SUPABASE_SERVICE_ROLE_KEY\");"
+    },
+    {
+      "file": "scripts\\e2e-seed.mjs",
+      "line": 25,
+      "snippet": "const value = process.env[key]?.trim();"
+    },
+    {
+      "file": "scripts\\load-test-env.cjs",
+      "line": 37,
+      "snippet": "const explicit = String(process.env.TEST_ENV_FILE || \"\")"
+    },
+    {
+      "file": "scripts\\load-test-env.cjs",
+      "line": 124,
+      "snippet": "const applyCanonicalAliases = (env = process.env) => {"
+    },
+    {
+      "file": "scripts\\load-test-env.cjs",
+      "line": 134,
+      "snippet": "const loadTestEnv = ({ env = process.env, envFiles = DEFAULT_ENV_FILES } = {}) => {"
+    },
+    {
+      "file": "scripts\\load-test-env.cjs",
+      "line": 161,
+      "snippet": "const firstDefinedEnv = (names, env = process.env) => {"
+    },
+    {
+      "file": "scripts\\load-test-env.cjs",
+      "line": 235,
+      "snippet": "const env = options.env || process.env;"
+    },
+    {
+      "file": "scripts\\load-test-env.cjs",
+      "line": 265,
+      "snippet": "const env = options.env || process.env;"
+    },
+    {
+      "file": "scripts\\load-test-env.cjs",
+      "line": 276,
+      "snippet": "\"Load order: existing process.env -> .env.test -> .env.local -> .env\","
+    },
+    {
+      "file": "scripts\\load-test-env.cjs",
+      "line": 277,
+      "snippet": "\"Tip: ensure keys exist in one of .env.test, .env.local, .env or current process.env.\","
+    },
+    {
+      "file": "scripts\\print-supabase-env-check.mjs",
+      "line": 26,
+      "snippet": "const readEnv = (key) => (process.env[key] ?? \"\").trim();"
+    },
+    {
+      "file": "scripts\\run-e2e.mjs",
+      "line": 4,
+      "snippet": "const npmExecPath = process.env.npm_execpath;"
+    },
+    {
+      "file": "scripts\\run-e2e.mjs",
+      "line": 7,
+      "snippet": "const baseUrl = process.env.TEST_BASE_URL || \"http://127.0.0.1:3100\";"
+    },
+    {
+      "file": "scripts\\run-e2e.mjs",
+      "line": 89,
+      "snippet": "if (!process.env[key]) {"
+    },
+    {
+      "file": "scripts\\run-e2e.mjs",
+      "line": 90,
+      "snippet": "process.env[key] = value;"
+    },
+    {
+      "file": "scripts\\run-e2e.mjs",
+      "line": 95,
+      "snippet": "...process.env,"
+    },
+    {
+      "file": "scripts\\run-e2e.mjs",
+      "line": 106,
+      "snippet": "...process.env,"
+    },
+    {
+      "file": "scripts\\run-rate-limit-playwright.mjs",
+      "line": 7,
+      "snippet": "process.env.APP_ENV = process.env.APP_ENV || \"test\";"
+    },
+    {
+      "file": "scripts\\run-rate-limit-playwright.mjs",
+      "line": 8,
+      "snippet": "process.env.NODE_ENV = process.env.NODE_ENV || \"test\";"
+    },
+    {
+      "file": "scripts\\run-rate-limit-playwright.mjs",
+      "line": 9,
+      "snippet": "process.env.RATE_LIMIT_STRICT_IN_TEST = process.env.RATE_LIMIT_STRICT_IN_TEST || \"1\";"
+    },
+    {
+      "file": "scripts\\run-rate-limit-playwright.mjs",
+      "line": 10,
+      "snippet": "process.env.AUTH_FORCE_PROFILE_FROM_DB = process.env.AUTH_FORCE_PROFILE_FROM_DB || \"1\";"
+    },
+    {
+      "file": "scripts\\run-rate-limit-playwright.mjs",
+      "line": 24,
+      "snippet": "env: { ...process.env },"
+    },
+    {
+      "file": "scripts\\run-rls-negative-playwright.mjs",
+      "line": 13,
+      "snippet": "process.env.APP_ENV = process.env.APP_ENV || \"test\";"
+    },
+    {
+      "file": "scripts\\run-rls-negative-playwright.mjs",
+      "line": 14,
+      "snippet": "process.env.NODE_ENV = process.env.NODE_ENV || \"test\";"
+    },
+    {
+      "file": "scripts\\run-rls-negative-playwright.mjs",
+      "line": 15,
+      "snippet": "process.env.RATE_LIMIT_STRICT_IN_TEST = process.env.RATE_LIMIT_STRICT_IN_TEST || \"1\";"
+    },
+    {
+      "file": "scripts\\run-rls-negative-playwright.mjs",
+      "line": 16,
+      "snippet": "process.env.AUTH_FORCE_PROFILE_FROM_DB = process.env.AUTH_FORCE_PROFILE_FROM_DB || \"1\";"
+    },
+    {
+      "file": "scripts\\run-rls-negative-playwright.mjs",
+      "line": 43,
+      "snippet": "const env = { ...process.env };"
+    },
+    {
+      "file": "scripts\\run-stable-suite.cjs",
+      "line": 6,
+      "snippet": "const target = String(process.argv[2] || process.env.STABLE_SUITE_TARGET || \"both\").toLowerCase();"
+    },
+    {
+      "file": "scripts\\run-stable-suite.cjs",
+      "line": 9,
+      "snippet": "process.env.STABLE_SUITE_TARGET = target;"
+    },
+    {
+      "file": "scripts\\run_stable_full_suite.cjs",
+      "line": 8,
+      "snippet": "const STABLE_SUITE_TARGET = String(process.env.STABLE_SUITE_TARGET || \"both\").toLowerCase();"
+    },
+    {
+      "file": "scripts\\run_stable_full_suite.cjs",
+      "line": 11,
+      "snippet": "const BASE_URL = process.env.TEST_BASE_URL || \"http://127.0.0.1:3100\";"
+    },
+    {
+      "file": "scripts\\run_stable_premium_suite.cjs",
+      "line": 6,
+      "snippet": "process.env.STABLE_SUITE_TARGET = \"premium\";"
+    },
+    {
+      "file": "scripts\\run_stable_trial_suite.cjs",
+      "line": 6,
+      "snippet": "process.env.STABLE_SUITE_TARGET = \"trial\";"
+    },
+    {
+      "file": "scripts\\security-check.mjs",
+      "line": 36,
+      "snippet": "if (process.env.SKIP_GITLEAKS === \"1\") {"
+    },
+    {
+      "file": "scripts\\test-seed-users.mjs",
+      "line": 7,
+      "snippet": "const value = process.env[key]?.trim();"
+    },
+    {
+      "file": "scripts\\validate-turnstile-env.cjs",
+      "line": 79,
+      "snippet": "const secretKey = normalizeEnvValue(process.env.TURNSTILE_SECRET_KEY);"
+    },
+    {
+      "file": "scripts\\validate-turnstile-env.cjs",
+      "line": 80,
+      "snippet": "const siteKey = normalizeEnvValue(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);"
+    },
+    {
+      "file": "scripts\\validate-turnstile-env.cjs",
+      "line": 96,
+      "snippet": "nodeEnv: process.env.NODE_ENV ?? \"undefined\","
+    },
+    {
+      "file": "scripts\\validate-turnstile-env.cjs",
+      "line": 99,
+      "snippet": "process.env.NODE_ENV === \"production\" &&"
+    },
+    {
+      "file": "scripts\\validate-turnstile-env.cjs",
+      "line": 135,
+      "snippet": "if (process.env.NODE_ENV === \"development\") {"
+    },
+    {
+      "file": "scripts\\validate-turnstile-env.cjs",
+      "line": 150,
+      "snippet": "if (summary.missing.length > 0 && process.env.NODE_ENV === \"development\") {"
+    },
+    {
+      "file": "scripts\\_load-env-local.mjs",
+      "line": 26,
+      "snippet": "const explicitFiles = (process.env.TEST_ENV_FILE || \"\")"
+    },
+    {
+      "file": "scripts\\_load-env-local.mjs",
+      "line": 43,
+      "snippet": "if (process.env[k] == null || process.env[k] === \"\") {"
+    },
+    {
+      "file": "scripts\\_load-env-local.mjs",
+      "line": 44,
+      "snippet": "process.env[k] = v;"
+    },
+    {
+      "file": "src\\instrumentation.ts",
+      "line": 9,
+      "snippet": "*  - `process.env` okumaları sadece `NEXT_RUNTIME` branch seçimi içindir;"
+    },
+    {
+      "file": "src\\instrumentation.ts",
+      "line": 13,
+      "snippet": "const runtimeFlag = process.env.NEXT_RUNTIME;"
+    },
+    {
+      "file": "src\\instrumentation.ts",
+      "line": 14,
+      "snippet": "const phaseFlag = process.env.NEXT_PHASE;"
+    },
+    {
+      "file": "src\\lib\\env\\build-env.ts",
+      "line": 6,
+      "snippet": "const raw = process.env[key];"
+    },
+    {
+      "file": "src\\lib\\env\\public-env.ts",
+      "line": 27,
+      "snippet": "const raw = process.env[key];"
+    },
+    {
+      "file": "src\\lib\\env\\runtime.ts",
+      "line": 28,
+      "snippet": "nextPhase: typeof process !== \"undefined\" ? (process.env.NEXT_PHASE ?? \"\") : \"\","
+    },
+    {
+      "file": "src\\lib\\env\\runtime.ts",
+      "line": 34,
+      "snippet": "nextPhase: typeof process !== \"undefined\" ? (process.env.NEXT_PHASE ?? \"\") : \"\","
+    },
+    {
+      "file": "src\\lib\\env\\runtime.ts",
+      "line": 40,
+      "snippet": "nextPhase: typeof process !== \"undefined\" ? (process.env.NEXT_PHASE ?? \"\") : \"\","
+    },
+    {
+      "file": "src\\lib\\env\\runtime.ts",
+      "line": 46,
+      "snippet": "nextPhase: typeof process !== \"undefined\" ? (process.env.NEXT_PHASE ?? \"\") : \"\","
+    },
+    {
+      "file": "src\\lib\\env\\server-env.ts",
+      "line": 72,
+      "snippet": "return normalizeEnvValue(process.env[key]);"
+    },
+    {
+      "file": "src\\lib\\env\\server-env.ts",
+      "line": 182,
+      "snippet": "if (process.env.NODE_ENV === \"production\") {"
+    },
+    {
+      "file": "src\\lib\\env\\server-env.ts",
+      "line": 189,
+      "snippet": "if (process.env.NODE_ENV !== \"production\") return;"
+    },
+    {
+      "file": "testsprite\\tests\\e2e\\helpers\\supabase-admin.ts",
+      "line": 42,
+      "snippet": "const readEnv = (key: RequiredEnvKey) => (process.env[key] ?? \"\").trim();"
+    },
+    {
+      "file": "testsprite\\tests\\rls\\rls-negative.spec.ts",
+      "line": 9,
+      "snippet": "const BASE_URL = process.env.TEST_BASE_URL || process.env.PLAYWRIGHT_BASE_URL || \"http://127.0.0.1:3100\";"
+    },
+    {
+      "file": "testsprite\\tests\\rls\\rls-negative.test.ts",
+      "line": 12,
+      "snippet": "const userAEmail = process.env.E2E_RLS_USER_A_EMAIL?.trim() || \"e2e.rls.user.a@example.com\";"
+    },
+    {
+      "file": "testsprite\\tests\\rls\\rls-negative.test.ts",
+      "line": 13,
+      "snippet": "const userAPassword = process.env.E2E_RLS_USER_A_PASSWORD?.trim() || \"E2E-Rls-A-Password!1\";"
+    },
+    {
+      "file": "testsprite\\tests\\rls\\rls-negative.test.ts",
+      "line": 14,
+      "snippet": "const userBEmail = process.env.E2E_RLS_USER_B_EMAIL?.trim() || \"e2e.rls.user.b@example.com\";"
+    },
+    {
+      "file": "testsprite\\tests\\rls\\rls-negative.test.ts",
+      "line": 15,
+      "snippet": "const userBPassword = process.env.E2E_RLS_USER_B_PASSWORD?.trim() || \"E2E-Rls-B-Password!1\";"
+    },
+    {
+      "file": "testsprite\\testsprite_tests\\tmp\\login_check_exact_creds.cjs",
+      "line": 4,
+      "snippet": "const value = process.env[name];"
+    },
+    {
+      "file": "testsprite\\testsprite_tests\\tmp\\mcp_premium_runner.cjs",
+      "line": 6,
+      "snippet": "const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3000';"
+    },
+    {
+      "file": "testsprite\\testsprite_tests\\tmp\\mcp_premium_runner.cjs",
+      "line": 8,
+      "snippet": "const value = process.env[name];"
+    },
+    {
+      "file": "testsprite\\testsprite_tests\\tmp\\mcp_premium_runner.cjs",
+      "line": 34,
+      "snippet": "if (!(key in process.env)) {"
+    },
+    {
+      "file": "testsprite\\testsprite_tests\\tmp\\mcp_premium_runner.cjs",
+      "line": 35,
+      "snippet": "process.env[key] = value;"
+    },
+    {
+      "file": "testsprite\\testsprite_tests\\tmp\\mcp_premium_runner.cjs",
+      "line": 105,
+      "snippet": "const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;"
+    },
+    {
+      "file": "testsprite\\testsprite_tests\\tmp\\mcp_premium_runner.cjs",
+      "line": 106,
+      "snippet": "const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;"
+    },
+    {
+      "file": "testsprite\\testsprite_tests\\tmp\\mcp_premium_runner.cjs",
+      "line": 399,
+      "snippet": "const canSwitchPlan = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY && userId);"
+    },
+    {
+      "file": "testsprite\\testsprite_tests\\tmp\\trial_access_audit.js",
+      "line": 6,
+      "snippet": "const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3000';"
+    },
+    {
+      "file": "testsprite\\testsprite_tests\\tmp\\trial_access_audit.js",
+      "line": 8,
+      "snippet": "const value = process.env[name];"
+    },
+    {
+      "file": "testsprite\\testsprite_tests\\tmp\\trial_access_audit.js",
+      "line": 124,
+      "snippet": "env: process.env,"
+    }
+  ]
+}

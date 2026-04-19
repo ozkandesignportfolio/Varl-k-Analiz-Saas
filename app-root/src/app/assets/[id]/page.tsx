@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import QRCode from "qrcode";
 import { AppShell } from "@/components/app-shell";
 import { ASSET_MEDIA_BUCKET } from "@/lib/assets/media-limits";
 import { resolveAssetQrPayload } from "@/lib/assets/qr-payload";
@@ -234,6 +233,7 @@ export default function AssetDetailPage() {
       });
 
       setQrPayload(payload);
+      const { default: QRCode } = await import("qrcode");
       const dataUrl = await QRCode.toDataURL(payload, {
         errorCorrectionLevel: "M",
         margin: 2,
@@ -271,7 +271,7 @@ export default function AssetDetailPage() {
             }}
             className="rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-4 py-2 text-sm font-semibold text-white"
           >
-            QR'ı Yenile
+            QR&apos;ı Yenile
           </button>
           <Link
             href="/assets"

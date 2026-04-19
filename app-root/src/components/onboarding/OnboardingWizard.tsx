@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { Runtime } from "@/lib/env/runtime";
 
 const STORAGE_KEY = "onboarding_complete";
 
@@ -15,7 +16,7 @@ type OnboardingWizardProps = {
 export default function OnboardingWizard({ shouldOpen }: OnboardingWizardProps) {
   const [step, setStep] = useState(0);
   const [isCompleted, setIsCompleted] = useState(() => {
-    if (typeof window === "undefined") {
+    if (!Runtime.isClient()) {
       return true;
     }
     return window.localStorage.getItem(STORAGE_KEY) === "true";

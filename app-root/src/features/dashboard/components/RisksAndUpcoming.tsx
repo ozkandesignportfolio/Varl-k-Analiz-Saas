@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import type { DashboardSnapshot } from "@/features/dashboard/api/dashboard-queries";
 import { createClient } from "@/lib/supabase/client";
+import { Runtime } from "@/lib/env/runtime";
 
 type RisksAndUpcomingProps = {
   userId: string;
@@ -98,7 +99,7 @@ const isMissingDismissedAlertsTableError = (message: string | undefined) => {
 const toAlertKey = (type: string, entityId: string, dueDate: string) => `${type}:${entityId}:${dueDate}`;
 
 const readDismissedAlertKeys = (): Set<string> => {
-  if (typeof window === "undefined") {
+  if (!Runtime.isClient()) {
     return new Set<string>();
   }
 
@@ -120,7 +121,7 @@ const readDismissedAlertKeys = (): Set<string> => {
 };
 
 const writeDismissedAlertKeys = (keys: Set<string>) => {
-  if (typeof window === "undefined") {
+  if (!Runtime.isClient()) {
     return;
   }
 

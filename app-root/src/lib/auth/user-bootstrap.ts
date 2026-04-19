@@ -22,18 +22,20 @@
  * - User-facing errors are sanitized
  */
 
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import "server-only";
 
-const REQUIRED_ENV = {
-  supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
-  serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-};
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { ServerEnv } from "@/lib/env/server-env";
 
 const createAdminClient = () => {
-  if (!REQUIRED_ENV.supabaseUrl || !REQUIRED_ENV.serviceRoleKey) {
+  const supabaseUrl = ServerEnv.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = ServerEnv.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceRoleKey) {
     throw new Error("Missing required Supabase environment variables");
   }
-  return createSupabaseClient(REQUIRED_ENV.supabaseUrl, REQUIRED_ENV.serviceRoleKey, {
+
+  return createSupabaseClient(supabaseUrl, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

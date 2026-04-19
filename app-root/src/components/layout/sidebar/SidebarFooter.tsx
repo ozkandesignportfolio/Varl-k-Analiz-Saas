@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import Link from "next/link";
 import { SIDEBAR_TEXT } from "@/constants/ui-text";
 
@@ -41,7 +41,7 @@ type SidebarFooterProps = {
 
 const formatUsage = (count: number, limit: number | null) => `${count}/${limit ?? SIDEBAR_TEXT.infiniteLimit}`;
 
-export function SidebarFooter({
+export const SidebarFooter = memo(function SidebarFooter({
   plan,
   assetCount,
   assetLimit,
@@ -136,4 +136,4 @@ export function SidebarFooter({
       {footer ? <div>{footer}</div> : null}
     </div>
   );
-}
+});

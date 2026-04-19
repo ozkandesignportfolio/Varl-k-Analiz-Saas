@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createHash, randomUUID } from "crypto";
+import { ServerEnv } from "@/lib/env/server-env";
 
 type UpstashResult = {
   error?: string;
@@ -23,8 +24,8 @@ export type SlidingWindowRateLimitResult = {
 };
 
 const getUpstashConfig = () => {
-  const url = process.env.UPSTASH_REDIS_REST_URL?.trim() || null;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim() || null;
+  const url = ServerEnv.UPSTASH_REDIS_REST_URL;
+  const token = ServerEnv.UPSTASH_REDIS_REST_TOKEN;
 
   if (!url || !token) {
     return null;

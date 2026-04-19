@@ -13,12 +13,6 @@ import {
 import { buildDedupeKey } from "@/lib/utils/dedupe";
 import { normalizeContext } from "@/lib/mappers/notification-mappers";
 
-const SERVICE_TAG = "[user-welcome-handler]";
-
-const logEvent = (event: string, payload: Record<string, unknown>) => {
-  console.log(`${SERVICE_TAG} ${event}`, payload);
-};
-
 export const handleUserWelcome = async (
   adminClient: SupabaseClient,
   event: import("@/lib/events/app-event").UserWelcomeEvent,

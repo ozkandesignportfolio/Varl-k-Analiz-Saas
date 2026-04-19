@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import QRCode from "qrcode";
 import { X } from "lucide-react";
 import { resolveAssetQrPayload } from "@/lib/assets/qr-payload";
 
@@ -43,6 +42,7 @@ export function AssetQrPreviewModal({ asset, isOpen, onClose }: AssetQrPreviewMo
 
     const load = async () => {
       try {
+        const { default: QRCode } = await import("qrcode");
         const dataUrl = await QRCode.toDataURL(nextPayload, {
           errorCorrectionLevel: "M",
           margin: 2,

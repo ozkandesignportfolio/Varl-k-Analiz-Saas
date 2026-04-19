@@ -1,5 +1,8 @@
+import "server-only";
+
 import { createClient } from "@supabase/supabase-js";
 import { bootstrapUserRecords } from "@/lib/auth/user-bootstrap";
+import { ServerEnv } from "@/lib/env/server-env";
 
 /**
  * Auth Callback Route - Production Hardened
@@ -28,8 +31,8 @@ export async function GET(req: Request) {
   }
 
   // Validate environment
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseUrl = ServerEnv.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = ServerEnv.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !serviceRoleKey) {
     console.error("[auth.callback] ERROR missing_env", {

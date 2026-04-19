@@ -25,15 +25,11 @@ export type UseNotificationsReturn = {
   refetch: () => Promise<void>;
 };
 
-const HOOK_TAG = "[useNotifications]";
-
 /**
  * Hook to fetch and manage notifications with realtime updates
  * Logs: NOTIFICATION_FETCH, NOTIFICATION_RENDER, realtime events
  */
 export function useNotifications(userId: string | null): UseNotificationsReturn {
-  console.log("USER_ID_IN_HOOK", userId);
-
   const supabase = useMemo(() => createClient(), []);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,12 +49,6 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
     setIsLoading(true);
     setError(null);
 
-    console.log("NOTIFICATION_FETCH", {
-      userId,
-      fetchId,
-      status: "started",
-    });
-
     try {
       const { data, error: supabaseError } = await supabase
         .from("notifications")
@@ -66,14 +56,7 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
 
-      console.log("NOTIF_DATA", data, supabaseError)
-
       if (supabaseError) {
-        console.log("FETCH_ERROR", {
-          userId,
-          fetchId,
-          error: supabaseError.message,
-        });
         setError(supabaseError.message);
         setNotifications([]);
         return;
@@ -83,25 +66,10 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
         ? data.filter((n): n is Notification => Boolean(n && n.id))
         : [];
 
-      console.log("notifications:", notificationsData);
-      console.log("NOTIFICATION_FETCH", {
-        userId,
-        fetchId,
-        status: "success",
-        count: notificationsData.length,
-        unread: notificationsData.filter((n: Notification) => !n?.is_read).length,
-      });
-
       setNotifications(notificationsData);
       setError(null);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Unknown error";
-      console.log("NOTIFICATION_FETCH", {
-        userId,
-        fetchId,
-        status: "exception",
-        error: errorMsg,
-      });
       setError(errorMsg);
     } finally {
       setIsLoading(false);
@@ -122,11 +90,6 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
       void channelRef.current.unsubscribe();
     }
 
-    console.log("NOTIFICATION_REALTIME", {
-      userId,
-      status: "subscribing",
-    });
-
     const channel = supabase
       .channel(`notifications:${userId}`)
       .on(
@@ -138,12 +101,6 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
           filter: `user_id=eq.${userId}`,
         },
         (payload: { new: Record<string, unknown> }) => {
-          console.log("NOTIFICATION_REALTIME_INSERT", {
-            userId,
-            notificationId: payload.new?.id,
-            title: payload.new?.title,
-          });
-          
           // Add new notification to state (safe)
           setNotifications((prev) => {
             const safePrev = prev ?? [];
@@ -168,12 +125,6 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
           filter: `user_id=eq.${userId}`,
         },
         (payload: { new: Record<string, unknown> }) => {
-          console.log("NOTIFICATION_REALTIME_UPDATE", {
-            userId,
-            notificationId: payload.new?.id,
-            isRead: payload.new?.is_read,
-          });
-          
           // Update existing notification
           setNotifications((prev) =>
             prev.map((n: Notification) =>
@@ -191,31 +142,17 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
           filter: `user_id=eq.${userId}`,
         },
         (payload: { old: Record<string, unknown> }) => {
-          console.log("NOTIFICATION_REALTIME_DELETE", {
-            userId,
-            notificationId: payload.old?.id,
-          });
-          
           // Remove deleted notification
           setNotifications((prev) =>
             prev.filter((n: Notification) => n.id !== payload.old.id)
           );
         }
       )
-      .subscribe((status: string) => {
-        console.log("NOTIFICATION_REALTIME", {
-          userId,
-          status: status === "SUBSCRIBED" ? "subscribed" : status.toLowerCase(),
-        });
-      });
+      .subscribe();
 
     channelRef.current = channel;
 
     return () => {
-      console.log("NOTIFICATION_REALTIME", {
-        userId,
-        status: "unsubscribing",
-      });
       void channel.unsubscribe();
       channelRef.current = null;
     };
@@ -226,10 +163,6 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
     if (!userId) return;
 
     const interval = setInterval(() => {
-      console.log("NOTIFICATION_POLLING", {
-        userId,
-        status: "triggered",
-      });
       void fetchNotifications();
     }, 30000);
 
@@ -241,12 +174,6 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
     async (id: string): Promise<boolean> => {
       if (!userId) return false;
 
-      console.log("NOTIFICATION_MARK_READ", {
-        userId,
-        notificationId: id,
-        status: "attempt",
-      });
-
       try {
         const { error } = await supabase
           .from("notifications")
@@ -255,20 +182,8 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
           .eq("user_id", userId);
 
         if (error) {
-          console.log("NOTIFICATION_MARK_READ", {
-            userId,
-            notificationId: id,
-            status: "error",
-            error: error.message,
-          });
           return false;
         }
-
-        console.log("NOTIFICATION_MARK_READ", {
-          userId,
-          notificationId: id,
-          status: "success",
-        });
 
         // Optimistically update UI
         setNotifications((prev) =>
@@ -278,12 +193,7 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
         return true;
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : "Unknown error";
-        console.log("NOTIFICATION_MARK_READ", {
-          userId,
-          notificationId: id,
-          status: "exception",
-          error: errorMsg,
-        });
+        void errorMsg;
         return false;
       }
     },
@@ -293,11 +203,6 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
   // Mark all as read
   const markAllAsRead = useCallback(async (): Promise<number> => {
     if (!userId) return 0;
-
-    console.log("NOTIFICATION_MARK_ALL_READ", {
-      userId,
-      status: "attempt",
-    });
 
     try {
       // Use RPC if available, otherwise use update
@@ -314,11 +219,6 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
           .eq("is_read", false);
 
         if (updateError) {
-          console.log("NOTIFICATION_MARK_ALL_READ", {
-            userId,
-            status: "error",
-            error: updateError.message,
-          });
           return 0;
         }
 
@@ -329,12 +229,6 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
           prev.map((n: Notification) => ({ ...n, is_read: true }))
         );
 
-        console.log("NOTIFICATION_MARK_ALL_READ", {
-          userId,
-          status: "success",
-          count: unreadCount,
-        });
-
         return unreadCount;
       }
 
@@ -343,20 +237,10 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
         prev.map((n: Notification) => ({ ...n, is_read: true }))
       );
 
-      console.log("NOTIFICATION_MARK_ALL_READ", {
-        userId,
-        status: "success",
-        count,
-      });
-
       return count || 0;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Unknown error";
-      console.log("NOTIFICATION_MARK_ALL_READ", {
-        userId,
-        status: "exception",
-        error: errorMsg,
-      });
+      void errorMsg;
       return 0;
     }
   }, [supabase, userId, notifications]);
@@ -366,12 +250,6 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
     async (id: string): Promise<boolean> => {
       if (!userId) return false;
 
-      console.log("NOTIFICATION_DELETE", {
-        userId,
-        notificationId: id,
-        status: "attempt",
-      });
-
       try {
         const { error } = await supabase
           .from("notifications")
@@ -380,20 +258,8 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
           .eq("user_id", userId);
 
         if (error) {
-          console.log("NOTIFICATION_DELETE", {
-            userId,
-            notificationId: id,
-            status: "error",
-            error: error.message,
-          });
           return false;
         }
-
-        console.log("NOTIFICATION_DELETE", {
-          userId,
-          notificationId: id,
-          status: "success",
-        });
 
         // Optimistically update UI
         setNotifications((prev) => prev.filter((n) => n.id !== id));
@@ -401,12 +267,7 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
         return true;
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : "Unknown error";
-        console.log("NOTIFICATION_DELETE", {
-          userId,
-          notificationId: id,
-          status: "exception",
-          error: errorMsg,
-        });
+        void errorMsg;
         return false;
       }
     },
@@ -417,18 +278,6 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
     () => notifications.filter((n) => !n.is_read).length,
     [notifications]
   );
-
-  // Log render
-  useEffect(() => {
-    if (!isLoading && userId) {
-      console.log("NOTIFICATION_RENDER", {
-        userId,
-        totalCount: notifications.length,
-        unreadCount,
-        hasError: !!error,
-      });
-    }
-  }, [notifications.length, unreadCount, error, isLoading, userId]);
 
   return {
     notifications,

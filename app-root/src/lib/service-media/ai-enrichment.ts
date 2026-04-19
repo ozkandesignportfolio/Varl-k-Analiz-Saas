@@ -1,8 +1,11 @@
+import "server-only";
+
 import { Buffer } from "node:buffer";
 import { fetchWithRetry } from "@/lib/net/fetch-with-timeout";
+import { ServerEnv } from "@/lib/env/server-env";
 
-const OPENAI_TEXT_MODEL = process.env.OPENAI_MODEL?.trim() || "gpt-4.1-mini";
-const OPENAI_TRANSCRIBE_MODEL = process.env.OPENAI_TRANSCRIBE_MODEL?.trim() || "gpt-4o-mini-transcribe";
+const OPENAI_TEXT_MODEL = ServerEnv.OPENAI_MODEL || "gpt-4.1-mini";
+const OPENAI_TRANSCRIBE_MODEL = ServerEnv.OPENAI_TRANSCRIBE_MODEL || "gpt-4o-mini-transcribe";
 
 const OPENAI_RETRIES = 1;
 const OPENAI_TIMEOUT_MS = 12_000;

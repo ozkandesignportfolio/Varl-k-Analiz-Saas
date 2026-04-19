@@ -3,6 +3,7 @@ import "server-only";
 import { timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 import { redirect } from "next/navigation";
+import { ServerEnv } from "@/lib/env/server-env";
 import { isAdminUser } from "@/lib/auth/admin-user";
 import { isSupabaseUserEmailConfirmed } from "@/lib/supabase/auth-errors";
 import { buildLoginPath } from "@/lib/supabase/email-verification";
@@ -17,7 +18,7 @@ type AdminRouteAuthFailure = RouteAuthFailure;
 
 const ADMIN_SECRET_HEADER = "x-admin-dashboard-secret";
 
-const getAdminDashboardSecret = () => process.env.ADMIN_DASHBOARD_SECRET?.trim() || null;
+const getAdminDashboardSecret = () => ServerEnv.ADMIN_DASHBOARD_SECRET;
 
 const hasValidAdminSecret = (request: Request) => {
   const configuredSecret = getAdminDashboardSecret();

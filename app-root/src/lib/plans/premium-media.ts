@@ -1,5 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 import { getUserPlanConfig } from "@/lib/plans/plan-config";
+import { PublicEnv } from "@/lib/env/public-env";
 
 const PLAN_METADATA_KEYS = [
   "plan_code",
@@ -22,8 +23,7 @@ const hasPlanMetadata = (metadata: unknown) => {
 };
 
 export const isPremiumMediaFeatureFlagEnabled = () =>
-  parseBooleanEnv(process.env.NEXT_PUBLIC_FEATURE_PREMIUM_MEDIA_DEFAULT) ||
-  parseBooleanEnv(process.env.FEATURE_PREMIUM_MEDIA_DEFAULT);
+  parseBooleanEnv(PublicEnv.NEXT_PUBLIC_FEATURE_PREMIUM_MEDIA_DEFAULT);
 
 export type PremiumPlanState = "free" | "premium";
 

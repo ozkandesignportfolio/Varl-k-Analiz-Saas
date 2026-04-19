@@ -1,3 +1,5 @@
+import { Runtime } from "@/lib/env/runtime";
+
 /**
  * USER_CONSENTS SCHEMA CONTRACT
  * 
@@ -81,7 +83,7 @@ export function validateUserConsentsPayload(
   }
 
   // Log successful validation in development
-  if (process.env.NODE_ENV === "development") {
+  if (!Runtime.isBuild()) {
     console.log("[USER_CONSENTS] Payload validated", {
       fields: payloadFields,
       operation,

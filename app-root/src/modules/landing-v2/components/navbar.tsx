@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type MouseEvent } from "react"
 import { Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { LANDING_NAV_SECTIONS, isLandingSectionHash } from "@/modules/landing-v2/components/section-nav"
+import { Runtime } from "@/lib/env/runtime"
 
 const DEFAULT_SECTION = LANDING_NAV_SECTIONS[0]?.href ?? "#ozellikler"
 
@@ -61,7 +62,7 @@ export function Navbar() {
 
     const lastHref = LANDING_NAV_SECTIONS[LANDING_NAV_SECTIONS.length - 1]?.href ?? DEFAULT_SECTION
     const observer =
-      typeof window.IntersectionObserver === "function"
+      Runtime.isClient() && window.IntersectionObserver
         ? new window.IntersectionObserver(
             (entries) => {
               const visibleEntries = entries
@@ -192,7 +193,7 @@ export function Navbar() {
       section.scrollIntoView()
     }
 
-    if (typeof window.history.replaceState === "function") {
+    if (Runtime.isClient() && window.history?.replaceState) {
       window.history.replaceState(null, "", href)
     }
     setActiveHref(href)

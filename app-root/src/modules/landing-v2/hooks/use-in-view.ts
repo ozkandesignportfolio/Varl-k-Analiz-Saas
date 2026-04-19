@@ -1,6 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Runtime } from "@/lib/env/runtime";
+
+const deferStateUpdate = (callback: () => void) => {
+  if (typeof queueMicrotask === "function") {
+    queueMicrotask(callback);
+    return;
+  }
+
+  setTimeout(callback, 0);
+};
 
 export function useInView<T extends HTMLElement = HTMLDivElement>(threshold = 0.15) {
   const ref = useRef<T>(null);
@@ -12,8 +22,10 @@ export function useInView<T extends HTMLElement = HTMLDivElement>(threshold = 0.
       return;
     }
 
-    if (typeof window === "undefined" || typeof window.IntersectionObserver !== "function") {
-      setInView(true);
+    if (!Runtime.isClient() || !window.IntersectionObserver) {
+      deferStateUpdate(() => {
+        setInView(true);
+      });
       return;
     }
 
@@ -30,7 +42,9 @@ export function useInView<T extends HTMLElement = HTMLDivElement>(threshold = 0.
       rect.bottom > 0 && rect.right > 0 && rect.top < viewportHeight && rect.left < viewportWidth;
 
     if (alreadyVisible) {
-      setInView(true);
+      deferStateUpdate(() => {
+        setInView(true);
+      });
       return;
     }
 
@@ -51,7 +65,9 @@ export function useInView<T extends HTMLElement = HTMLDivElement>(threshold = 0.
         observer.disconnect();
       };
     } catch {
-      setInView(true);
+      deferStateUpdate(() => {
+        setInView(true);
+      });
       return;
     }
   }, [threshold]);

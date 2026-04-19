@@ -23,14 +23,7 @@ import { buildAssetUiCopy, normalizeContext } from "@/lib/mappers/notification-m
 import type {
   NotifyAssetEventInput,
   NotifyAssetEventResult,
-  AssetEventType,
 } from "../notification-service";
-
-const SERVICE_TAG = "[asset-event-handler]";
-
-const logEvent = (event: string, payload: Record<string, unknown>) => {
-  console.log(`${SERVICE_TAG} ${event}`, payload);
-};
 
 export const notifyAssetEvent = async (
   adminClient: SupabaseClient,

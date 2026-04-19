@@ -1,5 +1,8 @@
+import "server-only";
+
 import { NextResponse } from "next/server";
 import { Webhook } from "standardwebhooks";
+import { ServerEnv } from "@/lib/env/server-env";
 
 export const runtime = "nodejs";
 
@@ -71,7 +74,7 @@ const isValidFromEmail = (email: string): boolean => {
 };
 
 const getRequiredEnv = (name: "RESEND_API_KEY" | "SEND_EMAIL_HOOK_SECRET") => {
-  const value = process.env[name]?.trim();
+  const value = name === "RESEND_API_KEY" ? ServerEnv.RESEND_API_KEY : ServerEnv.SEND_EMAIL_HOOK_SECRET;
 
   if (!value) {
     throw new MissingEnvVarError(name);
@@ -351,7 +354,7 @@ export async function POST(request: Request) {
     }
 
     const resendApiKey = getRequiredEnv("RESEND_API_KEY");
-    const fromEmail = process.env.AUTOMATION_FROM_EMAIL?.trim() ?? "";
+    const fromEmail = ServerEnv.AUTOMATION_FROM_EMAIL ?? "";
 
     // Validate from email
     if (!fromEmail || !isValidFromEmail(fromEmail)) {

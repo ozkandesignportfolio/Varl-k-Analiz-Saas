@@ -10,14 +10,25 @@ import * as Sentry from "@sentry/nextjs";
  *    uygulama env'leri `@/lib/env/server-env` üzerinden doğrulanır.
  */
 export async function register() {
-  if (process.env.NEXT_RUNTIME === "nodejs") {
+  const runtimeFlag = process.env.NEXT_RUNTIME;
+  const phaseFlag = process.env.NEXT_PHASE;
+  const isNodeRuntime = runtimeFlag === "nodejs";
+  const isEdgeRuntime = runtimeFlag === "edge";
+  const isBuildPhase = phaseFlag === "phase-production-build";
+
+  if (isNodeRuntime) {
+    if (!isBuildPhase) {
+      const { assertStartupSafety } = await import("./lib/bootstrap/startup-safety");
+      assertStartupSafety();
+    }
+
     try {
-      const { getConfigIssues } = await import("./lib/env/runtime-env");
+      const { getServerEnvIssues } = await import("./lib/env/server-env");
       const { logTurnstileEnvDebug } = await import(
         "./lib/env/turnstile-server"
       );
 
-      const missingEnv = getConfigIssues();
+      const missingEnv = getServerEnvIssues();
       if (missingEnv.length > 0) {
         console.error({
           level: "error",
@@ -50,7 +61,7 @@ export async function register() {
     }
   }
 
-  if (process.env.NEXT_RUNTIME === "edge") {
+  if (isEdgeRuntime) {
     try {
       const { initSentryEdge } = await import("./sentry.edge.config");
       initSentryEdge();

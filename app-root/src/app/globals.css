@@ -377,12 +377,10 @@ a {
 
 .animate-float {
   animation: landingV2Float 6s ease-in-out infinite;
-  will-change: transform;
 }
 
 .animate-float-delay {
   animation: landingV2FloatDelay 5s ease-in-out 1s infinite;
-  will-change: transform;
 }
 
 .animate-pulse-glow {
@@ -403,12 +401,10 @@ a {
 
 .animate-slide-up {
   animation: landingV2SlideUp 0.8s ease-out forwards;
-  will-change: transform, opacity;
 }
 
 .animate-slide-in-left {
   animation: landingV2SlideInLeft 0.8s ease-out forwards;
-  will-change: transform, opacity;
 }
 
 .animate-fade-in {
@@ -426,7 +422,48 @@ a {
 
 .animate-orbit {
   animation: landingV2Orbit 20s linear infinite;
-  will-change: transform;
+}
+
+/* Restrict `will-change` hints to desktop. On mobile/low-power devices the
+   cost of promoted layers outweighs the benefit for these short utility
+   animations. Transform/opacity animations still composite efficiently on
+   mobile without an explicit will-change hint. */
+@media (min-width: 769px) {
+  .animate-float,
+  .animate-float-delay,
+  .animate-orbit {
+    transform: translateZ(0);
+    will-change: transform;
+  }
+
+  .animate-slide-up,
+  .animate-slide-in-left {
+    transform: translateZ(0);
+    will-change: transform, opacity;
+  }
+}
+
+@media (max-width: 768px) {
+  .animate-float,
+  .animate-float-delay,
+  .animate-orbit,
+  .animate-pulse-glow,
+  .animate-shimmer {
+    animation: none !important;
+  }
+
+  .animate-slide-up,
+  .animate-slide-in-left,
+  .animate-fade-in,
+  .animate-count-up {
+    animation-duration: 0.45s;
+    animation-timing-function: ease-out;
+  }
+
+  .landing-v2-ping-dot {
+    animation: none !important;
+    opacity: 0.9;
+  }
 }
 
 @keyframes landingV2Float {
@@ -452,12 +489,12 @@ a {
 @keyframes landingV2PulseGlow {
   0%,
   100% {
-    box-shadow: 0 0 24px rgba(16, 239, 181, 0.24);
+    box-shadow: 0 0 16px rgba(16, 239, 181, 0.2);
   }
   50% {
     box-shadow:
-      0 0 56px rgba(16, 239, 181, 0.34),
-      0 0 28px rgba(44, 247, 255, 0.2);
+      0 0 30px rgba(16, 239, 181, 0.26),
+      0 0 16px rgba(44, 247, 255, 0.15);
   }
 }
 

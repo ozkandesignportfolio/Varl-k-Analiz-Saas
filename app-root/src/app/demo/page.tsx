@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Play, CheckCircle2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PublicEnv } from "@/lib/env/public-env";
 import styles from "@/modules/landing-v2/landing-v2.module.css";
 
 type EmbedConfig =
@@ -9,7 +10,7 @@ type EmbedConfig =
   | { kind: "vimeo"; src: string }
   | { kind: "selfHosted"; src: string };
 
-const demoVideoUrl = process.env.NEXT_PUBLIC_DEMO_VIDEO_URL?.trim() ?? "";
+const demoVideoUrl = PublicEnv.NEXT_PUBLIC_DEMO_VIDEO_URL;
 
 const demoFlowSteps = [
   "Varlık ekle",

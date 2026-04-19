@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@supabase/supabase-js";
+import { ServerEnv } from "@/lib/env/server-env";
 
 type FraudDatabase = {
   public: {
@@ -59,20 +60,11 @@ let supabaseAdminClient: ReturnType<typeof createClient<FraudDatabase>> | null =
 const normalizeIpHash = (ipHash: string) => ipHash.trim().toLowerCase() || "unknown";
 const normalizeEvent = (event: string) => event.trim().toLowerCase();
 
-const getRequiredEnv = (key: "NEXT_PUBLIC_SUPABASE_URL" | "SUPABASE_SERVICE_ROLE_KEY") => {
-  const value = process.env[key]?.trim();
-  if (!value) {
-    throw new Error(`Missing required env var: ${key}`);
-  }
-
-  return value;
-};
-
 const getSupabaseAdminClient = () => {
   if (!supabaseAdminClient) {
     supabaseAdminClient = createClient<FraudDatabase>(
-      getRequiredEnv("NEXT_PUBLIC_SUPABASE_URL"),
-      getRequiredEnv("SUPABASE_SERVICE_ROLE_KEY"),
+      ServerEnv.NEXT_PUBLIC_SUPABASE_URL,
+      ServerEnv.SUPABASE_SERVICE_ROLE_KEY,
       {
         auth: {
           autoRefreshToken: false,

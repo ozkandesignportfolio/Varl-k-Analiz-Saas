@@ -1,3 +1,5 @@
+import { Runtime } from "@/lib/env/runtime";
+
 export const UNKNOWN_DEVICE_FINGERPRINT = "unknown-device";
 
 const ROUTE_TAG = "[auth.signup]";
@@ -6,7 +8,7 @@ export const isUnknownDeviceFingerprint = (value?: string | null) =>
   !value || value.trim().toLowerCase() === UNKNOWN_DEVICE_FINGERPRINT;
 
 export const createDeviceFingerprint = async (): Promise<string> => {
-  if (typeof window === "undefined" || typeof navigator === "undefined") {
+  if (!Runtime.isClient() || typeof navigator === "undefined") {
     console.warn(`${ROUTE_TAG} Device fingerprint requested outside the browser. Falling back to unknown-device.`);
     return UNKNOWN_DEVICE_FINGERPRINT;
   }

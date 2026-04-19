@@ -1,5 +1,9 @@
+import "server-only";
+
 import { NextResponse } from "next/server";
 import { createClient as createSupabaseClient, type User } from "@supabase/supabase-js";
+import { getAllowedAppOrigins } from "@/lib/env/public-env";
+import { ServerEnv } from "@/lib/env/server-env";
 import { getTurnstileRequestContext } from "@/lib/auth/turnstile-diagnostics";
 import {
   UNKNOWN_DEVICE_FINGERPRINT,
@@ -44,6 +48,7 @@ import {
   canUseLocalhostTurnstileTestKeys,
   TURNSTILE_DOMAIN_INACTIVE_MESSAGE,
 } from "@/lib/env/turnstile";
+import { Runtime } from "@/lib/env/runtime";
 
 export const runtime = "nodejs";
 
@@ -64,7 +69,7 @@ const SIGNUP_IP_RATE_LIMIT_CAPACITY = 5;
 const SIGNUP_EMAIL_RATE_LIMIT_CAPACITY = 3;
 const SIGNUP_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1_000;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
-const isDevelopmentEnvironment = () => process.env.NODE_ENV === "development";
+const isDevelopmentEnvironment = () => !Runtime.isBuild();
 
 // Result types for atomic flow - WITH FULL ERROR VISIBILITY
 type SignupResult =
@@ -173,9 +178,33 @@ const notificationPreferences = {
 
 const isNonEmptyString = (value: unknown): value is string => typeof value === "string" && value.trim().length > 0;
 
+type EnvLookupKey =
+  | "NEXT_PUBLIC_SUPABASE_URL"
+  | "SUPABASE_SERVICE_ROLE_KEY"
+  | "RESEND_API_KEY"
+  | "AUTOMATION_FROM_EMAIL"
+  | "AUTOMATION_REPLY_TO_EMAIL";
+
+const readServerEnvValue = (key: EnvLookupKey) => {
+  switch (key) {
+    case "NEXT_PUBLIC_SUPABASE_URL":
+      return ServerEnv.NEXT_PUBLIC_SUPABASE_URL;
+    case "SUPABASE_SERVICE_ROLE_KEY":
+      return ServerEnv.SUPABASE_SERVICE_ROLE_KEY;
+    case "RESEND_API_KEY":
+      return ServerEnv.RESEND_API_KEY;
+    case "AUTOMATION_FROM_EMAIL":
+      return ServerEnv.AUTOMATION_FROM_EMAIL;
+    case "AUTOMATION_REPLY_TO_EMAIL":
+      return ServerEnv.AUTOMATION_REPLY_TO_EMAIL;
+    default:
+      return null;
+  }
+};
+
 const getOptionalEnv = (key: string) => {
-  const value = process.env[key]?.trim();
-  return value ? value : null;
+  const value = readServerEnvValue(key as EnvLookupKey);
+  return value && value.trim().length > 0 ? value : null;
 };
 
 const getRequiredEnv = (key: string) => {
@@ -405,17 +434,13 @@ const buildErrorResponse = (
 };
 
 const getAllowedRedirectOrigins = (request: Request) => {
-  const origins = new Set<string>();
+  const origins = new Set<string>(getAllowedAppOrigins());
 
-  for (const value of [process.env.APP_URL, process.env.NEXT_PUBLIC_APP_URL, request.url]) {
-    if (!value?.trim()) {
-      continue;
-    }
-
+  if (request.url?.trim()) {
     try {
-      origins.add(new URL(value).origin);
+      origins.add(new URL(request.url).origin);
     } catch {
-      // Ignore malformed env values and rely on the request origin.
+      // Ignore malformed request URL; configured origins still apply.
     }
   }
 

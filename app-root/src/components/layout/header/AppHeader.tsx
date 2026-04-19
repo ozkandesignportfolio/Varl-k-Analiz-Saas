@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { Topbar } from "@/components/layout/Topbar";
 
 type AppHeaderProps = {
@@ -9,6 +10,6 @@ type AppHeaderProps = {
   userId?: string | null;
 };
 
-export function AppHeader({ title, breadcrumb, userEmail, userId }: AppHeaderProps) {
+export const AppHeader = memo(function AppHeader({ title, breadcrumb, userEmail, userId }: AppHeaderProps) {
   return <Topbar title={title} breadcrumb={breadcrumb} userEmail={userEmail} userId={userId} />;
-}
+});

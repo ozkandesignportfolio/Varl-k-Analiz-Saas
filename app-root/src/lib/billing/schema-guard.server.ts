@@ -9,6 +9,7 @@ import {
   type BillingSchemaCheckSource,
   type BillingSchemaState,
 } from "@/lib/billing/schema-guard";
+import { readServerEnvOptional } from "@/lib/env/server-env";
 import type { DbClient } from "@/lib/repos/_shared";
 import type { Database } from "@/types/database";
 
@@ -96,8 +97,8 @@ const queryBillingSchemaState = async (
 };
 
 const createStartupClient = (): DbClient | null => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseUrl = readServerEnvOptional("NEXT_PUBLIC_SUPABASE_URL");
+  const supabaseAnonKey = readServerEnvOptional("NEXT_PUBLIC_SUPABASE_ANON_KEY");
 
   if (!supabaseUrl || !supabaseAnonKey) {
     return null;

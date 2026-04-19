@@ -103,6 +103,12 @@
   overflow: clip;
 }
 
+@supports not (overflow: clip) {
+  .scope :global(.landing-v2-ambient-bg) {
+    overflow: hidden;
+  }
+}
+
 .scope :global(.landing-v2-ambient-layer) {
   position: absolute;
   /* Smaller bleed keeps the promoted texture memory bounded while still
@@ -110,9 +116,8 @@
   inset: -12%;
   opacity: 0.08;
   /* Responsive, GPU-safe blur: small on phones, full on desktop. */
-  filter: blur(clamp(40px, 8vw, 80px));
+  filter: blur(clamp(26px, 6vw, 56px));
   pointer-events: none;
-  will-change: transform;
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
   animation-direction: alternate;
@@ -138,7 +143,7 @@
     radial-gradient(34% 40% at 26% 74%, rgb(147 51 234 / 20%), transparent 76%),
     linear-gradient(165deg, rgb(99 102 241 / 11%), rgb(7 14 32 / 0%) 52%, rgb(147 51 234 / 12%));
   opacity: 0.09;
-  filter: blur(clamp(40px, 9vw, 85px));
+  filter: blur(clamp(28px, 6vw, 58px));
   animation-name: landingV2AuroraShiftB;
   animation-duration: 36s;
 }
@@ -234,8 +239,8 @@
 
 .scope :global(.glass-card) {
   background: rgb(10 17 40 / 68%);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(clamp(10px, 1.8vw, 16px));
+  -webkit-backdrop-filter: blur(clamp(10px, 1.8vw, 16px));
   border: 1px solid rgb(35 58 100 / 62%);
 }
 
@@ -248,7 +253,18 @@
 .scope :global(.glass-card:hover) {
   background: rgb(10 17 40 / 86%);
   border-color: rgb(16 239 181 / 48%);
-  box-shadow: 0 0 34px rgb(16 239 181 / 12%);
+  box-shadow: 0 0 18px rgb(16 239 181 / 10%);
+}
+
+.scope :global(.landing-v2-cta-secondary) {
+  backdrop-filter: blur(clamp(4px, 0.9vw, 8px));
+  -webkit-backdrop-filter: blur(clamp(4px, 0.9vw, 8px));
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .scope :global(.landing-v2-cta-secondary) {
+    background: rgb(10 17 40 / 86%);
+  }
 }
 
 .scope :global(.text-gradient) {
@@ -273,7 +289,6 @@
   pointer-events: none;
   animation: landingV2HeroDrift 24s ease-in-out infinite alternate;
   animation-play-state: running;
-  will-change: transform;
   contain: layout paint style;
   isolation: isolate;
 }
@@ -282,11 +297,10 @@
   position: absolute;
   border-radius: 999px;
   opacity: 0.22;
-  filter: blur(clamp(24px, 6vw, 48px));
+  filter: blur(clamp(18px, 4.6vw, 34px));
   pointer-events: none;
   animation: landingV2HeroPulse 18s ease-in-out infinite;
   animation-play-state: running;
-  will-change: transform;
   contain: layout paint style;
   isolation: isolate;
 }
@@ -437,6 +451,10 @@
   .scope :global(.landing-v2-ambient-layer) {
     transform: translateZ(0);
     backface-visibility: hidden;
+    /* Hint the compositor only on desktop, where the memory cost of a
+       promoted ~viewport-sized blurred surface is cheap. Kept inside this
+       media query so mobile/low-power devices never pay for it. */
+    will-change: transform;
   }
 }
 
@@ -444,7 +462,6 @@
   .scope :global(.landing-v2-hero-motion-plane),
   .scope :global(.landing-v2-hero-blob),
   .scope :global(.landing-v2-ambient-layer) {
-    will-change: auto;
     animation: none;
     animation-play-state: paused;
   }
@@ -466,8 +483,11 @@
  *   - stop the infinite keyframe animations (no repaints, no rAF cost),
  *   - drop blur radii to ~30px (small composited texture, cheap to rasterize),
  *   - tighten inset to -8% (less overdraw area),
- *   - release `will-change` so the browser can free any promoted layer,
  *   - keep the gradients visible so the hero still has depth (static bg).
+ *
+ * `will-change` is intentionally NOT set on these elements at the base level;
+ * it is only applied inside the desktop `@media (min-width: 769px)` block
+ * above, so mobile/low-power devices never promote these layers.
  *
  * DOM/JSX is untouched - this is a pure rendering-layer optimization.
  */
@@ -475,26 +495,40 @@
   .scope :global(.landing-v2-ambient-layer) {
     animation: none;
     animation-play-state: paused;
-    filter: blur(30px);
-    will-change: auto;
+    filter: blur(clamp(14px, 4vw, 22px));
     inset: -8%;
   }
 
   .scope :global(.landing-v2-ambient-layer-b) {
-    filter: blur(30px);
+    filter: blur(clamp(14px, 4vw, 22px));
   }
 
   .scope :global(.landing-v2-hero-motion-plane) {
     animation: none;
     animation-play-state: paused;
-    will-change: auto;
     inset: -8%;
   }
 
   .scope :global(.landing-v2-hero-blob) {
     animation: none;
     animation-play-state: paused;
-    filter: blur(30px);
-    will-change: auto;
+    filter: blur(clamp(12px, 3.2vw, 20px));
+    opacity: 0.16;
+  }
+
+  .scope :global(.glass-card) {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: rgb(10 17 40 / 90%);
+  }
+
+  .scope :global(.glass-card:hover) {
+    box-shadow: none;
+  }
+
+  .scope :global(.landing-v2-cta-secondary) {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: rgb(10 17 40 / 86%);
   }
 }

@@ -1,6 +1,12 @@
 import "server-only";
 
 import { NextResponse, type NextRequest } from "next/server";
+import { requireAppUrl } from "@/lib/env/public-env";
+import {
+  isAllowedAuthOrigin,
+  safeRedirect,
+  validateRedirectUrl,
+} from "@/lib/safety/auth-guards";
 
 /**
  * Deterministic Redirect System
@@ -27,36 +33,13 @@ const REDIRECT_PATHS: Record<AuthRedirectTarget, string> = {
   "reset-password": "/reset-password",
 };
 
-const ALLOWED_ORIGINS = new Set([
-  process.env.NEXT_PUBLIC_APP_URL,
-  process.env.APP_URL,
-].filter(Boolean));
-
 /**
- * Get the base URL for redirects
+ * Get the base URL for redirects.
+ * Delegates to `requireAppUrl()` which returns a safe fallback during
+ * build / prerender and only throws at real request-time.
  */
 function getBaseUrl(): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL;
-  if (!appUrl) {
-    throw new Error("Missing APP_URL or NEXT_PUBLIC_APP_URL environment variable");
-  }
-  return appUrl.replace(/\/$/, "");
-}
-
-/**
- * Validate that a path is safe for redirects
- * Only allows relative paths starting with /
- */
-function isSafePath(path: string): boolean {
-  // Must start with / and not be //
-  if (!path.startsWith("/") || path.startsWith("//")) {
-    return false;
-  }
-  // No protocol indicators
-  if (/^[a-z][a-z0-9+.-]*:/i.test(path)) {
-    return false;
-  }
-  return true;
+  return requireAppUrl().replace(/\/$/, "");
 }
 
 /**
@@ -77,8 +60,9 @@ export function buildAuthRedirect(
   const params = new URLSearchParams();
 
   // Add next parameter (validated)
-  if (options?.next && isSafePath(options.next)) {
-    params.set("next", options.next);
+  const safeNextPath = validateRedirectUrl(options?.next);
+  if (safeNextPath) {
+    params.set("next", safeNextPath);
   }
 
   // Add email parameter
@@ -121,15 +105,15 @@ export function buildAuthRedirectPath(
  */
 export function redirectToLogin(options?: { next?: string; email?: string | null }) {
   const redirectPath = buildAuthRedirectPath("login", options);
-  return NextResponse.redirect(new URL(redirectPath, getBaseUrl()));
+  return NextResponse.redirect(safeRedirect(getBaseUrl(), redirectPath));
 }
 
 /**
  * Server-side redirect to dashboard
  */
 export function redirectToDashboard(options?: { next?: string }) {
-  const target = options?.next && isSafePath(options.next) ? options.next : "/dashboard";
-  return NextResponse.redirect(new URL(target, getBaseUrl()));
+  const target = validateRedirectUrl(options?.next) ?? "/dashboard";
+  return NextResponse.redirect(safeRedirect(getBaseUrl(), target));
 }
 
 /**
@@ -137,7 +121,7 @@ export function redirectToDashboard(options?: { next?: string }) {
  */
 export function redirectToVerifyEmail(options?: { email?: string | null; next?: string }) {
   const redirectPath = buildAuthRedirectPath("verify-email", options);
-  return NextResponse.redirect(new URL(redirectPath, getBaseUrl()));
+  return NextResponse.redirect(safeRedirect(getBaseUrl(), redirectPath));
 }
 
 /**
@@ -151,7 +135,7 @@ export function buildAuthRedirectResponse(
 ): NextResponse {
   const baseUrl = request.url.startsWith("http") ? request.url : getBaseUrl();
   const redirectUrl = buildAuthRedirect(target, options);
-  return NextResponse.redirect(new URL(redirectUrl, baseUrl));
+  return NextResponse.redirect(safeRedirect(baseUrl, redirectUrl));
 }
 
 /**
@@ -170,7 +154,7 @@ export function copyAuthCookies(from: NextResponse, to: NextResponse): void {
 export function isAllowedRedirectOrigin(url: string): boolean {
   try {
     const origin = new URL(url).origin;
-    return ALLOWED_ORIGINS.has(origin);
+    return isAllowedAuthOrigin(origin);
   } catch {
     return false;
   }
@@ -180,8 +164,5 @@ export function isAllowedRedirectOrigin(url: string): boolean {
  * Get safe next path from a query parameter
  */
 export function getSafeNextPath(candidate: string | null): string {
-  if (!candidate || !isSafePath(candidate)) {
-    return "/dashboard";
-  }
-  return candidate;
+  return validateRedirectUrl(candidate) ?? "/dashboard";
 }

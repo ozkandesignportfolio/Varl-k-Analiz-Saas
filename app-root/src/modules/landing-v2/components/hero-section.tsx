@@ -15,8 +15,8 @@ export function HeroSection() {
         </div>
       </div>
 
-      <div className="pointer-events-none absolute top-1/4 left-1/4 -z-10 hidden h-96 w-96 rounded-full bg-primary/5 blur-[120px] sm:block" />
-      <div className="pointer-events-none absolute right-1/4 bottom-1/4 -z-10 hidden h-80 w-80 rounded-full bg-accent/5 blur-[100px] sm:block" />
+      <div className="pointer-events-none absolute top-1/4 left-1/4 -z-10 hidden h-96 w-96 rounded-full bg-primary/5 blur-[84px] sm:block" />
+      <div className="pointer-events-none absolute right-1/4 bottom-1/4 -z-10 hidden h-80 w-80 rounded-full bg-accent/5 blur-[72px] sm:block" />
 
       {/* Orbiting dots are decorative-only and continuously repaint; hide on
           mobile where GPU budget is tighter and visual noise competes with
@@ -36,7 +36,7 @@ export function HeroSection() {
       <div className="relative z-10 mx-auto max-w-7xl px-6 text-center">
         <div className="animate-slide-up mb-8 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-5 py-2">
           <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+            <span className="landing-v2-ping-dot absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
           </span>
           <span className="text-sm text-primary">Yeni: Skor Analizi ve Fatura Takip</span>
@@ -71,7 +71,7 @@ export function HeroSection() {
             asChild
             size="lg"
             variant="outline"
-            className="group w-full border-primary/25 bg-background/40 px-8 py-6 text-base text-foreground backdrop-blur-sm hover:border-primary/50 hover:bg-primary/5 focus-visible:ring-primary/50 sm:w-auto"
+            className="landing-v2-cta-secondary group w-full border-primary/25 bg-background/40 px-8 py-6 text-base text-foreground backdrop-blur-sm hover:border-primary/50 hover:bg-primary/5 focus-visible:ring-primary/50 sm:w-auto"
           >
             <Link href="#ozellikler">
               Özellikleri keşfet

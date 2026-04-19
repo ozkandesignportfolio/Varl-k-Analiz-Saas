@@ -4,7 +4,7 @@ import {
   startTransition,
   useDeferredValue,
   useEffect,
-  useEffectEvent,
+  useCallback,
   useMemo,
   useState,
 } from "react";
@@ -51,7 +51,7 @@ export const useFraudStats = (filters: FraudStatsFilters, refreshIntervalMs = 30
 
   const queryKey = useMemo(() => buildQueryString(deferredFilters), [deferredFilters]);
 
-  const fetchFraudStats = useEffectEvent(async (reason: "initial" | "poll" | "manual" | "filters") => {
+  const fetchFraudStats = useCallback(async (reason: "initial" | "poll" | "manual" | "filters") => {
     setState((current) => ({
       ...current,
       error: null,
@@ -90,7 +90,7 @@ export const useFraudStats = (filters: FraudStatsFilters, refreshIntervalMs = 30
         isRefreshing: false,
       }));
     }
-  });
+  }, [queryKey]);
 
   useEffect(() => {
     void fetchFraudStats(state.data === null ? "initial" : "filters");

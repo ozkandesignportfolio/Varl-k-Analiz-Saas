@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { Runtime } from "@/lib/env/runtime";
 
 const inputClassName =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-sky-400";
@@ -28,7 +29,7 @@ export default function ForgotPasswordPage() {
     setIsSubmitting(true);
 
     const redirectTo =
-      typeof window === "undefined"
+      !Runtime.isClient()
         ? undefined
         : `${window.location.origin}/reset-password`;
 

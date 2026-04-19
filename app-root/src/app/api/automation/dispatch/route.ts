@@ -1,6 +1,9 @@
+import "server-only";
+
 import { createHash } from "crypto";
 import { NextResponse } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { ServerEnv } from "@/lib/env/server-env";
 import { logApiError } from "@/lib/api/logging";
 import { enforceServiceRateLimit } from "@/lib/api/rate-limit";
 
@@ -26,7 +29,7 @@ const readBody = async (request: Request) => {
 };
 
 const getSupabaseUrl = () =>
-  process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || process.env.SUPABASE_URL?.trim() || null;
+  ServerEnv.NEXT_PUBLIC_SUPABASE_URL || ServerEnv.SUPABASE_URL || null;
 
 const isConfiguredSecret = (value: string | null | undefined) => {
   const normalized = value?.trim() ?? "";
@@ -41,8 +44,8 @@ const isConfiguredSecret = (value: string | null | undefined) => {
 
 const getDispatchConfigState = () => {
   const supabaseUrl = getSupabaseUrl();
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? null;
-  const cronSecret = process.env.AUTOMATION_CRON_SECRET?.trim() || process.env.CRON_SECRET?.trim() || null;
+  const serviceRoleKey = ServerEnv.SUPABASE_SERVICE_ROLE_KEY;
+  const cronSecret = ServerEnv.AUTOMATION_CRON_SECRET || ServerEnv.CRON_SECRET || null;
   const missingEnv: string[] = [];
 
   if (!supabaseUrl) {

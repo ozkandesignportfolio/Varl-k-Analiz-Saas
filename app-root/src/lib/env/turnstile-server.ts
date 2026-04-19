@@ -5,6 +5,9 @@ import path from "node:path";
 import {
   isLocalhostTestTurnstileSiteKey,
 } from "@/lib/env/turnstile";
+import { BuildEnv } from "@/lib/env/build-env";
+import { PublicEnv } from "@/lib/env/public-env";
+import { ServerEnv } from "@/lib/env/server-env";
 
 const TURNSTILE_PLACEHOLDER_PATTERNS = [
   "your_turnstile",
@@ -35,8 +38,8 @@ const isPlaceholderValue = (value: string | null) => {
 const isLocalhostTestTurnstileSecretKey = (secretKey: string | null) =>
   normalizeEnvValue(secretKey ?? undefined) === TURNSTILE_LOCALHOST_TEST_SECRET_KEY;
 
-const isDevelopmentEnvironment = () => process.env.NODE_ENV === "development";
-const isProductionEnvironment = () => process.env.NODE_ENV === "production";
+const isDevelopmentEnvironment = () => BuildEnv.NODE_ENV !== "production";
+const isProductionEnvironment = () => BuildEnv.NODE_ENV === "production";
 
 type TurnstileKeyKind = "configured" | "localhost_test" | "missing" | "placeholder";
 
@@ -88,8 +91,8 @@ export type TurnstileServerEnv = {
 };
 
 export const readTurnstileServerEnv = (): TurnstileServerEnv => {
-  const configuredSecretKey = normalizeEnvValue(process.env.TURNSTILE_SECRET_KEY);
-  const configuredSiteKey = normalizeEnvValue(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
+  const configuredSecretKey = normalizeEnvValue(ServerEnv.TURNSTILE_SECRET_KEY);
+  const configuredSiteKey = normalizeEnvValue(PublicEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
   const secretKeyKind = getTurnstileSecretKeyKind(configuredSecretKey);
   const siteKeyKind = getTurnstileSiteKeyKind(configuredSiteKey);
   const missing: string[] = [];
@@ -112,7 +115,7 @@ export const readTurnstileServerEnv = (): TurnstileServerEnv => {
   return {
     hasMisplacedEnvLocal: fs.existsSync(TURNSTILE_MISPLACED_ENV_LOCAL_PATH),
     missing,
-    nodeEnv: process.env.NODE_ENV ?? "undefined",
+    nodeEnv: BuildEnv.NODE_ENV || "development",
     productionUsesTestKeys,
     rootEnvLocalPath: TURNSTILE_ROOT_ENV_LOCAL_PATH,
     secretKey,

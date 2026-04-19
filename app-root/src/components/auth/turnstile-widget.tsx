@@ -8,6 +8,7 @@ import {
   readPublicTurnstileSiteKey,
   resolveTurnstileSiteKeyForHostname,
 } from "@/lib/env/turnstile";
+import { Runtime } from "@/lib/env/runtime";
 
 type TurnstileWidgetProps = {
   onStatusChange?: (status: TurnstileWidgetStatus) => void;
@@ -66,7 +67,7 @@ const STRICT_MODE_PRESERVE_MS = 250;
 const ADBLOCK_MESSAGE = "Tarayici eklentisi engelliyor olabilir";
 const DOMAIN_MISMATCH_MESSAGE = TURNSTILE_DOMAIN_INACTIVE_MESSAGE;
 const RUNTIME_RESET_MESSAGE = "Dogrulama yenileniyor. Lutfen tekrar tamamlayin.";
-const isDevelopment = process.env.NODE_ENV === "development";
+const isDevelopment = !Runtime.isBuild();
 
 let turnstileScriptPromise: Promise<void> | null = null;
 let preservedWidgetState: PreservedWidgetState | null = null;
@@ -87,9 +88,18 @@ const warnPossibleDomainMismatch = (details?: Record<string, unknown>) => {
   console.warn("Turnstile domain mismatch olabilir", details);
 };
 
+const deferTurnstileState = (callback: () => void) => {
+  if (typeof queueMicrotask === "function") {
+    queueMicrotask(callback);
+    return;
+  }
+
+  setTimeout(callback, 0);
+};
+
 const createTurnstileScriptPromise = () =>
   new Promise<void>((resolve, reject) => {
-    if (typeof window === "undefined") {
+    if (!Runtime.isClient()) {
       reject(new Error("Turnstile script can only load in the browser."));
       return;
     }
@@ -160,7 +170,7 @@ const createTurnstileScriptPromise = () =>
   });
 
 const ensureTurnstileScript = () => {
-  if (typeof window === "undefined") {
+  if (!Runtime.isClient()) {
     return Promise.reject(new Error("Turnstile script can only load in the browser."));
   }
 
@@ -178,7 +188,7 @@ const ensureTurnstileScript = () => {
 };
 
 const clearPreservedWidgetCleanup = () => {
-  if (!preservedWidgetState || preservedWidgetState.cleanupTimer === null || typeof window === "undefined") {
+  if (!preservedWidgetState || preservedWidgetState.cleanupTimer === null || !Runtime.isClient()) {
     return;
   }
 
@@ -237,7 +247,6 @@ function TurnstileWidget({
     onTokenChange,
     onWarningChange,
   });
-  const renderWidgetRef = useRef<() => void>(() => undefined);
   const resolvedSiteKeyRef = useRef<string | null>(null);
   const themeRef = useRef<"auto" | "light" | "dark">(theme);
   const statusRef = useRef<TurnstileWidgetStatus>("idle");
@@ -245,7 +254,7 @@ function TurnstileWidget({
   const warningRef = useRef<string | null>(null);
   const prevResetTriggerRef = useRef(resetTrigger);
 
-  const hostname = typeof window !== "undefined" ? window.location.hostname : null;
+  const hostname = Runtime.isClient() ? window.location.hostname : null;
   const configuredSiteKey = siteKey?.trim() || readPublicTurnstileSiteKey().siteKey;
   const resolvedSiteKey = resolveTurnstileSiteKeyForHostname({
     configuredSiteKey,
@@ -253,25 +262,27 @@ function TurnstileWidget({
   });
   const isUsingTestKey = resolvedSiteKey === TURNSTILE_LOCALHOST_TEST_SITE_KEY;
 
-  resolvedSiteKeyRef.current = resolvedSiteKey;
-  themeRef.current = theme;
-  callbacksRef.current = {
-    onStatusChange,
-    onTokenChange,
-    onWarningChange,
-  };
+  useEffect(() => {
+    resolvedSiteKeyRef.current = resolvedSiteKey;
+    themeRef.current = theme;
+    callbacksRef.current = {
+      onStatusChange,
+      onTokenChange,
+      onWarningChange,
+    };
+  }, [onStatusChange, onTokenChange, onWarningChange, resolvedSiteKey, theme]);
 
-  const [scriptReady, setScriptReady] = useState(() => typeof window !== "undefined" && Boolean(window.turnstile));
+  const [scriptReady, setScriptReady] = useState(() => Runtime.isClient() && Boolean(window.turnstile));
   const [scriptFailed, setScriptFailed] = useState(false);
   const [runtimeWarning, setRuntimeWarning] = useState<string | null>(null);
   const [debugState, setDebugState] = useState<TurnstileDebugState>(() => ({
     callbackTriggered: false,
     lastErrorCode: null,
     renderCalled: false,
-    scriptLoaded: typeof window !== "undefined" && Boolean(window.turnstile),
+    scriptLoaded: Runtime.isClient() && Boolean(window.turnstile),
     tokenReceivedAt: null,
     usingTestKey: isUsingTestKey,
-    windowTurnstile: typeof window !== "undefined" && Boolean(window.turnstile),
+    windowTurnstile: Runtime.isClient() && Boolean(window.turnstile),
   }));
 
   const updateDebugState = (patch: Partial<TurnstileDebugState>) => {
@@ -279,7 +290,7 @@ function TurnstileWidget({
       ...current,
       ...patch,
       usingTestKey: patch.usingTestKey ?? (resolvedSiteKeyRef.current === TURNSTILE_LOCALHOST_TEST_SITE_KEY),
-      windowTurnstile: patch.windowTurnstile ?? (typeof window !== "undefined" && Boolean(window.turnstile)),
+      windowTurnstile: patch.windowTurnstile ?? (Runtime.isClient() && Boolean(window.turnstile)),
     }));
   };
 
@@ -335,7 +346,7 @@ function TurnstileWidget({
   };
 
   const preserveWidgetForStrictMode = () => {
-    if (!isDevelopment || typeof window === "undefined" || !containerElementRef.current || !widgetIdRef.current) {
+    if (!isDevelopment || !Runtime.isClient() || !containerElementRef.current || !widgetIdRef.current) {
       return false;
     }
 
@@ -428,7 +439,7 @@ function TurnstileWidget({
     }
   };
 
-  renderWidgetRef.current = () => {
+  const renderWidget = () => {
     const activeSiteKey = resolvedSiteKeyRef.current;
 
     if (!containerElementRef.current || !window.turnstile || !activeSiteKey || widgetIdRef.current || renderAttemptedRef.current) {
@@ -534,7 +545,7 @@ function TurnstileWidget({
     containerElementRef.current = node;
 
     if (node) {
-      renderWidgetRef.current();
+      renderWidget();
     }
   }, []);
 
@@ -542,7 +553,7 @@ function TurnstileWidget({
     updateDebugState({
       scriptLoaded: scriptReady,
       usingTestKey: isUsingTestKey,
-      windowTurnstile: typeof window !== "undefined" && Boolean(window.turnstile),
+      windowTurnstile: Runtime.isClient() && Boolean(window.turnstile),
     });
 
     debugTurnstile("Resolved site key.", {
@@ -558,7 +569,9 @@ function TurnstileWidget({
     if (!resolvedSiteKeyRef.current) {
       emitToken(null);
       emitStatus("unsupported");
-      emitWarning(null);
+      deferTurnstileState(() => {
+        emitWarning(null);
+      });
       updateDebugState({
         callbackTriggered: false,
         lastErrorCode: null,
@@ -570,8 +583,10 @@ function TurnstileWidget({
       };
     }
 
-    setScriptFailed(false);
-    emitWarning(null);
+    deferTurnstileState(() => {
+      setScriptFailed(false);
+      emitWarning(null);
+    });
 
     void ensureTurnstileScript()
       .then(() => {
@@ -585,7 +600,7 @@ function TurnstileWidget({
           scriptLoaded: true,
           windowTurnstile: true,
         });
-        renderWidgetRef.current();
+        renderWidget();
       })
       .catch((error) => {
         if (cancelled) {
@@ -600,7 +615,7 @@ function TurnstileWidget({
         updateDebugState({
           lastErrorCode: error instanceof Error ? error.message : "script_load_failed",
           scriptLoaded: false,
-          windowTurnstile: typeof window !== "undefined" && Boolean(window.turnstile),
+          windowTurnstile: Runtime.isClient() && Boolean(window.turnstile),
         });
         console.error("[turnstile.widget] Script load failed.", error);
       });
@@ -630,7 +645,9 @@ function TurnstileWidget({
 
     emitToken(null);
     emitStatus("idle");
-    emitWarning(null);
+    deferTurnstileState(() => {
+      emitWarning(null);
+    });
 
     try {
       window.turnstile.reset(widgetId);

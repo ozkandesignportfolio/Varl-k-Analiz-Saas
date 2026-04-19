@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { PAYMENT_TEXT } from "@/constants/ui-text";
+import { safeRedirect, validateRedirectUrl } from "@/lib/safety/auth-guards";
+import { Runtime } from "@/lib/env/runtime";
 import { getPlanConfig } from "@/lib/plans/plan-config";
 import { PREMIUM_MONTHLY_PRICE_LABEL } from "@/lib/plans/pricing";
 import { PricingCard } from "@/modules/landing-v2/components/pricing/PricingCard";
@@ -36,8 +38,14 @@ export default function PricingPage() {
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
 
   const redirectToLogin = () => {
+    if (!Runtime.isClient()) {
+      return;
+    }
+
     const nextPath = `${window.location.pathname}${window.location.search}`;
-    window.location.href = `/login?next=${encodeURIComponent(nextPath)}`;
+    const safeNextPath = validateRedirectUrl(nextPath) ?? "/pricing";
+    const loginPath = `/login?next=${encodeURIComponent(safeNextPath)}`;
+    window.location.href = safeRedirect(window.location.origin, loginPath);
   };
 
   const trialSummary = useMemo(

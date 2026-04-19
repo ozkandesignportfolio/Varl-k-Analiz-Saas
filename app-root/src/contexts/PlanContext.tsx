@@ -19,6 +19,8 @@ import { ensureProfile, getProfilePlanFromUserMetadata } from "@/lib/plans/profi
 import type { DbClient } from "@/lib/repos/_shared";
 import { isSupabaseUserEmailConfirmed } from "@/lib/supabase/auth-errors";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { BuildEnv } from "@/lib/env/build-env";
+import { PublicEnv } from "@/lib/env/public-env";
 
 export type UserPlan = "free" | "premium";
 
@@ -44,13 +46,13 @@ export type PlanContextValue = {
 const STARTER_PLAN = getPlanConfig("starter");
 const PREMIUM_PLAN = getPlanConfig("pro");
 const CLIENT_PLAN_CACHE_TTL_MS = 30_000;
-const forceProfileFromDb = process.env.AUTH_FORCE_PROFILE_FROM_DB === "1";
+const forceProfileFromDb = PublicEnv.NEXT_PUBLIC_AUTH_FORCE_PROFILE_FROM_DB === "1";
 
 const PlanContext = createContext<PlanContextValue | undefined>(undefined);
 
 export function PlanProvider({ children }: { children: ReactNode }) {
-  const isDev = process.env.NODE_ENV !== "production";
-  const showPlanDebug = isDev && process.env.NEXT_PUBLIC_PLAN_DEBUG === "true";
+  const isDev = BuildEnv.NODE_ENV !== "production";
+  const showPlanDebug = isDev && PublicEnv.NEXT_PUBLIC_PLAN_DEBUG === "true";
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const hasLoggedProfilePlanLoadWarning = useRef(false);
   const planCacheByUserRef = useRef(new Map<string, { plan: UserPlan; expiresAt: number }>());

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { Runtime } from "@/lib/env/runtime";
 
 type LooseError = {
   message: string;
@@ -70,7 +71,7 @@ const isMissingRiskActionsTableError = (message: string | undefined) => {
 };
 
 const readRiskActionsStore = (): RiskActionsStore => {
-  if (typeof window === "undefined") {
+  if (!Runtime.isClient()) {
     return {};
   }
 
@@ -96,7 +97,7 @@ const readRiskActionsStore = (): RiskActionsStore => {
 };
 
 const writeRiskAction = (riskKey: string, value: RiskActionState | null) => {
-  if (typeof window === "undefined") {
+  if (!Runtime.isClient()) {
     return;
   }
 

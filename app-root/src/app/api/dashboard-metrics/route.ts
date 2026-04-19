@@ -1,6 +1,9 @@
+import "server-only";
+
 import { NextResponse } from "next/server";
 import { createClient as createSupabaseClient, type PostgrestError } from "@supabase/supabase-js";
 import { randomUUID } from "crypto";
+import { ServerEnv } from "@/lib/env/server-env";
 import { logApiError, logApiRequest } from "@/lib/api/logging";
 import { enforceUserRateLimit } from "@/lib/api/rate-limit";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
@@ -75,8 +78,8 @@ const normalizePayload = (value: unknown): MetricsPayload => {
 };
 
 const getServiceRoleClient = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseUrl = ServerEnv.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = ServerEnv.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !serviceRoleKey) {
     return null;

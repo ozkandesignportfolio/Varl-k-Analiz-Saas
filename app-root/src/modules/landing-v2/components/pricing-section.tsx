@@ -4,6 +4,8 @@ import { Check, Sparkles, ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PAYMENT_TEXT } from "@/constants/ui-text";
+import { safeRedirect, validateRedirectUrl } from "@/lib/safety/auth-guards";
+import { Runtime } from "@/lib/env/runtime";
 import { getPlanConfig } from "@/lib/plans/plan-config";
 import { PREMIUM_MONTHLY_PRICE_TL } from "@/lib/plans/pricing";
 import { useInView } from "@/modules/landing-v2/hooks/use-in-view";
@@ -55,9 +57,16 @@ const plans = [
 export function PricingSection() {
   const { ref, inView } = useInView();
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
+
   const redirectToLogin = () => {
+    if (!Runtime.isClient()) {
+      return;
+    }
+
     const nextPath = `${window.location.pathname}${window.location.search}`;
-    window.location.href = `/login?next=${encodeURIComponent(nextPath)}`;
+    const safeNextPath = validateRedirectUrl(nextPath) ?? "/";
+    const loginPath = `/login?next=${encodeURIComponent(safeNextPath)}`;
+    window.location.href = safeRedirect(window.location.origin, loginPath);
   };
 
   const handleStartPremiumCheckout = async () => {

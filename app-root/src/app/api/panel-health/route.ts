@@ -1,6 +1,10 @@
+import "server-only";
+
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServiceRoleClient } from "@supabase/supabase-js";
+import { Runtime } from "@/lib/env/runtime";
+import { ServerEnv } from "@/lib/env/server-env";
 
 type QueryError = {
   message?: string | null;
@@ -44,7 +48,7 @@ const safeCompare = (left: string, right: string) => {
 };
 
 const hasInternalAccess = (request: NextRequest) => {
-  const expectedSecret = process.env.PANEL_HEALTH_SECRET?.trim();
+  const expectedSecret = ServerEnv.PANEL_HEALTH_SECRET;
   if (!expectedSecret) {
     return false;
   }
@@ -58,7 +62,7 @@ const hasInternalAccess = (request: NextRequest) => {
 };
 
 const getPublicVisibility = (): PublicVisibility => {
-  const configuredVisibility = process.env.PANEL_HEALTH_PUBLIC_VISIBILITY?.trim().toLowerCase();
+  const configuredVisibility = ServerEnv.PANEL_HEALTH_PUBLIC_VISIBILITY?.toLowerCase();
   if (configuredVisibility === "detailed") {
     return "detailed";
   }
@@ -67,7 +71,7 @@ const getPublicVisibility = (): PublicVisibility => {
     return "summary";
   }
 
-  return process.env.NODE_ENV === "production" ? "summary" : "detailed";
+  return Runtime.isBuild() ? "summary" : "detailed";
 };
 
 const toPublicComponents = (status: HealthStatus): HealthResponse["components"] => {
@@ -83,8 +87,8 @@ const toPublicComponents = (status: HealthStatus): HealthResponse["components"] 
 };
 
 const getServiceRoleClient = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const supabaseUrl = ServerEnv.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = ServerEnv.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !serviceRoleKey) {
     return null;

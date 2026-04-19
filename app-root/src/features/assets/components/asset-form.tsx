@@ -73,10 +73,11 @@ export function AssetForm(props: AssetFormProps) {
     [currentCategory, props.categoryOptions],
   );
   const hasPresetCategory = currentCategory ? categoryOptions.includes(currentCategory) : false;
-  const [selectedCategory, setSelectedCategory] = useState(
-    hasPresetCategory ? currentCategory || categoryOptions[0] || FALLBACK_CATEGORY_OPTIONS[0] : CUSTOM_CATEGORY_VALUE,
-  );
-  const [customCategory, setCustomCategory] = useState(hasPresetCategory ? "" : currentCategory);
+  const derivedSelectedCategory =
+    hasPresetCategory ? currentCategory || categoryOptions[0] || FALLBACK_CATEGORY_OPTIONS[0] : CUSTOM_CATEGORY_VALUE;
+  const derivedCustomCategory = hasPresetCategory ? "" : currentCategory;
+  const [selectedCategory, setSelectedCategory] = useState(derivedSelectedCategory);
+  const [customCategory, setCustomCategory] = useState(derivedCustomCategory);
   const categoryLabelId = `${props.formId ?? props.mode}-category-label`;
   const categorySelectOptions = useMemo(
     () => [
@@ -87,14 +88,11 @@ export function AssetForm(props: AssetFormProps) {
   );
 
   useEffect(() => {
-    const nextHasPresetCategory = currentCategory ? categoryOptions.includes(currentCategory) : false;
-    setSelectedCategory(
-      nextHasPresetCategory
-        ? currentCategory || categoryOptions[0] || FALLBACK_CATEGORY_OPTIONS[0]
-        : CUSTOM_CATEGORY_VALUE,
-    );
-    setCustomCategory(nextHasPresetCategory ? "" : currentCategory);
-  }, [categoryOptions, currentCategory]);
+    queueMicrotask(() => {
+      setSelectedCategory(derivedSelectedCategory);
+      setCustomCategory(derivedCustomCategory);
+    });
+  }, [derivedCustomCategory, derivedSelectedCategory]);
 
   const footer = props.footer ?? (
     <div className="flex justify-end">

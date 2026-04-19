@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useState } from "react";
+import { memo, useCallback, useState } from "react";
 import { ArrowRight, BarChart3, ChevronDown, ChevronUp, Sparkles, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +23,15 @@ const ScoreTrendChart = dynamic(
 
 const tlFormatter = new Intl.NumberFormat("tr-TR");
 
-function BreakdownBar({ label, score, toneClass }: { label: string; score: number; toneClass: string }) {
+const BreakdownBar = memo(function BreakdownBar({
+  label,
+  score,
+  toneClass,
+}: {
+  label: string;
+  score: number;
+  toneClass: string;
+}) {
   const safeScore = Math.max(0, Math.min(100, Math.round(score)));
   const width = safeScore > 0 ? Math.max(4, safeScore) : 0;
 
@@ -36,11 +44,14 @@ function BreakdownBar({ label, score, toneClass }: { label: string; score: numbe
       <span className="text-xs font-semibold text-foreground">{safeScore}/100</span>
     </div>
   );
-}
+});
 
 export function ScoreAnalysisSection() {
   const { ref, inView } = useInView();
   const [showFormula, setShowFormula] = useState(false);
+  const toggleFormula = useCallback(() => {
+    setShowFormula((prev) => !prev);
+  }, []);
 
   return (
     <section id="skor-analizi" className="relative isolate py-20 sm:py-28 lg:py-32" ref={ref}>
@@ -81,7 +92,7 @@ export function ScoreAnalysisSection() {
               <button
                 type="button"
                 className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-chart-3 transition-colors hover:text-chart-2"
-                onClick={() => setShowFormula((prev) => !prev)}
+                onClick={toggleFormula}
               >
                 Detaylı hesaplama
                 {showFormula ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -215,6 +226,6 @@ export function ScoreAnalysisSection() {
   );
 }
 
-function TrendChartPlaceholder() {
+const TrendChartPlaceholder = memo(function TrendChartPlaceholder() {
   return <div className="h-full w-full rounded-2xl bg-white/[0.04]" aria-hidden="true" />;
-}
+});

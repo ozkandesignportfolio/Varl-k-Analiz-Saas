@@ -7,20 +7,6 @@ import { getSupabaseServerClient } from "@/lib/services/supabase-server";
 import { getSupabaseAdmin } from "@/lib/services/supabase-admin";
 import type { User, Session } from "@supabase/supabase-js";
 
-type CookieOptions = {
-  name: string;
-  value: string;
-  options?: {
-    path?: string;
-    expires?: Date;
-    maxAge?: number;
-    domain?: string;
-    secure?: boolean;
-    httpOnly?: boolean;
-    sameSite?: "strict" | "lax" | "none" | boolean;
-  };
-};
-
 /**
  * Create a server-side Supabase client
  * This is the ONLY way to access Supabase on the server

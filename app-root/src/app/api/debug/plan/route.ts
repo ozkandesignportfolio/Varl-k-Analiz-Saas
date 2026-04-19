@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { Runtime } from "@/lib/env/runtime";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  if (process.env.NODE_ENV === "production") return new Response(null, { status: 404 });
+  if (Runtime.isBuild()) return new Response(null, { status: 404 });
 
   const supabase = await createClient();
   const {

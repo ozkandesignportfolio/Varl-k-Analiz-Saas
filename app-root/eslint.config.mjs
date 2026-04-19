@@ -16,6 +16,31 @@ const eslintConfig = defineConfig([
       "playwright-report/**",
     ],
   },
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-properties": [
+        "error",
+        {
+          object: "process",
+          property: "env",
+          message: "Use ServerEnv / PublicEnv / BuildEnv",
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/lib/env/**/*.ts"],
+    rules: {
+      "no-restricted-properties": "off",
+    },
+  },
+  {
+    files: ["src/instrumentation.ts"],
+    rules: {
+      "no-restricted-properties": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

@@ -1,3 +1,4 @@
+import dynamic from "next/dynamic";
 import { AbonelikSection } from "@/modules/landing-v2/components/abonelik-section";
 import { AnimatedBackground } from "@/modules/landing-v2/components/AnimatedBackground";
 import { BildirimSection } from "@/modules/landing-v2/components/bildirim-section";
@@ -7,16 +8,21 @@ import { Footer } from "@/modules/landing-v2/components/footer";
 import { HeroSection } from "@/modules/landing-v2/components/hero-section";
 import { Navbar } from "@/modules/landing-v2/components/navbar";
 import { PricingSection } from "@/modules/landing-v2/components/pricing-section";
-import { ScoreAnalysisSection } from "@/modules/landing-v2/components/score-analysis-section";
 import { DashboardPreviewLazy } from "@/modules/landing-v2/components/dashboard-preview-lazy";
 import styles from "@/modules/landing-v2/landing-v2.module.css";
+import { BuildEnv } from "@/lib/env/build-env";
+import { PublicEnv } from "@/lib/env/public-env";
+
+const ScoreAnalysisSectionLazy = dynamic(
+  () => import("@/modules/landing-v2/components/score-analysis-section").then((mod) => mod.ScoreAnalysisSection),
+);
 
 // Debug badge visibility is controlled by environment + an explicit feature
 // flag so prod stays clean by default while the message itself is retained.
 // Enable explicitly by setting NEXT_PUBLIC_SHOW_LANDING_DEBUG_BADGE=true.
 const SHOW_LANDING_DEBUG_BADGE =
-  process.env.NODE_ENV !== "production" ||
-  process.env.NEXT_PUBLIC_SHOW_LANDING_DEBUG_BADGE === "true";
+  BuildEnv.NODE_ENV !== "production" ||
+  PublicEnv.NEXT_PUBLIC_SHOW_LANDING_DEBUG_BADGE === "true";
 
 export function LandingV2Page() {
   return (
@@ -57,7 +63,7 @@ export function LandingV2Page() {
         <BildirimSection />
         <AbonelikSection />
         <FaturaSection />
-        <ScoreAnalysisSection />
+        <ScoreAnalysisSectionLazy />
         <PricingSection />
         <Footer />
       </div>

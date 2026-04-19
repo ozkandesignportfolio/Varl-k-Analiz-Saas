@@ -1,3 +1,6 @@
+import { isProductionNodeEnv } from "@/lib/env/build-env";
+import { PublicEnv } from "@/lib/env/public-env";
+
 export const TURNSTILE_SITE_KEY_MISSING_MESSAGE =
   "Guvenlik dogrulamasi yuklenemedi";
 export const TURNSTILE_LOCALHOST_TEST_SITE_KEY = "1x00000000000000000000AA";
@@ -16,7 +19,7 @@ const normalizeEnvValue = (value: string | undefined) => {
   return trimmedValue ? trimmedValue : null;
 };
 
-export const isDevelopmentEnvironment = () => process.env.NODE_ENV === "development";
+export const isDevelopmentEnvironment = () => !isProductionNodeEnv();
 
 export const isLocalhostTestTurnstileSiteKey = (siteKey?: string | null) =>
   normalizeEnvValue(siteKey ?? undefined) === TURNSTILE_LOCALHOST_TEST_SITE_KEY;
@@ -50,10 +53,7 @@ export const resolveTurnstileSiteKeyForHostname = ({
 };
 
 export const readPublicTurnstileSiteKey = (): PublicTurnstileSiteKeyResult => {
-  const rawValue =
-    typeof process !== "undefined" && process.env
-      ? process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
-      : undefined;
+  const rawValue = PublicEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const siteKey = normalizeEnvValue(rawValue);
 
   return {

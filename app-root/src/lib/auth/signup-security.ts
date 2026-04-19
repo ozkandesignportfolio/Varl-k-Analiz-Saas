@@ -3,9 +3,9 @@ import "server-only";
 import { getSupabaseAdmin } from "@/lib/services/supabase-admin";
 import {
   createUserConsentsInsert,
-  type UserConsentsInsert,
   validateUserConsentsPayload,
 } from "@/schema/userConsents";
+import { Runtime } from "@/lib/env/runtime";
 
 type Json = string | number | boolean | null | { [key: string]: Json } | Json[];
 
@@ -109,7 +109,7 @@ export const insertUserConsent = async (params: UserConsentInsertParams) => {
   validateUserConsentsPayload(payload as unknown as Record<string, unknown>, "insert");
 
   // Log final payload for debugging (development only)
-  if (process.env.NODE_ENV === "development") {
+  if (!Runtime.isBuild()) {
     console.log("[insertUserConsent] Final validated payload:", payload);
   }
 

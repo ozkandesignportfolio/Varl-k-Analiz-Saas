@@ -1,15 +1,22 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { Activity, AlertTriangle, ShieldAlert, UserRoundX } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { FraudAttemptsTable } from "@/features/fraud-dashboard/components/fraud-attempts-table";
-import { FraudCharts } from "@/features/fraud-dashboard/components/fraud-charts";
 import { FraudFilters } from "@/features/fraud-dashboard/components/fraud-filters";
 import { FraudRankedList } from "@/features/fraud-dashboard/components/fraud-ranked-list";
 import { FraudStatCard } from "@/features/fraud-dashboard/components/fraud-stat-card";
 import { useFraudStats } from "@/features/fraud-dashboard/hooks/useFraudStats";
 import type { FraudStatsFilters } from "@/lib/fraud/types";
+
+// Chart.js + controllers are only needed once fraud stats have loaded.
+// Defer the module so the initial admin dashboard bundle stays small.
+const FraudCharts = dynamic(
+  () => import("@/features/fraud-dashboard/components/fraud-charts").then((m) => m.FraudCharts),
+  { ssr: false, loading: () => <div className="h-[320px] animate-pulse rounded-2xl bg-white/5" /> },
+);
 
 const DEFAULT_FILTERS: FraudStatsFilters = {
   email: "",

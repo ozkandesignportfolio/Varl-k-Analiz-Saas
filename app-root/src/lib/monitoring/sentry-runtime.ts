@@ -1,4 +1,6 @@
 import { scrubSentryEvent } from "@/lib/monitoring/sentry-scrubber";
+import { BuildEnv, isProductionNodeEnv } from "@/lib/env/build-env";
+import { PublicEnv } from "@/lib/env/public-env";
 
 const TRUTHY_VALUES = new Set(["1", "true", "yes", "on"]);
 const FALSY_VALUES = new Set(["0", "false", "no", "off"]);
@@ -35,7 +37,7 @@ const parseSampleRate = (value: string | undefined, fallback: number) => {
 };
 
 const getDsnFromEnv = () =>
-  asTrimmed(process.env.NEXT_PUBLIC_SENTRY_DSN) ?? asTrimmed(process.env.SENTRY_DSN);
+  asTrimmed(PublicEnv.NEXT_PUBLIC_SENTRY_DSN);
 
 const sanitizeBeforeSend = <T>(event: T) => scrubSentryEvent(event);
 
@@ -49,20 +51,15 @@ type SentryEnablementState = {
 const resolveSentryEnablementState = (): SentryEnablementState => {
   const dsn = getDsnFromEnv();
 
-  const sentryEnabledRaw = asTrimmed(process.env.SENTRY_ENABLED);
-  const publicSentryEnabledRaw = asTrimmed(process.env.NEXT_PUBLIC_SENTRY_ENABLED);
-  const sentryEnabled = parseBooleanEnv(sentryEnabledRaw);
+  const publicSentryEnabledRaw = asTrimmed(PublicEnv.NEXT_PUBLIC_SENTRY_ENABLED);
   const publicSentryEnabled = parseBooleanEnv(publicSentryEnabledRaw);
 
-  const explicitFlag = sentryEnabled ?? publicSentryEnabled;
+  const explicitFlag = publicSentryEnabled;
   const enabled =
     Boolean(dsn) &&
-    (explicitFlag !== undefined ? explicitFlag : process.env.NODE_ENV === "production");
+    (explicitFlag !== undefined ? explicitFlag : isProductionNodeEnv());
 
   const invalidFlagEnvNames: string[] = [];
-  if (sentryEnabledRaw && sentryEnabled === undefined) {
-    invalidFlagEnvNames.push("SENTRY_ENABLED");
-  }
   if (publicSentryEnabledRaw && publicSentryEnabled === undefined) {
     invalidFlagEnvNames.push("NEXT_PUBLIC_SENTRY_ENABLED");
   }
@@ -76,7 +73,7 @@ const resolveSentryEnablementState = (): SentryEnablementState => {
 };
 
 const maybeWarnAboutSentryConfig = (state: SentryEnablementState) => {
-  if (process.env.NODE_ENV !== "production") {
+  if (!isProductionNodeEnv()) {
     return;
   }
 
@@ -129,14 +126,12 @@ export const getSentryInitOptions = () => {
     enabled: enablement.enabled,
     sendDefaultPii: false,
     environment:
-      asTrimmed(process.env.SENTRY_ENVIRONMENT) ??
-      asTrimmed(process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT) ??
-      process.env.NODE_ENV,
-    release: asTrimmed(process.env.SENTRY_RELEASE),
+      asTrimmed(PublicEnv.NEXT_PUBLIC_SENTRY_ENVIRONMENT) ??
+      (isProductionNodeEnv() ? "production" : BuildEnv.NODE_ENV || "development"),
+    release: undefined,
     tracesSampleRate: parseSampleRate(
-      asTrimmed(process.env.SENTRY_TRACES_SAMPLE_RATE) ??
-        asTrimmed(process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE),
-      process.env.NODE_ENV === "production" ? 0.1 : 0,
+      asTrimmed(PublicEnv.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE),
+      isProductionNodeEnv() ? 0.1 : 0,
     ),
     beforeSend: sanitizeBeforeSend,
   };
