@@ -1,21 +1,16 @@
-const readBuildEnv = (key: "NODE_ENV" | "NEXT_PHASE" | "NEXT_RUNTIME"): string => {
-  if (typeof process === "undefined") {
-    return "";
-  }
-
-  const raw = process.env[key];
-  if (typeof raw !== "string") {
-    return "";
-  }
-
-  const normalized = raw.trim();
-  return normalized.length > 0 ? normalized : "";
+// CRITICAL: Use direct dot-notation so webpack DefinePlugin can inline the
+// values at build time. Dynamic bracket access (process.env[key]) is NOT
+// replaced and evaluates to undefined in the client bundle.
+const safeBuildEnv = (value: string | undefined): string => {
+  if (typeof value !== "string") return "";
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : "";
 };
 
 export const BuildEnv = Object.freeze({
-  NODE_ENV: readBuildEnv("NODE_ENV"),
-  NEXT_PHASE: readBuildEnv("NEXT_PHASE"),
-  NEXT_RUNTIME: readBuildEnv("NEXT_RUNTIME"),
+  NODE_ENV: safeBuildEnv(process.env.NODE_ENV),
+  NEXT_PHASE: safeBuildEnv(process.env.NEXT_PHASE),
+  NEXT_RUNTIME: safeBuildEnv(process.env.NEXT_RUNTIME),
 });
 
 export type BuildEnvKeys = keyof typeof BuildEnv;

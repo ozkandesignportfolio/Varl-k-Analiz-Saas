@@ -3,51 +3,32 @@ import { Runtime } from "@/lib/env/runtime";
 
 const BUILD_TIME_FALLBACK = "http://localhost:3000";
 
-type PublicEnvKey =
-  | "NEXT_PUBLIC_APP_URL"
-  | "NEXT_PUBLIC_SUPABASE_URL"
-  | "NEXT_PUBLIC_SUPABASE_ANON_KEY"
-  | "NEXT_PUBLIC_TURNSTILE_SITE_KEY"
-  | "NEXT_PUBLIC_PLAN_DEBUG"
-  | "NEXT_PUBLIC_ENABLE_NOTIFICATION_MOCK_FALLBACK"
-  | "NEXT_PUBLIC_SHOW_LANDING_DEBUG_BADGE"
-  | "NEXT_PUBLIC_DEMO_VIDEO_URL"
-  | "NEXT_PUBLIC_SENTRY_DSN"
-  | "NEXT_PUBLIC_SENTRY_ENABLED"
-  | "NEXT_PUBLIC_SENTRY_ENVIRONMENT"
-  | "NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE"
-  | "NEXT_PUBLIC_FEATURE_PREMIUM_MEDIA_DEFAULT"
-  | "NEXT_PUBLIC_AUTH_FORCE_PROFILE_FROM_DB";
-
-const readPublicEnv = (key: PublicEnvKey): string => {
-  if (typeof process === "undefined") {
-    return "";
-  }
-
-  const raw = process.env[key];
-  if (typeof raw !== "string") {
-    return "";
-  }
-
-  const normalized = raw.trim();
-  return normalized.length > 0 ? normalized : "";
+// CRITICAL: Next.js DefinePlugin only inlines NEXT_PUBLIC_* env vars when
+// accessed with literal dot-notation (process.env.NEXT_PUBLIC_X).
+// Dynamic bracket access (process.env[key]) is NOT replaced and yields
+// undefined in the client bundle. Every value below MUST use direct
+// process.env.<LITERAL_KEY> so webpack can inline them at build time.
+const safeEnv = (value: string | undefined): string => {
+  if (typeof value !== "string") return "";
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : "";
 };
 
 export const PublicEnv = Object.freeze({
-  NEXT_PUBLIC_APP_URL: readPublicEnv("NEXT_PUBLIC_APP_URL"),
-  NEXT_PUBLIC_SUPABASE_URL: readPublicEnv("NEXT_PUBLIC_SUPABASE_URL"),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: readPublicEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
-  NEXT_PUBLIC_TURNSTILE_SITE_KEY: readPublicEnv("NEXT_PUBLIC_TURNSTILE_SITE_KEY"),
-  NEXT_PUBLIC_PLAN_DEBUG: readPublicEnv("NEXT_PUBLIC_PLAN_DEBUG"),
-  NEXT_PUBLIC_ENABLE_NOTIFICATION_MOCK_FALLBACK: readPublicEnv("NEXT_PUBLIC_ENABLE_NOTIFICATION_MOCK_FALLBACK"),
-  NEXT_PUBLIC_SHOW_LANDING_DEBUG_BADGE: readPublicEnv("NEXT_PUBLIC_SHOW_LANDING_DEBUG_BADGE"),
-  NEXT_PUBLIC_DEMO_VIDEO_URL: readPublicEnv("NEXT_PUBLIC_DEMO_VIDEO_URL"),
-  NEXT_PUBLIC_SENTRY_DSN: readPublicEnv("NEXT_PUBLIC_SENTRY_DSN"),
-  NEXT_PUBLIC_SENTRY_ENABLED: readPublicEnv("NEXT_PUBLIC_SENTRY_ENABLED"),
-  NEXT_PUBLIC_SENTRY_ENVIRONMENT: readPublicEnv("NEXT_PUBLIC_SENTRY_ENVIRONMENT"),
-  NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE: readPublicEnv("NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE"),
-  NEXT_PUBLIC_FEATURE_PREMIUM_MEDIA_DEFAULT: readPublicEnv("NEXT_PUBLIC_FEATURE_PREMIUM_MEDIA_DEFAULT"),
-  NEXT_PUBLIC_AUTH_FORCE_PROFILE_FROM_DB: readPublicEnv("NEXT_PUBLIC_AUTH_FORCE_PROFILE_FROM_DB"),
+  NEXT_PUBLIC_APP_URL: safeEnv(process.env.NEXT_PUBLIC_APP_URL),
+  NEXT_PUBLIC_SUPABASE_URL: safeEnv(process.env.NEXT_PUBLIC_SUPABASE_URL),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: safeEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: safeEnv(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY),
+  NEXT_PUBLIC_PLAN_DEBUG: safeEnv(process.env.NEXT_PUBLIC_PLAN_DEBUG),
+  NEXT_PUBLIC_ENABLE_NOTIFICATION_MOCK_FALLBACK: safeEnv(process.env.NEXT_PUBLIC_ENABLE_NOTIFICATION_MOCK_FALLBACK),
+  NEXT_PUBLIC_SHOW_LANDING_DEBUG_BADGE: safeEnv(process.env.NEXT_PUBLIC_SHOW_LANDING_DEBUG_BADGE),
+  NEXT_PUBLIC_DEMO_VIDEO_URL: safeEnv(process.env.NEXT_PUBLIC_DEMO_VIDEO_URL),
+  NEXT_PUBLIC_SENTRY_DSN: safeEnv(process.env.NEXT_PUBLIC_SENTRY_DSN),
+  NEXT_PUBLIC_SENTRY_ENABLED: safeEnv(process.env.NEXT_PUBLIC_SENTRY_ENABLED),
+  NEXT_PUBLIC_SENTRY_ENVIRONMENT: safeEnv(process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT),
+  NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE: safeEnv(process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE),
+  NEXT_PUBLIC_FEATURE_PREMIUM_MEDIA_DEFAULT: safeEnv(process.env.NEXT_PUBLIC_FEATURE_PREMIUM_MEDIA_DEFAULT),
+  NEXT_PUBLIC_AUTH_FORCE_PROFILE_FROM_DB: safeEnv(process.env.NEXT_PUBLIC_AUTH_FORCE_PROFILE_FROM_DB),
 });
 
 export type PublicEnvKeys = keyof typeof PublicEnv;

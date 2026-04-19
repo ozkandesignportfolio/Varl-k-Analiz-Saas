@@ -67,7 +67,7 @@ const STRICT_MODE_PRESERVE_MS = 250;
 const ADBLOCK_MESSAGE = "Tarayici eklentisi engelliyor olabilir";
 const DOMAIN_MISMATCH_MESSAGE = TURNSTILE_DOMAIN_INACTIVE_MESSAGE;
 const RUNTIME_RESET_MESSAGE = "Dogrulama yenileniyor. Lutfen tekrar tamamlayin.";
-const isDevelopment = !Runtime.isBuild();
+const isDevelopment = process.env.NODE_ENV !== "production";
 
 let turnstileScriptPromise: Promise<void> | null = null;
 let preservedWidgetState: PreservedWidgetState | null = null;
