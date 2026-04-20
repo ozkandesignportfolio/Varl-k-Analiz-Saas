@@ -16,22 +16,22 @@ const features: Feature[] = [
   {
     icon: Shield,
     title: "Birleşik varlık kaydı",
-    description: "Garanti, bakım ve servis bilgileri her varlık için tek sayfada toplanır. Farklı dosyalara dağılmış kayıtları bir araya getirir.",
+    description: "Bir klimanın garanti belgesi, bakım geçmişi ve servis notları aynı sayfada. Excel satırları ve klasörler arasında aramanıza gerek kalmaz.",
   },
   {
     icon: Bell,
     title: "Otomatik bakım hatırlatma",
-    description: "Periyodik bakım tarihleri yaklaşınca bildirim gönderir. Takvime not düşürmek yerine, sistem sizin için takip eder.",
+    description: "Klimanın 6 aylık bakım tarihi yaklaşınca bildirim alırsınız. Takvime hatırlatma eklemek yerine, sistem tarihleri kendisi takip eder.",
   },
   {
     icon: CreditCard,
     title: "Abonelik takibi",
-    description: "Hangi aboneliğin ne zaman yenilendiğini tek listede görürsünüz. Her hizmeti ayrı kontrol etmek yerine, tek ekran yeterli.",
+    description: "Hangi lisans ne zaman yenileniyor, aylık tutarı ne kadar — tek listede. Her sağlayıcının paneline ayrı giriş yapmak yerine, tek ekrandan takip edersiniz.",
   },
   {
     icon: FileText,
     title: "Fatura yönetimi",
-    description: "Ödeme kayıtlarını saklayın, durumlarını takip edin. Fatura aramak için klasör veya e-posta karıştırmanıza gerek kalmaz.",
+    description: "Faturayı yükleyin, ödeme durumunu işaretleyin. Bir belgeyi bulmak için masaüstü klasörlerini veya e-posta kutunuzu karıştırmanız gerekmez.",
   },
 ];
 
@@ -58,8 +58,8 @@ export default function FeatureGridSection() {
             <span className="text-gradient">tek platform</span>
           </h2>
           <p className="mx-auto mt-4 max-w-md text-sm text-muted-foreground">
-            Her biri farklı bir araç gerektiren iş akışlarını
-            tek panelde birleştirir.
+            Excel, takvim ve e-posta klasörünün yerini
+            tek bir panel alır.
           </p>
         </div>
 

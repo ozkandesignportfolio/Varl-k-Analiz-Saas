@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 
 const painPoints = [
   "Dağınık Excel tabloları",
-  "Kaçırılan bakım süreçleri",
-  "Takibi zor varlıklar",
+  "Takvimde unutulan bakım notları",
+  "Klasörlerde kaybolmuş faturalar",
 ] as const;
 
 export default function HeroSection() {
@@ -42,7 +42,7 @@ export default function HeroSection() {
 
         {/* Subheadline */}
         <p className="mx-auto mt-6 max-w-lg text-lg leading-relaxed text-muted-foreground sm:text-xl">
-          Farklı araçlara dağılmış bakım, garanti, abonelik ve fatura bilgileriniz —{" "}
+          Excel{"'"}deki garanti tarihi, takvimdeki bakım notu, e-postadaki fatura —{" "}
           <strong className="text-foreground">artık tek panelde.</strong>
         </p>
 

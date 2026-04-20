@@ -47,7 +47,7 @@ export default function DeviceExperienceSection() {
             <span className="text-gradient">aynı deneyim</span>
           </h2>
           <p className="mx-auto mt-5 max-w-lg text-base text-muted-foreground sm:text-lg">
-            Her cihazda aynı özet, aynı bildirimler. Verileriniz otomatik senkronize olur.
+            Masaüstünde açtığınız panel, telefonunuzda da aynı şekilde görünür.
           </p>
         </div>
 
@@ -165,11 +165,11 @@ export default function DeviceExperienceSection() {
                   </div>
                 </div>
                 <p className="mx-auto mt-3 text-center text-[10px] text-muted-foreground/60">
-                  Dikkat gerektiren varlıkları filtrele ve incele
+                  Bakım veya garanti tarihi yaklaşan varlıklar
                 </p>
                 <div className="mx-auto mt-2 flex justify-center">
                   <span className="rounded-md bg-primary/10 px-2.5 py-1 text-[10px] font-medium text-primary">
-                    Tüm varlıkları gör
+                    Varlık listesini aç
                   </span>
                 </div>
               </div>
