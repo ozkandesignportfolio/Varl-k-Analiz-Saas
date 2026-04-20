@@ -1,7 +1,6 @@
 import dynamic from "next/dynamic";
 import { AbonelikSection } from "@/modules/landing-v2/components/abonelik-section";
 import { AnimatedBackground } from "@/modules/landing-v2/components/AnimatedBackground";
-import { CrossPlatformSection } from "@/modules/landing-v2/components/cross-platform-section";
 import { BildirimSection } from "@/modules/landing-v2/components/bildirim-section";
 import { FaturaSection } from "@/modules/landing-v2/components/fatura-section";
 import { FeaturesSection } from "@/modules/landing-v2/components/features-section";
@@ -9,7 +8,7 @@ import { Footer } from "@/modules/landing-v2/components/footer";
 import { HeroSection } from "@/modules/landing-v2/components/hero-section";
 import { Navbar } from "@/modules/landing-v2/components/navbar";
 import { PricingSection } from "@/modules/landing-v2/components/pricing-section";
-import { DashboardPreviewLazy } from "@/modules/landing-v2/components/dashboard-preview-lazy";
+import { ProductPreviewSection } from "@/modules/landing-v2/components/product-preview-section";
 import styles from "@/modules/landing-v2/landing-v2.module.css";
 import { BuildEnv } from "@/lib/env/build-env";
 import { PublicEnv } from "@/lib/env/public-env";
@@ -59,9 +58,8 @@ export function LandingV2Page() {
       <div className="relative z-10">
         <Navbar />
         <HeroSection />
-        <CrossPlatformSection />
         <FeaturesSection />
-        <DashboardPreviewLazy />
+        <ProductPreviewSection />
         <BildirimSection />
         <AbonelikSection />
         <FaturaSection />

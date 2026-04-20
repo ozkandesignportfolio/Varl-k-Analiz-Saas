@@ -1,6 +1,35 @@
 import Link from "next/link"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, Monitor } from "lucide-react"
 import { Button } from "@/components/ui/button"
+
+const platforms = [
+  {
+    label: "Web",
+    accent: "from-sky-400/25 via-sky-400/10 to-transparent",
+    iconColor: "text-sky-300",
+    renderIcon: (className: string) => <Monitor aria-hidden className={className} strokeWidth={1.5} />,
+  },
+  {
+    label: "Android",
+    accent: "from-emerald-400/25 via-emerald-400/10 to-transparent",
+    iconColor: "text-emerald-300",
+    renderIcon: (className: string) => (
+      <svg aria-hidden viewBox="0 0 24 24" fill="currentColor" className={className}>
+        <path d="M17.523 15.341a.999.999 0 1 1 0-1.999.999.999 0 0 1 0 1.999m-11.046 0a.999.999 0 1 1 0-1.999.999.999 0 0 1 0 1.999m11.404-6.02 1.997-3.459a.416.416 0 0 0-.72-.415l-2.022 3.503C15.59 8.244 13.853 7.851 12 7.851s-3.59.393-5.137 1.099L4.841 5.447a.416.416 0 1 0-.72.415l1.998 3.459C2.689 11.187.343 14.659 0 18.761h24c-.343-4.102-2.689-7.574-6.118-9.44M8.4 5.2a.6.6 0 1 1 0-1.2.6.6 0 0 1 0 1.2m7.2 0a.6.6 0 1 1 0-1.2.6.6 0 0 1 0 1.2" />
+      </svg>
+    ),
+  },
+  {
+    label: "iOS",
+    accent: "from-slate-200/20 via-slate-200/10 to-transparent",
+    iconColor: "text-slate-100",
+    renderIcon: (className: string) => (
+      <svg aria-hidden viewBox="0 0 24 24" fill="currentColor" className={className}>
+        <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.19 2.26-.89 3.58-.8 1.57.13 2.76.74 3.54 1.84-3.17 1.9-2.44 6.1 1.11 7.29-.71 1.57-1.77 3.14-3.31 4.54M12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25" />
+      </svg>
+    ),
+  },
+] as const
 
 export function HeroSection() {
   return (
@@ -84,7 +113,46 @@ export function HeroSection() {
         >
           Ücretsiz plan · Kredi kartı gerekmez · 2 dakikada kurulum
         </p>
+
+        <div className="mx-auto mt-4 flex max-w-md flex-col items-center sm:mt-6">
+          <ul className="flex items-center justify-center gap-8 sm:gap-12">
+            {platforms.map((platform, index) => (
+              <li
+                key={platform.label}
+                className="flex flex-col items-center gap-2"
+                style={{
+                  animation: "landingV2HeroStripIn 400ms ease-out both",
+                  animationDelay: `${500 + index * 120}ms`,
+                }}
+              >
+                <span
+                  className={`relative flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-md sm:h-16 sm:w-16 ${platform.iconColor}`}
+                >
+                  <span
+                    aria-hidden
+                    className={`pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br ${platform.accent} opacity-80`}
+                  />
+                  <span className="relative">{platform.renderIcon("h-7 w-7 sm:h-8 sm:w-8")}</span>
+                </span>
+                <span className="text-[11px] font-medium tracking-wide text-muted-foreground/70 sm:text-xs">
+                  {platform.label}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p
+            className="mt-5 text-xs text-muted-foreground/70 sm:text-sm"
+            style={{
+              animation: "landingV2HeroStripIn 400ms ease-out both",
+              animationDelay: `${500 + platforms.length * 120}ms`,
+            }}
+          >
+            Web, Android ve iOS ile tam uyumlu
+          </p>
+        </div>
       </div>
+
+      <style>{`@keyframes landingV2HeroStripIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}@media (prefers-reduced-motion: reduce){[style*="landingV2HeroStripIn"]{animation:none!important;opacity:1!important;transform:none!important}}`}</style>
 
       <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
     </section>
