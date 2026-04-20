@@ -47,7 +47,7 @@ export default function DeviceExperienceSection() {
             <span className="text-gradient">aynı deneyim</span>
           </h2>
           <p className="mx-auto mt-5 max-w-lg text-base text-muted-foreground sm:text-lg">
-            Masaüstünde başlayın, yolda devam edin. Verileriniz otomatik senkronize olur.
+            Her cihazda aynı özet, aynı bildirimler. Verileriniz otomatik senkronize olur.
           </p>
         </div>
 
@@ -143,7 +143,7 @@ export default function DeviceExperienceSection() {
               <div className="mt-4 rounded-xl border border-primary/15 bg-primary/[0.04] p-5">
                 <div className="text-center">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Kayıtlı Varlıklar
+                    Varlık Durumu
                   </p>
                   <p className="mt-2 text-5xl font-bold tracking-tighter text-foreground sm:text-6xl">
                     48
@@ -164,9 +164,12 @@ export default function DeviceExperienceSection() {
                     <p className="text-[10px] text-muted-foreground">Gecikmiş</p>
                   </div>
                 </div>
-                <div className="mx-auto mt-3 flex justify-center">
+                <p className="mx-auto mt-3 text-center text-[10px] text-muted-foreground/60">
+                  Dikkat gerektiren varlıkları filtrele ve incele
+                </p>
+                <div className="mx-auto mt-2 flex justify-center">
                   <span className="rounded-md bg-primary/10 px-2.5 py-1 text-[10px] font-medium text-primary">
-                    Durumu incele
+                    Tüm varlıkları gör
                   </span>
                 </div>
               </div>

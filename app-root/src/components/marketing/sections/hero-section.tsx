@@ -42,9 +42,8 @@ export default function HeroSection() {
 
         {/* Subheadline */}
         <p className="mx-auto mt-6 max-w-lg text-lg leading-relaxed text-muted-foreground sm:text-xl">
-          Bakım tarihleri, garanti süreleri, abonelikler ve faturalar —{" "}
-          <strong className="text-foreground">artık tek yerden takip edilir.</strong>
-          {" "}Kurulum dakikalar sürer.
+          Farklı araçlara dağılmış bakım, garanti, abonelik ve fatura bilgileriniz —{" "}
+          <strong className="text-foreground">artık tek panelde.</strong>
         </p>
 
         {/* CTA pair */}
