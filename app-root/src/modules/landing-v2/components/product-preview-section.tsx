@@ -18,6 +18,7 @@ const navItems: NavItem[] = [
   { label: "Bakım", icon: Wrench },
   { label: "Abonelikler", icon: CreditCard },
   { label: "Faturalar", icon: Receipt },
+  { label: "Belgeler", icon: FileText },
 ];
 
 export function ProductPreviewSection() {
@@ -78,69 +79,75 @@ export function ProductPreviewSection() {
             </aside>
 
             {/* main content */}
-            <div className="flex min-w-0 flex-1 flex-col px-5 py-6 sm:px-10 sm:py-10 md:px-14 md:py-14">
-              {/* notification strip */}
-              <div className="flex items-center gap-3 rounded-lg bg-rose-500/[0.07] px-3.5 py-2.5 sm:px-4">
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-rose-400" aria-hidden />
-                <Wrench className="hidden h-3.5 w-3.5 text-rose-300/60 sm:block" aria-hidden />
-                <p className="min-w-0 flex-1 truncate text-[11px] font-medium text-rose-200/80 sm:text-xs">
-                  <span className="sm:hidden">Bakım gecikmesi</span>
-                  <span className="hidden sm:inline">
-                    Klima B3 — Aylık filtre değişimi
-                    <span className="mx-2 text-muted-foreground/30" aria-hidden>
-                      ·
-                    </span>
-                    2 gün gecikti
-                  </span>
+            <div className="flex min-w-0 flex-1 flex-col px-4 py-5 sm:px-10 sm:py-10 md:px-14 md:py-14">
+              {/* notification strip (subtle, not boxed) */}
+              <div className="flex items-center gap-2.5 rounded-md bg-amber-400/[0.06] px-3 py-2 sm:gap-3 sm:px-3.5 sm:py-2.5">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-300/80" aria-hidden />
+                <p className="min-w-0 flex-1 truncate text-[11px] font-medium text-amber-100/80 sm:text-[12px]">
+                  Klima B3 bakım tarihi yaklaşıyor
                 </p>
-                <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-rose-300/50 sm:text-[11px]">
-                  Görüntüle
+                <span className="hidden shrink-0 text-[10px] font-medium uppercase tracking-wider text-amber-200/50 sm:inline sm:text-[11px]">
+                  3 gün
                 </span>
               </div>
 
-              {/* primary metric */}
-              <div className="flex flex-col items-center py-10 sm:py-16">
-                <p className="text-[10px] font-medium uppercase tracking-[0.24em] text-muted-foreground/50 sm:text-[11px]">
+              {/* primary focus */}
+              <div className="flex flex-col items-center py-6 sm:py-14">
+                <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/55 sm:text-[11px]">
                   Aktif Varlık
                 </p>
-                <p className="mt-3 text-[3.5rem] font-semibold leading-none tracking-tight text-foreground sm:text-[5rem]">
+                <p className="mt-2 text-[3.75rem] font-semibold leading-none tracking-tight text-foreground sm:mt-3 sm:text-[6rem]">
                   148
                 </p>
-                <div className="mt-3 flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 text-[11px] text-emerald-300/70 sm:text-xs">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/60" aria-hidden />
-                    +8.4%
+                <p className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground/65 sm:mt-4 sm:text-[13px]">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/70" aria-hidden />
+                    <span className="text-foreground/70">142</span>
+                    <span>normal</span>
                   </span>
-                  <span className="hidden text-[11px] text-muted-foreground/45 sm:inline sm:text-xs">
-                    Son 30 günde 12 yeni kayıt
+                  <span className="text-muted-foreground/25" aria-hidden>·</span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-300/80" aria-hidden />
+                    <span className="text-foreground/70">4</span>
+                    <span>dikkat</span>
                   </span>
-                </div>
+                  <span className="text-muted-foreground/25" aria-hidden>·</span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-rose-400/80" aria-hidden />
+                    <span className="text-foreground/70">2</span>
+                    <span>gecikmiş</span>
+                  </span>
+                </p>
               </div>
 
-              {/* status row */}
-              <div className="mt-4 flex flex-col gap-4 border-t border-white/[0.05] pt-5 sm:mt-0 sm:flex-row sm:gap-0 sm:pt-6">
-                <div className="flex flex-1 items-center gap-3 sm:pr-6">
-                  <CreditCard className="h-4 w-4 shrink-0 text-primary/60" aria-hidden strokeWidth={1.8} />
-                  <div className="min-w-0">
-                    <p className="text-[12px] font-medium text-foreground/85 sm:text-[13px]">Premium Plan</p>
-                    <p className="truncate text-[11px] text-muted-foreground/50 sm:text-xs">23 Mar 2026 yenileme</p>
-                  </div>
+              {/* operational row (inline, not cards) */}
+              <div className="mt-auto flex flex-row flex-wrap items-center justify-between gap-x-5 gap-y-3 border-t border-white/[0.05] pt-4 sm:gap-x-10 sm:pt-6">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/50 sm:text-[11px]">
+                    Abonelik
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-foreground/85 sm:text-[13px]">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80" aria-hidden />
+                    Aktif
+                  </span>
                 </div>
-
-                <div className="flex flex-1 items-center gap-3 sm:border-l sm:border-white/[0.05] sm:pl-6">
-                  <Receipt className="h-4 w-4 shrink-0 text-accent/70" aria-hidden strokeWidth={1.8} />
-                  <div className="min-w-0">
-                    <p className="text-[12px] font-medium text-foreground/85 sm:text-[13px]">Açık Fatura</p>
-                    <p className="truncate text-[11px] text-muted-foreground/50 sm:text-xs">3.420 ₺ · 24 Mar vade</p>
-                  </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/50 sm:text-[11px]">
+                    Fatura
+                  </span>
+                  <span className="text-[12px] font-medium text-foreground/85 sm:text-[13px]">
+                    <span className="text-amber-300/90">1</span>{" "}
+                    <span className="text-foreground/70">bekleyen</span>
+                  </span>
                 </div>
-
-                <div className="hidden flex-1 items-center gap-3 sm:flex sm:border-l sm:border-white/[0.05] sm:pl-6">
-                  <FileText className="h-4 w-4 shrink-0 text-muted-foreground/50" aria-hidden strokeWidth={1.8} />
-                  <div className="min-w-0">
-                    <p className="text-[13px] font-medium text-foreground/85">4 Belge</p>
-                    <p className="truncate text-xs text-muted-foreground/50">Doğrulama bekliyor</p>
-                  </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/50 sm:text-[11px]">
+                    Belge
+                  </span>
+                  <span className="text-[12px] font-medium text-foreground/85 sm:text-[13px]">
+                    <span className="text-rose-300/90">3</span>{" "}
+                    <span className="text-foreground/70">eksik</span>
+                  </span>
                 </div>
               </div>
             </div>
