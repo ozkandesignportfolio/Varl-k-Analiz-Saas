@@ -1,4 +1,4 @@
-import { requireConfiguredAppOrigin, resolveConfiguredAppOrigin } from "@/lib/config/app-url";
+import { getConfiguredAppOrigin, resolveConfiguredAppOrigin } from "@/lib/config/app-url";
 
 const normalizePath = (path: string) => {
   if (!path) return "/";
@@ -22,5 +22,8 @@ export const getAuthRedirectUrl = (path: string) => {
 };
 
 export const requireAuthRedirectUrl = (path: string) => {
-  return `${requireConfiguredAppOrigin()}${normalizePath(path)}`;
+  // Use non-throwing getConfiguredAppOrigin to prevent Server Component
+  // render crashes (login/verify-email pages) when NEXT_PUBLIC_APP_URL
+  // is not set. Falls back to localhost — wrong in prod but doesn't 500.
+  return `${getConfiguredAppOrigin()}${normalizePath(path)}`;
 };

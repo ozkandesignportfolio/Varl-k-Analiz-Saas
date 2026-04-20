@@ -18,8 +18,19 @@ export async function register() {
 
   if (isNodeRuntime) {
     if (!isBuildPhase) {
-      const { assertStartupSafety } = await import("./lib/bootstrap/startup-safety");
-      assertStartupSafety();
+      try {
+        const { assertStartupSafety } = await import("./lib/bootstrap/startup-safety");
+        assertStartupSafety();
+      } catch (error) {
+        // Log but do NOT crash the server — static pages and partial
+        // functionality should remain available even with env issues.
+        console.error({
+          level: "error",
+          context: "instrumentation.startup-safety",
+          message: "Startup safety check failed",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
 
     try {
