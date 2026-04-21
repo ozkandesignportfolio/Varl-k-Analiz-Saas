@@ -102,40 +102,50 @@ const entrance = (delayMs: number) => ({
 
 export function ProductPreviewSection() {
   return (
-    <section id="panel" className="relative px-4 pb-24 pt-8 sm:px-6 sm:pb-28">
-      <div className="pointer-events-none absolute left-1/2 top-1/3 -z-10 h-[520px] w-[780px] max-w-full -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-[130px]" />
+    <section id="panel" className="relative px-4 pb-24 pt-16 sm:px-6 sm:pb-32 sm:pt-24">
+      {/* ambient glow */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-[40%] -z-10 h-[600px] w-[900px] max-w-full -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(ellipse,rgba(16,239,181,0.08)_0%,rgba(44,247,255,0.04)_35%,transparent_70%)] blur-[100px]"
+      />
 
       <div className="mx-auto max-w-6xl">
         {/* heading */}
         <div className="mx-auto max-w-2xl text-center" style={entrance(0)}>
+          <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-medium tracking-wide text-primary">
+            Çoklu Platform
+          </span>
           <h2 className="text-balance text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
-            Varlıklarını <span className="text-gradient">kontrol altına al</span>
+            Tüm cihazlardan eriş,{" "}
+            <span className="text-gradient">her yerden yönet</span>
           </h2>
-          <p className="mx-auto mt-4 max-w-xl text-sm text-muted-foreground sm:text-base">
-            Tüm cihazlarını, aboneliklerini ve bakım süreçlerini tek ekranda gör.
+          <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+            Assetly ile varlıklarını web, mobil ve tablet üzerinden gerçek zamanlı
+            senkronize şekilde yönet. Tek panel, tüm cihazlar.
           </p>
         </div>
 
-        <div className="mt-14 grid items-start gap-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)] lg:gap-10 sm:mt-20">
+        {/* Device composition */}
+        <div className="group/devices relative mt-16 sm:mt-20">
           {/* LAPTOP */}
           <div className="relative mx-auto w-full max-w-4xl" style={entrance(120)}>
             {/* shadow */}
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-x-10 -bottom-8 h-10 rounded-[50%] bg-black/60 blur-2xl"
+              className="pointer-events-none absolute inset-x-10 -bottom-8 h-12 rounded-[50%] bg-black/50 blur-2xl transition-all duration-500 group-hover/devices:blur-3xl"
             />
             {/* glow */}
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-0 -z-10 rounded-[2rem] bg-gradient-to-b from-primary/10 to-transparent blur-2xl"
+              className="pointer-events-none absolute inset-0 -z-10 rounded-[2rem] bg-gradient-to-b from-primary/8 to-transparent blur-2xl"
             />
 
             <div
-              className="relative lg:[transform:perspective(1800px)_rotateX(2deg)]"
+              className="device-hover-tilt relative transition-transform duration-500 ease-out lg:[transform:perspective(2200px)_rotateX(4deg)_rotateY(-1deg)]"
               style={{ transformOrigin: "center bottom" }}
             >
               {/* laptop lid */}
-              <div className="rounded-t-[1.25rem] bg-gradient-to-b from-zinc-800 to-zinc-900 p-[6px] shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] ring-1 ring-white/5 sm:rounded-t-[1.5rem] sm:p-[8px]">
+              <div className="rounded-t-[1.25rem] bg-gradient-to-b from-zinc-700/90 to-zinc-900 p-[6px] shadow-[0_40px_100px_-30px_rgba(0,0,0,0.85),0_0_60px_-20px_rgba(16,239,181,0.08)] ring-1 ring-white/[0.07] sm:rounded-t-[1.5rem] sm:p-[8px]">
                 {/* camera */}
                 <div className="relative mx-auto mb-[6px] flex h-2 items-center justify-center sm:mb-2">
                   <span
@@ -145,14 +155,15 @@ export function ProductPreviewSection() {
                 </div>
 
                 {/* screen */}
-                <div className="overflow-hidden rounded-[0.85rem] border border-white/5 bg-[rgb(6_10_24)] sm:rounded-[1rem]">
+                <div className="overflow-hidden rounded-[0.85rem] border border-white/[0.06] bg-[rgb(6_10_24)] sm:rounded-[1rem]">
                   {/* browser chrome */}
-                  <div className="flex items-center gap-2 border-b border-white/5 bg-black/30 px-3 py-2 sm:px-4 sm:py-2.5">
-                    <span className="h-2.5 w-2.5 rounded-full bg-rose-500/70" aria-hidden />
-                    <span className="h-2.5 w-2.5 rounded-full bg-amber-400/70" aria-hidden />
-                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/70" aria-hidden />
-                    <div className="ml-3 hidden min-w-0 flex-1 items-center justify-center rounded-md bg-white/[0.04] px-3 py-1 text-[11px] text-muted-foreground/55 sm:flex">
-                      app.panel
+                  <div className="flex items-center gap-2 border-b border-white/5 bg-black/40 px-3 py-2 sm:px-4 sm:py-2.5">
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" aria-hidden />
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" aria-hidden />
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" aria-hidden />
+                    <div className="ml-3 hidden min-w-0 flex-1 items-center justify-center rounded-md bg-white/[0.04] px-3 py-1 sm:flex">
+                      <span className="text-[10px] text-muted-foreground/40">🔒</span>
+                      <span className="ml-1.5 text-[11px] text-muted-foreground/60">assetly.network</span>
                     </div>
                   </div>
 
@@ -284,23 +295,26 @@ export function ProductPreviewSection() {
               {/* laptop base */}
               <div
                 aria-hidden
-                className="relative mx-auto h-3 w-[104%] -translate-x-[2%] rounded-b-[1.25rem] bg-gradient-to-b from-zinc-800 via-zinc-900 to-black shadow-[0_12px_20px_-10px_rgba(0,0,0,0.7)] sm:h-4 sm:rounded-b-[1.5rem]"
+                className="relative mx-auto h-3 w-[104%] -translate-x-[2%] rounded-b-[1.25rem] bg-gradient-to-b from-zinc-700/80 via-zinc-900 to-black shadow-[0_12px_20px_-10px_rgba(0,0,0,0.7)] sm:h-4 sm:rounded-b-[1.5rem]"
               >
                 <span className="absolute left-1/2 top-0 h-[3px] w-16 -translate-x-1/2 rounded-b-md bg-black/70 sm:w-24" />
               </div>
             </div>
           </div>
 
-          {/* PHONE */}
-          <div className="flex justify-center lg:justify-end lg:pt-6" style={entrance(240)}>
+          {/* PHONE — overlaps laptop on desktop */}
+          <div
+            className="mt-8 flex justify-center sm:mt-0 sm:absolute sm:bottom-4 sm:right-0 lg:-bottom-4 lg:right-[2%]"
+            style={entrance(240)}
+          >
             <div className="relative">
               {/* shadow */}
               <div
                 aria-hidden
-                className="pointer-events-none absolute inset-x-6 -bottom-6 h-8 rounded-[50%] bg-black/60 blur-xl"
+                className="pointer-events-none absolute inset-x-6 -bottom-6 h-8 rounded-[50%] bg-black/50 blur-xl"
               />
 
-              <div className="relative w-[248px] rounded-[2.25rem] bg-gradient-to-b from-zinc-800 to-zinc-900 p-[4px] shadow-[0_30px_60px_-20px_rgba(0,0,0,0.85)] ring-1 ring-white/10">
+              <div className="device-hover-tilt relative w-[220px] rounded-[2.25rem] bg-gradient-to-b from-zinc-700/90 to-zinc-900 p-[4px] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8),0_0_40px_-15px_rgba(16,239,181,0.06)] ring-1 ring-white/[0.08] sm:w-[248px] lg:[transform:perspective(2200px)_rotateX(2deg)_rotateY(3deg)]">
                 {/* inner bezel */}
                 <div className="relative overflow-hidden rounded-[2rem] bg-[rgb(6_10_24)]">
                   {/* notch */}
@@ -386,15 +400,52 @@ export function ProductPreviewSection() {
           </div>
         </div>
 
-        <p
-          className="mt-14 text-center text-xs text-muted-foreground/65 sm:mt-16 sm:text-sm"
-          style={entrance(360)}
-        >
-          Tüm varlıklarını tek yerden takip et, hiçbir şeyi kaçırma.
-        </p>
+        {/* Trust indicators */}
+        <div className="mt-14 flex flex-col items-center gap-4 sm:mt-16" style={entrance(360)}>
+          <p className="text-sm font-medium text-muted-foreground/70">
+            Web, Mobil ve Tablet üzerinde çalışır
+          </p>
+          <div className="flex items-center gap-5">
+            {[
+              { label: "Windows", icon: "⊞" },
+              { label: "macOS", icon: "" },
+              { label: "iOS", icon: "" },
+              { label: "Android", icon: "🤖" },
+            ].map((p) => (
+              <div
+                key={p.label}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground/50"
+              >
+                <span className="text-sm">{p.icon}</span>
+                <span>{p.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <style>{`@keyframes landingV2PreviewIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}@media (prefers-reduced-motion: reduce){[style*="landingV2PreviewIn"]{animation:none!important;opacity:1!important;transform:none!important}}`}</style>
+      <style>{`
+        @keyframes landingV2PreviewIn {
+          from { opacity: 0; transform: translateY(14px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .device-hover-tilt {
+          transition: transform 500ms ease-out;
+        }
+        .group\/devices:hover .device-hover-tilt {
+          transform: perspective(2200px) rotateX(2deg) rotateY(0deg) scale(1.01) !important;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          [style*="landingV2PreviewIn"] {
+            animation: none !important;
+            opacity: 1 !important;
+            transform: none !important;
+          }
+          .device-hover-tilt {
+            transition: none !important;
+          }
+        }
+      `}</style>
     </section>
   );
 }
