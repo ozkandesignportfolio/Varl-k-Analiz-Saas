@@ -132,7 +132,7 @@ export function ProductPreviewSection() {
           {/* Device scene — mobile: flex-col, desktop: relative overlay */}
           <div className="relative mx-auto flex max-w-5xl flex-col items-center gap-6 md:block" style={{ perspective: "1400px" }}>
 
-            {/* ══ LAPTOP ══ */}
+            {/* ══ MONITOR ══ */}
             <div
               className="group relative z-10 w-full max-w-4xl mx-auto transform-gpu transition-transform duration-500 ease-out hover:scale-[1.02] md:[transform:rotateX(6deg)_rotateZ(-2deg)]"
               style={{ transformOrigin: "center bottom" }}
@@ -143,14 +143,9 @@ export function ProductPreviewSection() {
                 className="pointer-events-none absolute inset-x-10 -bottom-10 h-14 rounded-[50%] bg-black/60 blur-3xl"
               />
 
-              {/* Laptop outer shell (MacBook frame) */}
-              <div className="overflow-hidden rounded-t-2xl bg-gradient-to-b from-[#3a3a3c] via-[#2c2c2e] to-[#1c1c1e] p-[6px] shadow-[0_60px_140px_rgba(0,0,0,0.7)] ring-1 ring-white/[0.08] sm:p-2">
-                {/* Webcam dot */}
-                <div className="mx-auto mb-1 flex h-3 items-center justify-center sm:mb-1.5">
-                  <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-zinc-600 shadow-[inset_0_0_3px_rgba(255,255,255,0.2)] ring-1 ring-black/30" />
-                </div>
-
-                {/* Inner screen bezel */}
+              {/* Monitor outer shell */}
+              <div className="overflow-hidden rounded-2xl bg-gradient-to-b from-[#2c2c2e] to-[#1c1c1e] p-1 shadow-[0_60px_140px_rgba(0,0,0,0.7)] ring-1 ring-white/[0.08] sm:p-1.5">
+                {/* Inner screen */}
                 <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-[#0a0e1a] sm:rounded-[0.9rem]">
                   {/* Browser chrome bar */}
                   <div className="flex h-9 items-center gap-2 border-b border-white/[0.04] bg-[#161a2a] px-3 sm:px-4">
@@ -164,7 +159,7 @@ export function ProductPreviewSection() {
                   </div>
 
                   {/* app body */}
-                  <div className="flex min-h-[260px] flex-col sm:flex-row sm:min-h-[420px]">
+                  <div className="relative flex max-h-[220px] flex-col overflow-hidden sm:max-h-[420px] sm:flex-row">
                     {/* sidebar */}
                     <aside className="hidden shrink-0 flex-col gap-4 border-b border-white/5 px-3 py-4 sm:flex sm:w-52 sm:border-b-0 sm:border-r sm:px-4 sm:py-5">
                       <div className="flex items-center gap-2">
@@ -193,7 +188,7 @@ export function ProductPreviewSection() {
                     </aside>
 
                     {/* main */}
-                    <div className="flex min-w-0 flex-1 flex-col gap-5 p-5 sm:gap-6 sm:p-7">
+                    <div className="flex min-w-0 flex-1 flex-col gap-3 p-3 sm:gap-6 sm:p-7">
                       {/* today actions */}
                       <div className="rounded-lg bg-white/[0.025] px-4 py-3">
                         <p className="text-[10.5px] font-medium uppercase tracking-[0.18em] text-muted-foreground/55">
@@ -260,15 +255,17 @@ export function ProductPreviewSection() {
                         })}
                       </ul>
                     </div>
+
+                    {/* Mobile fade overlay */}
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#0a0e1a] to-transparent sm:hidden" aria-hidden />
                   </div>
                 </div>
               </div>
 
-              {/* Laptop base / hinge */}
-              <div aria-hidden className="relative mx-auto h-3.5 w-[104%] -translate-x-[2%] rounded-b-xl bg-gradient-to-b from-[#3a3a3c] via-[#2c2c2e] to-[#111] shadow-[0_12px_24px_-8px_rgba(0,0,0,0.7)] sm:h-5 sm:rounded-b-2xl">
-                <span className="absolute left-1/2 top-0 h-[3px] w-16 -translate-x-1/2 rounded-b-md bg-black/70 sm:w-24" />
-                {/* Subtle hinge highlight */}
-                <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
+              {/* Monitor stand */}
+              <div aria-hidden className="mx-auto flex flex-col items-center">
+                <div className="h-6 w-14 bg-gradient-to-b from-[#3a3a3c] to-[#2c2c2e] sm:h-10 sm:w-20" />
+                <div className="h-1.5 w-24 rounded-b-lg bg-gradient-to-b from-[#3a3a3c] to-[#1c1c1e] shadow-[0_8px_16px_-6px_rgba(0,0,0,0.5)] sm:h-2.5 sm:w-36 sm:rounded-b-xl" />
               </div>
             </div>
 
