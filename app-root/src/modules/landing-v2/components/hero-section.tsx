@@ -6,24 +6,34 @@ import type { ReactNode } from "react";
 
 function WebIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7">
+    <svg viewBox="0 0 48 48" fill="none" className="h-8 w-8">
       <defs>
-        <linearGradient id="webGrad" x1="2" y1="3" x2="22" y2="21">
-          <stop stopColor="#38bdf8" />
-          <stop offset="1" stopColor="#3b82f6" />
+        <linearGradient id="webG1" x1="8" y1="4" x2="40" y2="36">
+          <stop stopColor="#1e7ab5" />
+          <stop offset="1" stopColor="#0d4f7a" />
+        </linearGradient>
+        <linearGradient id="webG2" x1="8" y1="36" x2="40" y2="44">
+          <stop stopColor="#0d4f7a" />
+          <stop offset="1" stopColor="#1e7ab5" />
         </linearGradient>
       </defs>
-      <rect x="2" y="3" width="20" height="14" rx="2" stroke="url(#webGrad)" strokeWidth={1.5} />
-      <path d="M8 21h8" stroke="url(#webGrad)" strokeWidth={1.5} strokeLinecap="round" />
-      <path d="M12 17v4" stroke="url(#webGrad)" strokeWidth={1.5} strokeLinecap="round" />
-      <text x="12" y="12.5" textAnchor="middle" fill="url(#webGrad)" fontSize="5.5" fontWeight="700" fontFamily="system-ui, sans-serif">www</text>
+      {/* Globe */}
+      <circle cx="24" cy="19" r="15" stroke="url(#webG1)" strokeWidth={2.8} />
+      <ellipse cx="24" cy="19" rx="8" ry="15" stroke="url(#webG1)" strokeWidth={2} />
+      <path d="M9 19h30" stroke="url(#webG1)" strokeWidth={2} />
+      <path d="M11 11h26" stroke="url(#webG1)" strokeWidth={1.4} />
+      <path d="M11 27h26" stroke="url(#webG1)" strokeWidth={1.4} />
+      <path d="M24 4v30" stroke="url(#webG1)" strokeWidth={1.4} />
+      {/* WWW pill */}
+      <rect x="8" y="37" width="32" height="9" rx="4.5" fill="url(#webG2)" />
+      <text x="24" y="43.5" textAnchor="middle" fill="white" fontSize="7" fontWeight="800" fontFamily="system-ui,sans-serif" letterSpacing="0.5">WWW</text>
     </svg>
   );
 }
 
 function AppleIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-7 w-7">
+    <svg viewBox="0 0 24 24" className="h-8 w-8">
       <defs>
         <linearGradient id="appleGrad" x1="6" y1="2" x2="18" y2="22">
           <stop stopColor="#f0f0f0" />
@@ -40,17 +50,30 @@ function AppleIcon() {
 
 function AndroidIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-7 w-7">
+    <svg viewBox="0 0 48 48" className="h-8 w-8">
       <defs>
-        <linearGradient id="androidGrad" x1="6" y1="2" x2="18" y2="22">
-          <stop stopColor="#69f0ae" />
-          <stop offset="1" stopColor="#3ddc84" />
+        <linearGradient id="aG1" x1="14" y1="6" x2="34" y2="44">
+          <stop stopColor="#a4c639" />
+          <stop offset="0.5" stopColor="#8ab530" />
+          <stop offset="1" stopColor="#6a9a23" />
         </linearGradient>
       </defs>
-      <path fill="url(#androidGrad)" d="M17.523 15.341a1 1 0 0 0 1-1v-5.5a1 1 0 0 0-2 0v5.5a1 1 0 0 0 1 1zm-11.046 0a1 1 0 0 0 1-1v-5.5a1 1 0 0 0-2 0v5.5a1 1 0 0 0 1 1z" />
-      <path fill="url(#androidGrad)" d="M14.96 3.66l1.3-1.3a.5.5 0 0 0-.71-.71l-1.49 1.49A5.62 5.62 0 0 0 12 2.71a5.62 5.62 0 0 0-2.06.43L8.45 1.65a.5.5 0 0 0-.71.71l1.3 1.3A4.94 4.94 0 0 0 7 7.71v.79h10v-.79a4.94 4.94 0 0 0-2.04-4.05zM10 6.5a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5zm4 0a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5z" />
-      <path fill="url(#androidGrad)" d="M7 8.5h10v7a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-7z" />
-      <path fill="url(#androidGrad)" d="M9 19.5v2a1 1 0 0 0 2 0v-2h2v2a1 1 0 0 0 2 0v-2" />
+      {/* Antennae */}
+      <line x1="17" y1="5" x2="20" y2="11" stroke="url(#aG1)" strokeWidth={2} strokeLinecap="round" />
+      <line x1="31" y1="5" x2="28" y2="11" stroke="url(#aG1)" strokeWidth={2} strokeLinecap="round" />
+      {/* Head */}
+      <path d="M12 20a12 12 0 0 1 24 0v1H12v-1z" fill="url(#aG1)" />
+      {/* Eyes */}
+      <circle cx="19" cy="16" r="1.5" fill="white" />
+      <circle cx="29" cy="16" r="1.5" fill="white" />
+      {/* Body */}
+      <rect x="12" y="22" width="24" height="14" rx="3" fill="url(#aG1)" />
+      {/* Arms */}
+      <rect x="5" y="23" width="5" height="11" rx="2.5" fill="url(#aG1)" />
+      <rect x="38" y="23" width="5" height="11" rx="2.5" fill="url(#aG1)" />
+      {/* Legs */}
+      <rect x="16" y="36" width="5" height="8" rx="2.5" fill="url(#aG1)" />
+      <rect x="27" y="36" width="5" height="8" rx="2.5" fill="url(#aG1)" />
     </svg>
   );
 }
