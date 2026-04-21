@@ -7,15 +7,16 @@ import type { ReactNode } from "react";
 function WebIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7">
-      <circle cx="12" cy="12" r="10" stroke="url(#webGrad)" strokeWidth={1.6} />
-      <path d="M2 12h20" stroke="url(#webGrad)" strokeWidth={1.4} />
-      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" stroke="url(#webGrad)" strokeWidth={1.4} />
       <defs>
-        <linearGradient id="webGrad" x1="2" y1="2" x2="22" y2="22">
+        <linearGradient id="webGrad" x1="2" y1="3" x2="22" y2="21">
           <stop stopColor="#38bdf8" />
           <stop offset="1" stopColor="#3b82f6" />
         </linearGradient>
       </defs>
+      <rect x="2" y="3" width="20" height="14" rx="2" stroke="url(#webGrad)" strokeWidth={1.5} />
+      <path d="M8 21h8" stroke="url(#webGrad)" strokeWidth={1.5} strokeLinecap="round" />
+      <path d="M12 17v4" stroke="url(#webGrad)" strokeWidth={1.5} strokeLinecap="round" />
+      <text x="12" y="12.5" textAnchor="middle" fill="url(#webGrad)" fontSize="5.5" fontWeight="700" fontFamily="system-ui, sans-serif">www</text>
     </svg>
   );
 }
