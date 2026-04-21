@@ -1,16 +1,34 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Hakkımızda | Assetly",
   description:
-    "Assetly’in varlık takibi, garanti/bakım/servis süreçleri ve belge yönetimi yaklaşımını tanıtan kurumsal sayfa.",
+    "Assetly'in varlık takibi, garanti/bakım/servis süreçleri ve belge yönetimi yaklaşımını tanıtan kurumsal sayfa.",
 };
 
 export default function AboutPage() {
   return (
-    <main className="relative min-h-screen px-4 pb-16 pt-8 sm:px-6 lg:px-8">
+    <main className="relative min-h-screen px-4 pb-16 pt-4 sm:px-6 lg:px-8">
       <div className="mx-auto w-full max-w-4xl">
+        {/* ── Site header ── */}
+        <nav className="mb-6 flex items-center justify-between rounded-2xl border border-border/40 bg-card/60 px-5 py-4 backdrop-blur-md">
+          <Link href="/" className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
+              <img src="/assetly-mark.svg" alt="" aria-hidden="true" className="h-5 w-5" />
+            </div>
+            <span className="text-sm font-bold tracking-tight text-foreground">ASSETLY</span>
+          </Link>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 rounded-lg border border-border/50 bg-secondary/30 px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Ana Sayfaya Dön
+          </Link>
+        </nav>
+
         <article className="premium-panel px-6 py-10 sm:px-10">
           <header className="border-b border-border/60 pb-8">
             <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Assetly</p>
@@ -109,15 +127,35 @@ export default function AboutPage() {
             </section>
           </div>
 
-          <div className="mt-12 border-t border-border/60 pt-8">
-            <Link
-              href="/register"
-              className="inline-flex items-center rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
-            >
-              Ücretsiz Hesap Oluştur
-            </Link>
+          <div className="mt-12 border-t border-border/60 pt-8 text-center">
+            <h3 className="text-xl font-semibold text-foreground">Hemen başlayın</h3>
+            <p className="mt-2 text-sm text-muted-foreground">Ücretsiz planla hemen deneyin. Kredi kartı gerekmez.</p>
+            <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+              <Link
+                href="/register"
+                className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+              >
+                Ücretsiz Hesap Oluştur
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/contact"
+                className="inline-flex items-center gap-2 rounded-xl border border-border/50 bg-secondary/30 px-6 py-3 text-sm font-medium text-muted-foreground transition hover:bg-secondary/50 hover:text-foreground"
+              >
+                İletişim
+              </Link>
+            </div>
           </div>
         </article>
+
+        {/* ── Mini footer ── */}
+        <footer className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 py-6 text-xs text-muted-foreground">
+          <Link href="/legal/privacy" className="hover:text-foreground transition-colors">Gizlilik Politikası</Link>
+          <Link href="/legal/terms" className="hover:text-foreground transition-colors">Kullanım Şartları</Link>
+          <Link href="/legal/kvkk" className="hover:text-foreground transition-colors">KVKK</Link>
+          <Link href="/contact" className="hover:text-foreground transition-colors">İletişim</Link>
+          <span>2026 Assetly</span>
+        </footer>
       </div>
     </main>
   );
