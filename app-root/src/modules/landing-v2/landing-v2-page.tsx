@@ -2,6 +2,7 @@ import dynamic from "next/dynamic";
 import { AbonelikSection } from "@/modules/landing-v2/components/abonelik-section";
 import { AnimatedBackground } from "@/modules/landing-v2/components/AnimatedBackground";
 import { BildirimSection } from "@/modules/landing-v2/components/bildirim-section";
+import { DeviceShowcaseSection } from "@/modules/landing-v2/components/device-showcase-section";
 import { FaturaSection } from "@/modules/landing-v2/components/fatura-section";
 import { FeaturesSection } from "@/modules/landing-v2/components/features-section";
 import { Footer } from "@/modules/landing-v2/components/footer";
@@ -58,6 +59,7 @@ export function LandingV2Page() {
       <div className="relative z-10">
         <Navbar />
         <HeroSection />
+        <DeviceShowcaseSection />
         <FeaturesSection />
         <DashboardPreviewLazy />
         <BildirimSection />
