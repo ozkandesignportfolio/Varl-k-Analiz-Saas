@@ -159,27 +159,27 @@ export function ProductPreviewSection() {
                   </div>
 
                   {/* app body */}
-                  <div className="relative flex max-h-[340px] flex-col overflow-hidden sm:max-h-[420px] sm:flex-row">
+                  <div className="relative flex max-h-[220px] flex-row overflow-hidden sm:max-h-[420px]">
                     {/* sidebar */}
-                    <aside className="flex shrink-0 flex-col gap-2 border-b border-white/5 px-3 py-2.5 sm:gap-4 sm:py-4 sm:w-52 sm:border-b-0 sm:border-r sm:px-4 sm:py-5">
-                      <div className="flex items-center gap-2">
+                    <aside className="flex w-28 shrink-0 flex-col gap-1.5 border-r border-white/5 px-2 py-2 sm:w-52 sm:gap-4 sm:px-4 sm:py-5">
+                      <div className="hidden items-center gap-2 sm:flex">
                         <span aria-hidden className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-primary/40 to-accent/30">
                           <span className="h-2.5 w-2.5 rounded-sm bg-foreground/85" />
                         </span>
                         <span className="text-[13px] font-semibold tracking-tight text-foreground/90">Assetly</span>
                       </div>
-                      <nav className="flex flex-row gap-1 overflow-x-auto hide-scrollbar sm:flex-col sm:gap-0.5">
+                      <nav className="flex flex-col gap-0.5">
                         {sidebarItems.map((item) => {
                           const Icon = item.icon;
                           const active = Boolean(item.active);
                           return (
                             <div
                               key={item.label}
-                              className={`flex items-center gap-2.5 whitespace-nowrap rounded-md px-2.5 py-1.5 text-[12.5px] transition-colors ${
+                              className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-1.5 py-1 text-[10px] transition-colors sm:gap-2.5 sm:px-2.5 sm:py-1.5 sm:text-[12.5px] ${
                                 active ? "bg-white/[0.06] text-foreground" : "text-muted-foreground/55"
                               }`}
                             >
-                              <Icon aria-hidden className={`h-3.5 w-3.5 ${active ? "text-primary/80" : "text-muted-foreground/40"}`} strokeWidth={1.8} />
+                              <Icon aria-hidden className={`h-3 w-3 sm:h-3.5 sm:w-3.5 ${active ? "text-primary/80" : "text-muted-foreground/40"}`} strokeWidth={1.8} />
                               <span>{item.label}</span>
                             </div>
                           );
@@ -188,21 +188,21 @@ export function ProductPreviewSection() {
                     </aside>
 
                     {/* main */}
-                    <div className="flex min-w-0 flex-1 flex-col gap-3 p-3 sm:gap-6 sm:p-7">
+                    <div className="flex min-w-0 flex-1 flex-col gap-1.5 p-2 sm:gap-3 sm:p-4 md:gap-6 md:p-7">
                       {/* today actions */}
-                      <div className="rounded-lg bg-white/[0.025] px-4 py-3">
-                        <p className="text-[10.5px] font-medium uppercase tracking-[0.18em] text-muted-foreground/55">
+                      <div className="rounded-lg bg-white/[0.025] px-2 py-1.5 sm:px-4 sm:py-3">
+                        <p className="text-[8px] font-medium uppercase tracking-[0.18em] text-muted-foreground/55 sm:text-[10.5px]">
                           Bugün ilgilenmen gerekenler
                         </p>
-                        <ul className="mt-2.5 flex flex-col gap-1.5 text-[12.5px] sm:text-[13px]">
-                          <li className="flex items-center gap-2">
-                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-300/80" aria-hidden />
+                        <ul className="mt-1 flex flex-col gap-1 text-[10px] sm:mt-2.5 sm:gap-1.5 sm:text-[13px]">
+                          <li className="flex items-center gap-1 sm:gap-2">
+                            <span className="h-1 w-1 shrink-0 rounded-full bg-amber-300/80 sm:h-1.5 sm:w-1.5" aria-hidden />
                             <span className="text-foreground/85">Klima</span>
                             <span className="text-muted-foreground/35" aria-hidden>→</span>
                             <span className="text-muted-foreground/70">3 gün içinde bakım</span>
                           </li>
-                          <li className="flex items-center gap-2">
-                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-rose-400/80" aria-hidden />
+                          <li className="flex items-center gap-1 sm:gap-2">
+                            <span className="h-1 w-1 shrink-0 rounded-full bg-rose-400/80 sm:h-1.5 sm:w-1.5" aria-hidden />
                             <span className="text-foreground/85">Elektrik faturası</span>
                             <span className="text-muted-foreground/35" aria-hidden>→</span>
                             <span className="text-muted-foreground/70">2 gün kaldı</span>
@@ -213,8 +213,10 @@ export function ProductPreviewSection() {
                       {/* header */}
                       <div className="flex items-baseline justify-between">
                         <div>
-                          <h3 className="text-base font-semibold text-foreground sm:text-lg">Varlıklarım</h3>
-                          <p className="text-xs text-muted-foreground/60">5 kayıt · güncel</p>
+                          <h3 className="text-xs font-semibold text-foreground sm:text-base md:text-lg">
+                            Varlıklarım
+                          </h3>
+                          <p className="text-[9px] text-muted-foreground/60 sm:text-xs">5 kayıt · güncel</p>
                         </div>
                         <span className="hidden text-[10.5px] uppercase tracking-[0.18em] text-muted-foreground/40 sm:inline">Durum</span>
                       </div>
@@ -227,29 +229,30 @@ export function ProductPreviewSection() {
                           return (
                             <li
                               key={asset.label}
-                              className={`flex items-center gap-3 py-2.5 sm:py-3 ${
-                                asset.highlight ? "-mx-3 rounded-lg bg-amber-400/[0.05] px-3" : ""
+                              className={`flex items-center gap-1.5 py-1 sm:gap-3 sm:py-2.5 md:py-3 ${
+                                asset.highlight ? "-mx-2 rounded-lg bg-amber-400/[0.05] px-2 sm:-mx-3 sm:px-3" : ""
                               }`}
                             >
                               <span
                                 aria-hidden
-                                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.04] ${
+                                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/[0.04] sm:h-9 sm:w-9 sm:rounded-lg ${
                                   asset.highlight ? "text-amber-200/90" : "text-muted-foreground/70"
                                 }`}
                               >
-                                <Icon className="h-4 w-4" strokeWidth={1.7} />
+                                <Icon className="h-3 w-3 sm:h-4 sm:w-4" strokeWidth={1.7} />
                               </span>
                               <div className="min-w-0 flex-1">
-                                <p className="truncate text-[13px] font-medium text-foreground sm:text-sm">{asset.label}</p>
-                                <p className="truncate text-[11px] text-muted-foreground/55 sm:text-xs">{asset.meta}</p>
+                                <p className="truncate text-[9px] font-medium text-foreground sm:text-[13px] md:text-sm">{asset.label}</p>
+                                <p className="truncate text-[8px] text-muted-foreground/55 sm:text-[11px] md:text-xs">{asset.meta}</p>
                                 {asset.highlight ? (
-                                  <p className="mt-0.5 truncate text-[10.5px] text-amber-200/70">Bakım gecikirse performans düşebilir</p>
+                                  <p className="mt-0.5 hidden truncate text-[10.5px] text-amber-200/70 sm:block">Bakım gecikirse performans düşebilir</p>
                                 ) : null}
                               </div>
-                              <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10.5px] font-medium ${tone.pill}`}>
+                              <span className={`hidden items-center gap-1.5 rounded-full px-2 py-0.5 text-[10.5px] font-medium sm:inline-flex ${tone.pill}`}>
                                 <span className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} aria-hidden />
                                 {asset.status}
                               </span>
+                              <span className={`inline-flex h-1.5 w-1.5 shrink-0 rounded-full sm:hidden ${tone.dot}`} aria-hidden />
                             </li>
                           );
                         })}
