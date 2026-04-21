@@ -102,226 +102,182 @@ const entrance = (delayMs: number) => ({
 
 export function ProductPreviewSection() {
   return (
-    <section id="panel" className="relative px-4 pb-24 pt-16 sm:px-6 sm:pb-32 sm:pt-24">
-      {/* ambient glow */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 top-[40%] -z-10 h-[600px] w-[900px] max-w-full -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(ellipse,rgba(16,239,181,0.08)_0%,rgba(44,247,255,0.04)_35%,transparent_70%)] blur-[100px]"
-      />
-
-      <div className="mx-auto max-w-6xl">
-        {/* heading */}
+    <section id="panel" className="relative px-4 pb-28 pt-20 sm:px-6 sm:pb-36 sm:pt-28">
+      <div className="mx-auto max-w-7xl px-6">
+        {/* ── Text ── */}
         <div className="mx-auto max-w-2xl text-center" style={entrance(0)}>
-          <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-medium tracking-wide text-primary">
+          <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-medium tracking-wide text-primary">
             Çoklu Platform
           </span>
           <h2 className="text-balance text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
-            Tüm cihazlardan eriş,{" "}
-            <span className="text-gradient">her yerden yönet</span>
+            Tüm cihazlarda{" "}
+            <span className="text-gradient">kusursuz deneyim</span>
           </h2>
           <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Assetly ile varlıklarını web, mobil ve tablet üzerinden gerçek zamanlı
-            senkronize şekilde yönet. Tek panel, tüm cihazlar.
+            Assetly ile varlıklarını web, mobil ve tablet üzerinden gerçek
+            zamanlı yönet. Nerede olursan ol, tüm verilerin seninle.
           </p>
         </div>
 
-        {/* Device composition */}
-        <div className="group/devices relative mt-16 sm:mt-20">
-          {/* LAPTOP */}
-          <div className="relative mx-auto w-full max-w-4xl" style={entrance(120)}>
-            {/* shadow */}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-x-10 -bottom-8 h-12 rounded-[50%] bg-black/50 blur-2xl transition-all duration-500 group-hover/devices:blur-3xl"
-            />
-            {/* glow */}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0 -z-10 rounded-[2rem] bg-gradient-to-b from-primary/8 to-transparent blur-2xl"
-            />
-
-            <div
-              className="device-hover-tilt relative transition-transform duration-500 ease-out lg:[transform:perspective(2200px)_rotateX(4deg)_rotateY(-1deg)]"
-              style={{ transformOrigin: "center bottom" }}
-            >
-              {/* laptop lid */}
-              <div className="rounded-t-[1.25rem] bg-gradient-to-b from-zinc-700/90 to-zinc-900 p-[6px] shadow-[0_40px_100px_-30px_rgba(0,0,0,0.85),0_0_60px_-20px_rgba(16,239,181,0.08)] ring-1 ring-white/[0.07] sm:rounded-t-[1.5rem] sm:p-[8px]">
-                {/* camera */}
-                <div className="relative mx-auto mb-[6px] flex h-2 items-center justify-center sm:mb-2">
-                  <span
-                    aria-hidden
-                    className="h-1 w-1 rounded-full bg-zinc-600 shadow-[inset_0_0_2px_rgba(255,255,255,0.3)] sm:h-1.5 sm:w-1.5"
-                  />
-                </div>
-
-                {/* screen */}
-                <div className="overflow-hidden rounded-[0.85rem] border border-white/[0.06] bg-[rgb(6_10_24)] sm:rounded-[1rem]">
-                  {/* browser chrome */}
-                  <div className="flex items-center gap-2 border-b border-white/5 bg-black/40 px-3 py-2 sm:px-4 sm:py-2.5">
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" aria-hidden />
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" aria-hidden />
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" aria-hidden />
-                    <div className="ml-3 hidden min-w-0 flex-1 items-center justify-center rounded-md bg-white/[0.04] px-3 py-1 sm:flex">
-                      <span className="text-[10px] text-muted-foreground/40">🔒</span>
-                      <span className="ml-1.5 text-[11px] text-muted-foreground/60">assetly.network</span>
-                    </div>
-                  </div>
-
-                  {/* app body */}
-                  <div className="flex min-h-[420px] flex-col sm:flex-row">
-                    {/* sidebar */}
-                    <aside className="flex shrink-0 flex-col gap-4 border-b border-white/5 px-3 py-4 sm:w-52 sm:border-b-0 sm:border-r sm:px-4 sm:py-5">
-                      <div className="flex items-center gap-2">
-                        <span
-                          aria-hidden
-                          className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-primary/40 to-accent/30"
-                        >
-                          <span className="h-2.5 w-2.5 rounded-sm bg-foreground/85" />
-                        </span>
-                        <span className="text-[13px] font-semibold tracking-tight text-foreground/90">
-                          Assetly
-                        </span>
-                      </div>
-
-                      <nav className="flex flex-row gap-1 overflow-x-auto sm:flex-col sm:gap-0.5">
-                        {sidebarItems.map((item) => {
-                          const Icon = item.icon;
-                          const active = Boolean(item.active);
-                          return (
-                            <div
-                              key={item.label}
-                              className={`flex items-center gap-2.5 whitespace-nowrap rounded-md px-2.5 py-1.5 text-[12.5px] transition-colors ${
-                                active
-                                  ? "bg-white/[0.06] text-foreground"
-                                  : "text-muted-foreground/55"
-                              }`}
-                            >
-                              <Icon
-                                aria-hidden
-                                className={`h-3.5 w-3.5 ${active ? "text-primary/80" : "text-muted-foreground/40"}`}
-                                strokeWidth={1.8}
-                              />
-                              <span>{item.label}</span>
-                            </div>
-                          );
-                        })}
-                      </nav>
-                    </aside>
-
-                    {/* main */}
-                    <div className="flex min-w-0 flex-1 flex-col gap-5 p-5 sm:gap-6 sm:p-7">
-                      {/* today actions */}
-                      <div className="rounded-lg bg-white/[0.025] px-4 py-3">
-                        <p className="text-[10.5px] font-medium uppercase tracking-[0.18em] text-muted-foreground/55">
-                          Bugün ilgilenmen gerekenler
-                        </p>
-                        <ul className="mt-2.5 flex flex-col gap-1.5 text-[12.5px] sm:text-[13px]">
-                          <li className="flex items-center gap-2">
-                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-300/80" aria-hidden />
-                            <span className="text-foreground/85">Klima</span>
-                            <span className="text-muted-foreground/35" aria-hidden>→</span>
-                            <span className="text-muted-foreground/70">3 gün içinde bakım</span>
-                          </li>
-                          <li className="flex items-center gap-2">
-                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-rose-400/80" aria-hidden />
-                            <span className="text-foreground/85">Elektrik faturası</span>
-                            <span className="text-muted-foreground/35" aria-hidden>→</span>
-                            <span className="text-muted-foreground/70">2 gün kaldı</span>
-                          </li>
-                        </ul>
-                      </div>
-
-                      {/* header */}
-                      <div className="flex items-baseline justify-between">
-                        <div>
-                          <h3 className="text-base font-semibold text-foreground sm:text-lg">
-                            Varlıklarım
-                          </h3>
-                          <p className="text-xs text-muted-foreground/60">5 kayıt · güncel</p>
-                        </div>
-                        <span className="hidden text-[10.5px] uppercase tracking-[0.18em] text-muted-foreground/40 sm:inline">
-                          Durum
-                        </span>
-                      </div>
-
-                      {/* asset list */}
-                      <ul className="flex flex-col divide-y divide-white/[0.04]">
-                        {assets.map((asset) => {
-                          const Icon = asset.icon;
-                          const tone = toneStyles[asset.statusTone];
-                          return (
-                            <li
-                              key={asset.label}
-                              className={`flex items-center gap-3 py-2.5 sm:py-3 ${
-                                asset.highlight ? "-mx-3 rounded-lg bg-amber-400/[0.05] px-3" : ""
-                              }`}
-                            >
-                              <span
-                                aria-hidden
-                                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.04] ${
-                                  asset.highlight ? "text-amber-200/90" : "text-muted-foreground/70"
-                                }`}
-                              >
-                                <Icon className="h-4 w-4" strokeWidth={1.7} />
-                              </span>
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-[13px] font-medium text-foreground sm:text-sm">
-                                  {asset.label}
-                                </p>
-                                <p className="truncate text-[11px] text-muted-foreground/55 sm:text-xs">
-                                  {asset.meta}
-                                </p>
-                                {asset.highlight ? (
-                                  <p className="mt-0.5 truncate text-[10.5px] text-amber-200/70">
-                                    Bakım gecikirse performans düşebilir
-                                  </p>
-                                ) : null}
-                              </div>
-                              <span
-                                className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10.5px] font-medium ${tone.pill}`}
-                              >
-                                <span className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} aria-hidden />
-                                {asset.status}
-                              </span>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* laptop base */}
-              <div
-                aria-hidden
-                className="relative mx-auto h-3 w-[104%] -translate-x-[2%] rounded-b-[1.25rem] bg-gradient-to-b from-zinc-700/80 via-zinc-900 to-black shadow-[0_12px_20px_-10px_rgba(0,0,0,0.7)] sm:h-4 sm:rounded-b-[1.5rem]"
-              >
-                <span className="absolute left-1/2 top-0 h-[3px] w-16 -translate-x-1/2 rounded-b-md bg-black/70 sm:w-24" />
-              </div>
-            </div>
+        {/* ── Device wrapper ── */}
+        <div
+          className="relative mt-16 flex flex-col items-center gap-8 sm:mt-20 md:block"
+          style={entrance(120)}
+        >
+          {/* Depth glow */}
+          <div className="pointer-events-none absolute inset-0 -z-10 flex items-center justify-center" aria-hidden>
+            <div className="h-[500px] w-[500px] rounded-full bg-cyan-500/10 blur-[120px]" />
           </div>
 
-          {/* PHONE — overlaps laptop on desktop */}
-          <div
-            className="mt-8 flex justify-center sm:mt-0 sm:absolute sm:bottom-4 sm:right-0 lg:-bottom-4 lg:right-[2%]"
-            style={entrance(240)}
-          >
-            <div className="relative">
-              {/* shadow */}
+          <div className="relative mx-auto w-full max-w-5xl">
+            {/* ══ LAPTOP ══ */}
+            <div className="relative z-10 w-full max-w-4xl mx-auto">
+              {/* ground shadow */}
               <div
                 aria-hidden
-                className="pointer-events-none absolute inset-x-6 -bottom-6 h-8 rounded-[50%] bg-black/50 blur-xl"
+                className="pointer-events-none absolute inset-x-12 -bottom-6 h-10 rounded-[50%] bg-black/50 blur-2xl"
               />
 
-              <div className="device-hover-tilt relative w-[220px] rounded-[2.25rem] bg-gradient-to-b from-zinc-700/90 to-zinc-900 p-[4px] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8),0_0_40px_-15px_rgba(16,239,181,0.06)] ring-1 ring-white/[0.08] sm:w-[248px] lg:[transform:perspective(2200px)_rotateX(2deg)_rotateY(3deg)]">
-                {/* inner bezel */}
-                <div className="relative overflow-hidden rounded-[2rem] bg-[rgb(6_10_24)]">
-                  {/* notch */}
-                  <div
-                    aria-hidden
-                    className="absolute left-1/2 top-1.5 z-10 h-5 w-20 -translate-x-1/2 rounded-full bg-black"
-                  />
+              <div className="transition-transform duration-500 ease-out md:[transform:perspective(2000px)_rotateY(-2deg)_rotateX(2deg)]"
+                style={{ transformOrigin: "center bottom" }}
+              >
+                {/* lid */}
+                <div className="overflow-hidden rounded-t-2xl bg-gradient-to-b from-zinc-700/80 to-zinc-900 p-[6px] shadow-[0_40px_120px_rgba(0,0,0,0.6)] ring-1 ring-white/[0.06] sm:p-2">
+                  {/* webcam */}
+                  <div className="mx-auto mb-1 flex h-2 items-center justify-center sm:mb-1.5">
+                    <span aria-hidden className="h-1 w-1 rounded-full bg-zinc-600 shadow-[inset_0_0_2px_rgba(255,255,255,0.25)] sm:h-1.5 sm:w-1.5" />
+                  </div>
+
+                  {/* screen */}
+                  <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-[#060a18] sm:rounded-[0.9rem]">
+                    {/* browser bar */}
+                    <div className="flex h-8 items-center gap-2 bg-white/[0.03] px-3 backdrop-blur sm:px-4">
+                      <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" aria-hidden />
+                      <span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" aria-hidden />
+                      <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" aria-hidden />
+                      <div className="ml-3 hidden flex-1 items-center justify-center rounded-md bg-white/[0.04] px-3 py-0.5 sm:flex">
+                        <span className="text-[10px] text-gray-500">🔒</span>
+                        <span className="ml-1.5 text-xs text-gray-400">assetly.network</span>
+                      </div>
+                    </div>
+
+                    {/* app body */}
+                    <div className="flex min-h-[380px] flex-col sm:flex-row sm:min-h-[420px]">
+                      {/* sidebar */}
+                      <aside className="flex shrink-0 flex-col gap-4 border-b border-white/5 px-3 py-4 sm:w-52 sm:border-b-0 sm:border-r sm:px-4 sm:py-5">
+                        <div className="flex items-center gap-2">
+                          <span aria-hidden className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-primary/40 to-accent/30">
+                            <span className="h-2.5 w-2.5 rounded-sm bg-foreground/85" />
+                          </span>
+                          <span className="text-[13px] font-semibold tracking-tight text-foreground/90">Assetly</span>
+                        </div>
+                        <nav className="flex flex-row gap-1 overflow-x-auto sm:flex-col sm:gap-0.5">
+                          {sidebarItems.map((item) => {
+                            const Icon = item.icon;
+                            const active = Boolean(item.active);
+                            return (
+                              <div
+                                key={item.label}
+                                className={`flex items-center gap-2.5 whitespace-nowrap rounded-md px-2.5 py-1.5 text-[12.5px] transition-colors ${
+                                  active ? "bg-white/[0.06] text-foreground" : "text-muted-foreground/55"
+                                }`}
+                              >
+                                <Icon aria-hidden className={`h-3.5 w-3.5 ${active ? "text-primary/80" : "text-muted-foreground/40"}`} strokeWidth={1.8} />
+                                <span>{item.label}</span>
+                              </div>
+                            );
+                          })}
+                        </nav>
+                      </aside>
+
+                      {/* main */}
+                      <div className="flex min-w-0 flex-1 flex-col gap-5 p-5 sm:gap-6 sm:p-7">
+                        {/* today actions */}
+                        <div className="rounded-lg bg-white/[0.025] px-4 py-3">
+                          <p className="text-[10.5px] font-medium uppercase tracking-[0.18em] text-muted-foreground/55">
+                            Bugün ilgilenmen gerekenler
+                          </p>
+                          <ul className="mt-2.5 flex flex-col gap-1.5 text-[12.5px] sm:text-[13px]">
+                            <li className="flex items-center gap-2">
+                              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-300/80" aria-hidden />
+                              <span className="text-foreground/85">Klima</span>
+                              <span className="text-muted-foreground/35" aria-hidden>→</span>
+                              <span className="text-muted-foreground/70">3 gün içinde bakım</span>
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-rose-400/80" aria-hidden />
+                              <span className="text-foreground/85">Elektrik faturası</span>
+                              <span className="text-muted-foreground/35" aria-hidden>→</span>
+                              <span className="text-muted-foreground/70">2 gün kaldı</span>
+                            </li>
+                          </ul>
+                        </div>
+
+                        {/* header */}
+                        <div className="flex items-baseline justify-between">
+                          <div>
+                            <h3 className="text-base font-semibold text-foreground sm:text-lg">Varlıklarım</h3>
+                            <p className="text-xs text-muted-foreground/60">5 kayıt · güncel</p>
+                          </div>
+                          <span className="hidden text-[10.5px] uppercase tracking-[0.18em] text-muted-foreground/40 sm:inline">Durum</span>
+                        </div>
+
+                        {/* asset list */}
+                        <ul className="flex flex-col divide-y divide-white/[0.04]">
+                          {assets.map((asset) => {
+                            const Icon = asset.icon;
+                            const tone = toneStyles[asset.statusTone];
+                            return (
+                              <li
+                                key={asset.label}
+                                className={`flex items-center gap-3 py-2.5 sm:py-3 ${
+                                  asset.highlight ? "-mx-3 rounded-lg bg-amber-400/[0.05] px-3" : ""
+                                }`}
+                              >
+                                <span
+                                  aria-hidden
+                                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.04] ${
+                                    asset.highlight ? "text-amber-200/90" : "text-muted-foreground/70"
+                                  }`}
+                                >
+                                  <Icon className="h-4 w-4" strokeWidth={1.7} />
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-[13px] font-medium text-foreground sm:text-sm">{asset.label}</p>
+                                  <p className="truncate text-[11px] text-muted-foreground/55 sm:text-xs">{asset.meta}</p>
+                                  {asset.highlight ? (
+                                    <p className="mt-0.5 truncate text-[10.5px] text-amber-200/70">Bakım gecikirse performans düşebilir</p>
+                                  ) : null}
+                                </div>
+                                <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10.5px] font-medium ${tone.pill}`}>
+                                  <span className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} aria-hidden />
+                                  {asset.status}
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* base/hinge */}
+                <div aria-hidden className="relative mx-auto h-3 w-[104%] -translate-x-[2%] rounded-b-xl bg-gradient-to-b from-zinc-700/80 via-zinc-900 to-black shadow-[0_10px_20px_-8px_rgba(0,0,0,0.6)] sm:h-4 sm:rounded-b-2xl">
+                  <span className="absolute left-1/2 top-0 h-[3px] w-16 -translate-x-1/2 rounded-b-md bg-black/70 sm:w-24" />
+                </div>
+              </div>
+            </div>
+
+            {/* ══ PHONE ══ */}
+            <div className="w-[220px] shrink-0 md:absolute md:right-0 md:top-10 md:z-20">
+              {/* shadow */}
+              <div aria-hidden className="pointer-events-none absolute inset-x-6 -bottom-5 h-8 rounded-[50%] bg-black/50 blur-xl" />
+
+              <div className="rounded-3xl bg-gradient-to-b from-zinc-700/80 to-zinc-900 p-[4px] shadow-xl ring-1 ring-white/[0.07] transition-transform duration-500 ease-out md:[transform:perspective(1800px)_rotate(6deg)]">
+                <div className="relative overflow-hidden rounded-[1.4rem] bg-[#060a18]">
+                  {/* dynamic island */}
+                  <div aria-hidden className="absolute left-1/2 top-1.5 z-10 h-5 w-20 -translate-x-1/2 rounded-full bg-black" />
 
                   {/* status bar */}
                   <div className="flex items-center justify-between px-5 pt-2.5 text-[10px] text-muted-foreground/70">
@@ -336,25 +292,18 @@ export function ProductPreviewSection() {
                   {/* screen content */}
                   <div className="flex flex-col gap-4 px-5 pb-6 pt-8">
                     <div className="flex items-center gap-3">
-                      <span
-                        aria-hidden
-                        className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-400/[0.1] text-amber-200/90 ring-1 ring-amber-400/20"
-                      >
+                      <span aria-hidden className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-400/[0.1] text-amber-200/90 ring-1 ring-amber-400/20">
                         <Snowflake className="h-5 w-5" strokeWidth={1.7} />
                       </span>
                       <div className="min-w-0">
-                        <p className="text-[9.5px] uppercase tracking-[0.2em] text-muted-foreground/55">
-                          Varlık
-                        </p>
+                        <p className="text-[9.5px] uppercase tracking-[0.2em] text-muted-foreground/55">Varlık</p>
                         <h4 className="truncate text-[17px] font-semibold text-foreground">Klima</h4>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2 rounded-lg bg-amber-400/[0.1] px-3 py-2">
                       <span className="h-1.5 w-1.5 rounded-full bg-amber-300/80" aria-hidden />
-                      <span className="text-[11.5px] font-medium text-amber-100/90">
-                        3 gün içinde bakım gerekli
-                      </span>
+                      <span className="text-[11.5px] font-medium text-amber-100/90">3 gün içinde bakım gerekli</span>
                     </div>
 
                     <dl className="flex flex-col gap-2.5 text-[12px]">
@@ -389,10 +338,7 @@ export function ProductPreviewSection() {
 
                   {/* gesture bar */}
                   <div className="flex items-center justify-center pb-2">
-                    <span
-                      aria-hidden
-                      className="h-1 w-24 rounded-full bg-white/25"
-                    />
+                    <span aria-hidden className="h-1 w-24 rounded-full bg-white/25" />
                   </div>
                 </div>
               </div>
@@ -400,23 +346,20 @@ export function ProductPreviewSection() {
           </div>
         </div>
 
-        {/* Trust indicators */}
-        <div className="mt-14 flex flex-col items-center gap-4 sm:mt-16" style={entrance(360)}>
+        {/* ── Trust indicators ── */}
+        <div className="mt-16 flex flex-col items-center gap-4 sm:mt-20" style={entrance(360)}>
           <p className="text-sm font-medium text-muted-foreground/70">
             Web, Mobil ve Tablet üzerinde çalışır
           </p>
-          <div className="flex items-center gap-5">
-            {[
-              { label: "Windows", icon: "⊞" },
-              { label: "macOS", icon: "" },
-              { label: "iOS", icon: "" },
-              { label: "Android", icon: "🤖" },
-            ].map((p) => (
-              <div
-                key={p.label}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground/50"
-              >
-                <span className="text-sm">{p.icon}</span>
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+            {([
+              { label: "Windows", d: "M0 3.5l9.5-1.3v9.3H0zm10.5-1.5L22 0v11.5H10.5zM0 12.5h9.5v9.3L0 20.5zm10.5-.5H22V24l-11.5-2z" },
+              { label: "macOS", d: "M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79s-2 .77-3.27.82c-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87s2.26-1.07 3.8-.91c.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" },
+              { label: "iOS", d: "M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79s-2 .77-3.27.82c-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87s2.26-1.07 3.8-.91c.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" },
+              { label: "Android", d: "M17.6 11.8V16a1 1 0 01-2 0v-4.2a1 1 0 012 0zm-11.2 0V16a1 1 0 01-2 0v-4.2a1 1 0 012 0zM15 4.3l1.2-1.2a.4.4 0 00-.56-.56L14.3 3.9A5 5 0 0012 3.4c-.8 0-1.6.2-2.3.5L8.4 2.5a.4.4 0 00-.56.56L9 4.3A4.5 4.5 0 007 8.1v.4h10v-.4a4.5 4.5 0 00-2-3.8zM10 6.5a.6.6 0 110-1.2.6.6 0 010 1.2zm4 0a.6.6 0 110-1.2.6.6 0 010 1.2zM7 8.5h10v6.5a2 2 0 01-2 2H9a2 2 0 01-2-2V8.5zm2 11v1.5a1 1 0 002 0V19.5h2v1.5a1 1 0 002 0V19.5" },
+            ] as const).map((p) => (
+              <div key={p.label} className="flex items-center gap-2 text-xs text-muted-foreground/50">
+                <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current"><path d={p.d} /></svg>
                 <span>{p.label}</span>
               </div>
             ))}
@@ -429,20 +372,11 @@ export function ProductPreviewSection() {
           from { opacity: 0; transform: translateY(14px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        .device-hover-tilt {
-          transition: transform 500ms ease-out;
-        }
-        .group\/devices:hover .device-hover-tilt {
-          transform: perspective(2200px) rotateX(2deg) rotateY(0deg) scale(1.01) !important;
-        }
         @media (prefers-reduced-motion: reduce) {
           [style*="landingV2PreviewIn"] {
             animation: none !important;
             opacity: 1 !important;
             transform: none !important;
-          }
-          .device-hover-tilt {
-            transition: none !important;
           }
         }
       `}</style>
