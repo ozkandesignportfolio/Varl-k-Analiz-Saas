@@ -25,7 +25,7 @@ export function FaturaSection() {
       <div className="pointer-events-none absolute bottom-1/3 right-0 z-0 hidden h-80 w-80 rounded-full bg-accent/5 blur-[120px] sm:block" />
 
       <div className="mx-auto max-w-7xl px-6">
-        <div className="grid gap-16 lg:grid-cols-2 lg:items-center">
+        <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-16">
           {/* Left - Content */}
           <div className={inView ? "animate-slide-in-left" : "opacity-0"}>
             <div className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/5 px-4 py-1.5 mb-6">
@@ -101,15 +101,15 @@ export function FaturaSection() {
                     key={i}
                     className="group flex items-center justify-between rounded-xl bg-secondary/30 p-4 transition-all hover:bg-secondary/50 hover:scale-[1.01]"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${statusStyles[inv.status]}`}>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${statusStyles[inv.status]}`}>
                         {inv.status === "paid" ? <CheckCircle2 className="h-4 w-4" /> :
                          inv.status === "overdue" ? <AlertCircle className="h-4 w-4" /> :
                          <Clock className="h-4 w-4" />}
                       </div>
-                      <div>
-                        <div className="text-sm font-medium text-foreground">{inv.provider}</div>
-                        <div className="text-[10px] text-muted-foreground">{inv.no} - Vade: {inv.vade}</div>
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium text-foreground">{inv.provider}</div>
+                        <div className="truncate text-[10px] text-muted-foreground">{inv.no} - Vade: {inv.vade}</div>
                       </div>
                     </div>
                     <div className="text-right">

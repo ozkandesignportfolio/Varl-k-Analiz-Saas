@@ -323,14 +323,14 @@ export function SkorSection() {
   }, [health]);
 
   return (
-    <section id="skor-analizi" className="relative isolate py-32" ref={ref}>
+    <section id="skor-analizi" className="relative isolate py-20 sm:py-28 lg:py-32" ref={ref}>
       <div className="pointer-events-none absolute left-0 right-0 top-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
       <div className="pointer-events-none absolute left-1/2 top-1/2 z-0 hidden h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/5 blur-[150px] sm:block" />
 
       <div className="mx-auto max-w-7xl px-6">
-        <div className="grid gap-16 lg:grid-cols-2 lg:items-center">
+        <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-16">
           <div className={`order-2 lg:order-1 ${inView ? "animate-slide-up" : "opacity-0"}`}>
-            <div className="glass-card rounded-3xl p-8">
+            <div className="glass-card rounded-3xl p-5 sm:p-8">
               <div className="mb-8 flex items-center justify-between">
                 <div>
                   <div className="text-sm font-semibold text-foreground">Varlık Sağlık Skoru</div>

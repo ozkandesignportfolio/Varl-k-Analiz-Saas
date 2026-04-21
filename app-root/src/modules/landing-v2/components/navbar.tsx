@@ -205,6 +205,7 @@ export function Navbar() {
       className={`landing-v2-nav fixed top-0 left-0 right-0 z-[60] transition-all duration-500 ${
         scrolled ? "glass-card py-3 shadow-lg shadow-[#050a18]/50" : "bg-transparent py-5"
       }`}
+      style={{ paddingTop: `max(env(safe-area-inset-top, 0px), ${scrolled ? '0.75rem' : '1.25rem'})` }}
     >
       <div className="relative z-[60] mx-auto flex max-w-7xl items-center justify-between px-6">
         <a href="#" className="group flex items-center gap-3">

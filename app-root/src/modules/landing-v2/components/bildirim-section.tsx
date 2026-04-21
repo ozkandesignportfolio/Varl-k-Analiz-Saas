@@ -51,7 +51,7 @@ export function BildirimSection() {
       <div className="pointer-events-none absolute top-1/3 right-0 z-0 hidden h-80 w-80 rounded-full bg-chart-4/5 blur-[120px] sm:block" />
 
       <div className="mx-auto max-w-7xl px-6">
-        <div className="grid gap-16 lg:grid-cols-2 lg:items-center">
+        <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-16">
           {/* Left - Content */}
           <div className={inView ? "animate-slide-in-left" : "opacity-0"}>
             <div className="inline-flex items-center gap-2 rounded-full border border-chart-4/20 bg-chart-4/5 px-4 py-1.5 mb-6">

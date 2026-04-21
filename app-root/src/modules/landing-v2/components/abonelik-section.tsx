@@ -22,24 +22,24 @@ export function AbonelikSection() {
       <div className="pointer-events-none absolute top-1/2 left-0 z-0 hidden h-96 w-96 rounded-full bg-primary/5 blur-[150px] sm:block" />
 
       <div className="mx-auto max-w-7xl px-6">
-        <div className="grid gap-16 lg:grid-cols-2 lg:items-center">
+        <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-16">
           {/* Left - Demo Card */}
           <div className={`order-2 lg:order-1 ${inView ? "animate-slide-up" : "opacity-0"}`}>
             <div className="glass-card rounded-3xl p-6">
               {/* Summary Cards */}
-              <div className="grid grid-cols-3 gap-3 mb-6">
-                <div className="rounded-xl bg-secondary/50 p-4 text-center">
-                  <div className="text-2xl font-bold text-foreground">7</div>
+              <div className="grid grid-cols-3 gap-2 mb-6 sm:gap-3">
+                <div className="rounded-xl bg-secondary/50 p-3 text-center sm:p-4">
+                  <div className="text-xl font-bold text-foreground sm:text-2xl">7</div>
                   <div className="text-[10px] text-muted-foreground mt-1">Aktif Abonelik</div>
                 </div>
-                <div className="rounded-xl bg-secondary/50 p-4 text-center">
-                  <div className="text-2xl font-bold text-primary">{"1.855"}<span className="text-sm font-normal text-muted-foreground ml-0.5">{"TL"}</span></div>
+                <div className="rounded-xl bg-secondary/50 p-3 text-center sm:p-4">
+                  <div className="text-xl font-bold text-primary sm:text-2xl">{"1.855"}<span className="text-xs font-normal text-muted-foreground ml-0.5 sm:text-sm">{"TL"}</span></div>
                   <div className="text-[10px] text-muted-foreground mt-1">Aylık Toplam</div>
                 </div>
-                <div className="rounded-xl bg-secondary/50 p-4 text-center">
+                <div className="rounded-xl bg-secondary/50 p-3 text-center sm:p-4">
                   <div className="flex items-center justify-center gap-1">
-                    <ArrowDownRight className="h-4 w-4 text-primary" />
-                    <span className="text-2xl font-bold text-primary">12%</span>
+                    <ArrowDownRight className="h-3.5 w-3.5 text-primary sm:h-4 sm:w-4" />
+                    <span className="text-xl font-bold text-primary sm:text-2xl">12%</span>
                   </div>
                   <div className="text-[10px] text-muted-foreground mt-1">Geçen Aya Göre</div>
                 </div>
@@ -52,13 +52,13 @@ export function AbonelikSection() {
                     key={i}
                     className="group flex items-center justify-between rounded-xl bg-secondary/30 p-4 transition-all hover:bg-secondary/50 hover:scale-[1.01]"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${sub.color.split(" ")[0]} font-bold text-sm ${sub.color.split(" ")[1]}`}>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${sub.color.split(" ")[0]} font-bold text-sm ${sub.color.split(" ")[1]}`}>
                         {sub.name[0]}
                       </div>
-                      <div>
-                        <div className="text-sm font-medium text-foreground">{sub.name}</div>
-                        <div className="text-xs text-muted-foreground">{sub.plan} - {sub.cycle}</div>
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium text-foreground">{sub.name}</div>
+                        <div className="truncate text-xs text-muted-foreground">{sub.plan} - {sub.cycle}</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">

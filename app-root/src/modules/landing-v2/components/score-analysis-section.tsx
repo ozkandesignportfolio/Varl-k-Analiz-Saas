@@ -66,8 +66,8 @@ export function ScoreAnalysisSection() {
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className={`min-w-0 w-full ${inView ? "animate-slide-up" : "opacity-0"}`}>
-            <div className="glass-card min-w-0 w-full rounded-3xl border border-border/60 bg-background/70 p-8 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)]">
-              <h2 className="text-3xl font-bold text-foreground sm:text-4xl">Skor nasıl hesaplanır?</h2>
+            <div className="glass-card min-w-0 w-full rounded-3xl border border-border/60 bg-background/70 p-5 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)] sm:p-8">
+              <h2 className="text-2xl font-bold text-foreground sm:text-3xl md:text-4xl">Skor nasıl hesaplanır?</h2>
               <p className="mt-2 text-base font-medium text-chart-3">3 adımda net bir puan</p>
               <p className="mt-5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
                 Varlığınızın sağlık durumunu tek puanda topluyoruz. Karmaşık oranlar yerine, günlük kullanımda karar vermeyi
@@ -117,7 +117,7 @@ export function ScoreAnalysisSection() {
           </div>
 
           <div className={`min-w-0 w-full ${inView ? "animate-slide-in-left" : "opacity-0"}`} style={{ animationDelay: "0.15s" }}>
-            <div className="glass-card min-w-0 w-full rounded-3xl border border-border/60 bg-background/70 p-8 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)]">
+            <div className="glass-card min-w-0 w-full rounded-3xl border border-border/60 bg-background/70 p-5 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)] sm:p-8">
               <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1">
                 <Sparkles className="h-3.5 w-3.5 text-primary" />
                 <span className="text-[11px] font-semibold tracking-wide text-primary">Gerçekçi Örnek</span>

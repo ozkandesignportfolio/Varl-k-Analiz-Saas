@@ -82,7 +82,7 @@ export function FeaturesSection() {
       <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
       <div className="mx-auto max-w-7xl px-6">
-        <div className="mb-20 text-center">
+        <div className="mb-12 text-center sm:mb-20">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5">
             <span className="text-xs tracking-widest text-primary">Özellikler</span>
           </div>

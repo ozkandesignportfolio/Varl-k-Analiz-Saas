@@ -80,7 +80,7 @@ export function Footer() {
           ))}
         </div>
 
-        <div className="mt-16 border-t border-border/30 pt-8">
+        <div className="mt-16 border-t border-border/30 pt-8" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
           <p className="mt-3 text-xs leading-relaxed text-muted-foreground/70">{PAYMENT_TEXT.stripeCollectionNotice}</p>
           <p className="text-sm text-muted-foreground">2026 Assetly. Tüm hakları saklıdır.</p>
         </div>

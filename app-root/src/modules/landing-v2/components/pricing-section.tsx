@@ -113,7 +113,7 @@ export function PricingSection() {
       <div className="pointer-events-none absolute left-1/2 top-1/2 z-0 hidden h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/5 blur-[150px] sm:block" />
 
       <div className="mx-auto max-w-5xl px-6">
-        <div className="mb-16 text-center">
+        <div className="mb-10 text-center sm:mb-16">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5">
             <Sparkles className="h-3.5 w-3.5 text-primary" />
             <span className="text-xs tracking-widest text-primary">Fiyatlandırma</span>

@@ -1,4 +1,6 @@
 .scope {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
   --background: #050a18;
   --foreground: #e8ecf4;
   --card: #0a1128;

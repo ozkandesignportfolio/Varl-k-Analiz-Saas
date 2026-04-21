@@ -10,12 +10,12 @@ const trialInvoiceUploadLimit = trialPlan.limits.invoiceUploadsLimit ?? 0
 
 export function CTASection() {
   return (
-    <section className="relative isolate py-32">
+    <section className="relative isolate py-20 sm:py-28 lg:py-32">
       <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
       <div className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent" />
 
       <div className="relative mx-auto max-w-4xl px-6 text-center">
-        <div className="glass-card rounded-3xl p-12 sm:p-16 animate-pulse-glow">
+        <div className="glass-card rounded-3xl p-8 sm:p-12 md:p-16 animate-pulse-glow">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 mb-8">
             <Sparkles className="h-3.5 w-3.5 text-primary" />
             <span className="text-xs tracking-widest text-primary">Hemen Başlayın</span>
