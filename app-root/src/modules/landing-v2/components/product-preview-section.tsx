@@ -103,7 +103,7 @@ const entrance = (delayMs: number) => ({
 export function ProductPreviewSection() {
   return (
     <section id="panel" className="relative px-4 pb-28 pt-20 sm:px-6 sm:pb-36 sm:pt-28">
-      <div className="mx-auto max-w-7xl px-6">
+      <div className="mx-auto max-w-7xl sm:px-6">
         {/* ── Text ── */}
         <div className="mx-auto max-w-2xl text-center" style={entrance(0)}>
           <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-medium tracking-wide text-primary">
@@ -121,7 +121,7 @@ export function ProductPreviewSection() {
 
         {/* ── Device wrapper ── */}
         <div
-          className="relative mt-16 sm:mt-20"
+          className="relative mt-16 overflow-hidden sm:mt-20"
           style={entrance(120)}
         >
           {/* Background glow */}
@@ -164,9 +164,9 @@ export function ProductPreviewSection() {
                   </div>
 
                   {/* app body */}
-                  <div className="flex min-h-[380px] flex-col sm:flex-row sm:min-h-[420px]">
+                  <div className="flex min-h-[260px] flex-col sm:flex-row sm:min-h-[420px]">
                     {/* sidebar */}
-                    <aside className="flex shrink-0 flex-col gap-4 border-b border-white/5 px-3 py-4 sm:w-52 sm:border-b-0 sm:border-r sm:px-4 sm:py-5">
+                    <aside className="hidden shrink-0 flex-col gap-4 border-b border-white/5 px-3 py-4 sm:flex sm:w-52 sm:border-b-0 sm:border-r sm:px-4 sm:py-5">
                       <div className="flex items-center gap-2">
                         <span aria-hidden className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-primary/40 to-accent/30">
                           <span className="h-2.5 w-2.5 rounded-sm bg-foreground/85" />
@@ -274,7 +274,7 @@ export function ProductPreviewSection() {
 
             {/* ══ PHONE ══ */}
             <div
-              className="group w-[220px] shrink-0 self-center transform-gpu transition-transform duration-500 ease-out hover:scale-[1.05] md:absolute md:-right-4 md:top-12 md:z-20 md:[transform:rotateZ(8deg)_translateY(1.5rem)]"
+              className="group w-[180px] shrink-0 self-center transform-gpu transition-transform duration-500 ease-out hover:scale-[1.05] sm:w-[220px] md:absolute md:-right-4 md:top-12 md:z-20 md:[transform:rotateZ(8deg)_translateY(1.5rem)]"
             >
               {/* Ground shadow */}
               <div aria-hidden className="pointer-events-none absolute inset-x-4 -bottom-8 h-12 rounded-[50%] bg-black/50 blur-2xl" />
