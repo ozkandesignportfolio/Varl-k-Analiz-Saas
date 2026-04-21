@@ -36,11 +36,11 @@ export function FaturaSection() {
               Faturalarınızı{" "}
               <span className="text-gradient">asla kaçırmayın</span>
             </h2>
-            <p className="mt-6 text-lg leading-relaxed text-muted-foreground">
+            <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg">
               Tüm faturalarınızı tek ekranda görüntüleyin. Vade tarihleri, ödeme durumları ve toplam tutarları anlık takip edin. Gecikmeleri önleyin.
             </p>
 
-            <div className="mt-10 grid gap-4 sm:grid-cols-2">
+            <div className="mt-6 grid gap-3 sm:mt-10 sm:grid-cols-2 sm:gap-4">
               {[
                 { icon: Receipt, label: "Fatura Kaydı", desc: "Tutar, vergi, vade ve ödeme durumu" },
                 { icon: FileCheck, label: "Belge Ekleme", desc: "Fatura dosyalarını güvenle saklayın" },
@@ -62,7 +62,7 @@ export function FaturaSection() {
 
           {/* Right - Invoice Table Demo */}
           <div className={`${inView ? "animate-slide-up" : "opacity-0"}`} style={{ animationDelay: "0.2s" }}>
-            <div className="glass-card rounded-3xl p-6">
+            <div className="glass-card rounded-3xl p-4 sm:p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <div className="text-sm font-semibold text-foreground">Fatura Geçmişi</div>
@@ -79,7 +79,7 @@ export function FaturaSection() {
               </div>
 
               {/* Summary */}
-              <div className="grid grid-cols-3 gap-3 mb-6">
+              <div className="grid grid-cols-3 gap-2 mb-4 sm:gap-3 sm:mb-6">
                 <div className="rounded-xl bg-secondary/50 p-3 text-center">
                   <div className="text-lg font-bold text-chart-5">1</div>
                   <div className="text-[10px] text-muted-foreground">Geciken</div>
@@ -99,10 +99,10 @@ export function FaturaSection() {
                 {invoices.map((inv, i) => (
                   <div
                     key={i}
-                    className="group flex items-center justify-between rounded-xl bg-secondary/30 p-4 transition-all hover:bg-secondary/50 hover:scale-[1.01]"
+                    className="group flex items-center justify-between gap-2 rounded-xl bg-secondary/30 p-3 transition-all hover:bg-secondary/50 hover:scale-[1.01] sm:gap-3 sm:p-4"
                   >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${statusStyles[inv.status]}`}>
+                    <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg sm:h-9 sm:w-9 ${statusStyles[inv.status]}`}>
                         {inv.status === "paid" ? <CheckCircle2 className="h-4 w-4" /> :
                          inv.status === "overdue" ? <AlertCircle className="h-4 w-4" /> :
                          <Clock className="h-4 w-4" />}
@@ -112,8 +112,8 @@ export function FaturaSection() {
                         <div className="truncate text-[10px] text-muted-foreground">{inv.no} - Vade: {inv.vade}</div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-sm font-semibold text-foreground">{inv.amount} TL</div>
+                    <div className="shrink-0 text-right">
+                      <div className="text-xs font-semibold text-foreground sm:text-sm">{inv.amount} TL</div>
                       <div className={`text-[10px] ${statusStyles[inv.status].split(" ")[1]}`}>{inv.statusText}</div>
                     </div>
                   </div>

@@ -159,16 +159,16 @@ export function ProductPreviewSection() {
                   </div>
 
                   {/* app body */}
-                  <div className="relative flex max-h-[220px] flex-col overflow-hidden sm:max-h-[420px] sm:flex-row">
+                  <div className="relative flex max-h-[340px] flex-col overflow-hidden sm:max-h-[420px] sm:flex-row">
                     {/* sidebar */}
-                    <aside className="hidden shrink-0 flex-col gap-4 border-b border-white/5 px-3 py-4 sm:flex sm:w-52 sm:border-b-0 sm:border-r sm:px-4 sm:py-5">
+                    <aside className="flex shrink-0 flex-col gap-2 border-b border-white/5 px-3 py-2.5 sm:gap-4 sm:py-4 sm:w-52 sm:border-b-0 sm:border-r sm:px-4 sm:py-5">
                       <div className="flex items-center gap-2">
                         <span aria-hidden className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-primary/40 to-accent/30">
                           <span className="h-2.5 w-2.5 rounded-sm bg-foreground/85" />
                         </span>
                         <span className="text-[13px] font-semibold tracking-tight text-foreground/90">Assetly</span>
                       </div>
-                      <nav className="flex flex-row gap-1 overflow-x-auto sm:flex-col sm:gap-0.5">
+                      <nav className="flex flex-row gap-1 overflow-x-auto hide-scrollbar sm:flex-col sm:gap-0.5">
                         {sidebarItems.map((item) => {
                           const Icon = item.icon;
                           const active = Boolean(item.active);
@@ -256,8 +256,8 @@ export function ProductPreviewSection() {
                       </ul>
                     </div>
 
-                    {/* Mobile fade overlay */}
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#0a0e1a] to-transparent sm:hidden" aria-hidden />
+                    {/* Bottom fade overlay */}
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-[#0a0e1a] to-transparent" aria-hidden />
                   </div>
                 </div>
               </div>
@@ -271,7 +271,7 @@ export function ProductPreviewSection() {
 
             {/* ══ PHONE ══ */}
             <div
-              className="group w-[180px] shrink-0 self-center transform-gpu transition-transform duration-500 ease-out hover:scale-[1.05] sm:w-[220px] md:absolute md:-right-4 md:top-12 md:z-20 md:[transform:rotateZ(8deg)_translateY(1.5rem)]"
+              className="group w-[200px] shrink-0 self-center transform-gpu transition-transform duration-500 ease-out hover:scale-[1.05] sm:w-[220px] md:absolute md:-right-4 md:top-12 md:z-20 md:[transform:rotateZ(8deg)_translateY(1.5rem)]"
             >
               {/* Ground shadow */}
               <div aria-hidden className="pointer-events-none absolute inset-x-4 -bottom-8 h-12 rounded-[50%] bg-black/50 blur-2xl" />
