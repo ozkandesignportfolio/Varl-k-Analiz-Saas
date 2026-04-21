@@ -1,6 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 /* ── Colorful brand icons ── */
 
@@ -161,23 +164,48 @@ export function HeroSection() {
           Kurulum gerektirmez · Dakikalar içinde hazır · Ücretsiz plan mevcut
         </p>
 
+        {/* CTA buttons */}
+        <div
+          className="flex w-full flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4"
+          style={heroEntrance(300)}
+        >
+          <Button
+            asChild
+            size="lg"
+            className="group h-12 w-full bg-primary px-8 text-[15px] font-semibold text-primary-foreground shadow-[0_12px_32px_-8px_rgba(16,239,181,0.4)] hover:bg-primary/90 sm:w-auto"
+          >
+            <Link href="/register">
+              Ücretsiz Kayıt Ol
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </Link>
+          </Button>
+          <Button
+            asChild
+            size="lg"
+            variant="outline"
+            className="h-12 w-full border-white/15 bg-white/[0.03] px-8 text-[15px] font-medium text-foreground backdrop-blur-sm hover:border-white/25 hover:bg-white/[0.06] sm:w-auto"
+          >
+            <Link href="#ozellikler">Özellikleri Keşfet</Link>
+          </Button>
+        </div>
+
         {/* Platform icon row */}
         <div
-          className="mt-8 flex flex-wrap justify-center gap-6"
-          style={heroEntrance(320)}
+          className="mt-6 grid w-full max-w-md grid-cols-3 gap-3 sm:mt-8 sm:flex sm:max-w-none sm:flex-wrap sm:justify-center sm:gap-6"
+          style={heroEntrance(380)}
         >
           {platformCards.map((card) => {
             const Icon = card.icon;
             return (
               <div
                 key={card.label}
-                className="flex h-44 w-44 flex-col items-center justify-center gap-2.5 rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-white/[0.15] hover:bg-white/[0.06]"
+                className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-3 py-5 backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-white/[0.15] hover:bg-white/[0.06] sm:h-44 sm:w-44 sm:gap-2.5 sm:px-0 sm:py-0"
               >
-                <div className={`mb-1 flex h-14 w-14 items-center justify-center rounded-2xl ring-1 ${card.iconBg} ${card.shadow}`}>
+                <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ring-1 sm:mb-1 sm:h-14 sm:w-14 ${card.iconBg} ${card.shadow}`}>
                   <Icon />
                 </div>
-                <span className="text-sm font-semibold text-foreground">{card.label}</span>
-                <span className="px-3 text-center text-[11px] leading-snug text-muted-foreground">{card.sub}</span>
+                <span className="text-xs font-semibold text-foreground sm:text-sm">{card.label}</span>
+                <span className="hidden px-3 text-center text-[11px] leading-snug text-muted-foreground sm:block">{card.sub}</span>
               </div>
             );
           })}
