@@ -15,10 +15,10 @@ const faqItems: FaqItem[] = [
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Varlıklarınızla ilgili dağınık bilgiyi tek bir kontrol merkezinde toplar; bakım, garanti, maliyet ve belge yönetimini otomatikleştirir.
+          Fiziksel ve dijital varlıklarınızın bakım, garanti, maliyet ve belge yönetimini tek merkezde birleştirir; &quot;bir sonraki adım neydi?&quot; sorusunu ortadan kaldırır.
         </p>
         <p>
-          Çoğu kişi ve işletme, sahip olduğu ekipmanların bakım tarihlerini kaçırır, garanti sürelerini fark edemez, abonelik ödemelerini kontrol edemez. Sonuç: gereksiz harcamalar, beklenmedik arızalar ve kaybolan belgeler. Assetly bu dağınıklığı tek bir panelde çözmenize yardımcı olur — ne zaman aksiyon almanız gerektiğini gösterir, siz hatırlamak zorunda kalmazsınız.
+          Çoğu işletme ve birey, ekipman bakım tarihlerini kaçırır, garanti sürelerini fark edemez, abonelik ödemelerini kontrol edemez. Sonuç: kaçırılan garanti başvuruları, gereksiz harcamalar, beklenmedik arızalar ve kaybolan belgeler. Assetly bu kaçışları önler — ne zaman aksiyon almanız gerektiğini gösterir, siz hatırlamak zorunda kalmazsınız.
         </p>
       </>
     ),
@@ -28,11 +28,15 @@ const faqItems: FaqItem[] = [
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Evindeki beyaz eşyayı takip etmek isteyen bireylerden, yüzlerce ekipmanı yöneten işletmelere kadar herkes için.
+          Bireysel kullanıcılardan, onlarca ekipmanı sahada tutan işletmelere kadar herkes için.
         </p>
-        <p>
-          Tipik kullanıcılarımız: kendi ev ve ofis ekipmanlarını düzenli tutmak isteyen bireyler, araç filolarını ve sahada kullanılan cihazları yöneten küçük-orta işletmeler, abonelik ve lisans giderlerini kontrol altında tutmak isteyen freelancer&apos;lar ve startup&apos;lar. Ortak nokta: &quot;Elimdeki şeylerin durumunu, maliyetini ve bir sonraki adımını bilmek istiyorum.&quot;
-        </p>
+        <p>Tipik kullanıcı profillerimiz:</p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>Ev ve ofis ekipmanlarını düzenli tutmak isteyen bireyler.</li>
+          <li>Araç filoları, makine parkurları ve saha cihazlarını takip eden KOBİ&apos;ler.</li>
+          <li>Abonelik ve lisans maliyetlerini kontrol altında tutan freelancer&apos;lar ve startup&apos;lar.</li>
+        </ul>
+        <p>Ortak nokta: &quot;Elimdeki şeylerin durumunu, maliyetini ve bir sonraki adımını bilmek istiyorum.&quot;</p>
       </>
     ),
   },
@@ -41,10 +45,13 @@ const faqItems: FaqItem[] = [
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Tablolar veri depolar ama sizi uyarmaz, analiz etmez, otomatik aksiyon almaz.
+          Çünkü tablolar veri depolar; ama sizi uyarmaz, öncelik belirlemez ve aksiyon aldırmaz.
         </p>
         <p>
-          Excel&apos;de bir bakım tarihini yazabilirsiniz — ama o tarih geldiğinde sizi kim uyaracak? Notion&apos;da bir garanti belgesini saklayabilirsiniz — ama süre dolmadan önce kim hatırlatacak? Assetly verinin ötesine geçer: bakım zamanı geldiğinde bildirim gönderir, garanti bitiş tarihini izler ve hangi varlığınızın dikkat gerektirdiğini gösterir. Tablo bir araçtır; Assetly bir sistemdir.
+          Excel&apos;de bir bakım tarihi yazabilirsiniz — ama o tarih geldiğinde size kim hatırlatacak? Notion&apos;da bir garanti belgesi saklayabilirsiniz — ama süre dolmadan önce kim uyaracak?
+        </p>
+        <p>
+          Assetly yalnızca kayıt tutmaz: bakım zamanı geldiğinde bildirim gönderir, garanti bitişini izler ve hangi varlığınızın acil dikkat gerektirdiğini skorlayarak gösterir. Tablo bir araçtır; Assetly bir işletme sistemidir.
         </p>
       </>
     ),
@@ -54,10 +61,13 @@ const faqItems: FaqItem[] = [
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Varlığınızı ekleyin, detaylarını girin, gerisini Assetly yönetsin.
+          Varlığınızı ekleyin, kritik detayları girin, gerisini Assetly yönetsin.
         </p>
         <p>
-          Bir varlık eklediğinizde; satın alma tarihi, garanti süresi, bakım periyodu, maliyet ve ilgili belgeleri kaydedersiniz. Assetly bu verileri kullanarak otomatik bakım takvimi oluşturur, garanti bitiş uyarıları planlar ve varlığın genel sağlık skorunu hesaplar. Her servis kaydı, belge yüklemesi veya durum değişikliği varlığın yaşam döngüsüne eklenir. Örnek: klima cihazınızı eklediniz, 6 aylık bakım periyodu tanımladınız — Assetly her bakım zamanı geldiğinde sizi bilgilendirir, siz de servis kaydını girerek geçmişi güncel tutarsınız.
+          Bir varlık kaydettiğinizde satın alma tarihi, garanti süresi, bakım periyodu ve maliyeti tanımlarsınız. Assetly bu verilerden otomatik bakım takvimi oluşturur, garanti bitiş uyarıları planlar ve varlığın genel sağlık skorunu hesaplar.
+        </p>
+        <p>
+          Her servis kaydı, belge yüklemesi veya durum değişikliği varlığın yaşam döngüsüne eklenir. Örnek akış: klima cihazınızı eklediniz, 6 aylık bakım periyodu belirlediniz. Sistem her bakım zamanı geldiğinde sizi uyarır; siz servis kaydını girerek geçmişi güncel tutarsınız. Skor otomatik olarak yeniden hesaplanır.
         </p>
       </>
     ),
@@ -67,10 +77,10 @@ const faqItems: FaqItem[] = [
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Fiziksel veya dijital, fark etmez — değer taşıyan ve takip gerektiren her şey.
+          Fiziksel veya dijital — değer taşıyan ve takip gerektiren her şey.
         </p>
         <p>
-          Beyaz eşya, elektronik cihazlar, araçlar, ofis ekipmanları, endüstriyel makineler, yazılım lisansları, dijital abonelikler, sigorta poliçeleri, kira sözleşmeleri… Assetly&apos;nin esnek yapısı, herhangi bir varlık türünü özel kategoriler ve alanlarla tanımlamanıza olanak tanır. Takip edilmesi gereken bir değer varsa, Assetly onu yönetir.
+          Beyaz eşya, elektronik cihazlar, araçlar, ofis ve endüstriyel ekipmanlar. Yazılım lisansları, SaaS abonelikleri, sigorta poliçeleri, kira sözleşmeleri. Assetly&apos;nin esnek kategori yapısı sayesinde her tür varlığı özel alanlarla tanımlayabilirsiniz.
         </p>
       </>
     ),
@@ -80,10 +90,13 @@ const faqItems: FaqItem[] = [
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Evet. Verileriniz endüstri standardı güvenlik önlemleriyle korunur ve yalnızca size aittir.
+          Verileriniz şifreli iletişim ve veritabanı düzeyinde izolasyonla korunur; yalnızca size aittir.
         </p>
         <p>
-          Tüm veri iletişimi TLS ile şifrelenir ve her kullanıcının verileri veritabanı düzeyinde birbirinden izole edilmiştir. Belgeleriniz özel depolama alanında, yalnızca sizin erişebileceğiniz şekilde saklanır. Üçüncü taraflarla izniniz olmadan veri paylaşımı yapılmaz.
+          Tüm veri iletişimi TLS 1.3 ile şifrelenir. Her kullanıcının verileri veritabanında birbirinden izole edilmiştir. Belgeleriniz özel depolama alanında tutulur ve yalnızca sizin hesabınız üzerinden erişilebilir.
+        </p>
+        <p>
+          Üçüncü taraflarla izniniz olmadan veri paylaşımı yapılmaz. Güvenlik mimerinin merkezinde yer alır; bu alanda hiçbir zaman gevşeme olmaz.
         </p>
       </>
     ),
@@ -93,10 +106,13 @@ const faqItems: FaqItem[] = [
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Assetly kritik tarihleri ve eşikleri izler; harekete geçmeniz gerektiğinde sizi proaktif olarak bilgilendirir.
+          Assetly kritik tarihleri ve eşikleri sürekli izler; harekete geçmeniz gerektiğinde proaktif olarak uyarır.
         </p>
         <p>
-          Bakım periyotları, garanti bitiş tarihleri, abonelik yenileme zamanları ve belge son kullanma tarihleri sürekli takip edilir. Bir varlığa 6 aylık bakım periyodu tanımladıysanız, her döngü sonunda bildirim alırsınız. Garanti bitmeden önce uyarılırsınız. Abonelik yenilenmeden önce haberdar edilirsiniz. Amaç, kritik tarihlerin arkanızda kalmamasıdır.
+          Bakım periyotları, garanti bitişleri, abonelik yenilemeleri ve belge son kullanma tarihleri otomatik takip edilir.
+        </p>
+        <p>
+          Örnek: bir varlığa 6 aylık bakım periyodu tanımladıysanız, her döngü sonunda bildirim alırsınız. Garanti bitmeden önce uyarılırsınız. Abonelik yenilenmeden önce haberdar edilirsiniz. Amaç, kritik tarihlerin arkanızdan kaymasını önlemek ve kaçırılan fırsatların maliyetini ortadan kaldırmaktır.
         </p>
       </>
     ),
@@ -106,10 +122,13 @@ const faqItems: FaqItem[] = [
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Her varlığınıza durumunu özetleyen bir sağlık skoru atanır — böylece hangisine öncelik vermeniz gerektiğini anında görürsünüz.
+          Her varlığınıza bir sağlık skoru atanır — böylece &quot;şimdi hangisine bakmalıyım?&quot; sorusuna saniyeler içinde cevap alırsınız.
         </p>
         <p>
-          Skor; bakım düzeni, garanti durumu, yaş, servis geçmişi ve kullanıcı girdileri dikkate alınarak hesaplanır. Düzenli bakımı yapılan, garantisi devam eden bir varlık yüksek skor alır; bakımı gecikmiş, garantisi bitmiş bir varlık düşük skor alır. 3 varlık yönetirken gereksiz görünebilir — ama 30 veya 300 varlık yönettiğinizde &quot;ilk hangisine bakmalıyım?&quot; sorusunun cevabını saniyeler içinde verir.
+          Skor; bakım düzeni, garanti durumu, yaş, servis geçmişi ve kullanıcı girdileri dikkate alınarak hesaplanır. Düzenli bakımlı, garantisi devam eden varlık yüksek skor alır. Bakımı gecikmiş veya garantisi bitmiş varlık düşük skor alır.
+        </p>
+        <p>
+          3 varlıkla sezgisel karar verebilirsiniz. Ancak 30 veya 300 varlık olduğunda insan hafızası ve hisleri yanıltır. Skor sistemi, karar verme sürecinizi bir veri motoruna dönüştürür; önceliği belirsizlikten çıkarır, aksiyona çevirir.
         </p>
       </>
     ),
@@ -119,10 +138,13 @@ const faqItems: FaqItem[] = [
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Evet. Fiziksel varlıklar kadar dijital abonelikleri ve tekrarlayan giderleri de tek panelde yönetebilirsiniz.
+          Evet. Fiziksel varlıklar kadar dijital abonelikleri ve tekrarlayan giderleri de tek panelde izleyebilirsiniz.
         </p>
         <p>
-          Yazılım lisansları, SaaS abonelikleri, sigorta poliçeleri veya periyodik bakım sözleşmeleri — hepsini varlık olarak tanımlayabilir, maliyetlerini izleyebilir ve yenileme tarihlerini otomatik takip edebilirsiniz. Fatura ve belgeleri ilgili varlığa ekleyerek &quot;bu varlığa toplam ne harcadım?&quot; sorusuna tek tıkla cevap alırsınız.
+          Yazılım lisansları, SaaS abonelikleri, sigorta poliçeleri ve periyodik bakım sözleşmeleri gibi tekrarlayan maliyetleri varlık olarak tanımlayabilirsiniz.
+        </p>
+        <p>
+          Maliyetleri izler, yenileme tarihlerini otomatik takip edersiniz. Fatura ve belgeleri ilgili varlığa ekleyerek &quot;bu varlığa toplam ne harcadım?&quot; sorusuna tek tıkla ulaşırsınız.
         </p>
       </>
     ),
@@ -132,10 +154,13 @@ const faqItems: FaqItem[] = [
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Assetly sizi uyarır — unutmak, sistemin tasarlandığı problemlerden biridir.
+          Assetly eksikliği tespit eder ve sizi uyarır — unutmak, sistemin çözmeyi hedeflediği temel sorunlardan biridir.
         </p>
         <p>
-          Bakım kaydını girmediniz mi? Sistem, planlanan tarihi geçtiğinde sizi bilgilendirir ve varlığın skoru otomatik olarak düşer. Garanti belgesini yüklemediniz mi? Eksik belge uyarısı görürsünüz. Assetly pasif bir kayıt defteri değildir — veri eksikliğini tespit eder ve dikkatinizi çeker. Amaç, hatırlamak zorunda kalmadan her şeyin kontrol altında olmasıdır.
+          Bakım kaydını girmediyseniz, planlanan tarih geçtiğinde sistem sizi bilgilendirir ve ilgili varlığın skoru otomatik olarak düşer.
+        </p>
+        <p>
+          Garanti belgesini yüklemediyseniz eksik belge uyarısı alırsınız. Assetly pasif bir kayıt defteri değildir. Veri eksikliğini ve gecikmeyi tespit ederek dikkatinizi çeker. Hatırlamak zorunda kalmadan kontrolü elinizde tutmanızı sağlar.
         </p>
       </>
     ),
@@ -145,10 +170,13 @@ const faqItems: FaqItem[] = [
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Ücretsiz plan Assetly&apos;yi tanımanız içindir. Premium, gerçek kontrolü elinize almanız için.
+          Ücretsiz plan, Assetly&apos;yi tanımak içindir. Premium, maliyetli kaçırılan fırsatları ve gereksiz harcamaları önleyerek kendini amorti eder.
         </p>
         <p>
-          Ücretsiz planda temel varlık takibi yapabilirsiniz. Ancak sınırsız varlık, gelişmiş bildirimler, detaylı raporlama, belge kasası, skor analizi ve öncelikli destek gibi özellikler Premium&apos;a özeldir. Eğer 3&apos;ten fazla varlığınız varsa, bakım takvimlerini otomatik yönetmek istiyorsanız veya belgelerinizi güvenli bir kasada saklamak istiyorsanız — Premium, kaçırılan bakımları ve gereksiz harcamaları önlemenize yardımcı olarak kendini kısa sürede amorti edebilir.
+          Ücretsiz planda temel varlık takibi yapabilirsiniz. Ancak sınırsız varlık, gelişmiş bildirimler, detaylı raporlama, belge kasası, skor analizi ve öncelikli destek Premium&apos;a özeldir.
+        </p>
+        <p>
+          3&apos;ten fazla varlığınız varsa, bakım takvimlerini otomatik yönetmek istiyorsanız veya belgelerinizi merkezi ve güvenli bir kasada tutmak istiyorsanız Premium, idare etme maliyetinden çok daha düşük bir yatırımdır. Kaçırılan bir bakım veya fark edilmeyen bir garanti bitişi, genellikle yıllık ücretin çok üzerinde maliyete yol açar.
         </p>
       </>
     ),
@@ -158,10 +186,10 @@ const faqItems: FaqItem[] = [
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Kurulum gerekmez. Hesap oluşturun, ilk varlığınızı ekleyin — 2 dakikada aktif olun.
+          Kurulum gerekmez. Hesap oluşturun, ilk varlığınızı ekleyin; iki dakika içinde aktif durumdasınız.
         </p>
         <p>
-          Assetly tamamen bulut tabanlıdır; yazılım indirmenize, sunucu kurmanıza veya teknik konfigürasyon yapmanıza gerek yoktur. Kayıt olduktan sonra ilk varlığınızı hemen ekleyebilir, bakım periyodu tanımlayabilir ve belge yükleyebilirsiniz. Platform sizi adım adım yönlendirir.
+          Assetly tamamen bulut tabanlıdır. Yazılım indirmenize, sunucu kurmanıza veya teknik yapılandırma yapmanıza gerek yoktur. Kayıt olduktan sonra ilk varlığınızı hemen ekleyebilir, bakım periyodu tanımlayabilir ve belge yükleyebilirsiniz. Platform sizi adım adım yönlendirir.
         </p>
       </>
     ),
@@ -174,7 +202,13 @@ const faqItems: FaqItem[] = [
           Eğer sahip olduğunuz herhangi bir şeyin bakım tarihini, garanti süresini veya maliyetini kafanızda tutmaya çalışıyorsanız — muhtemelen evet.
         </p>
         <p>
-          Çoğu kişi &quot;idare ediyorum&quot; der — ta ki klima garantisi fark edilmeden bitene, araç bakımı 3 ay gecikene veya unutulan bir abonelik aylarca ödemeye devam edene kadar. Assetly, &quot;her şey kontrol altında&quot; hissini gerçeğe dönüştürür. Bir tane bile varlığınız varsa ve onun bakım tarihi, garanti süresi veya maliyeti sizin için önemliyse, Assetly bu yükü hafifletebilir.
+          &quot;Şimdilik idare ediyorum&quot; demek, genellikle sorun büyüyene kadar işe yarar.
+        </p>
+        <p>
+          Klima garantisi fark edilmeden biter. Araç bakımı 3 ay gecikir, aşınma artar. Unutulan bir abonelik aylarca para çekmeye devam eder. Bir garanti belgesi kaybolur ve değiştirme maliyeti sizden çıkar.
+        </p>
+        <p>
+          Assetly, bu gizli stresi ve potansiyel kayıpları ortadan kaldırır. Tek bir varlığınız bile olsa, onun durumunu ve maliyetini net görmek, &quot;her şey yolunda&quot; hissini somut veriye dönüştürür.
         </p>
       </>
     ),
@@ -184,10 +218,10 @@ const faqItems: FaqItem[] = [
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Evet. Assetly mobil uyumlu olarak tasarlanmıştır — telefon veya tabletten tam işlevsel erişim sağlar.
+          Evet. Assetly, telefon ve tablet dahil tüm cihazlarda tam işlevsel olarak tasarlanmıştır.
         </p>
         <p>
-          Sahada bir ekipmanın bakım kaydını girmek, garanti belgesini fotoğraflamak veya anlık varlık durumunu kontrol etmek istediğinizde mobil tarayıcınızdan tüm işlemleri gerçekleştirebilirsiniz. Arayüz, küçük ekranlarda da hızlı ve konforlu kullanım için optimize edilmiştir.
+          Sahada ekipman bakım kaydı girmek, garanti belgesini fotoğraflamak veya anlık durum kontrolü yapmak için mobil tarayıcınızdan tüm işlemleri gerçekleştirebilirsiniz. Arayüz, küçük ekranlarda hızlı ve konforlu kullanım için optimize edilmiştir.
         </p>
       </>
     ),
