@@ -10,170 +10,205 @@ interface FaqItemType {
 
 const faqItems: FaqItemType[] = [
   {
-    question: "Assetly tam olarak hangi problemi çözer?",
+    question: "Ücretsiz plan ne içerir?",
     answer: (
       <>
         <p className="font-medium text-slate-100">
-          Varlıklarınızla ilgili dağınık bilgiyi tek bir kontrol merkezinde toplar; bakım, garanti, maliyet ve belge yönetimini otomatikleştirir.
+          Ücretsiz planda en fazla 3 varlık ekleyebilir ve temel takip özelliklerini kullanabilirsiniz.
         </p>
         <p>
-          Çoğu kişi ve işletme, sahip olduğu ekipmanların bakım tarihlerini kaçırır, garanti sürelerini fark edemez, abonelik ödemelerini kontrol edemez. Sonuç: gereksiz harcamalar, beklenmedik arızalar ve kaybolan belgeler. Assetly bu kaosun tamamını tek bir akıllı panelde çözer — ne zaman aksiyon almanız gerektiğini size söyler, siz hatırlamak zorunda kalmazsınız.
+          Bu limit, platformu tanımanız ve temel özellikleri deneyimlemeniz için tasarlanmıştır.
+          Sınırsız varlık, gelişmiş bildirimler, detaylı raporlama ve belge kasası gibi özellikler
+          Premium plana dahildir.
         </p>
       </>
     ),
   },
   {
-    question: "Assetly kimler için tasarlandı?",
-    answer: (
-      <>
-        <p className="font-medium text-slate-100">
-          Evindeki beyaz eşyayı takip etmek isteyen bireylerden, yüzlerce ekipmanı yöneten işletmelere kadar herkes için.
-        </p>
-        <p>
-          Tipik kullanıcılarımız: kendi ev ve ofis ekipmanlarını düzenli tutmak isteyen bireyler, araç filolarını ve sahada kullanılan cihazları yöneten küçük-orta işletmeler, abonelik ve lisans giderlerini kontrol altında tutmak isteyen freelancer&apos;lar ve startup&apos;lar. Ortak nokta: &quot;Elimdeki şeylerin durumunu, maliyetini ve bir sonraki adımını bilmek istiyorum.&quot;
-        </p>
-      </>
-    ),
-  },
-  {
-    question: "Neden Excel tablosu veya Notion yerine Assetly kullanmalıyım?",
-    answer: (
-      <>
-        <p className="font-medium text-slate-100">
-          Tablolar veri depolar ama sizi uyarmaz, analiz etmez, otomatik aksiyon almaz.
-        </p>
-        <p>
-          Excel&apos;de bir bakım tarihini yazabilirsiniz — ama o tarih geldiğinde sizi kim uyaracak? Notion&apos;da bir garanti belgesini saklayabilirsiniz — ama süre dolmadan 30 gün önce kim hatırlatacak? Assetly verinin ötesine geçer: bakım zamanı geldiğinde bildirim gönderir, garanti bitiş tarihini izler, varlıklarınızın sağlık skorunu hesaplar ve &quot;şu an dikkat etmeniz gereken 3 şey var&quot; diyebilir. Tablo bir araçtır; Assetly bir sistemdir.
-        </p>
-      </>
-    ),
-  },
-  {
-    question: "Varlık takibi pratikte nasıl çalışır?",
-    answer: (
-      <>
-        <p className="font-medium text-slate-100">
-          Varlığınızı ekleyin, detaylarını girin, gerisini Assetly yönetsin.
-        </p>
-        <p>
-          Bir varlık eklediğinizde; satın alma tarihi, garanti süresi, bakım periyodu, maliyet ve ilgili belgeleri kaydedersiniz. Assetly bu verileri kullanarak otomatik bakım takvimi oluşturur, garanti bitiş uyarıları planlar ve varlığın genel sağlık skorunu hesaplar. Her servis kaydı, belge yüklemesi veya durum değişikliği varlığın yaşam döngüsüne eklenir.
-        </p>
-      </>
-    ),
-  },
-  {
-    question: "Hangi tür varlıkları takip edebilirim?",
-    answer: (
-      <>
-        <p className="font-medium text-slate-100">
-          Fiziksel veya dijital, fark etmez — değer taşıyan ve takip gerektiren her şey.
-        </p>
-        <p>
-          Beyaz eşya, elektronik cihazlar, araçlar, ofis ekipmanları, endüstriyel makineler, yazılım lisansları, dijital abonelikler, sigorta poliçeleri, kira sözleşmeleri… Assetly&apos;nin esnek yapısı, herhangi bir varlık türünü özel kategoriler ve alanlarla tanımlamanıza olanak tanır.
-        </p>
-      </>
-    ),
-  },
-  {
-    question: "Verilerim güvende mi?",
-    answer: (
-      <>
-        <p className="font-medium text-slate-100">
-          Evet. Verileriniz endüstri standardı güvenlik altyapısıyla korunur ve yalnızca size aittir.
-        </p>
-        <p>
-          Tüm veri iletişimi TLS ile şifrelenir, veritabanında satır düzeyinde güvenlik politikaları (RLS) aktiftir ve her kullanıcının verileri birbirinden tam izole edilmiştir. Belgeleriniz özel depolama alanında, yalnızca sizin erişebileceğiniz şekilde saklanır. Hiçbir üçüncü taraf, izniniz olmadan verilerinize erişemez.
-        </p>
-      </>
-    ),
-  },
-  {
-    question: "Hatırlatmalar ve otomasyonlar nasıl çalışır?",
-    answer: (
-      <>
-        <p className="font-medium text-slate-100">
-          Assetly kritik tarihleri ve eşikleri izler; harekete geçmeniz gerektiğinde sizi proaktif olarak bilgilendirir.
-        </p>
-        <p>
-          Bakım periyotları, garanti bitiş tarihleri, abonelik yenileme zamanları ve belge son kullanma tarihleri sürekli takip edilir. Bir varlığa 6 aylık bakım periyodu tanımladıysanız, her döngü sonunda bildirim alırsınız. Garanti bitmeden önce uyarılırsınız. Hiçbir kritik tarihi hatırlamanız gerekmez.
-        </p>
-      </>
-    ),
-  },
-  {
-    question: "Varlık skor sistemi nedir ve neden önemli?",
-    answer: (
-      <>
-        <p className="font-medium text-slate-100">
-          Her varlığınıza durumunu özetleyen bir sağlık skoru atanır — böylece hangisine öncelik vermeniz gerektiğini anında görürsünüz.
-        </p>
-        <p>
-          Skor; bakım düzeni, garanti durumu, yaş, servis geçmişi ve kullanıcı girdileri dikkate alınarak hesaplanır. Düzenli bakımı yapılan, garantisi devam eden bir varlık yüksek skor alır; bakımı gecikmiş, garantisi bitmiş bir varlık düşük skor alır. 3 varlık yönetirken gereksiz görünebilir — ama 30 veya 300 varlık yönettiğinizde &quot;ilk hangisine bakmalıyım?&quot; sorusunun cevabını saniyeler içinde verir.
-        </p>
-      </>
-    ),
-  },
-  {
-    question: "Abonelik ve faturaları varlıklarla birlikte yönetebilir miyim?",
-    answer: (
-      <>
-        <p className="font-medium text-slate-100">
-          Evet. Fiziksel varlıklar kadar dijital abonelikleri ve tekrarlayan giderleri de tek panelde yönetebilirsiniz.
-        </p>
-        <p>
-          Yazılım lisansları, SaaS abonelikleri, sigorta poliçeleri veya periyodik bakım sözleşmeleri — hepsini varlık olarak tanımlayabilir, maliyetlerini izleyebilir ve yenileme tarihlerini otomatik takip edebilirsiniz.
-        </p>
-      </>
-    ),
-  },
-  {
-    question: "Bir şeyi güncellemeyi unutursam ne olur?",
-    answer: (
-      <>
-        <p className="font-medium text-slate-100">
-          Assetly sizi uyarır — unutmak, sistemin tasarlandığı problemlerden biridir.
-        </p>
-        <p>
-          Bakım kaydını girmediniz mi? Sistem, planlanan tarihi geçtiğinde sizi bilgilendirir ve varlığın skor puanı otomatik olarak düşer. Garanti belgesini yüklemediniz mi? Eksik belge uyarısı görürsünüz. Assetly pasif bir kayıt defteri değildir — veri eksikliğini tespit eder ve dikkatinizi çeker.
-        </p>
-      </>
-    ),
-  },
-  {
-    question: "Ücretsiz planda kaç varlık ekleyebilirim?",
-    answer: (
-      <>
-        <p className="font-medium text-slate-100">
-          Ücretsiz planda en fazla 3 varlık ekleyebilirsiniz.
-        </p>
-        <p>
-          Bu limit, platformu tanımanız ve temel özellikleri deneyimlemeniz için tasarlanmıştır. Daha fazla varlık, gelişmiş bildirimler, detaylı raporlama ve belge kasası için Premium plana geçiş yapabilirsiniz.
-        </p>
-      </>
-    ),
-  },
-  {
-    question: `Premium plan ne kadara mal olur?`,
+    question: "Premium plan ücreti nedir?",
     answer: (
       <>
         <p className="font-medium text-slate-100">
           Premium plan ücreti {PREMIUM_MONTHLY_PRICE_LABEL}/ay olarak uygulanır ve aylık döngüyle faturalandırılır.
         </p>
         <p>
-          Premium ile sınırsız varlık takibi, gelişmiş otomasyon, skor analizi, belge kasası ve öncelikli desteğe erişirsiniz. Tasarruf ettiğiniz zaman ve önlediğiniz hatalar düşünüldüğünde, yatırımın geri dönüşü ilk aydan itibaren hissedilir.
+          Premium ile sınırsız varlık takibi, gelişmiş bildirimler, skor analizi, belge kasası ve
+          öncelikli desteğe erişirsiniz. Fiyatlandırma detaylarına hesap ayarları veya fiyatlandırma
+          sayfasından ulaşabilirsiniz.
         </p>
       </>
     ),
   },
   {
-    question: "Aboneliğimi iptal edersem verilerim hemen silinir mi?",
+    question: "Hangi ödeme yöntemlerini kabul ediyorsunuz?",
     answer: (
       <>
         <p className="font-medium text-slate-100">
-          Hayır. İptal işlemi sonraki yenilemeyi durdurur; verileriniz anlık olarak silinmez.
+          Ödemeler Stripe altyapısı üzerinden güvenli şekilde işlenir.
         </p>
         <p>
-          Veri saklama ve silme süreçleri yasal yükümlülükler ile veri silme politikası kapsamında yürütülür. İptal sonrasında mevcut dönem sonuna kadar Premium özelliklerine erişmeye devam edersiniz.
+          Kredi kartı ve banka kartı ile ödeme yapabilirsiniz. Tüm ödeme bilgileri Assetly
+          sunucularında saklanmaz; doğrudan Stripe tarafından PCI DSS standartlarına uygun
+          olarak işlenir.
+        </p>
+      </>
+    ),
+  },
+  {
+    question: "Aboneliğimi nasıl iptal ederim?",
+    answer: (
+      <>
+        <p className="font-medium text-slate-100">
+          Aboneliğinizi hesap ayarlarından istediğiniz zaman iptal edebilirsiniz.
+        </p>
+        <p>
+          İptal işlemi bir sonraki yenilemeyi durdurur. Mevcut faturalandırma dönemi sonuna kadar
+          Premium özelliklerine erişmeye devam edersiniz. İptal sonrasında hesabınız otomatik olarak
+          ücretsiz plana döner.
+        </p>
+      </>
+    ),
+  },
+  {
+    question: "İptal sonrasında verilerime ne olur?",
+    answer: (
+      <>
+        <p className="font-medium text-slate-100">
+          Verileriniz iptal sonrasında anlık olarak silinmez.
+        </p>
+        <p>
+          Hesabınız ücretsiz plana döndüğünde mevcut verileriniz korunur; ancak ücretsiz plan
+          limitlerini aşan özellikler kısıtlanır. Veri saklama ve silme süreçleri yasal yükümlülükler
+          ile veri silme politikamız kapsamında yürütülür.
+        </p>
+      </>
+    ),
+  },
+  {
+    question: "İade politikanız nedir?",
+    answer: (
+      <>
+        <p className="font-medium text-slate-100">
+          Abonelik ücretleri için standart iade politikamız geçerlidir.
+        </p>
+        <p>
+          Detaylı iade koşulları için hizmet şartları sayfamızı inceleyebilir veya destek ekibimize
+          başvurabilirsiniz. İptal işlemi bir sonraki dönemden itibaren faturalandırmayı durdurur.
+        </p>
+      </>
+    ),
+  },
+  {
+    question: "Verilerim nerede ve nasıl saklanır?",
+    answer: (
+      <>
+        <p className="font-medium text-slate-100">
+          Verileriniz endüstri standardı güvenlik önlemleriyle korunan bulut altyapısında saklanır.
+        </p>
+        <p>
+          Tüm veri iletişimi TLS ile şifrelenir. Veritabanında her kullanıcının verileri birbirinden
+          izole edilmiştir. Belgeleriniz özel depolama alanında, yalnızca sizin erişebileceğiniz şekilde
+          saklanır. Üçüncü taraflarla izniniz olmadan veri paylaşımı yapılmaz.
+        </p>
+      </>
+    ),
+  },
+  {
+    question: "Hangi kişisel veriler toplanır?",
+    answer: (
+      <>
+        <p className="font-medium text-slate-100">
+          Hesap oluşturma ve hizmet sunumu için gerekli olan minimum düzeyde kişisel veri toplanır.
+        </p>
+        <p>
+          E-posta adresi, hesap tercihleri ve kullanım istatistikleri temel toplanan verilerdir.
+          Varlıklarınıza ait bilgiler yalnızca size hizmet sunmak amacıyla saklanır. Detaylı bilgi
+          için gizlilik politikamızı inceleyebilirsiniz.
+        </p>
+      </>
+    ),
+  },
+  {
+    question: "Verilerimi dışa aktarabilir miyim?",
+    answer: (
+      <>
+        <p className="font-medium text-slate-100">
+          Evet. Yetkili kullanıcılar varlık kayıtları ve bakım geçmişi için dışa aktarma işlemi yapabilir.
+        </p>
+        <p>
+          Dışa aktarma seçeneklerine hesap ayarlarından veya ilgili raporlama ekranlarından
+          erişebilirsiniz. Veri taşınabilirliği hakkınız gizlilik politikamız kapsamında
+          desteklenmektedir.
+        </p>
+      </>
+    ),
+  },
+  {
+    question: "Hesabımı kalıcı olarak silebilir miyim?",
+    answer: (
+      <>
+        <p className="font-medium text-slate-100">
+          Evet. Hesap silme talebinizi destek ekibimize iletebilirsiniz.
+        </p>
+        <p>
+          Hesap silindiğinde tüm kişisel verileriniz ve varlık kayıtlarınız kalıcı olarak kaldırılır.
+          Bu işlem geri alınamaz. Silme öncesinde verilerinizi dışa aktarmanızı öneririz.
+        </p>
+      </>
+    ),
+  },
+  {
+    question: "Belge kasası güvenli mi?",
+    answer: (
+      <>
+        <p className="font-medium text-slate-100">
+          Evet. Belgeler kullanıcı izolasyonu ve erişim kontrolleriyle korunur.
+        </p>
+        <p>
+          Her kullanıcının belgeleri özel depolama politikalarıyla ayrılmıştır. Dosyalara yalnızca
+          yetkili kullanıcılar erişebilir. Belge kasası Premium plana dahildir.
+        </p>
+      </>
+    ),
+  },
+  {
+    question: "Birden fazla kullanıcı aynı hesabı yönetebilir mi?",
+    answer: (
+      <>
+        <p className="font-medium text-slate-100">
+          Evet. Ekip üyeleri role göre davet edilebilir.
+        </p>
+        <p>
+          Görüntüleme, düzenleme ve yönetim yetkileri hesap yöneticisi tarafından kontrol edilir.
+          Hassas verilere yalnızca yetkili kişiler erişir.
+        </p>
+      </>
+    ),
+  },
+  {
+    question: "QR kod özelliği ne işe yarıyor?",
+    answer: (
+      <>
+        <p className="font-medium text-slate-100">
+          QR kodlar, ilgili varlık kartına hızlı erişim sağlar.
+        </p>
+        <p>
+          Saha ekipleri cihaz geçmişi, bakım durumu ve belge kayıtlarına tek taramayla ulaşabilir.
+          QR kod özelliği Premium plana dahildir.
+        </p>
+      </>
+    ),
+  },
+  {
+    question: "Fatura geçmişime nereden ulaşırım?",
+    answer: (
+      <>
+        <p className="font-medium text-slate-100">
+          Abonelik ve fatura kayıtlarına faturalama ekranından erişebilirsiniz.
+        </p>
+        <p>
+          Yetkili hesap sahipleri geçmiş dönem faturaları görüntüleyebilir ve indirebilir.
+          Faturalama işlemleri Stripe üzerinden yönetilir.
         </p>
       </>
     ),
@@ -186,7 +221,8 @@ const faqItems: FaqItemType[] = [
           Destek taleplerinizi hesap içinden veya assetly@gmail.com adresi üzerinden iletebilirsiniz.
         </p>
         <p>
-          Talep içeriğine hesap bilgilerinizi ve yaşadığınız senaryoyu eklemeniz çözüm sürecini hızlandırır. Premium kullanıcılar öncelikli destek kuyruğundan yararlanır.
+          Talep içeriğine hesap bilgilerinizi ve yaşadığınız senaryoyu eklemeniz çözüm sürecini
+          hızlandırır. Premium kullanıcılar öncelikli destek kuyruğundan yararlanır.
         </p>
       </>
     ),
@@ -195,18 +231,18 @@ const faqItems: FaqItemType[] = [
 
 export const metadata: Metadata = {
   title: "SSS | Assetly",
-  description: "Assetly hakkında en çok sorulan sorular: güvenlik, planlar, veri yönetimi, otomasyon ve platform kullanımı.",
+  description: "Assetly hesap yönetimi, planlar, faturalama, güvenlik ve veri politikaları hakkında sık sorulan sorular.",
 };
 
 export default function FaqPage() {
   return (
     <article className="space-y-10">
       <header className="space-y-4 border-b border-white/10 pb-8">
-        <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Assetly SSS</p>
+        <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Assetly Yardım</p>
         <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Sık Sorulan Sorular</h1>
         <p className="text-sm leading-7 text-slate-300">
-          Karar vermeden önce bilmeniz gereken her şey — planlar, güvenlik, otomasyon, veri yönetimi ve platform kullanımı
-          hakkında açık yanıtlar.
+          Hesap yönetimi, planlar, faturalama, güvenlik ve veri politikaları hakkında
+          açık yanıtlar.
         </p>
       </header>
 
