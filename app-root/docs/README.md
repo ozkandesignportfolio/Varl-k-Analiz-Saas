@@ -1,4 +1,4 @@
-# AssetCare Docs
+# Assetly Docs
 
 Bu klasor, repo icinde dogrulanabilen urun, mimari, guvenlik, operasyon ve kurulum notlarini toplar.
 
