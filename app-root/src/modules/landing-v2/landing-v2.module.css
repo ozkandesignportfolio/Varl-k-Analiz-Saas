@@ -432,6 +432,7 @@
  * Browsers without support treat these properties as no-ops.
  */
 .scope :global(#ozellikler),
+.scope :global(#faq),
 .scope :global(#bildirimler),
 .scope :global(#abonelik),
 .scope :global(#fatura),

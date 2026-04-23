@@ -3,6 +3,7 @@ import { AbonelikSection } from "@/modules/landing-v2/components/abonelik-sectio
 import { AnimatedBackground } from "@/modules/landing-v2/components/AnimatedBackground";
 import { BildirimSection } from "@/modules/landing-v2/components/bildirim-section";
 import { FaturaSection } from "@/modules/landing-v2/components/fatura-section";
+import { FaqSection } from "@/modules/landing-v2/components/faq-section";
 import { FeaturesSection } from "@/modules/landing-v2/components/features-section";
 import { Footer } from "@/modules/landing-v2/components/footer";
 import { HeroSection } from "@/modules/landing-v2/components/hero-section";
@@ -59,6 +60,7 @@ export function LandingV2Page() {
         <Navbar />
         <HeroSection />
         <FeaturesSection />
+        <FaqSection />
         <ProductPreviewSection />
         <BildirimSection />
         <AbonelikSection />
