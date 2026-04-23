@@ -122,6 +122,14 @@ export function HeroSection() {
         className="pointer-events-none absolute left-1/2 top-[20%] -z-10 h-[600px] w-[900px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(ellipse,rgba(16,239,181,0.06)_0%,rgba(44,247,255,0.03)_40%,transparent_70%)] blur-[80px]"
       />
 
+      {/* Animated background blobs — CSS-only, low opacity + blur for perf */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div className="animate-blob absolute -left-20 top-[10%] h-72 w-72 rounded-full bg-emerald-500/[0.12] blur-3xl" />
+        <div className="animate-blob-slow absolute -right-16 top-[20%] h-80 w-80 rounded-full bg-indigo-500/[0.10] blur-3xl" style={{ animationDelay: "-4s" }} />
+        <div className="animate-blob absolute bottom-[5%] left-[30%] h-64 w-64 rounded-full bg-purple-500/[0.10] blur-3xl" style={{ animationDelay: "-8s" }} />
+        <div className="animate-float-slow absolute right-[15%] top-[5%] h-56 w-56 rounded-full bg-cyan-400/[0.08] blur-3xl" style={{ animationDelay: "-2s" }} />
+      </div>
+
       <div className="relative z-10 mx-auto flex max-w-6xl flex-col items-center gap-6 px-6 text-center">
         {/* Pill badge */}
         <div
