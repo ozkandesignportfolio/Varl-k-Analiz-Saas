@@ -7,30 +7,16 @@ import { enforceRateLimit, getRequestIp } from "@/lib/api/rate-limit";
 import { PREMIUM_MONTHLY_PRICE_KURUS } from "@/lib/plans/pricing";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
 import { getSupabaseAdmin } from "@/lib/services/supabase-admin";
+import { getStripeClient } from "@/lib/services/stripe";
+import { ServerEnv } from "@/lib/env/server-env";
 
-type LineItem = {
-  quantity: number;
-  price?: string;
-  price_data?: {
-    currency: string;
-    unit_amount: number;
-    recurring: { interval: string; interval_count: number };
-    product?: string;
-    product_data?: { name: string };
-  };
-};
-
-type StripeSession = { id: string; url: string | null; status: string | null };
-
-type StripeClient = {
-  checkout: { sessions: { create(p: unknown): Promise<StripeSession> } };
-};
+type LineItem = Stripe.Checkout.SessionCreateParams.LineItem;
 
 // Stripe price id'si merkezi schema'da yok (opsiyonel operasyonel flag). Bunu
 // CONFIG'e taşımak isteyen biri schema'yı genişletir.
 const readPremiumPriceId = (): string | null =>
-  process.env.STRIPE_PRICE_PREMIUM ||
-  process.env.STRIPE_PRICE_PREMIUM_MONTHLY ||
+  ServerEnv.STRIPE_PRICE_PREMIUM ||
+  ServerEnv.STRIPE_PRICE_PREMIUM_MONTHLY ||
   null;
 
 const PREMIUM_CHECKOUT_CURRENCY = "try";
@@ -46,13 +32,8 @@ const buildFallbackPremiumLineItem = (
       interval: "month",
       interval_count: 1,
     },
-    ...(productId
-      ? { product: productId }
-      : {
-          product_data: {
-            name: "Assetly Premium",
-          },
-        }),
+    product_data: productId ? undefined : { name: "Assetly Premium" },
+    ...(productId ? { product: productId } : {}),
   },
 });
 
@@ -67,7 +48,7 @@ const resolvePremiumCheckoutLineItem = (
 
 const isStripeError = (
   e: unknown,
-): e is { type: string; code?: string; message: string } => {
+): e is { type: string; code?: string; param?: string; statusCode?: number; message: string } => {
   if (e == null || typeof e !== "object") return false;
   return "type" in e && "message" in e;
 };
@@ -128,6 +109,17 @@ export async function POST(request: Request) {
 
   const { user } = auth;
 
+  // --- Diagnostic: log raw env state before any Stripe stage ---
+  console.log("[stripe/checkout] ENV_DIAG:", JSON.stringify({
+    keyPrefix: process.env.STRIPE_SECRET_KEY?.substring(0, 8) ?? "MISSING",
+    keyLength: process.env.STRIPE_SECRET_KEY?.length ?? 0,
+    priceEnv: process.env.STRIPE_PRICE_PREMIUM ? `${process.env.STRIPE_PRICE_PREMIUM.substring(0, 16)}...` : "MISSING",
+    priceMonthlyEnv: process.env.STRIPE_PRICE_PREMIUM_MONTHLY ? "SET" : "MISSING",
+    appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "MISSING",
+    nodeEnv: process.env.NODE_ENV ?? "UNSET",
+    userId: user.id,
+  }));
+
   // --- Stage: profile-check ---
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let adminClient: any;
@@ -176,9 +168,9 @@ export async function POST(request: Request) {
   }
 
   // --- Stage: stripe-init ---
-  let stripeClient: StripeClient;
+  let stripeClient: Stripe;
   try {
-    stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY!) as unknown as StripeClient;
+    stripeClient = getStripeClient();
   } catch (error) {
     return buildErrorResponse(error, "stripe-init", user.id, {
       hasStripeKey: Boolean(process.env.STRIPE_SECRET_KEY),
@@ -196,33 +188,130 @@ export async function POST(request: Request) {
     return buildErrorResponse(error, "app-url", user.id);
   }
 
-  // --- Stage: session-create ---
+  // --- Stage: price-validation ---
+  let checkoutMode: "subscription" | "payment" = "subscription";
+  let priceType: string = "unknown";
   try {
-    const premiumLineItem = resolvePremiumCheckoutLineItem(priceId);
+    const stripePrice = await stripeClient.prices.retrieve(priceId);
+    priceType = stripePrice.type;
+    checkoutMode = stripePrice.type === "recurring" ? "subscription" : "payment";
 
-    console.log("[stripe/checkout] DEBUG session-create attempt:", JSON.stringify({
+    if (!stripePrice.active) {
+      console.error("[stripe/checkout] PRICE NOT ACTIVE:", priceId);
+      return NextResponse.json(
+        { error: "stripe-price-inactive", message: `Stripe price "${priceId}" is not active. Enable it in your Stripe dashboard.` },
+        { status: 400 },
+      );
+    }
+  } catch (error) {
+    return buildErrorResponse(error, "price-validation", user.id, {
       priceId,
-      lineItem: premiumLineItem,
-      appUrl,
-      userEmail: user.email ?? "null",
-      unitAmount: PREMIUM_MONTHLY_PRICE_KURUS,
-      userId: user.id,
-    }));
-
-    const session = await stripeClient.checkout.sessions.create({
-      mode: "subscription",
-      line_items: [premiumLineItem],
-      client_reference_id: user.id,
-      customer_email: user.email ?? undefined,
-      metadata: {
-        userId: user.id,
-        premiumPriceTl: String(PREMIUM_MONTHLY_PRICE_KURUS / 100),
-      },
-      success_url: `${appUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl}/billing/cancel`,
     });
+  }
+
+  // --- Stage: pre-validation ---
+  const premiumLineItem = resolvePremiumCheckoutLineItem(priceId);
+  const successUrl = `${appUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`;
+  const cancelUrl = `${appUrl}/billing/cancel`;
+  const keyPrefix = ServerEnv.STRIPE_SECRET_KEY?.substring(0, 8) ?? "MISSING";
+  const isProduction = process.env.NODE_ENV === "production";
+
+  // Price ID format check
+  if (!priceId.startsWith("price_")) {
+    console.error("[stripe/checkout] INVALID PRICE ID format:", priceId.substring(0, 12));
+    return NextResponse.json(
+      { error: "invalid-checkout-input", stage: "pre-validation", message: `STRIPE_PRICE_PREMIUM must start with "price_", got: "${priceId.substring(0, 12)}"`, debug: true },
+      { status: 400 },
+    );
+  }
+
+  // Line item integrity
+  if (!premiumLineItem.price && !premiumLineItem.price_data) {
+    console.error("[stripe/checkout] LINE ITEM missing price and price_data");
+    return NextResponse.json(
+      { error: "invalid-checkout-input", stage: "pre-validation", message: "Line item has neither price nor price_data", debug: true },
+      { status: 400 },
+    );
+  }
+
+  if (!premiumLineItem.quantity || premiumLineItem.quantity <= 0) {
+    console.error("[stripe/checkout] LINE ITEM quantity invalid:", premiumLineItem.quantity);
+    return NextResponse.json(
+      { error: "invalid-checkout-input", stage: "pre-validation", message: "Line item quantity must be > 0", debug: true },
+      { status: 400 },
+    );
+  }
+
+  // URL validation
+  try { new URL(successUrl); new URL(cancelUrl); } catch {
+    console.error("[stripe/checkout] INVALID URLs:", { successUrl, cancelUrl });
+    return NextResponse.json(
+      { error: "invalid-checkout-input", stage: "pre-validation", message: "success_url or cancel_url is not a valid URL", debug: true },
+      { status: 400 },
+    );
+  }
+
+  if (isProduction) {
+    if (!successUrl.startsWith("https://") || !cancelUrl.startsWith("https://")) {
+      console.error("[stripe/checkout] URLs not HTTPS in production:", { successUrl, cancelUrl });
+      return NextResponse.json(
+        { error: "invalid-checkout-input", stage: "pre-validation", message: "URLs must use HTTPS in production", debug: true },
+        { status: 400 },
+      );
+    }
+    const su = new URL(successUrl);
+    if (su.hostname === "localhost" || su.hostname === "127.0.0.1") {
+      console.error("[stripe/checkout] localhost URL in production");
+      return NextResponse.json(
+        { error: "invalid-checkout-input", stage: "pre-validation", message: "URLs must not point to localhost in production", debug: true },
+        { status: 400 },
+      );
+    }
+  }
+
+  // Key mismatch detection
+  if (isProduction && keyPrefix.startsWith("sk_test")) {
+    console.error("[stripe/checkout] TEST KEY used in production!");
+    return NextResponse.json(
+      { error: "invalid-checkout-input", stage: "pre-validation", message: "Stripe test key detected in production environment", debug: true },
+      { status: 400 },
+    );
+  }
+
+  // --- Stage: session-create ---
+  const createParams: Stripe.Checkout.SessionCreateParams = {
+    mode: checkoutMode,
+    line_items: [premiumLineItem],
+    client_reference_id: user.id,
+    customer_email: user.email?.trim() || undefined,
+    metadata: {
+      userId: user.id,
+      premiumPriceTl: String(PREMIUM_MONTHLY_PRICE_KURUS / 100),
+    },
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+  };
+
+  console.log("[stripe/checkout] PRE-CREATE DEBUG:", JSON.stringify({
+    keyPrefix,
+    priceId,
+    priceType,
+    checkoutMode,
+    appUrl,
+    successUrl,
+    cancelUrl,
+    userId: user.id,
+    mode: createParams.mode,
+    line_items: createParams.line_items,
+    customer_email: createParams.customer_email ?? "null",
+    unitAmount: PREMIUM_MONTHLY_PRICE_KURUS,
+  }));
+
+  try {
+    const session = await stripeClient.checkout.sessions.create(createParams);
 
     if (!session.url) {
+      console.error("[stripe/checkout] session created but NO URL:", { id: session.id, status: session.status });
       return buildErrorResponse(
         new Error("Stripe returned session without URL"),
         "session-url-missing",
@@ -231,12 +320,71 @@ export async function POST(request: Request) {
       );
     }
 
+    console.log("[stripe/checkout] SUCCESS sessionId=", session.id);
     return NextResponse.json({ url: session.url }, { status: 200 });
   } catch (error) {
-    return buildErrorResponse(error, "session-create", user.id, {
+    const se = isStripeError(error) ? error : null;
+    const errMsg = error instanceof Error ? error.message : String(error);
+
+    console.error("[stripe/checkout] SESSION CREATE FAILED:", JSON.stringify({
+      message: errMsg,
+      type: se?.type ?? null,
+      code: se?.code ?? null,
+      param: se?.param ?? null,
+      statusCode: se?.statusCode ?? null,
+      keyPrefix,
       priceId,
-      unitAmount: PREMIUM_MONTHLY_PRICE_KURUS,
       appUrl,
-    });
+    }));
+
+    // Specific: price not found
+    if (se?.code === "resource_missing" || se?.statusCode === 404) {
+      return NextResponse.json(
+        {
+          error: "stripe-session-create-failed",
+          message: `Stripe price "${priceId}" not found. Verify STRIPE_PRICE_PREMIUM env matches your Stripe dashboard.`,
+          stripe: { type: se?.type, code: se?.code, param: se?.param },
+          debug: true,
+        },
+        { status: 400 },
+      );
+    }
+
+    // Specific: auth / key error
+    if (se?.type === "authentication_error") {
+      return NextResponse.json(
+        {
+          error: "stripe-session-create-failed",
+          message: "Stripe API key is invalid or has insufficient permissions.",
+          stripe: { type: se.type, code: se.code },
+          debug: true,
+        },
+        { status: 400 },
+      );
+    }
+
+    // Specific: invalid request params
+    if (se?.type === "invalid_request_error") {
+      return NextResponse.json(
+        {
+          error: "stripe-session-create-failed",
+          message: errMsg,
+          stripe: { type: se.type, code: se.code, param: se.param },
+          debug: true,
+        },
+        { status: 400 },
+      );
+    }
+
+    // Generic fallback
+    return NextResponse.json(
+      {
+        error: "stripe-session-create-failed",
+        message: errMsg,
+        stripe: se ? { type: se.type, code: se.code, param: se.param } : null,
+        debug: true,
+      },
+      { status: 500 },
+    );
   }
 }
