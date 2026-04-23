@@ -137,23 +137,23 @@ export function HeroSection() {
 
         {/* Headline */}
         <h1
-          className="max-w-3xl text-balance text-4xl font-bold leading-[1.1] tracking-tight md:text-6xl"
+          className="max-w-3xl text-balance text-3xl font-bold leading-[1.1] tracking-tight md:text-5xl"
           style={heroEntrance(80)}
         >
-          <span className="bg-gradient-to-r from-cyan-400 via-teal-400 to-blue-500 bg-clip-text text-transparent">
-            Varlıklarını tek yerde topla,
-          </span>{" "}
-          <span className="text-foreground">kontrolü kaybetme.</span>
+          <span className="text-white">Tüm varlıklarını </span>
+          <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">tek panelde</span>
+          <span className="text-white"> yönet</span>
         </h1>
 
         {/* Description */}
         <p
-          className="max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg"
+          className="max-w-2xl text-gray-400 leading-relaxed md:text-lg"
           style={heroEntrance(160)}
         >
-          Cihazlarını, aboneliklerini ve bakım süreçlerini tek panelde topla.
-          Yaklaşan işlemler için hatırlatmalar al, servis kayıtlarını ve belgelerini
-          düzenli tut, tüm maliyetlerini tek ekranda takip et.
+          Cihazlarını, aboneliklerini ve bakım süreçlerini tek merkezde topla<br />
+          Maliyetlerini{" "}
+          <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">anlık takip</span>
+          {" "}et, hatırlatmalarla hiçbir detayı kaçırma
         </p>
 
         {/* Trust line */}
