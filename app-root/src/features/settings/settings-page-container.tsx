@@ -397,6 +397,7 @@ export function SettingsPageContainer() {
   const [isSavingOrganization, setIsSavingOrganization] = useState(false);
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [isConfirmingCheckout, setIsConfirmingCheckout] = useState(false);
+  const [isCancellingSubscription, setIsCancellingSubscription] = useState(false);
   const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [deleteFeedback, setDeleteFeedback] = useState("");
@@ -693,10 +694,12 @@ export function SettingsPageContainer() {
       }
 
       if (!res.ok) {
-        const responseText = await res.text();
-        const checkoutError = responseText || "Stripe checkout başlatılamadı.";
+        const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+        const checkoutError = payload?.error || "Stripe checkout başlatılamadı.";
         console.error("Stripe checkout failed:", res.status, checkoutError);
-        alert(checkoutError);
+        if (res.status === 409) {
+          await refreshPlanState();
+        }
         setFeedback(checkoutError);
         setIsStartingCheckout(false);
         return;
@@ -721,7 +724,7 @@ export function SettingsPageContainer() {
       setFeedback(networkError);
       setIsStartingCheckout(false);
     }
-  }, [router]);
+  }, [refreshPlanState, router]);
 
   const confirmCheckout = useCallback(async () => {
     if (!checkoutSessionId) {
@@ -760,6 +763,28 @@ export function SettingsPageContainer() {
 
     setIsConfirmingCheckout(false);
   }, [checkoutSessionId, refreshPlanState, router]);
+
+  const cancelSubscription = useCallback(async () => {
+    setFeedback("");
+    setIsCancellingSubscription(true);
+
+    try {
+      const res = await fetch("/api/stripe/cancel-subscription", { method: "POST" });
+      const payload = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+
+      if (!res.ok || !payload?.ok) {
+        setFeedback(payload?.error ?? "Abonelik iptal edilemedi.");
+        setIsCancellingSubscription(false);
+        return;
+      }
+
+      setFeedback("Aboneliğiniz dönem sonunda iptal edilecek.");
+      setIsCancellingSubscription(false);
+    } catch {
+      setFeedback("Abonelik iptal isteği başarısız oldu.");
+      setIsCancellingSubscription(false);
+    }
+  }, []);
 
   const isDeleteConfirmationValid =
     deleteConfirmationText.trim().toLocaleUpperCase("tr-TR") === ACCOUNT_DELETE_CONFIRM_KEYWORD;
@@ -818,8 +843,12 @@ export function SettingsPageContainer() {
         <p className="mt-2 max-w-3xl text-sm text-slate-300">
           Profil bilgilerinizi, bildirim tercihlerinizi, plan kullanımınızı ve güvenlik ayarlarınızı tek ekrandan yönetin.
         </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {plan !== "premium" ? (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {plan === "premium" ? (
+            <Badge className="border-emerald-400/30 bg-emerald-500/20 text-emerald-100">
+              Premium Aktif
+            </Badge>
+          ) : (
             <Button
               type="button"
               onClick={startCheckout}
@@ -828,7 +857,7 @@ export function SettingsPageContainer() {
             >
               {isStartingCheckout ? "Yönlendiriliyor..." : "Premium'a Geç"}
             </Button>
-          ) : null}
+          )}
 
           <Button
             asChild
@@ -851,11 +880,25 @@ export function SettingsPageContainer() {
           ) : null}
         </div>
         {plan !== "premium" ? (
-          <p className="mt-3 text-sm text-slate-300">Premium aylık plan: {PREMIUM_MONTHLY_PRICE_LABEL}</p>
-        ) : null}
-        {plan !== "premium" ? (
-          <p className="mt-3 text-sm text-slate-300">{PAYMENT_TEXT.stripeCollectionNotice}</p>
-        ) : null}
+          <>
+            <p className="mt-3 text-sm text-slate-300">Premium aylık plan: {PREMIUM_MONTHLY_PRICE_LABEL}</p>
+            <p className="mt-1 text-sm text-slate-300">{PAYMENT_TEXT.stripeCollectionNotice}</p>
+          </>
+        ) : (
+          <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+            <h3 className="text-sm font-semibold text-white">Premium Yönetimi</h3>
+            <p className="mt-1 text-xs text-slate-400">Aboneliğinizi dönem sonunda iptal edebilirsiniz.</p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={cancelSubscription}
+              disabled={isCancellingSubscription}
+              className="mt-3 border-rose-400/30 bg-rose-500/10 text-rose-100 hover:bg-rose-500/20"
+            >
+              {isCancellingSubscription ? "İptal ediliyor..." : "Aboneliği İptal Et"}
+            </Button>
+          </div>
+        )}
       </section>
 
       {feedback ? (

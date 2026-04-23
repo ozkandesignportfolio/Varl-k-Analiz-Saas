@@ -9,6 +9,7 @@ import { PREMIUM_MONTHLY_PRICE_KURUS } from "@/lib/plans/pricing";
 import { requireConfiguredAppOrigin } from "@/lib/config/app-url";
 import { getStripeClient } from "@/lib/services/stripe";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
+import { getSupabaseAdmin } from "@/lib/services/supabase-admin";
 
 // Stripe price id'si merkezi schema'da yok (opsiyonel operasyonel flag). Bunu
 // CONFIG'e taşımak isteyen biri schema'yı genişletir.
@@ -40,39 +41,13 @@ const buildFallbackPremiumLineItem = (
   },
 });
 
-const resolvePremiumCheckoutLineItem = async (
+const resolvePremiumCheckoutLineItem = (
   configuredPriceId: string | undefined,
-): Promise<Stripe.Checkout.SessionCreateParams.LineItem> => {
-  if (!configuredPriceId) {
-    return buildFallbackPremiumLineItem();
+): Stripe.Checkout.SessionCreateParams.LineItem => {
+  if (configuredPriceId) {
+    return { price: configuredPriceId, quantity: 1 };
   }
-
-  const stripeClient = getStripeClient();
-  try {
-    const configuredPrice = await stripeClient.prices.retrieve(configuredPriceId);
-    const usesExpectedMonthlyPremiumPrice =
-      configuredPrice.active &&
-      configuredPrice.currency === PREMIUM_CHECKOUT_CURRENCY &&
-      configuredPrice.unit_amount === PREMIUM_MONTHLY_PRICE_KURUS &&
-      configuredPrice.recurring?.interval === "month" &&
-      configuredPrice.recurring?.interval_count === 1;
-
-    if (usesExpectedMonthlyPremiumPrice) {
-      return {
-        price: configuredPriceId,
-        quantity: 1,
-      };
-    }
-
-    const fallbackProductId =
-      typeof configuredPrice.product === "string" && configuredPrice.product.trim().length > 0
-        ? configuredPrice.product
-        : undefined;
-
-    return buildFallbackPremiumLineItem(fallbackProductId);
-  } catch {
-    return buildFallbackPremiumLineItem();
-  }
+  return buildFallbackPremiumLineItem();
 };
 
 export async function POST(request: Request) {
@@ -94,6 +69,20 @@ export async function POST(request: Request) {
   }
 
   const { user } = auth;
+
+  const adminClient = getSupabaseAdmin();
+  const { data: profile } = await adminClient
+    .from("profiles")
+    .select("plan")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profile?.plan === "premium") {
+    return NextResponse.json(
+      { error: "Zaten premium üyeliğiniz aktif." },
+      { status: 409 },
+    );
+  }
 
   const priceId = readPremiumPriceId();
   if (!priceId) {
@@ -117,7 +106,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const premiumLineItem = await resolvePremiumCheckoutLineItem(priceId);
+    const premiumLineItem = resolvePremiumCheckoutLineItem(priceId);
     const session = await stripeClient.checkout.sessions.create({
       mode: "subscription",
       line_items: [premiumLineItem],

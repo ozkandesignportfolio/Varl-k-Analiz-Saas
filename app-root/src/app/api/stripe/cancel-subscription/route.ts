@@ -1,0 +1,70 @@
+import "server-only";
+
+import { NextResponse } from "next/server";
+import { logApiError } from "@/lib/api/logging";
+import { getStripeClient } from "@/lib/services/stripe";
+import { requireRouteUser } from "@/lib/supabase/route-auth";
+import { getSupabaseAdmin } from "@/lib/services/supabase-admin";
+
+export async function POST(request: Request) {
+  const auth = await requireRouteUser(request);
+  if ("response" in auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { user } = auth;
+
+  const adminClient = getSupabaseAdmin();
+  const { data: profile, error: profileError } = await adminClient
+    .from("profiles")
+    .select("plan, stripe_subscription_id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    logApiError({
+      route: "/api/stripe/cancel-subscription",
+      method: "POST",
+      status: 500,
+      error: profileError,
+      message: "Failed to fetch profile for subscription cancellation.",
+      userId: user.id,
+    });
+    return NextResponse.json({ error: "Profil bilgisi alınamadı." }, { status: 500 });
+  }
+
+  if (profile?.plan !== "premium") {
+    return NextResponse.json({ error: "Aktif bir premium aboneliğiniz bulunmuyor." }, { status: 400 });
+  }
+
+  const subscriptionId = profile.stripe_subscription_id;
+  if (!subscriptionId || typeof subscriptionId !== "string") {
+    return NextResponse.json(
+      { error: "Stripe abonelik bilgisi bulunamadı. Lütfen destek ile iletişime geçin." },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const stripeClient = getStripeClient();
+    await stripeClient.subscriptions.update(subscriptionId, {
+      cancel_at_period_end: true,
+    });
+
+    return NextResponse.json({ ok: true }, { status: 200 });
+  } catch (error) {
+    logApiError({
+      route: "/api/stripe/cancel-subscription",
+      method: "POST",
+      status: 500,
+      error,
+      message: "Stripe subscription cancellation failed.",
+      userId: user.id,
+      meta: {
+        subscriptionId,
+        message: error instanceof Error ? error.message : String(error),
+      },
+    });
+    return NextResponse.json({ error: "Abonelik iptal edilemedi." }, { status: 500 });
+  }
+}
