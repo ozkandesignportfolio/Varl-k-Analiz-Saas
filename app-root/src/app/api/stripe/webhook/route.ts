@@ -181,6 +181,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Gecersiz Stripe imzasi." }, { status: 400 });
   }
 
+  // --- Structured event log for observability ---
+  const keyPrefix = process.env.STRIPE_SECRET_KEY?.substring(0, 8) ?? "MISSING";
+  const keyIsLive = keyPrefix.startsWith("sk_live");
+  console.log(
+    "[stripe/webhook] EVENT_RECEIVED:",
+    JSON.stringify({
+      eventId: event.id,
+      eventType: event.type,
+      eventLivemode: event.livemode,
+      keyPrefix,
+      keyIsLive,
+    }),
+  );
+
+  // Guard: event livemode must match key mode
+  if (keyIsLive !== event.livemode) {
+    const modeLabel = keyIsLive ? "LIVE" : "TEST";
+    const eventModeLabel = event.livemode ? "LIVE" : "TEST";
+    console.error(
+      `[stripe/webhook] MODE MISMATCH: key is ${modeLabel} but event ${event.id} is ${eventModeLabel}`,
+    );
+    return NextResponse.json(
+      { error: `Webhook event mode mismatch: key=${modeLabel}, event=${eventModeLabel}` },
+      { status: 400 },
+    );
+  }
+
   const idempotency = await withWebhookIdempotency(supabaseAdmin, event.id);
   if (!idempotency.proceed) {
     return idempotency.response;

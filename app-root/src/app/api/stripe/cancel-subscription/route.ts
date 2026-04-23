@@ -14,7 +14,20 @@ export async function POST(request: Request) {
 
   const { user } = auth;
 
-  const adminClient = getSupabaseAdmin();
+  let adminClient: ReturnType<typeof getSupabaseAdmin>;
+  try {
+    adminClient = getSupabaseAdmin();
+  } catch (error) {
+    logApiError({
+      route: "/api/stripe/cancel-subscription",
+      method: "POST",
+      status: 500,
+      error,
+      message: "Admin client initialization failed during cancel-subscription.",
+      userId: user.id,
+    });
+    return NextResponse.json({ error: "Sistem servisi başlatılamadı." }, { status: 500 });
+  }
   const { data: profile, error: profileError } = await adminClient
     .from("profiles")
     .select("plan, stripe_subscription_id")
@@ -45,8 +58,22 @@ export async function POST(request: Request) {
     );
   }
 
+  let stripeClient: ReturnType<typeof getStripeClient>;
   try {
-    const stripeClient = getStripeClient();
+    stripeClient = getStripeClient();
+  } catch (error) {
+    logApiError({
+      route: "/api/stripe/cancel-subscription",
+      method: "POST",
+      status: 500,
+      error,
+      message: "Stripe client initialization failed during cancel-subscription.",
+      userId: user.id,
+    });
+    return NextResponse.json({ error: "Stripe servisi başlatılamadı." }, { status: 500 });
+  }
+
+  try {
     await stripeClient.subscriptions.update(subscriptionId, {
       cancel_at_period_end: true,
     });

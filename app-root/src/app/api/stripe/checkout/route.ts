@@ -179,28 +179,29 @@ export async function POST(request: Request) {
     const { user } = auth;
     userId = user.id;
 
-    // --- Diagnostic: log raw env state before any Stripe stage ---
-    console.log(
-      "[stripe/checkout] ENV_DIAG:",
-      JSON.stringify({
-        keyPrefix: process.env.STRIPE_SECRET_KEY?.substring(0, 8) ?? "MISSING",
-        keyLength: process.env.STRIPE_SECRET_KEY?.length ?? 0,
-        priceEnv: process.env.STRIPE_PRICE_PREMIUM
-          ? `${process.env.STRIPE_PRICE_PREMIUM.substring(0, 16)}...`
-          : "MISSING",
-        priceMonthlyEnv: process.env.STRIPE_PRICE_PREMIUM_MONTHLY
-          ? "SET"
-          : "MISSING",
-        appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "MISSING",
-        nodeEnv: process.env.NODE_ENV ?? "UNSET",
-        userId: user.id,
-      }),
-    );
+    // --- Diagnostic: env state (non-production only to avoid log noise) ---
+    if (process.env.NODE_ENV !== "production") {
+      console.log(
+        "[stripe/checkout] ENV_DIAG:",
+        JSON.stringify({
+          keyPrefix: process.env.STRIPE_SECRET_KEY?.substring(0, 8) ?? "MISSING",
+          keyLength: process.env.STRIPE_SECRET_KEY?.length ?? 0,
+          priceEnv: process.env.STRIPE_PRICE_PREMIUM
+            ? `${process.env.STRIPE_PRICE_PREMIUM.substring(0, 16)}...`
+            : "MISSING",
+          priceMonthlyEnv: process.env.STRIPE_PRICE_PREMIUM_MONTHLY
+            ? "SET"
+            : "MISSING",
+          appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "MISSING",
+          nodeEnv: process.env.NODE_ENV ?? "UNSET",
+          userId: user.id,
+        }),
+      );
+    }
 
     // --- Stage: profile-check ---
     currentStage = "profile-check";
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let adminClient: any;
+    let adminClient: ReturnType<typeof getSupabaseAdmin>;
     try {
       adminClient = getSupabaseAdmin();
     } catch (error) {
@@ -245,6 +246,18 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!priceId.startsWith("price_")) {
+      return safeErrorJson(
+        400,
+        currentStage,
+        `STRIPE_PRICE_PREMIUM value must start with "price_", got: "${priceId.substring(0, 16)}..."`,
+        {
+          code: "invalid_price_format",
+          debug: { priceId: priceId.substring(0, 20) },
+        },
+      );
+    }
+
     // --- Stage: stripe-init ---
     currentStage = "stripe-init";
     let stripeClient: Stripe;
@@ -270,6 +283,9 @@ export async function POST(request: Request) {
 
     // --- Stage: price-validation ---
     currentStage = "price-validation";
+    const keyPrefix =
+      process.env.STRIPE_SECRET_KEY?.substring(0, 8) ?? "MISSING";
+    const keyIsLive = keyPrefix.startsWith("sk_live");
     let checkoutMode: "subscription" | "payment" = "subscription";
     let priceType: string = "unknown";
     try {
@@ -286,8 +302,54 @@ export async function POST(request: Request) {
           { code: "price_inactive" },
         );
       }
+
+      // Guard: key mode must match price mode
+      if (keyIsLive !== stripePrice.livemode) {
+        const modeLabel = keyIsLive ? "LIVE" : "TEST";
+        const priceModeLabel = stripePrice.livemode ? "LIVE" : "TEST";
+        const msg =
+          `INVALID_STRIPE_PRICE_ENV: key is ${modeLabel} but price "${priceId}" belongs to ${priceModeLabel} mode. ` +
+          `Update STRIPE_PRICE_PREMIUM to a ${modeLabel} price from your Stripe dashboard.`;
+        console.error("[stripe/checkout] MODE MISMATCH:", msg);
+        return safeErrorJson(400, currentStage, msg, {
+          code: "price_mode_mismatch",
+          debug: { keyPrefix, priceId, keyIsLive, priceLivemode: stripePrice.livemode },
+        });
+      }
+
+      // All price validations passed — log structured summary
+      console.log(
+        "[stripe/checkout] PRICE_VALIDATED:",
+        JSON.stringify({
+          priceId,
+          priceType,
+          priceActive: stripePrice.active,
+          priceLivemode: stripePrice.livemode,
+          priceCurrency: stripePrice.currency,
+          priceUnitAmount: stripePrice.unit_amount,
+          keyPrefix,
+          keyIsLive,
+          checkoutMode,
+        }),
+      );
     } catch (error) {
-      return logAndRespond(error, currentStage, 500, userId, { priceId });
+      const se = isStripeError(error) ? error : null;
+
+      // Permanent guard: price does not exist in this Stripe environment
+      if (se?.code === "resource_missing" || se?.statusCode === 404) {
+        const modeLabel = keyIsLive ? "LIVE" : "TEST";
+        const msg =
+          `INVALID_STRIPE_PRICE_ENV: price "${priceId}" does not exist in this Stripe ${modeLabel} environment. ` +
+          `Verify STRIPE_PRICE_PREMIUM matches a valid price_* ID from your Stripe dashboard (${modeLabel} mode).`;
+        console.error("[stripe/checkout] PRICE NOT FOUND:", JSON.stringify({ priceId, keyPrefix, modeLabel }));
+        return safeErrorJson(400, currentStage, msg, {
+          code: "resource_missing",
+          stripe: se ? { type: se.type, code: se.code, param: se.param, statusCode: se.statusCode } : null,
+          debug: { priceId, keyPrefix, keyIsLive },
+        });
+      }
+
+      return logAndRespond(error, currentStage, 500, userId, { priceId, keyPrefix });
     }
 
     // --- Stage: pre-validation ---
@@ -295,18 +357,7 @@ export async function POST(request: Request) {
     const premiumLineItem = resolvePremiumCheckoutLineItem(priceId);
     const successUrl = `${appUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = `${appUrl}/billing/cancel`;
-    const keyPrefix =
-      process.env.STRIPE_SECRET_KEY?.substring(0, 8) ?? "MISSING";
     const isProduction = process.env.NODE_ENV === "production";
-
-    if (!priceId.startsWith("price_")) {
-      return safeErrorJson(
-        400,
-        currentStage,
-        `STRIPE_PRICE_PREMIUM must start with "price_", got: "${priceId.substring(0, 12)}"`,
-        { code: "invalid_price_format" },
-      );
-    }
 
     if (!premiumLineItem.price && !premiumLineItem.price_data) {
       return safeErrorJson(

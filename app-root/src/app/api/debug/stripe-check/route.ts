@@ -50,12 +50,18 @@ export async function GET() {
 
     // 6. Validate price ID against Stripe API
     const priceId = ServerEnv.STRIPE_PRICE_PREMIUM || ServerEnv.STRIPE_PRICE_PREMIUM_MONTHLY;
+    const keyStr = ServerEnv.STRIPE_SECRET_KEY;
+    const keyIsLive = keyStr.startsWith("sk_live_");
+    diagnostics.keyMode = keyIsLive ? "LIVE" : "TEST";
+
     if (priceId) {
       try {
         const price = await client.prices.retrieve(priceId);
+        const modeMismatch = keyIsLive !== price.livemode;
         diagnostics.stripePrice = {
           id: price.id,
           active: price.active,
+          livemode: price.livemode,
           currency: price.currency,
           unit_amount: price.unit_amount,
           type: price.type,
@@ -64,6 +70,11 @@ export async function GET() {
             : null,
           product: typeof price.product === "string" ? price.product : "expanded",
         };
+        diagnostics.modeMismatch = modeMismatch;
+        if (modeMismatch) {
+          diagnostics.modeMismatchDetail =
+            `Key is ${keyIsLive ? "LIVE" : "TEST"} but price "${priceId}" is ${price.livemode ? "LIVE" : "TEST"}`;
+        }
       } catch (e) {
         diagnostics.stripePrice = `THROW: ${e instanceof Error ? e.message : String(e)}`;
       }

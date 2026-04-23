@@ -70,8 +70,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "session_id zorunludur." }, { status: 400 });
   }
 
-  // getStripeClient() CONFIG geçersizse throw eder — deterministik guard.
-  const stripeClient = getStripeClient();
+  let stripeClient: ReturnType<typeof getStripeClient>;
+  try {
+    stripeClient = getStripeClient();
+  } catch (error) {
+    logApiError({
+      route: "/api/stripe/confirm",
+      method: "POST",
+      status: 500,
+      error,
+      message: "Stripe client initialization failed during confirm.",
+      userId: user.id,
+    });
+    return NextResponse.json({ error: "Ödeme doğrulama servisi başlatılamadı." }, { status: 500 });
+  }
 
   let session: Stripe.Checkout.Session;
   try {
@@ -118,8 +130,20 @@ export async function POST(request: Request) {
   const nextUserMetadata = buildPremiumMetadata((user.user_metadata ?? {}) as Record<string, unknown>);
   const nextAppMetadata = buildPremiumMetadata((user.app_metadata ?? {}) as Record<string, unknown>);
 
-  // getSupabaseAdmin() CONFIG üzerinden deterministik init; env geçersizse throw.
-  const adminClient = getSupabaseAdmin();
+  let adminClient: ReturnType<typeof getSupabaseAdmin>;
+  try {
+    adminClient = getSupabaseAdmin();
+  } catch (error) {
+    logApiError({
+      route: "/api/stripe/confirm",
+      method: "POST",
+      status: 500,
+      error,
+      message: "Admin client initialization failed during confirm.",
+      userId: user.id,
+    });
+    return NextResponse.json({ error: "Sistem servisi başlatılamadı." }, { status: 500 });
+  }
   const { error: adminUpdateError } = await adminClient.auth.admin.updateUserById(user.id, {
     app_metadata: nextAppMetadata,
     user_metadata: nextUserMetadata,
