@@ -8,6 +8,8 @@ import { PREMIUM_MONTHLY_PRICE_KURUS } from "@/lib/plans/pricing";
 import { requireRouteUser } from "@/lib/supabase/route-auth";
 import { getSupabaseAdmin } from "@/lib/services/supabase-admin";
 import { getStripeClient } from "@/lib/services/stripe";
+import { ensureProfileExists } from "@/lib/plans/profile-plan";
+import type { DbClient } from "@/lib/repos/_shared";
 
 type LineItem = Stripe.Checkout.SessionCreateParams.LineItem;
 
@@ -173,7 +175,9 @@ export async function POST(request: Request) {
       | { user: { id: string; email?: string | null }; response?: never }
       | { response: unknown; user?: never };
     if ("response" in auth) {
-      return safeErrorJson(401, currentStage, "Unauthorized");
+      return safeErrorJson(401, currentStage, "Oturum açmanız gerekiyor.", {
+        code: "auth_required",
+      });
     }
 
     const { user } = auth;
@@ -199,13 +203,16 @@ export async function POST(request: Request) {
       );
     }
 
-    // --- Stage: profile-check ---
-    currentStage = "profile-check";
+    // --- Stage: profile-fetch ---
+    currentStage = "profile-fetch";
     let adminClient: ReturnType<typeof getSupabaseAdmin>;
     try {
       adminClient = getSupabaseAdmin();
     } catch (error) {
-      return logAndRespond(error, currentStage, 500, userId);
+      return safeErrorJson(500, currentStage, "Veritabanı bağlantısı kurulamadı.", {
+        code: "admin_client_init_failed",
+        debug: { errorMessage: error instanceof Error ? error.message : String(error) },
+      });
     }
 
     const { data: profile, error: profileError } = await adminClient
@@ -215,13 +222,74 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (profileError) {
-      return logAndRespond(profileError, "profile-fetch", 500, userId);
+      console.error("[stripe/checkout] PROFILE_QUERY_FAILED:", {
+        userId: user.id,
+        errorMessage: (profileError as { message?: string }).message ?? String(profileError),
+        errorCode: (profileError as { code?: string }).code ?? null,
+      });
+      return safeErrorJson(500, currentStage, "Profil sorgusu başarısız.", {
+        code: "profile_query_failed",
+        debug: {
+          errorMessage: (profileError as { message?: string }).message ?? String(profileError),
+          errorCode: (profileError as { code?: string }).code ?? null,
+        },
+      });
+    }
+
+    // Lazy-create: if profile row does not exist, upsert a default one
+    if (!profile) {
+      currentStage = "profile-create";
+      const adminDbClient = adminClient as unknown as DbClient;
+      const { error: upsertError } = await ensureProfileExists(adminDbClient, user.id);
+
+      if (upsertError) {
+        console.error("[stripe/checkout] PROFILE_CREATE_FAILED:", {
+          userId: user.id,
+          error: upsertError,
+        });
+        return safeErrorJson(500, currentStage, "Profil oluşturulamadı.", {
+          code: "profile_create_failed",
+          debug: { errorMessage: upsertError },
+        });
+      }
+
+      // Re-fetch to confirm creation
+      const { data: newProfile, error: refetchError } = await adminClient
+        .from("profiles")
+        .select("plan")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (refetchError || !newProfile) {
+        console.error("[stripe/checkout] PROFILE_MISSING_AFTER_CREATE:", {
+          userId: user.id,
+          refetchError: refetchError
+            ? (refetchError as { message?: string }).message ?? String(refetchError)
+            : "no row after upsert",
+        });
+        return safeErrorJson(500, "profile-fetch", "Profil oluşturuldu ancak doğrulanamadı.", {
+          code: "profile_missing",
+          debug: {
+            errorMessage: refetchError
+              ? ((refetchError as { message?: string }).message ?? String(refetchError))
+              : "no row after upsert",
+          },
+        });
+      }
+
+      if (newProfile.plan === "premium") {
+        return safeErrorJson(
+          409,
+          "profile-check",
+          "Zaten premium üyeliğiniz aktif.",
+        );
+      }
     }
 
     if (profile?.plan === "premium") {
       return safeErrorJson(
         409,
-        currentStage,
+        "profile-check",
         "Zaten premium üyeliğiniz aktif.",
       );
     }
