@@ -215,6 +215,19 @@ export async function POST(request: Request) {
       });
     }
 
+    // Diagnostic: log Supabase host (never the key) so we can confirm connectivity
+    const supabaseHost = (() => {
+      try { return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").hostname; }
+      catch { return "INVALID_URL"; }
+    })();
+
+    console.log("[stripe/checkout] PROFILE_QUERY_START:", {
+      userId: user.id,
+      supabaseHost,
+      table: "profiles",
+      selectColumns: "plan",
+    });
+
     const { data: profile, error: profileError } = await adminClient
       .from("profiles")
       .select("plan")
@@ -222,16 +235,28 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (profileError) {
+      const pgError = profileError as {
+        message?: string;
+        code?: string;
+        details?: string;
+        hint?: string;
+      };
       console.error("[stripe/checkout] PROFILE_QUERY_FAILED:", {
         userId: user.id,
-        errorMessage: (profileError as { message?: string }).message ?? String(profileError),
-        errorCode: (profileError as { code?: string }).code ?? null,
+        supabaseHost,
+        errorMessage: pgError.message ?? String(profileError),
+        errorCode: pgError.code ?? null,
+        errorDetails: pgError.details ?? null,
+        errorHint: pgError.hint ?? null,
       });
       return safeErrorJson(500, currentStage, "Profil sorgusu başarısız.", {
         code: "profile_query_failed",
         debug: {
-          errorMessage: (profileError as { message?: string }).message ?? String(profileError),
-          errorCode: (profileError as { code?: string }).code ?? null,
+          errorMessage: pgError.message ?? String(profileError),
+          errorCode: pgError.code ?? null,
+          errorDetails: pgError.details ?? null,
+          errorHint: pgError.hint ?? null,
+          supabaseHost,
         },
       });
     }
