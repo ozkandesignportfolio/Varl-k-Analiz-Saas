@@ -295,7 +295,7 @@ const getSignupErrorMessage = (
 ) => {
   // Map error codes to user-friendly messages
   const errorMessages: Record<string, string> = {
-    [EMAIL_ALREADY_EXISTS_ERROR]: "Bu e-posta adresi zaten kayıtlı. Lütfen giriş yapmayı deneyin.",
+    [EMAIL_ALREADY_EXISTS_ERROR]: "Bu e-posta ile kayıtlı bir hesabınız var. Giriş yapabilirsiniz.",
     [TURNSTILE_TOKEN_USED_ERROR]: "Bu güvenlik doğrulaması zaten kullanıldı. Lütfen yeniden doğrulayın.",
     [TURNSTILE_FAILED_ERROR]: getTurnstileDiagnosticsMessage(turnstile) ?? "Güvenlik doğrulaması başarısız. Lütfen tekrar deneyin.",
     [EMAIL_RATE_LIMITED_ERROR]: "Çok fazla kayıt denemesi yapıldı. Lütfen 1 dakika bekleyip tekrar deneyin.",
@@ -811,7 +811,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
 
       // Show appropriate toast or alert fallback
       const toastMessage = isEmailFailed
-        ? "Hesabınız oluşturuldu ancak doğrulama maili gönderilemedi."
+        ? "Hesabınız oluşturuldu ancak doğrulama e-postası gönderilemedi."
         : "Hesabınız başarıyla oluşturuldu! Doğrulama e-postası gönderildi.";
       if (Runtime.isClient() && (window as unknown as { showToast?: (msg: string, type: string) => void }).showToast) {
         (window as unknown as { showToast: (msg: string, type: string) => void }).showToast(
@@ -888,7 +888,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
                     clearErrorState();
                     setFirstName(event.target.value);
                   }}
-                  placeholder="Adiniz"
+                  placeholder="Adınız"
                   required
                   type="text"
                   value={firstName}
@@ -905,7 +905,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
                     clearErrorState();
                     setLastName(event.target.value);
                   }}
-                  placeholder="Soyadiniz"
+                  placeholder="Soyadınız"
                   required
                   type="text"
                   value={lastName}
@@ -924,7 +924,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
                   clearErrorState();
                   setEmail(event.target.value);
                 }}
-                placeholder="ornek@mail.com"
+                placeholder="örnek@mail.com"
                 required
                 type="email"
                 value={email}
@@ -983,11 +983,11 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
               />
               <span>
                 <Link href="/legal/terms" className="font-semibold text-sky-200">
-                  Kullanim Sartlari
+                  Kullanım Şartları
                 </Link>{" "}
                 {" "}ve{" "}
                 <Link href="/legal/privacy" className="font-semibold text-sky-200">
-                  Gizlilik Politikasi
+                  Gizlilik Politikası
                 </Link>{" "}
                 kabul ediyorum.
               </span>
@@ -1008,9 +1008,9 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
               />
               <span>
                 <Link href="/legal/kvkk" className="font-semibold text-sky-200">
-                  KVKK Aydinlatma Metni
+                  KVKK Aydınlatma Metni
                 </Link>{" "}
-                icin acik riza verdigimi onayliyorum.
+                için açık rıza verdiğimi onaylıyorum.
               </span>
             </label>
 

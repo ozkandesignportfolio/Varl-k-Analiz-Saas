@@ -177,18 +177,18 @@ export default function LoginPageClient({ emailRedirectTo }: LoginPageClientProp
             Assetly
           </Link>
           <h1 className="mt-5 text-4xl font-semibold leading-[1.1] text-white">
-            Hesabiniza
+            Hesabınıza
             <br />
-            giris yapin
+            giriş yapın
           </h1>
           <p className="mt-4 text-sm leading-7 text-slate-300">
-            Varliklarinizi, servis kayitlarinizi ve maliyet analizlerinizi gercek verilerle yonetin.
+            Varlıklarınızı, servis kayıtlarınızı ve maliyet analizlerinizi gerçek verilerle yönetin.
           </p>
         </section>
 
         <section className="premium-panel p-6">
-          <h2 className="text-2xl font-semibold text-white">Giris Yap</h2>
-          <p className="mt-2 text-sm text-slate-300">Devam etmek icin hesabiniza giris yapin.</p>
+          <h2 className="text-2xl font-semibold text-white">Giriş Yap</h2>
+          <p className="mt-2 text-sm text-slate-300">Devam etmek için hesabınıza giriş yapın.</p>
 
           <form onSubmit={onSubmit} method="post" className="mt-6 space-y-4" data-testid="login-form">
             <label className="block">
@@ -198,14 +198,14 @@ export default function LoginPageClient({ emailRedirectTo }: LoginPageClientProp
                 type="email"
                 required
                 className={inputClassName}
-                placeholder="ornek@mail.com"
+                placeholder="örnek@mail.com"
                 defaultValue={verificationEmail || undefined}
                 data-testid="login-email"
               />
             </label>
 
             <label className="block">
-              <span className="mb-1.5 block text-sm text-slate-300">Sifre</span>
+              <span className="mb-1.5 block text-sm text-slate-300">Şifre</span>
               <input
                 name="password"
                 type="password"
@@ -218,7 +218,7 @@ export default function LoginPageClient({ emailRedirectTo }: LoginPageClientProp
 
             <div className="text-right">
               <Link href="/forgot-password" className="text-xs font-semibold text-sky-200">
-                Sifremi unuttum
+                Şifremi unuttum
               </Link>
             </div>
 
@@ -228,7 +228,7 @@ export default function LoginPageClient({ emailRedirectTo }: LoginPageClientProp
               className="w-full rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
               data-testid="login-submit"
             >
-              {isSubmitting ? "Giris yapiliyor..." : "Giris Yap"}
+              {isSubmitting ? "Giriş yapılıyor..." : "Giriş Yap"}
             </button>
 
             {verificationEmail ? (
@@ -239,7 +239,7 @@ export default function LoginPageClient({ emailRedirectTo }: LoginPageClientProp
                 className="w-full rounded-full border border-sky-300/40 px-5 py-2.5 text-sm font-semibold text-sky-200 transition hover:border-sky-200 disabled:cursor-not-allowed disabled:opacity-70"
                 data-testid="resend-verification-button"
               >
-                {isResendingVerification ? "Dogrulama e-postasi gonderiliyor..." : "Dogrulama e-postasini tekrar gonder"}
+                {isResendingVerification ? "Doğrulama e-postası gönderiliyor..." : "Doğrulama e-postasını tekrar gönder"}
               </button>
             ) : null}
 
@@ -254,9 +254,9 @@ export default function LoginPageClient({ emailRedirectTo }: LoginPageClientProp
           </form>
 
           <p className="mt-5 text-sm text-slate-300">
-            Hesabiniz yok mu?{" "}
+            Hesabınız yok mu?{" "}
             <Link href="/register" className="font-semibold text-sky-200">
-              Kayit ol
+              Kayıt ol
             </Link>
           </p>
         </section>

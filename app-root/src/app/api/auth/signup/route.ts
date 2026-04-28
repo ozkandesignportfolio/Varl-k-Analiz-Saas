@@ -49,6 +49,11 @@ import {
   TURNSTILE_DOMAIN_INACTIVE_MESSAGE,
 } from "@/lib/env/turnstile";
 import { Runtime } from "@/lib/env/runtime";
+import {
+  generateVerificationCode,
+  hashVerificationCode,
+  getCodeExpiryTimestamp,
+} from "@/lib/auth/verification-code";
 
 export const runtime = "nodejs";
 
@@ -160,7 +165,7 @@ const notificationPreferences = {
   document_expiry: true,
   document_expiry_email: true,
   email: true,
-  frequency: "Aninda",
+  frequency: "Anında",
   inApp: true,
   in_app: true,
   maintenance: true,
@@ -499,40 +504,59 @@ const safeLogSecurityEvent = async (
 
 
 const buildSignupEmailHtml = (input: {
-  actionLink: string;
+  code: string;
   firstName: string;
-}) => `
-  <div style="font-family:Arial,sans-serif;line-height:1.6;color:#0f172a;padding:24px">
-    <h1 style="font-size:24px;margin:0 0 16px">Assetly hesabini dogrulayin</h1>
-    <p style="margin:0 0 12px">Merhaba ${input.firstName},</p>
-    <p style="margin:0 0 16px">Hesabinizi etkinlestirmek icin asagidaki baglantiya tiklayin.</p>
-    <p style="margin:0 0 24px">
-      <a
-        href="${input.actionLink}"
-        style="display:inline-block;border-radius:999px;background:#0f172a;color:#ffffff;padding:12px 20px;text-decoration:none;font-weight:600"
-      >
-        E-posta adresimi dogrula
-      </a>
-    </p>
-    <p style="margin:0 0 8px">Buton calismazsa su baglantiyi tarayiciniza yapistirin:</p>
-    <p style="margin:0;word-break:break-all">${input.actionLink}</p>
-  </div>
-`;
+}) => `<!DOCTYPE html>
+<html lang="tr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f8fafc;font-family:system-ui,-apple-system,sans-serif;">
+  <table role="presentation" style="width:100%;border-collapse:collapse;background:#f8fafc;">
+    <tr><td align="center" style="padding:40px 20px;">
+      <table role="presentation" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
+        <tr><td style="padding:40px 32px 24px;background:#0f172a;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:600;">Assetly</h1>
+        </td></tr>
+        <tr><td style="padding:32px;">
+          <h2 style="margin:0 0 16px;color:#0f172a;font-size:20px;font-weight:600;">Do\u011frulama Kodunuz</h2>
+          <p style="margin:0 0 12px;color:#334155;line-height:1.6;">Merhaba ${input.firstName},</p>
+          <p style="margin:0 0 24px;color:#334155;line-height:1.6;">Hesab\u0131n\u0131z\u0131 do\u011frulamak i\u00e7in a\u015fa\u011f\u0131daki kodu kullan\u0131n:</p>
+          <table role="presentation" style="width:100%;margin:24px 0;">
+            <tr><td style="text-align:center;background:#f1f5f9;border-radius:12px;padding:24px;">
+              <code style="font-size:36px;font-weight:700;color:#0f172a;letter-spacing:8px;">${input.code}</code>
+            </td></tr>
+          </table>
+          <p style="margin:16px 0 0;color:#64748b;font-size:14px;line-height:1.5;">Bu kod 10 dakika i\u00e7inde ge\u00e7erlili\u011fini yitirecektir.</p>
+          <p style="margin:8px 0 0;color:#64748b;font-size:14px;line-height:1.5;">E\u011fer bu i\u015flemi siz ba\u015flatmad\u0131ysan\u0131z, bu e-postay\u0131 dikkate almayabilirsiniz.</p>
+        </td></tr>
+        <tr><td style="padding:24px 32px;background:#f1f5f9;text-align:center;">
+          <p style="margin:0;color:#64748b;font-size:12px;">Assetly - Varl\u0131k Y\u00f6netim Sistemi</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
 
 const buildSignupEmailText = (input: {
-  actionLink: string;
+  code: string;
   firstName: string;
 }) =>
   [
     `Merhaba ${input.firstName},`,
     "",
-    "Assetly hesabinizi dogrulamak icin asagidaki baglantiyi acin:",
-    input.actionLink,
+    "Hesab\u0131n\u0131z\u0131 do\u011frulamak i\u00e7in a\u015fa\u011f\u0131daki kodu kullan\u0131n:",
+    "",
+    `Do\u011frulama kodunuz: ${input.code}`,
+    "",
+    "Bu kod 10 dakika i\u00e7inde ge\u00e7erlili\u011fini yitirecektir.",
+    "E\u011fer bu i\u015flemi siz ba\u015flatmad\u0131ysan\u0131z, bu e-postay\u0131 dikkate almayabilirsiniz.",
+    "",
+    "Assetly - Varl\u0131k Y\u00f6netim Sistemi",
   ].join("\n");
 
 // VISIBLE EMAIL SENDING: With timeout and clear logging
 const sendSignupConfirmationEmailAsync = async (input: {
-  actionLink: string;
+  code: string;
   email: string;
   firstName: string;
   userId: string;
@@ -571,10 +595,10 @@ const sendSignupConfirmationEmailAsync = async (input: {
       },
       body: JSON.stringify({
         from: fromEmail,
-        html: buildSignupEmailHtml(input),
+        html: buildSignupEmailHtml({ code: input.code, firstName: input.firstName }),
         reply_to: replyTo ? [replyTo] : undefined,
-        subject: "Assetly hesabınızı doğrulayın",
-        text: buildSignupEmailText(input),
+        subject: "Do\u011frulama kodunuz - Assetly",
+        text: buildSignupEmailText({ code: input.code, firstName: input.firstName }),
         to: [input.email],
       }),
       cache: "no-store",
@@ -628,7 +652,7 @@ const sendSignupConfirmationEmailAsync = async (input: {
 
 // Backwards compat - deprecated, use sendSignupConfirmationEmailAsync
 const sendSignupConfirmationEmail = async (input: {
-  actionLink: string;
+  code: string;
   email: string;
   firstName: string;
 }) => {
@@ -637,8 +661,6 @@ const sendSignupConfirmationEmail = async (input: {
   const replyTo = getOptionalEnv("AUTOMATION_REPLY_TO_EMAIL");
 
   logSignupStep("EMAIL TRIGGERED", {
-    actionLinkPreview: maskUrlForLogs(input.actionLink),
-    actionLinkPresent: Boolean(input.actionLink.trim()),
     email: input.email,
     fromEmail,
     resendConfigured: Boolean(resendApiKey),
@@ -653,14 +675,14 @@ const sendSignupConfirmationEmail = async (input: {
     method: "POST",
     headers: {
       Authorization: `Bearer ${resendApiKey}`,
-      "Content-Type": "application/json",
+      "Content-Type": "application/json; charset=utf-8",
     },
     body: JSON.stringify({
       from: fromEmail,
-      html: buildSignupEmailHtml(input),
+      html: buildSignupEmailHtml({ code: input.code, firstName: input.firstName }),
       reply_to: replyTo ? [replyTo] : undefined,
-      subject: "Assetly hesabinizi dogrulayin",
-      text: buildSignupEmailText(input),
+      subject: "Do\u011frulama kodunuz - Assetly",
+      text: buildSignupEmailText({ code: input.code, firstName: input.firstName }),
       to: [input.email],
     }),
     cache: "no-store",
@@ -885,17 +907,17 @@ const getTurnstileFailureMessage = (
 ) => {
   if (reason === "missing_secret") {
     const missingVars = turnstileEnv?.missing?.length
-      ? ` Eksik degiskenler: ${turnstileEnv.missing.join(", ")}.`
+      ? ` Eksik de\u011fi\u015fkenler: ${turnstileEnv.missing.join(", ")}.`
       : "";
     const envPath = turnstileEnv?.rootEnvLocalPath
-      ? ` Degerleri ${turnstileEnv.rootEnvLocalPath} dosyasina ekleyip sunucuyu yeniden baslatin.`
+      ? ` De\u011ferleri ${turnstileEnv.rootEnvLocalPath} dosyas\u0131na ekleyip sunucuyu yeniden ba\u015flat\u0131n.`
       : "";
 
-    return `Turnstile server dogrulamasi yapilandirilmamis.${missingVars}${envPath}`.trim();
+    return `Turnstile sunucu do\u011frulamas\u0131 yap\u0131land\u0131r\u0131lmam\u0131\u015f.${missingVars}${envPath}`.trim();
   }
 
   if (reason === "network_error") {
-    return "Turnstile dogrulamasi tamamlanamadi. Lutfen tekrar deneyin.";
+    return "Turnstile do\u011frulamas\u0131 tamamlanamad\u0131. L\u00fctfen tekrar deneyin.";
   }
 
   if (diagnostics?.hostnameMismatch || errorCodes?.includes("110200")) {
@@ -903,14 +925,14 @@ const getTurnstileFailureMessage = (
   }
 
   if (errorCodes?.includes("invalid-input-secret")) {
-    return "Turnstile secret key gecersiz. Cloudflare secret ayarini kontrol edin.";
+    return "Turnstile secret key ge\u00e7ersiz. Cloudflare secret ayar\u0131n\u0131 kontrol edin.";
   }
 
   if (errorCodes?.includes("invalid-input-response")) {
-    return "Turnstile token gecersiz veya beklenenden farkli. Lutfen dogrulamayi yeniden tamamlayin.";
+    return "Turnstile token ge\u00e7ersiz veya beklenenden farkl\u0131. L\u00fctfen do\u011frulamay\u0131 yeniden tamamlay\u0131n.";
   }
 
-  return "Turnstile dogrulamasi basarisiz oldu.";
+  return "Turnstile do\u011frulamas\u0131 ba\u015far\u0131s\u0131z oldu.";
 };
 
 // PRODUCTION-SAFE: Atomic signup handler with idempotency and rollback guarantee
@@ -1127,7 +1149,6 @@ async function executeAtomicSignup(input: {
   };
 
   let theUserId: string | null = null;
-  let actionLink = "";
 
   try {
     const { data: signupData, error: signupError } = await input.adminClient.auth.admin.generateLink({
@@ -1142,23 +1163,18 @@ async function executeAtomicSignup(input: {
 
     if (signupError) {
       if (isUserAlreadyRegisteredError(signupError)) {
-        // User exists - convert to magic link
-        const { data: magicData } = await input.adminClient.auth.admin.generateLink({
-          email: input.email,
-          type: "magiclink",
-          options: { redirectTo: input.emailRedirectTo },
-        });
-        theUserId = magicData?.user?.id ?? null;
-        actionLink = magicData?.properties?.action_link?.trim() ?? "";
-        console.log("USER_CREATED", {
-          email: input.email,
-          userId: theUserId,
-          method: "magiclink_fallback",
-        });
+        // Duplicate email - return clear error with login suggestion
+        console.log("DUPLICATE_EMAIL", { email: input.email });
+        return {
+          ok: false,
+          step: "user",
+          error: EMAIL_ALREADY_EXISTS_ERROR,
+          message: "Bu e-posta ile kay\u0131tl\u0131 bir hesab\u0131n\u0131z var. Giri\u015f yapabilirsiniz.",
+        };
       } else if (isWeakPasswordError(signupError)) {
-        return { ok: false, step: "user", error: INVALID_PASSWORD_ERROR, message: "Şifre çok zayıf. En az 8 karakter, büyük/küçük harf ve rakam içermeli." };
+        return { ok: false, step: "user", error: INVALID_PASSWORD_ERROR, message: "\u015eifre \u00e7ok zay\u0131f. En az 8 karakter, b\u00fcy\u00fck/k\u00fc\u00e7\u00fck harf ve rakam i\u00e7ermeli." };
       } else if (isEmailRateLimitError(signupError)) {
-        return { ok: false, step: "user", error: EMAIL_RATE_LIMITED_ERROR, message: "Bu e-posta adresi için çok fazla deneme yapıldı. Lütfen 1 dakika bekleyin." };
+        return { ok: false, step: "user", error: EMAIL_RATE_LIMITED_ERROR, message: "Bu e-posta adresi i\u00e7in \u00e7ok fazla deneme yap\u0131ld\u0131. L\u00fctfen 1 dakika bekleyin." };
       } else {
         console.log("USER_CREATE_RESULT", {
           ok: false,
@@ -1166,11 +1182,10 @@ async function executeAtomicSignup(input: {
           error: signupError.message,
           code: (signupError as { code?: string }).code,
         });
-        return { ok: false, step: "user", error: INTERNAL_ERROR, message: `Kullanıcı oluşturma hatası: ${signupError.message}` };
+        return { ok: false, step: "user", error: INTERNAL_ERROR, message: `Kullan\u0131c\u0131 olu\u015fturma hatas\u0131: ${signupError.message}` };
       }
     } else {
       theUserId = signupData?.user?.id ?? null;
-      actionLink = signupData?.properties?.action_link?.trim() ?? "";
       console.log("USER_CREATED", {
         email: input.email,
         userId: theUserId,
@@ -1183,52 +1198,64 @@ async function executeAtomicSignup(input: {
       email: input.email,
       error: errorMsg,
     });
-    return { ok: false, step: "user", error: INTERNAL_ERROR, message: `Kullanıcı oluşturma hatası: ${errorMsg}` };
+    return { ok: false, step: "user", error: INTERNAL_ERROR, message: `Kullan\u0131c\u0131 olu\u015fturma hatas\u0131: ${errorMsg}` };
   }
 
   if (!theUserId) {
     console.log("USER_CREATE_RESULT", { ok: false, email: input.email, error: "No user ID returned from Supabase" });
-    return { ok: false, step: "user", error: INTERNAL_ERROR, message: "Kullanıcı oluşturuldu ancak ID alınamadı. Lütfen tekrar deneyin." };
+    return { ok: false, step: "user", error: INTERNAL_ERROR, message: "Kullan\u0131c\u0131 olu\u015fturuldu ancak ID al\u0131namad\u0131. L\u00fctfen tekrar deneyin." };
   }
 
   // NOTE: DB records (profiles, user_consents, notification_settings) are created
-  // in /auth/callback AFTER email is confirmed. This ensures atomic auth flow:
+  // in /api/auth/verify-code AFTER code is verified. This ensures atomic auth flow:
   // - Signup creates auth user only
-  // - Database records created on first confirmed login
+  // - Database records created on first confirmed verification
 
-  // STEP 4: Send confirmation email with timeout (10s max)
+  // STEP 4: Generate 6-digit verification code and store hash in user_metadata
+  const verificationCode = generateVerificationCode();
+  const codeHash = await hashVerificationCode(verificationCode);
+  const codeExpiresAt = getCodeExpiryTimestamp();
+
+  await input.adminClient.auth.admin.updateUserById(theUserId, {
+    user_metadata: {
+      ...initialUserMetadata,
+      verification: {
+        code_hash: codeHash,
+        expires_at: codeExpiresAt,
+        attempts: 0,
+      },
+    },
+  }).catch((err) => {
+    console.error(`${ROUTE_TAG} Failed to store verification code hash.`, err);
+  });
+
+  // STEP 5: Send verification code email (10s max timeout)
   // Email failure must NOT block signup - user is already created
   let emailStatus: "sent" | "failed" = "failed";
   let emailError: string | null = null;
 
-  if (actionLink) {
-    const emailResult = await sendSignupConfirmationEmailAsync({
-      actionLink,
-      email: input.email,
-      firstName: input.firstName,
-      userId: theUserId,
-    });
+  const emailResult = await sendSignupConfirmationEmailAsync({
+    code: verificationCode,
+    email: input.email,
+    firstName: input.firstName,
+    userId: theUserId,
+  });
 
-    emailStatus = emailResult.status;
-    if (emailResult.status === "failed") {
-      emailError = emailResult.message;
-    }
-
-    // Update user metadata with email status (best effort)
-    input.adminClient?.auth.admin.updateUserById(theUserId, {
-      user_metadata: {
-        email_status: emailResult.status,
-        email_failure_reason: emailResult.status === "failed" ? emailResult.message : null,
-        email_sent_at: emailResult.status === "sent" ? new Date().toISOString() : null,
-      },
-    }).catch(() => {
-      // Metadata update failure is not critical
-    });
-  } else {
-    console.log("EMAIL_FAILED", { userId: theUserId, error: "missing_action_link", reason: "missing_action_link" });
-    emailStatus = "failed";
-    emailError = "Doğrulama bağlantısı oluşturulamadı";
+  emailStatus = emailResult.status;
+  if (emailResult.status === "failed") {
+    emailError = emailResult.message;
   }
+
+  // Update user metadata with email status (best effort)
+  input.adminClient?.auth.admin.updateUserById(theUserId, {
+    user_metadata: {
+      email_status: emailResult.status,
+      email_failure_reason: emailResult.status === "failed" ? emailResult.message : null,
+      email_sent_at: emailResult.status === "sent" ? new Date().toISOString() : null,
+    },
+  }).catch(() => {
+    // Metadata update failure is not critical
+  });
 
   // Log security event (async, don't block)
   evaluateRiskSafely({

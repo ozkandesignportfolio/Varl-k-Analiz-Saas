@@ -1,16 +1,16 @@
 import { getAuthRedirectUrl } from "@/lib/supabase/auth-redirect";
 
 export const emailVerificationSentMessage =
-  "E-posta adresinize doğrulama bağlantısı gönderildi.";
+  "E-posta adresinize doğrulama kodu gönderildi.";
 
 export const emailVerificationPromptMessage =
-  "E-posta adresinizi doğrulamak için gelen kutunuzu kontrol edin.";
+  "E-posta adresinize gönderilen 6 haneli doğrulama kodunu girin.";
 
 export const emailVerificationLoginBlockedMessage =
   "E-posta adresinizi doğrulamadan giriş yapamazsınız.";
 
 export const emailVerificationResentMessage =
-  "Doğrulama e-postası tekrar gönderildi.";
+  "Yeni doğrulama kodu e-posta adresinize gönderildi.";
 
 export const emailVerificationCompletedMessage =
   "E-posta adresiniz doğrulandı.";
@@ -22,7 +22,7 @@ export const emailVerificationConfigMismatchMessage =
   'Supabase e-posta doğrulaması şu anda güvenli biçimde tamamlanamıyor. Auth > Providers > Email altında "Confirm email" açık olmalı.';
 
 export const invalidVerificationLinkMessage =
-  "Doğrulama bağlantısı geçersiz veya süresi dolmuş. Lütfen yeni bir bağlantı isteyin.";
+  "Doğrulama kodu geçersiz veya süresi dolmuş. Lütfen yeni bir kod isteyin.";
 
 const getSafeNextPath = (candidate?: string | null) => {
   if (!candidate) {

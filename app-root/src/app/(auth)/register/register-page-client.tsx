@@ -12,7 +12,7 @@ export default function RegisterPageClient({ emailRedirectTo }: RegisterPageClie
   const resolvedEmailRedirectTo = emailRedirectTo ?? fallbackRedirect;
   const redirectWarning = emailRedirectTo
     ? null
-    : "APP_URL ayari bulunamadigi icin dogrulama yonlendirmesi mevcut origin ile yapilacak.";
+    : "APP_URL ayarı bulunamadığı için doğrulama yönlendirmesi mevcut origin ile yapılacak.";
 
   return (
     <SignupForm
