@@ -140,7 +140,7 @@ export function HeroSection() {
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/70 opacity-75" />
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
           </span>
-          Yazılım ve abonelik yönetim sistemi
+          Varlık ve operasyon yönetimi
         </div>
 
         {/* Headline */}
@@ -148,9 +148,8 @@ export function HeroSection() {
           className="max-w-3xl text-balance text-[1.625rem] font-bold leading-[1.12] tracking-tight sm:text-3xl md:text-5xl"
           style={heroEntrance(80)}
         >
-          <span className="text-white">Yazılım varlıklarınız ve </span>
-          <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">abonelikleriniz</span>
-          <span className="text-white"> tek bir merkezde</span>
+          <span className="text-white">Varlıklarınız ve maliyetleriniz </span>
+          <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">görünür ve kontrol altında</span>
         </h1>
 
         {/* Description */}
@@ -158,10 +157,9 @@ export function HeroSection() {
           className="max-w-2xl text-sm text-gray-400 leading-relaxed sm:text-base md:text-lg"
           style={heroEntrance(160)}
         >
-          Ekibinizin kullandığı araçları, abonelikleri ve maliyetleri tek bir yerden görün.<br />
-          Ne ödediğinizi, kimin kullandığını ve{" "}
-          <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">nelerin gereksiz olduğunu</span>
-          {" "}bilin
+          Varlıklarınızı, aboneliklerinizi ve giderlerinizi tek yerden takip edin.<br />
+          Belge yönetimi ve bakım planlamasıyla{" "}
+          <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">operasyonunuzu düzenli tutun</span>
         </p>
 
         {/* Trust line */}
@@ -169,7 +167,7 @@ export function HeroSection() {
           className="text-sm text-muted-foreground/70"
           style={heroEntrance(240)}
         >
-          Kurulum gerektirmez · 2 dakikada hazır · Ekipler için tasarlandı
+          Kurulum gerektirmez · 2 dakikada hazır · Bireysel ve ekip kullanımı
         </p>
 
         {/* CTA buttons */}
@@ -183,7 +181,7 @@ export function HeroSection() {
             className="group h-12 w-full bg-primary px-8 text-[15px] font-semibold text-primary-foreground shadow-[0_12px_32px_-8px_rgba(16,239,181,0.4)] hover:bg-primary/90 sm:w-auto"
           >
             <Link href="/register">
-              Ücretsiz hesap oluştur
+              Hesap oluştur
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
           </Button>

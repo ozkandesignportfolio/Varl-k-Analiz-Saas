@@ -669,7 +669,7 @@ function TurnstileWidget({
         </p>
       ) : null}
 
-      <div className="relative z-[999] max-w-full overflow-hidden !pointer-events-auto">
+      <div className="relative z-[999] flex max-w-full justify-center overflow-visible !pointer-events-auto">
         <div
           ref={setContainerRef}
           className={`cf-turnstile relative z-[999] max-w-full min-h-[65px] !pointer-events-auto ${

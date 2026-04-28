@@ -327,8 +327,8 @@ const SignupTurnstileSection = memo(function SignupTurnstileSection({
   siteKey,
 }: SignupTurnstileSectionProps) {
   return (
-    <div className="flex w-full justify-center rounded-2xl border border-white/10 bg-white/5 py-5 sm:px-4">
-      <div className="max-w-full">
+    <div className="-mx-3 flex w-full justify-center py-5 sm:mx-0 sm:rounded-2xl sm:border sm:border-white/10 sm:bg-white/5 sm:px-4">
+      <div className="max-w-full overflow-visible">
         <TurnstileWidget
           onStatusChange={onStatusChange}
           onTokenChange={onTokenChange}
@@ -844,7 +844,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
   const isSubmitDisabled = isSubmitting || isCooldownActive || Boolean(validationMessage);
 
   return (
-    <main className="relative min-h-screen w-full overflow-x-hidden px-3 py-4 sm:px-4 sm:py-6 lg:px-8">
+    <main className="relative min-h-screen w-full overflow-x-hidden px-2 py-4 sm:px-4 sm:py-6 lg:px-8">
       <div className="pointer-events-none absolute inset-0 opacity-30">
         <div className="ambient-orb ambient-orb-a" />
       </div>

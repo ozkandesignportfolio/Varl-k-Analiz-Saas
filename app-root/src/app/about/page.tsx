@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 export const metadata: Metadata = {
   title: "Hakkımızda | Assetly",
   description:
-    "Assetly'in varlık takibi, garanti/bakım/servis süreçleri ve belge yönetimi yaklaşımını tanıtan kurumsal sayfa.",
+    "Assetly'in varlık takibi, abonelik ve gider yönetimi, belge saklama ve bakım planlaması yaklaşımını tanıtan kurumsal sayfa.",
 };
 
 export default function AboutPage() {
@@ -34,8 +34,8 @@ export default function AboutPage() {
             <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Assetly</p>
             <h1 className="mt-4 text-3xl font-semibold text-foreground sm:text-4xl">Hakkımızda</h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-muted-foreground">
-              Assetly; varlık takibi, garanti-bakım-servis süreçleri, belge kasası ve bildirim yönetimini tek bir
-              SaaS panelinde birleştirerek ekiplerin ve bireysel kullanıcıların operasyonel görünürlüğünü artırmayı
+              Assetly; varlık takibi, abonelik ve gider yönetimi, belge saklama ve bakım planlamasını tek bir
+              yapıda birleştirerek bireysel kullanıcıların ve ekiplerin operasyonel görünürlüğünü artırmayı
               amaçlar.
             </p>
           </header>
@@ -44,38 +44,38 @@ export default function AboutPage() {
             <section className="space-y-4">
               <h2 className="text-2xl font-semibold text-foreground">1) Assetly Nedir?</h2>
               <p className="text-muted-foreground">
-                Assetly, fiziksel varlıkların yaşam döngüsünü uçtan uca takip etmek için tasarlanmış web tabanlı bir
-                platformdur. Varlık kayıtlarının oluşturulması, bakım takviminin planlanması, servis geçmişinin
-                belgelenmesi, garanti sürelerinin izlenmesi ve operasyonel maliyetlerin görünür hale getirilmesi tek
-                panelden yönetilir. Amaç, dağınık dosya ve uygulama kullanımından kaynaklanan gecikme, unutma ve bilgi
-                kaybı risklerini azaltmaktır.
+                Assetly, fiziksel ve dijital varlıkların yaşam döngüsünü takip etmek, abonelikleri ve giderleri
+                yönetmek, belgeleri düzenlemek ve bakım süreçlerini planlamak için tasarlanmış web tabanlı bir
+                platformdur. Varlık kayıtları, maliyet takibi, belge saklama ve servis geçmişi tek panelden
+                yönetilir. Amaç, farklı araçlara dağılmış bilgilerin neden olduğu gecikme, unutma ve kontrol kaybını
+                azaltmaktır.
               </p>
             </section>
 
             <section className="space-y-4">
               <h2 className="text-2xl font-semibold text-foreground">2) Misyon ve Vizyon</h2>
               <p className="text-muted-foreground">
-                Misyonumuz; kullanıcıların bakım, garanti ve servis süreçlerinde kararlarını veriyle desteklemesini
-                sağlamak, kritik tarihleri kaçırma riskini düşürmek ve belge yönetimini denetlenebilir bir standarda
-                taşımaktır. Vizyonumuz; ev kullanıcılarından kurumsal ekiplere kadar geniş bir ölçekte varlık
-                operasyonlarını daha öngörülebilir, ölçülebilir ve sürdürülebilir hale getiren güvenilir bir referans
-                platform olmaktır.
+                Misyonumuz; kullanıcıların varlıkları, abonelikleri, giderleri ve bakım süreçleri üzerinde
+                kontrolü elinde tutmasını sağlamak, kritik tarihleri kaçırma riskini düşürmek ve operasyonel
+                görünürlüğü denetlenebilir bir standarda taşımaktır. Vizyonumuz; bireysel kullanıcılardan
+                kurumsal ekiplere kadar geniş bir ölçekte varlık ve maliyet operasyonlarını daha düzenli,
+                öngörülebilir ve sürdürülebilir hale getiren güvenilir bir referans platform olmaktır.
               </p>
             </section>
 
             <section className="space-y-4">
               <h2 className="text-2xl font-semibold text-foreground">3) Hangi Sorunları Çözüyoruz?</h2>
               <p className="text-muted-foreground">
-                Ev kullanıcılarında en sık görülen problem, garanti bitişlerinin ve periyodik bakımların manuel takibi
-                nedeniyle kritik tarihlerin unutulmasıdır. Küçük işletmelerde servis kayıtları, satın alma belgeleri ve
-                bakım planları farklı araçlarda tutulduğu için operasyonun bütün resmi kaybolur. Kurumsal yapılarda ise
-                ekipler arası veri standardı eksikliği, denetim ve raporlama süreçlerini zorlaştırır.
+                Bireysel kullanıcılarda en sık görülen sorun, garanti bitişlerinin, abonelik yenilemelerinin ve
+                periyodik bakımların manuel takibi nedeniyle kritik tarihlerin unutulmasıdır. Küçük işletmelerde
+                varlık kayıtları, gider belgeleri ve bakım planları farklı araçlarda tutulduğu için operasyonun
+                bütün resmi kaybolur. Ekiplerde ise ortak bir veri standardı eksikliği, maliyetlerin görünürlüğünü
+                ve denetimi zorlaştırır.
               </p>
               <p className="text-muted-foreground">
-                Assetly bu tabloyu; varlık envanteri, garanti/servis geçmişi, belge kasası, bakım planı, masraf
-                görünürlüğü ve risk uyarılarıyla tek bir iş akışında birleştirir. Böylece unutulan garanti hakkı,
-                atlanan servis, kaybolan fatura ve kontrolsüz maliyet gibi operasyonel riskler daha erken görünür hale
-                gelir.
+                Assetly bu tabloyu; varlık envanteri, abonelik ve gider takibi, belge kasası, bakım planı ve
+                risk uyarılarıyla tek bir yapıda birleştirir. Böylece unutulan yenileme, atlanan servis, kaybolan
+                belge ve kontrolüsüz maliyet gibi operasyonel riskler erken görünür hale gelir.
               </p>
             </section>
 
@@ -84,8 +84,8 @@ export default function AboutPage() {
               <p className="text-muted-foreground">
                 Excel, Notion veya klasör tabanlı takip yaklaşımları esnek görünse de zamanla veri bütünlüğü, yetki
                 yönetimi ve hatırlatma otomasyonu açısından sürdürülebilirliğini kaybeder. Assetly, bu dağınık yapıya
-                karşı tek panelde standartlaştırılmış kayıt akışı sunar: otomatik hatırlatmalar, belge kasası, skor
-                analizi, birleşik zaman akışı ve operasyon metrikleri.
+                karşı standartlaştırılmış bir kayıt akışı sunar: varlık envanteri, abonelik ve gider takibi,
+                belge kasası, bakım planlaması, otomatik hatırlatmalar ve operasyon metrikleri.
               </p>
               <p className="text-muted-foreground">
                 Platform aynı zamanda organizasyon bazlı kullanım senaryolarını, rol bazlı erişim yaklaşımını ve temel
@@ -97,10 +97,10 @@ export default function AboutPage() {
             <section className="space-y-4">
               <h2 className="text-2xl font-semibold text-foreground">5) Kimler İçin?</h2>
               <p className="text-muted-foreground">
-                Küçük işletme sahipleri için Assetly, bakım ve servis planlarını tek yerde tutarak işletme
-                sürekliliğine katkı sağlar. Operasyon sorumluları için varlık bazlı geçmiş, masraf eğilimi ve risk
-                görünümü karar desteği sunar. Ev kullanıcıları için garanti takibi, servis belgelerinin saklanması ve
-                bildirimler günlük pratik değer üretir. Teknik servis takip eden ekiplerde ise iş emri, belge ve bakım
+                Küçük işletme sahipleri için Assetly, varlıkları, abonelikleri ve giderleri tek yerde tutarak
+                operasyonel düzeni sağlar. Operasyon sorumluları için varlık bazlı geçmiş, maliyet eğilimi ve risk
+                görünümü karar desteği sunar. Bireysel kullanıcılar için garanti takibi, abonelik hatırlatmaları,
+                belge saklama ve bildirimler günlük pratik değer üretir. Ekiplerde ise varlık, belge ve bakım
                 geçmişinin birlikte görünmesi koordinasyonu iyileştirir.
               </p>
             </section>
@@ -129,13 +129,13 @@ export default function AboutPage() {
 
           <div className="mt-12 border-t border-border/60 pt-8 text-center">
             <h3 className="text-xl font-semibold text-foreground">Hemen başlayın</h3>
-            <p className="mt-2 text-sm text-muted-foreground">Ücretsiz planla hemen deneyin. Kredi kartı gerekmez.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Varlıklarınızı ve giderlerinizi düzene koyun.</p>
             <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
               <Link
                 href="/register"
                 className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
               >
-                Ücretsiz Hesap Oluştur
+                Hesap Oluştur
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
