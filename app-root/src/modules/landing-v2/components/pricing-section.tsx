@@ -19,38 +19,38 @@ const trialInvoiceUploadLimit = trialPlan.limits.invoiceUploadsLimit ?? 0;
 
 const plans = [
   {
-    name: "Free",
+    name: "Deneme",
     price: "0",
-    period: "forever",
-    description: "Discover your SaaS spending",
+    period: "sonsuza dek",
+    description: "SaaS harcamalarınızı keşfedin",
     features: [
-      `${trialAssetLimit} SaaS tool tracking`,
-      `${trialDocumentLimit} contract uploads`,
-      `${trialSubscriptionLimit} subscription tracking`,
-      `${trialInvoiceUploadLimit} invoice uploads`,
-      "Fast search and filtering",
-      "Basic cost dashboard and alerts",
+      `${trialAssetLimit} SaaS aracı takibi`,
+      `${trialDocumentLimit} sözleşme yükleme`,
+      `${trialSubscriptionLimit} abonelik takibi`,
+      `${trialInvoiceUploadLimit} fatura yükleme`,
+      "Hızlı arama ve filtreleme",
+      "Temel maliyet paneli ve bildirim",
     ],
-    cta: "Start Free",
+    cta: "Ücretsiz Başla",
     popular: false,
   },
   {
     name: "Premium",
     price: String(PREMIUM_MONTHLY_PRICE_TL),
-    period: "/mo",
-    description: "Take full control of your team’s SaaS costs",
+    period: "/ay",
+    description: "Ekibinizin SaaS maliyetlerini tam kontrol altına alın",
     features: [
-      "Unlimited SaaS tool tracking",
-      "Unlimited contracts and documents",
-      "Unlimited subscriptions and invoices",
-      "Usage and savings analysis",
-      "Renewal and cost alerts",
-      "Monthly PDF cost report",
-      "Unused tool detection",
-      "Automation engine",
-      "Priority support",
+      "Sınırsız SaaS aracı takibi",
+      "Sınırsız sözleşme ve belge",
+      "Sınırsız abonelik ve fatura",
+      "Kullanım ve tasarruf analizi",
+      "Yenileme ve maliyet uyarıları",
+      "Aylık PDF maliyet raporu",
+      "Kullanılmayan araç tespiti",
+      "Otomasyon motoru",
+      "Öncelikli destek",
     ],
-    cta: "Upgrade to Premium",
+    cta: "Premium'a Geç",
     popular: true,
   },
 ];
@@ -147,14 +147,14 @@ export function PricingSection() {
         <div className="mb-10 text-center sm:mb-16">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5">
             <Sparkles className="h-3.5 w-3.5 text-primary" />
-            <span className="text-xs tracking-widest text-primary">PRICING</span>
+            <span className="text-xs tracking-widest text-primary">FİYATLANDIRMA</span>
           </div>
           <h2 className="text-balance text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl">
-            Simple and <span className="text-gradient">transparent pricing</span>
+            Basit ve <span className="text-gradient">şeffaf fiyatlandırma</span>
           </h2>
           <p className="mx-auto mt-6 max-w-xl text-lg text-muted-foreground">
-            Free plan: {trialAssetLimit} SaaS tools, {trialDocumentLimit} documents, {trialSubscriptionLimit} subscriptions,{" "}
-            {trialInvoiceUploadLimit} invoice tracking
+            Deneme planı: {trialAssetLimit} SaaS aracı, {trialDocumentLimit} belge, {trialSubscriptionLimit} abonelik,{" "}
+            {trialInvoiceUploadLimit} fatura takibi
           </p>
         </div>
 
@@ -168,7 +168,7 @@ export function PricingSection() {
               {plan.popular ? (
                 <div className="absolute -top-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-primary px-4 py-1">
                   <Sparkles className="h-3 w-3 text-primary-foreground" />
-                  <span className="text-xs font-semibold text-primary-foreground">Recommended</span>
+                  <span className="text-xs font-semibold text-primary-foreground">Önerilen</span>
                 </div>
               ) : null}
 
@@ -207,7 +207,7 @@ export function PricingSection() {
                   disabled={plan.popular ? isStartingCheckout : false}
                   className={`group w-full py-6 text-base ${plan.popular ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 hover:bg-primary/90" : "border border-border bg-secondary text-secondary-foreground hover:bg-secondary/80"}`}
                 >
-                  {plan.popular && isStartingCheckout ? "Redirecting..." : plan.cta}
+                  {plan.popular && isStartingCheckout ? "Yönlendiriliyor..." : plan.cta}
                   <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </Button>
               )}

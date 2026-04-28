@@ -27,51 +27,51 @@ type AssetRow = {
 };
 
 const sidebarItems: { label: string; icon: LucideIcon; active?: boolean }[] = [
-  { label: "Subscriptions", icon: Package, active: true },
-  { label: "Renewals", icon: Wrench },
-  { label: "Usage", icon: ClipboardList },
-  { label: "Contracts", icon: FileText },
-  { label: "Activity", icon: Activity },
-  { label: "Expenses", icon: Wallet },
-  { label: "Alerts", icon: Bell },
-  { label: "Invoices", icon: CreditCard },
+  { label: "Abonelikler", icon: Package, active: true },
+  { label: "Yenilemeler", icon: Wrench },
+  { label: "Kullanım", icon: ClipboardList },
+  { label: "Sözleşmeler", icon: FileText },
+  { label: "Aktivite", icon: Activity },
+  { label: "Harcamalar", icon: Wallet },
+  { label: "Uyarılar", icon: Bell },
+  { label: "Faturalar", icon: CreditCard },
 ];
 
 const assets: AssetRow[] = [
   {
-    label: "Project Management Tool",
+    label: "Proje Yönetim Aracı",
     icon: Smartphone,
-    meta: "Pro · 12 users · $10/user/month",
-    status: "Active",
+    meta: "Pro · 12 kullanıcı · $10/kullanıcı/ay",
+    status: "Aktif",
     statusTone: "normal",
   },
   {
-    label: "Design Platform",
+    label: "Tasarım Platformu",
     icon: Snowflake,
-    meta: "Team Plan · Renews in 3 days · $15/user",
-    status: "Attention",
+    meta: "Takım Planı · 3 gün içinde yenileme · $15/kullanıcı",
+    status: "Dikkat",
     statusTone: "attention",
     highlight: true,
   },
   {
-    label: "Cloud Hosting",
+    label: "Bulut Barındırma",
     icon: Laptop,
-    meta: "Monthly Usage · Usage-based billing",
-    status: "Active",
+    meta: "Aylık Kullanım · Kullanım bazlı fatura",
+    status: "Aktif",
     statusTone: "normal",
   },
   {
-    label: "Email Service",
+    label: "E-posta Servisi",
     icon: Wifi,
-    meta: "Business · 18 users · $6/user/month",
-    status: "Active",
+    meta: "Business · 18 kullanıcı · $6/kullanıcı/ay",
+    status: "Aktif",
     statusTone: "active",
   },
   {
-    label: "Analytics Tool",
+    label: "Analiz Aracı",
     icon: Zap,
-    meta: "Pro Plan · 0 active users · Unused",
-    status: "Cancel",
+    meta: "Pro Plan · 0 aktif kullanıcı · Kullanılmıyor",
+    status: "İptal Et",
     statusTone: "pending",
   },
 ];
@@ -107,15 +107,15 @@ export function ProductPreviewSection() {
         {/* ── Text ── */}
         <div className="mx-auto max-w-2xl text-center" style={entrance(0)}>
           <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-medium tracking-wide text-primary">
-            Multi-Platform
+            Çoklu Platform
           </span>
           <h2 className="text-balance text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
-            A seamless experience{" "}
-            <span className="text-gradient">on every device</span>
+            Tüm cihazlarda{" "}
+            <span className="text-gradient">kusursuz deneyim</span>
           </h2>
           <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Track your team’s SaaS subscriptions on web, mobile and tablet
-            in real time. The same powerful experience on every device.
+            Ekibinizin SaaS aboneliklerini web, mobil ve tablet üzerinden
+            gerçek zamanlı takip edin. Her cihazda aynı güçlü deneyim.
           </p>
         </div>
 
@@ -192,20 +192,20 @@ export function ProductPreviewSection() {
                       {/* today actions */}
                       <div className="rounded-lg bg-white/[0.025] px-2 py-1.5 sm:px-4 sm:py-3">
                         <p className="text-[8px] font-medium uppercase tracking-[0.18em] text-muted-foreground/55 sm:text-[10.5px]">
-                          Needs attention today
+                          Bugün dikkat edilmesi gerekenler
                         </p>
                         <ul className="mt-1 flex flex-col gap-1 text-[10px] sm:mt-2.5 sm:gap-1.5 sm:text-[13px]">
                           <li className="flex items-center gap-1 sm:gap-2">
                             <span className="h-1 w-1 shrink-0 rounded-full bg-amber-300/80 sm:h-1.5 sm:w-1.5" aria-hidden />
-                            <span className="text-foreground/85">Design Platform</span>
+                            <span className="text-foreground/85">Tasarım Platformu</span>
                             <span className="text-muted-foreground/35" aria-hidden>→</span>
-                            <span className="text-muted-foreground/70">Renews in 3 days</span>
+                            <span className="text-muted-foreground/70">3 gün içinde yenileme</span>
                           </li>
                           <li className="flex items-center gap-1 sm:gap-2">
                             <span className="h-1 w-1 shrink-0 rounded-full bg-rose-400/80 sm:h-1.5 sm:w-1.5" aria-hidden />
-                            <span className="text-foreground/85">Analytics Tool</span>
+                            <span className="text-foreground/85">Analiz Aracı</span>
                             <span className="text-muted-foreground/35" aria-hidden>→</span>
-                            <span className="text-muted-foreground/70">Unused, cancellation recommended</span>
+                            <span className="text-muted-foreground/70">Kullanılmıyor, iptal önerildi</span>
                           </li>
                         </ul>
                       </div>
@@ -214,11 +214,11 @@ export function ProductPreviewSection() {
                       <div className="flex items-baseline justify-between">
                         <div>
                           <h3 className="text-xs font-semibold text-foreground sm:text-base md:text-lg">
-                            My Subscriptions
+                            Aboneliklerim
                           </h3>
-                          <p className="text-[9px] text-muted-foreground/60 sm:text-xs">14 subscriptions · up to date</p>
+                          <p className="text-[9px] text-muted-foreground/60 sm:text-xs">14 abonelik · güncel</p>
                         </div>
-                        <span className="hidden text-[10.5px] uppercase tracking-[0.18em] text-muted-foreground/40 sm:inline">Status</span>
+                        <span className="hidden text-[10.5px] uppercase tracking-[0.18em] text-muted-foreground/40 sm:inline">Durum</span>
                       </div>
 
                       {/* asset list */}
@@ -245,7 +245,7 @@ export function ProductPreviewSection() {
                                 <p className="truncate text-[9px] font-medium text-foreground sm:text-[13px] md:text-sm">{asset.label}</p>
                                 <p className="truncate text-[8px] text-muted-foreground/55 sm:text-[11px] md:text-xs">{asset.meta}</p>
                                 {asset.highlight ? (
-                                  <p className="mt-0.5 hidden truncate text-[10.5px] text-amber-200/70 sm:block">Review license count before renewal</p>
+                                  <p className="mt-0.5 hidden truncate text-[10.5px] text-amber-200/70 sm:block">Yenilemeden önce lisans sayısını kontrol edin</p>
                                 ) : null}
                               </div>
                               <span className={`hidden items-center gap-1.5 rounded-full px-2 py-0.5 text-[10.5px] font-medium sm:inline-flex ${tone.pill}`}>
@@ -311,14 +311,14 @@ export function ProductPreviewSection() {
                         <Snowflake className="h-5 w-5" strokeWidth={1.7} />
                       </span>
                       <div className="min-w-0">
-                        <p className="text-[9.5px] uppercase tracking-[0.2em] text-muted-foreground/55">SaaS Tool</p>
-                        <h4 className="truncate text-[17px] font-semibold text-foreground">Design Platform</h4>
+                        <p className="text-[9.5px] uppercase tracking-[0.2em] text-muted-foreground/55">SaaS Aracı</p>
+                        <h4 className="truncate text-[17px] font-semibold text-foreground">Tasarım Platformu</h4>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2 rounded-lg bg-amber-400/[0.1] px-3 py-2">
                       <span className="h-1.5 w-1.5 rounded-full bg-amber-300/80" aria-hidden />
-                      <span className="text-[11.5px] font-medium text-amber-100/90">Renews in 3 days</span>
+                      <span className="text-[11.5px] font-medium text-amber-100/90">3 gün içinde yenileme</span>
                     </div>
 
                     <dl className="flex flex-col gap-2.5 text-[12px]">
@@ -330,12 +330,12 @@ export function ProductPreviewSection() {
                         </dd>
                       </div>
                       <div className="flex items-center justify-between gap-3">
-                        <dt className="text-muted-foreground/60">Monthly cost</dt>
-                        <dd className="text-foreground/85">$15/user</dd>
+                        <dt className="text-muted-foreground/60">Aylık maliyet</dt>
+                        <dd className="text-foreground/85">$15/kullanıcı</dd>
                       </div>
                       <div className="flex items-start justify-between gap-3">
-                        <dt className="text-muted-foreground/60">Editors</dt>
-                        <dd className="max-w-[60%] text-right text-foreground/80">4 active users</dd>
+                        <dt className="text-muted-foreground/60">Editör</dt>
+                        <dd className="max-w-[60%] text-right text-foreground/80">4 aktif kullanıcı</dd>
                       </div>
                     </dl>
 
@@ -343,11 +343,11 @@ export function ProductPreviewSection() {
                       type="button"
                       className="mt-1 w-full rounded-xl bg-gradient-to-b from-primary to-primary/85 py-2.5 text-[13px] font-semibold text-primary-foreground shadow-[0_10px_25px_-10px_rgba(59,130,246,0.55)]"
                     >
-                      Manage renewal
+                      Yenilemeyi yönet
                     </button>
 
                     <p className="text-center text-[10.5px] leading-relaxed text-muted-foreground/55">
-                      Cancel unused licenses before renewal.
+                      Yenilemeden önce gereksiz lisansları iptal edin.
                     </p>
                   </div>
 
@@ -365,7 +365,7 @@ export function ProductPreviewSection() {
         {/* ── Trust indicators ── */}
         <div className="mt-16 flex flex-col items-center gap-4 sm:mt-20" style={entrance(360)}>
           <p className="text-sm font-medium text-muted-foreground/70">
-            Works on Web, Mobile and Tablet
+            Web, Mobil ve Tablet üzerinde çalışır
           </p>
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
             {([

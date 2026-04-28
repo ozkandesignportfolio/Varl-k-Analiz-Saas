@@ -13,29 +13,29 @@ type FooterGroup = {
 
 const footerGroups: FooterGroup[] = [
   {
-    title: "Product",
+    title: "Ürün",
     links: [
-      { label: "Features", href: "/#ozellikler" },
-      { label: "Pricing", href: "/#fiyatlandirma" },
-      { label: "Notifications", href: "/#bildirimler" },
-      { label: "Score Analysis", href: "/#skor-analizi" },
+      { label: "Özellikler", href: "/#ozellikler" },
+      { label: "Fiyatlandırma", href: "/#fiyatlandirma" },
+      { label: "Bildirimler", href: "/#bildirimler" },
+      { label: "Skor Analizi", href: "/#skor-analizi" },
     ],
   },
   {
-    title: "Company",
+    title: "Şirket",
     links: [
-      { label: "About", href: "/about" },
-      { label: "Contact", href: "/contact" },
+      { label: "Hakkımızda", href: "/about" },
+      { label: "İletişim", href: "/contact" },
     ],
   },
   {
-    title: "Legal",
+    title: "Yasal",
     links: [
-      { label: "Privacy Policy", href: "/legal/privacy" },
-      { label: "Terms of Service", href: "/legal/terms" },
-      { label: "KVKK", href: "/legal/kvkk" },
-      { label: "Cookie Policy", href: "/legal/cookies" },
-      { label: "Legal Notice", href: "/legal/notice" },
+      { label: "Gizlilik Politikası", href: "/legal/privacy" },
+      { label: "Kullanım Şartları", href: "/legal/terms" },
+      { label: "KVKK Aydınlatma Metni", href: "/legal/kvkk" },
+      { label: "Çerez Politikası", href: "/legal/cookies" },
+      { label: "Hukuki Bilgilendirme", href: "/legal/notice" },
     ],
   },
 ];
@@ -54,11 +54,11 @@ export function Footer() {
               </div>
               <div>
                 <div className="text-sm font-bold tracking-tight text-foreground">ASSETLY</div>
-                <div className="text-[9px] tracking-widest text-muted-foreground">SaaS Cost Control</div>
+                <div className="text-[9px] tracking-widest text-muted-foreground">SaaS Maliyet Kontrolü</div>
               </div>
             </div>
             <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
-              Track your team’s SaaS subscriptions, identify unused tools and take control of software costs.
+              Ekibinizin SaaS aboneliklerini takip edin, kullanılmayan araçları tespit edin ve yazılım maliyetlerini kontrol altına alın.
             </p>
           </div>
 
@@ -82,7 +82,7 @@ export function Footer() {
 
         <div className="mt-16 border-t border-border/30 pt-8" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
           <p className="mt-3 text-xs leading-relaxed text-muted-foreground/70">{PAYMENT_TEXT.stripeCollectionNotice}</p>
-          <p className="text-sm text-muted-foreground">2026 Assetly. All rights reserved.</p>
+          <p className="text-sm text-muted-foreground">2026 Assetly. Tüm hakları saklıdır.</p>
         </div>
       </div>
     </footer>

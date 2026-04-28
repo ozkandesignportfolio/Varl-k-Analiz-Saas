@@ -4,10 +4,10 @@ import { useInView } from "@/modules/landing-v2/hooks/use-in-view"
 import { Receipt, FileCheck, Clock, AlertCircle, CheckCircle2, Filter, Download } from "lucide-react"
 
 const invoices = [
-  { no: "INV-2026-0142", provider: "Cloud Hosting", amount: "3,450.00", vade: "Feb 25, 2026", status: "pending", statusText: "Pending" },
-  { no: "INV-2026-0138", provider: "Database Hosting", amount: "1,280.00", vade: "Feb 20, 2026", status: "overdue", statusText: "Overdue" },
-  { no: "INV-2026-0135", provider: "Project Management Tool", amount: "2,880.00", vade: "Feb 15, 2026", status: "paid", statusText: "Paid" },
-  { no: "INV-2026-0130", provider: "Email Service", amount: "1,440.00", vade: "Feb 10, 2026", status: "paid", statusText: "Paid" },
+  { no: "INV-2026-0142", provider: "Bulut Barındırma", amount: "3.450,00", vade: "25 Şub 2026", status: "pending", statusText: "Bekliyor" },
+  { no: "INV-2026-0138", provider: "Veritabanı Barındırma", amount: "1.280,00", vade: "20 Şub 2026", status: "overdue", statusText: "Gecikti" },
+  { no: "INV-2026-0135", provider: "Proje Yönetim Aracı", amount: "2.880,00", vade: "15 Şub 2026", status: "paid", statusText: "Ödendi" },
+  { no: "INV-2026-0130", provider: "E-posta Servisi", amount: "1.440,00", vade: "10 Şub 2026", status: "paid", statusText: "Ödendi" },
 ]
 
 const statusStyles: Record<string, string> = {
@@ -30,22 +30,22 @@ export function FaturaSection() {
           <div className={inView ? "animate-slide-in-left" : "opacity-0"}>
             <div className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/5 px-4 py-1.5 mb-6">
               <Receipt className="h-3.5 w-3.5 text-accent" />
-              <span className="text-xs tracking-widest text-accent">SaaS Invoices</span>
+              <span className="text-xs tracking-widest text-accent">SaaS Faturaları</span>
             </div>
             <h2 className="text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl text-balance">
-              All your SaaS invoices{" "}
-              <span className="text-gradient">in one place</span>
+              SaaS faturalarınız{" "}
+              <span className="text-gradient">tek ekranda</span>
             </h2>
             <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg">
-              See all your SaaS invoices in one view. Track due dates, payment status and total monthly spend in real time.
+              Tüm SaaS faturalarınızı tek ekranda görün. Vade tarihleri, ödeme durumları ve aylık toplam gideri anlık takip edin.
             </p>
 
             <div className="mt-6 grid gap-3 sm:mt-10 sm:grid-cols-2 sm:gap-4">
               {[
-                { icon: Receipt, label: "Invoice Records", desc: "Amount, tax, due date and SaaS tool breakdown" },
-                { icon: FileCheck, label: "Document Storage", desc: "Store invoices and contracts securely" },
-                { icon: Clock, label: "Due Date Tracking", desc: "Automatic alerts when payment is due" },
-                { icon: Download, label: "PDF Cost Report", desc: "Download monthly SaaS spend summary" },
+                { icon: Receipt, label: "Fatura Kaydı", desc: "Tutar, vergi, vade ve SaaS aracı bazında" },
+                { icon: FileCheck, label: "Belge Saklama", desc: "Fatura ve sözleşmeleri güvenle saklayın" },
+                { icon: Clock, label: "Vade Takibi", desc: "Ödeme günü geldiğinde otomatik uyarı" },
+                { icon: Download, label: "PDF Maliyet Raporu", desc: "Aylık SaaS gider özetini indirin" },
               ].map((item, i) => (
                 <div key={i} className="flex items-start gap-3 rounded-xl border border-border/50 bg-secondary/30 p-4 transition-all hover:border-accent/20 hover:bg-secondary/50">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10">
@@ -65,8 +65,8 @@ export function FaturaSection() {
             <div className="glass-card rounded-3xl p-4 sm:p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <div className="text-sm font-semibold text-foreground">SaaS Invoice History</div>
-                  <div className="text-xs text-muted-foreground">February 2026</div>
+                  <div className="text-sm font-semibold text-foreground">SaaS Fatura Geçmişi</div>
+                  <div className="text-xs text-muted-foreground">Şubat 2026</div>
                 </div>
                 <div className="flex items-center gap-2">
                   <button className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary/50 text-muted-foreground hover:text-foreground transition-colors" aria-label="Filtrele">
@@ -82,15 +82,15 @@ export function FaturaSection() {
               <div className="grid grid-cols-3 gap-2 mb-4 sm:gap-3 sm:mb-6">
                 <div className="rounded-xl bg-secondary/50 p-3 text-center">
                   <div className="text-lg font-bold text-chart-5">1</div>
-                  <div className="text-[10px] text-muted-foreground">Overdue</div>
+                  <div className="text-[10px] text-muted-foreground">Geciken</div>
                 </div>
                 <div className="rounded-xl bg-secondary/50 p-3 text-center">
                   <div className="text-lg font-bold text-chart-4">1</div>
-                  <div className="text-[10px] text-muted-foreground">Pending</div>
+                  <div className="text-[10px] text-muted-foreground">Bekleyen</div>
                 </div>
                 <div className="rounded-xl bg-secondary/50 p-3 text-center">
                   <div className="text-lg font-bold text-primary">2</div>
-                  <div className="text-[10px] text-muted-foreground">Paid</div>
+                  <div className="text-[10px] text-muted-foreground">Ödenen</div>
                 </div>
               </div>
 
@@ -109,7 +109,7 @@ export function FaturaSection() {
                       </div>
                       <div className="min-w-0">
                         <div className="truncate text-sm font-medium text-foreground">{inv.provider}</div>
-                        <div className="truncate text-[10px] text-muted-foreground">{inv.no} - Due: {inv.vade}</div>
+                        <div className="truncate text-[10px] text-muted-foreground">{inv.no} - Vade: {inv.vade}</div>
                       </div>
                     </div>
                     <div className="shrink-0 text-right">

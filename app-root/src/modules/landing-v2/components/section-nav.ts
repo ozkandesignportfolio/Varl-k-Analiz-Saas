@@ -10,41 +10,41 @@ export type NavGroup = {
 
 export const NAV_GROUPS: NavGroup[] = [
   {
-    label: "Product",
+    label: "Ürün",
     links: [
-      { label: "Features", href: "#ozellikler" },
-      { label: "Pricing", href: "#fiyatlandirma" },
-      { label: "Notifications", href: "#bildirimler" },
-      { label: "Score Analysis", href: "#skor-analizi" },
+      { label: "Özellikler", href: "#ozellikler" },
+      { label: "Fiyatlandırma", href: "#fiyatlandirma" },
+      { label: "Bildirimler", href: "#bildirimler" },
+      { label: "Skor Analizi", href: "#skor-analizi" },
     ],
   },
   {
-    label: "Company",
+    label: "Şirket",
     links: [
-      { label: "About", href: "/about" },
-      { label: "Contact", href: "/contact" },
+      { label: "Hakkımızda", href: "/about" },
+      { label: "İletişim", href: "/contact" },
     ],
   },
   {
-    label: "Legal",
+    label: "Yasal",
     links: [
-      { label: "Privacy Policy", href: "/legal/privacy" },
-      { label: "Terms of Service", href: "/legal/terms" },
+      { label: "Gizlilik Politikası", href: "/legal/privacy" },
+      { label: "Kullanım Şartları", href: "/legal/terms" },
       { label: "KVKK", href: "/legal/kvkk" },
-      { label: "Cookie Policy", href: "/legal/cookies" },
-      { label: "Legal Notice", href: "/legal/notice" },
+      { label: "Çerez Politikası", href: "/legal/cookies" },
+      { label: "Hukuki Bilgilendirme", href: "/legal/notice" },
     ],
   },
 ];
 
 export const LANDING_NAV_SECTIONS = [
-  { label: "Features", href: "#ozellikler" },
-  { label: "SaaS Dashboard", href: "#panel" },
-  { label: "Notifications", href: "#bildirimler" },
-  { label: "Subscriptions", href: "#abonelik" },
-  { label: "Invoices", href: "#fatura" },
-  { label: "Score Analysis", href: "#skor-analizi" },
-  { label: "Pricing", href: "#fiyatlandirma" },
+  { label: "Özellikler", href: "#ozellikler" },
+  { label: "SaaS Paneli", href: "#panel" },
+  { label: "Bildirimler", href: "#bildirimler" },
+  { label: "Abonelik Takibi", href: "#abonelik" },
+  { label: "SaaS Faturaları", href: "#fatura" },
+  { label: "Skor Analizi", href: "#skor-analizi" },
+  { label: "Fiyatlandırma", href: "#fiyatlandirma" },
 ] as const;
 
 type LandingSectionHash = (typeof LANDING_NAV_SECTIONS)[number]["href"];

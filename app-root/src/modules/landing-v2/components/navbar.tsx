@@ -214,7 +214,7 @@ export function Navbar() {
           </div>
           <div className="flex flex-col">
             <span className="text-lg font-bold tracking-tight text-foreground">ASSETLY</span>
-            <span className="text-[10px] tracking-[0.2em] text-muted-foreground">SaaS Cost Control</span>
+            <span className="text-[10px] tracking-[0.2em] text-muted-foreground">SaaS Maliyet Kontrolü</span>
           </div>
         </Link>
 
@@ -243,13 +243,13 @@ export function Navbar() {
             variant="ghost"
             className="text-muted-foreground hover:bg-secondary/50 hover:text-foreground focus-visible:ring-primary/60"
           >
-            <Link href="/login">Log In</Link>
+            <Link href="/login">Giriş Yap</Link>
           </Button>
           <Button
             asChild
             className="bg-primary text-primary-foreground shadow-lg shadow-primary/25 hover:bg-primary/90 focus-visible:ring-primary/70"
           >
-            <Link href="/register">Sign Up</Link>
+            <Link href="/register">Kayıt Ol</Link>
           </Button>
         </div>
 
@@ -257,7 +257,7 @@ export function Navbar() {
           ref={mobileToggleRef}
           onClick={() => setMobileOpen((prev) => !prev)}
           className="rounded-lg p-2 text-muted-foreground hover:text-foreground lg:hidden"
-          aria-label="Toggle menu"
+          aria-label="Menüyü aç/kapat"
           aria-expanded={mobileOpen}
           aria-controls="landing-v2-mobile-menu"
         >
@@ -291,7 +291,7 @@ export function Navbar() {
                 className="w-full justify-center text-muted-foreground hover:text-foreground focus-visible:ring-primary/60"
               >
                 <Link href="/login" onClick={() => setMobileOpen(false)}>
-                  Log In
+                  Giriş Yap
                 </Link>
               </Button>
               <Button
@@ -299,7 +299,7 @@ export function Navbar() {
                 className="w-full bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary/70"
               >
                 <Link href="/register" onClick={() => setMobileOpen(false)}>
-                  Sign Up
+                  Kayıt Ol
                 </Link>
               </Button>
             </div>

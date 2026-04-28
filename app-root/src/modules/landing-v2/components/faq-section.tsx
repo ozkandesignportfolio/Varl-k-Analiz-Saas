@@ -11,137 +11,137 @@ interface FaqItem {
 
 const faqItems: FaqItem[] = [
   {
-    question: "How does Assetly help reduce SaaS costs?",
+    question: "Assetly SaaS maliyetlerimi nasıl azaltır?",
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Assetly shows all your subscriptions in one place, helping you identify unused tools and eliminate unnecessary spending.
+          Assetly tüm aboneliklerinizi tek yerde gösterir, kullanılmayan araçları tespit eder ve gereksiz harcamaları ortadan kaldırmanıza yardımcı olur.
         </p>
         <p>
-          Most teams pay for dozens of subscriptions spread across different cards and emails. Tools nobody uses keep billing for months. Assetly makes these invisible costs visible — alerts you before renewals, shows usage data and recommends cancellations.
+          Çoğu ekip, farklı kartlara ve e-postalara dağılmış onlarca abonelik için ödeme yapar. Kimsenin kullanmadığı araçlar aylarca fatura kesmeye devam eder. Assetly bu görünmez maliyetleri görünür kılar — yenilemeden önce uyarır, kullanım verisini gösterir ve iptal önerir.
         </p>
       </>
     ),
   },
   {
-    question: "Can I track all my team\u2019s tools?",
+    question: "Ekibimin tüm araçlarını takip edebilir miyim?",
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Yes. You can see which tools your team uses and who is assigned to each subscription.
+          Evet. Ekibinizin hangi araçları kullandığını ve her aboneliğe kimin atandığını görebilirsiniz.
         </p>
         <p>
-          Track the plan, user count, monthly cost and renewal date for every tool. Even if different departments use different tools, you get a real-time view of your total SaaS spend.
+          Her aracın planını, kullanıcı sayısını, aylık maliyetini ve yenileme tarihini takip edin. Farklı departmanlar farklı araçlar kullansa bile toplam SaaS harcamanızı gerçek zamanlı olarak görürsünüz.
         </p>
       </>
     ),
   },
   {
-    question: "What if I don\u2019t know all the subscriptions we have?",
+    question: "Hangi aboneliklerimiz olduğunu bilmiyorsam?",
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          That\u2019s exactly why Assetly exists. Uncovering hidden subscriptions is the first step.
+          Assetly tam da bunun için var. Gizli abonelikleri ortaya çıkarmak ilk adımdır.
         </p>
         <p>
-          You can manually add tools and gradually build full visibility over your software stack. The system tracks renewal dates, detects unused tools and alerts you. Within the first week you\u2019ll find at least one tool you didn\u2019t know you were paying for.
+          Araçları manuel olarak ekleyebilir ve yazılım envanteriniz üzerinde adım adım tam görünürlük oluşturabilirsiniz. Sistem yenileme tarihlerini takip eder, kullanılmayan araçları tespit eder ve sizi uyarır. İlk haftada en az bir araç bulacaksınız.
         </p>
       </>
     ),
   },
   {
-    question: "Is this useful for small teams?",
+    question: "Küçük ekipler için faydalı mı?",
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Yes. Assetly is designed specifically for small teams and startups that need control over SaaS spending.
+          Evet. Assetly özellikle SaaS harcamalarını kontrol altına almak isteyen küçük ekipler ve startup’lar için tasarlanmıştır.
         </p>
         <p>
-          In small teams, SaaS decisions are usually made by one person with no centralized tracking. Everyone buys their own tools and nobody knows the total cost. Assetly eliminates that chaos and delivers big savings on small budgets.
+          Küçük ekiplerde SaaS kararları genellikle merkezi bir takip olmadan tek kişi tarafından verilir. Herkes kendi aracını satın alır ve toplam maliyeti kimse bilmez. Assetly bu kaosu ortadan kaldırır ve küçük bütçelerde büyük tasarruf sağlar.
         </p>
       </>
     ),
   },
   {
-    question: "How quickly can I see value?",
+    question: "Ne kadar çabuk fayda görürüm?",
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Most teams start identifying unnecessary costs within the first few days of use.
+          Çoğu ekip, kullanımın ilk birkaç günü içinde gereksiz maliyetleri tespit etmeye başlar.
         </p>
         <p>
-          After adding your subscriptions, Assetly generates an instant cost summary. Tools approaching renewal, those with no active users and overpriced subscriptions become visible immediately. Most teams find 10–20% of their monthly SaaS spend is unnecessary.
+          Aboneliklerinizi ekledikten sonra Assetly anlık bir maliyet özeti oluşturur. Yenilemeye yaklaşan araçlar, aktif kullanıcısı olmayanlar ve pahalı abonelikler hemen görünür olur. Çoğu ekip, aylık SaaS harcamasının %10–20’sinin gereksiz olduğunu keşfeder.
         </p>
       </>
     ),
   },
   {
-    question: "Why use Assetly instead of a spreadsheet?",
+    question: "Neden tablo yerine Assetly kullanayım?",
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Spreadsheets store data but they don\u2019t alert you, suggest savings or catch missed renewals.
+          Tablolar veri saklar ama sizi uyarmaz, tasarruf önermez veya kaçırılan yenilemeleri yakalamaz.
         </p>
         <p>
-          You can keep a subscription list in Notion — but who will remind you on renewal day? You can build a cost table in Excel — but who will detect the unused tool?
+          Notion’da abonelik listesi tutabilirsiniz — ama yenileme günü kim hatırlatacak? Excel’de maliyet tablosu yapabilirsiniz — ama kullanılmayan aracı kim tespit edecek?
         </p>
         <p>
-          Assetly provides automatic renewal alerts, usage detection and cost analysis. A spreadsheet is a ledger; Assetly is a cost control system.
+          Assetly otomatik yenileme uyarıları, kullanım tespiti ve maliyet analizi sunar. Tablo bir defterdir; Assetly bir maliyet kontrol sistemidir.
         </p>
       </>
     ),
   },
   {
-    question: "Is my data secure?",
+    question: "Verilerim güvende mi?",
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Your data is protected with encrypted communication and database-level isolation — it belongs only to you.
+          Verileriniz şifreli iletişim ve veritabanı düzeyinde izolasyon ile korunur — sadece size aittir.
         </p>
         <p>
-          All communication is encrypted with TLS. Each team\u2019s data is fully isolated. No sharing with third parties without your permission. Security is at the core of our infrastructure.
+          Tüm iletişim TLS ile şifrelenir. Her ekibin verileri tamamen izole edilmiştir. İziniz olmadan üçüncü taraflarla paylaşılmaz. Güvenlik altyapımızın çekirdeğindedir.
         </p>
       </>
     ),
   },
   {
-    question: "Why should I upgrade to Premium?",
+    question: "Neden Premium’a geçmeliyim?",
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          The free plan is for discovery. Premium pays for itself in the first month by identifying unnecessary spending.
+          Ücretsiz plan keşif içindir. Premium, gereksiz harcamaları tespit ederek ilk ay kendini amorti eder.
         </p>
         <p>
-          Unlimited SaaS tool tracking, advanced cost analysis, renewal automation, PDF cost reports and priority support are Premium-only features.
+          Sınırsız SaaS aracı takibi, gelişmiş maliyet analizi, yenileme otomasyonu, PDF maliyet raporları ve öncelikli destek yalnızca Premium’a özeldir.
         </p>
         <p>
-          If your team uses more than 10 SaaS tools, a single unnecessary subscription you catch with Premium will save more than the annual fee.
+          Ekibiniz 10’dan fazla SaaS aracı kullanıyorsa, Premium ile yakaladığınız tek bir gereksiz abonelik yıllık ücretin üzerinde tasarruf sağlar.
         </p>
       </>
     ),
   },
   {
-    question: "Is there any setup required?",
+    question: "Kurulum gerekiyor mu?",
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          No. Create an account, add your first SaaS tool — you\u2019re up and running in 2 minutes.
+          Hayır. Hesap oluşturun, ilk SaaS aracınızı ekleyin — 2 dakikada hazırsınız.
         </p>
         <p>
-          Assetly is fully cloud-based. No installation, integration or technical knowledge required. After signing up, start adding your subscriptions and the platform guides you step by step.
+          Assetly tamamen bulut tabanlıdır. Kurulum, entegrasyon veya teknik bilgi gerektirmez. Kayıt olduktan sonra aboneliklerinizi eklemeye başlayın, platform sizi adım adım yönlendirir.
         </p>
       </>
     ),
   },
   {
-    question: "Can I use it on mobile?",
+    question: "Mobilde kullanabilir miyim?",
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Yes. Web, iOS and Android — fully functional on all devices.
+          Evet. Web, iOS ve Android — tüm cihazlarda tam işlevsel.
         </p>
         <p>
-          Quick cost checks in a meeting, adding a subscription on the go or tracking real-time notifications — access all features from your mobile browser.
+          Toplantıda hızlı maliyet kontrolü, yolda abonelik ekleme veya anlık bildirimleri takip etme — tüm özelliklere mobil tarayıcınızdan erişin.
         </p>
       </>
     ),
@@ -238,13 +238,13 @@ export function FaqSection() {
         <div className={`mb-12 text-center sm:mb-16 ${inView ? "animate-slide-up" : "opacity-0"}`}>
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5">
             <HelpCircle className="h-3.5 w-3.5 text-primary" />
-            <span className="text-xs tracking-widest text-primary">FAQ</span>
+            <span className="text-xs tracking-widest text-primary">SSS</span>
           </div>
           <h2 className="text-balance text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl">
-            Frequently Asked <span className="text-gradient">Questions</span>
+            Sıkça Sorulan <span className="text-gradient">Sorular</span>
           </h2>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
-            Everything you need to know before getting started — clear, direct and honest.
+            Başlamadan önce bilmeniz gereken her şey — açık, net ve doğrudan.
           </p>
         </div>
 
