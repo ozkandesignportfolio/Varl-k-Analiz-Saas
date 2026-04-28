@@ -207,7 +207,7 @@ export function Navbar() {
       }`}
       style={{ paddingTop: `max(env(safe-area-inset-top, 0px), ${scrolled ? '0.75rem' : '1.25rem'})` }}
     >
-      <div className="relative z-[60] mx-auto flex max-w-7xl items-center justify-between px-6">
+      <div className="relative z-[60] mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="group flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 transition-all group-hover:border-primary/40 group-hover:bg-primary/20">
             <img src="/assetly-mark.svg" alt="" aria-hidden="true" className="h-6 w-6" />

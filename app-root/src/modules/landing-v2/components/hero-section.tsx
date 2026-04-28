@@ -119,7 +119,7 @@ export function HeroSection() {
       {/* Subtle top glow — blends with page bg (#050a18) + AnimatedBackground */}
       <div
         aria-hidden
-        className="pointer-events-none absolute left-1/2 top-[20%] -z-10 h-[600px] w-[900px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(ellipse,rgba(16,239,181,0.06)_0%,rgba(44,247,255,0.03)_40%,transparent_70%)] blur-[80px]"
+        className="pointer-events-none absolute left-1/2 top-[20%] -z-10 hidden h-[600px] w-[900px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(ellipse,rgba(16,239,181,0.06)_0%,rgba(44,247,255,0.03)_40%,transparent_70%)] blur-[80px] sm:block"
       />
 
       {/* Animated background blobs — CSS-only, low opacity + blur for perf */}
@@ -130,7 +130,7 @@ export function HeroSection() {
         <div className="animate-float-slow absolute right-[15%] top-[5%] h-56 w-56 rounded-full bg-cyan-400/[0.08] blur-3xl" style={{ animationDelay: "-2s" }} />
       </div>
 
-      <div className="relative z-10 mx-auto flex max-w-6xl flex-col items-center gap-6 px-6 text-center">
+      <div className="relative z-10 mx-auto flex max-w-6xl flex-col items-center gap-6 px-4 text-center sm:px-6">
         {/* Pill badge */}
         <div
           className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3.5 py-1.5 text-[11px] font-medium text-primary/90 sm:text-xs"

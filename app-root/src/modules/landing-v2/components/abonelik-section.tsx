@@ -21,7 +21,7 @@ export function AbonelikSection() {
       <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
       <div className="pointer-events-none absolute top-1/2 left-0 z-0 hidden h-96 w-96 rounded-full bg-primary/5 blur-[150px] sm:block" />
 
-      <div className="mx-auto max-w-7xl px-6">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-16">
           {/* Left - Demo Card */}
           <div className={`order-2 lg:order-1 ${inView ? "animate-slide-up" : "opacity-0"}`}>
@@ -33,7 +33,7 @@ export function AbonelikSection() {
                   <div className="text-[10px] text-muted-foreground mt-1">Aktif Abonelik</div>
                 </div>
                 <div className="rounded-xl bg-secondary/50 p-3 text-center sm:p-4">
-                  <div className="text-lg font-bold text-primary sm:text-2xl">{"12.980"}<span className="text-xs font-normal text-muted-foreground ml-0.5 sm:text-sm">{"TL"}</span></div>
+                  <div className="text-sm font-bold text-primary sm:text-2xl">{"12.980"}<span className="text-[10px] font-normal text-muted-foreground ml-0.5 sm:text-sm">{"TL"}</span></div>
                   <div className="text-[10px] text-muted-foreground mt-1">Aylık SaaS Gideri</div>
                 </div>
                 <div className="rounded-xl bg-secondary/50 p-3 text-center sm:p-4">

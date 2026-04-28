@@ -58,7 +58,7 @@ export function ScoreAnalysisSection() {
       <div className="pointer-events-none absolute left-0 right-0 top-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
       <div className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-chart-3/10 blur-[80px] sm:h-96 sm:w-96 sm:blur-[140px]" />
 
-      <div className="relative mx-auto max-w-7xl px-6">
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
         <div className="mb-10 inline-flex items-center gap-2 rounded-full border border-chart-3/20 bg-chart-3/5 px-4 py-1.5">
           <BarChart3 className="h-3.5 w-3.5 text-chart-3" />
           <span className="text-xs tracking-widest text-chart-3">Skor Analizi</span>

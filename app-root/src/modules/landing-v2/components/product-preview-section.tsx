@@ -1,14 +1,14 @@
 import {
-  Activity,
-  Bell,
-  ClipboardList,
-  CreditCard,
   FileText,
+  FolderOpen,
+  HandCoins,
   Laptop,
+  LayoutDashboard,
   Package,
+  Receipt,
+  Settings,
   Smartphone,
   Snowflake,
-  Wallet,
   Wifi,
   Wrench,
   Zap,
@@ -27,51 +27,51 @@ type AssetRow = {
 };
 
 const sidebarItems: { label: string; icon: LucideIcon; active?: boolean }[] = [
-  { label: "Abonelikler", icon: Package, active: true },
-  { label: "Yenilemeler", icon: Wrench },
-  { label: "Kullanım", icon: ClipboardList },
-  { label: "Sözleşmeler", icon: FileText },
-  { label: "Aktivite", icon: Activity },
-  { label: "Harcamalar", icon: Wallet },
-  { label: "Uyarılar", icon: Bell },
-  { label: "Faturalar", icon: CreditCard },
+  { label: "Gösterge", icon: LayoutDashboard, active: true },
+  { label: "Varlıklar", icon: Package },
+  { label: "Bakım", icon: Wrench },
+  { label: "Belgeler", icon: FolderOpen },
+  { label: "Giderler", icon: HandCoins },
+  { label: "Fatura Takip", icon: Receipt },
+  { label: "Raporlar", icon: FileText },
+  { label: "Ayarlar", icon: Settings },
 ];
 
 const assets: AssetRow[] = [
   {
-    label: "Proje Yönetim Aracı",
-    icon: Smartphone,
-    meta: "Pro · 12 kullanıcı · $10/kullanıcı/ay",
+    label: "Ofis Bilgisayarları",
+    icon: Laptop,
+    meta: "8 adet · Envanter güncel",
     status: "Aktif",
     statusTone: "normal",
   },
   {
-    label: "Tasarım Platformu",
+    label: "Klima Sistemi",
     icon: Snowflake,
-    meta: "Takım Planı · 3 gün içinde yenileme · $15/kullanıcı",
+    meta: "Merkez ofis · 3 gün içinde bakım",
     status: "Dikkat",
     statusTone: "attention",
     highlight: true,
   },
   {
-    label: "Bulut Barındırma",
-    icon: Laptop,
-    meta: "Aylık Kullanım · Kullanım bazlı fatura",
+    label: "Ağ Altyapısı",
+    icon: Wifi,
+    meta: "3 switch · Aylık izleme aktif",
     status: "Aktif",
     statusTone: "normal",
   },
   {
-    label: "E-posta Servisi",
-    icon: Wifi,
-    meta: "Business · 18 kullanıcı · $6/kullanıcı/ay",
+    label: "Şirket Telefonları",
+    icon: Smartphone,
+    meta: "12 cihaz · Son kontrol: 5 gün önce",
     status: "Aktif",
     statusTone: "active",
   },
   {
-    label: "Analiz Aracı",
+    label: "Jeneratör",
     icon: Zap,
-    meta: "Pro Plan · 0 aktif kullanıcı · Kullanılmıyor",
-    status: "İptal Et",
+    meta: "Garanti süresi doldu · Bakım gerekli",
+    status: "İncele",
     statusTone: "pending",
   },
 ];
@@ -197,15 +197,15 @@ export function ProductPreviewSection() {
                         <ul className="mt-1 flex flex-col gap-1 text-[10px] sm:mt-2.5 sm:gap-1.5 sm:text-[13px]">
                           <li className="flex items-center gap-1 sm:gap-2">
                             <span className="h-1 w-1 shrink-0 rounded-full bg-amber-300/80 sm:h-1.5 sm:w-1.5" aria-hidden />
-                            <span className="text-foreground/85">Tasarım Platformu</span>
+                            <span className="text-foreground/85">Klima Sistemi</span>
                             <span className="text-muted-foreground/35" aria-hidden>→</span>
-                            <span className="text-muted-foreground/70">3 gün içinde yenileme</span>
+                            <span className="text-muted-foreground/70">3 gün içinde bakım</span>
                           </li>
                           <li className="flex items-center gap-1 sm:gap-2">
                             <span className="h-1 w-1 shrink-0 rounded-full bg-rose-400/80 sm:h-1.5 sm:w-1.5" aria-hidden />
-                            <span className="text-foreground/85">Analiz Aracı</span>
+                            <span className="text-foreground/85">Jeneratör</span>
                             <span className="text-muted-foreground/35" aria-hidden>→</span>
-                            <span className="text-muted-foreground/70">Kullanılmıyor, iptal önerildi</span>
+                            <span className="text-muted-foreground/70">Garanti doldu, bakım planlanmalı</span>
                           </li>
                         </ul>
                       </div>
@@ -214,9 +214,9 @@ export function ProductPreviewSection() {
                       <div className="flex items-baseline justify-between">
                         <div>
                           <h3 className="text-xs font-semibold text-foreground sm:text-base md:text-lg">
-                            Aboneliklerim
+                            Varlıklarım
                           </h3>
-                          <p className="text-[9px] text-muted-foreground/60 sm:text-xs">14 abonelik · güncel</p>
+                          <p className="text-[9px] text-muted-foreground/60 sm:text-xs">24 varlık · güncel</p>
                         </div>
                         <span className="hidden text-[10.5px] uppercase tracking-[0.18em] text-muted-foreground/40 sm:inline">Durum</span>
                       </div>
@@ -245,7 +245,7 @@ export function ProductPreviewSection() {
                                 <p className="truncate text-[9px] font-medium text-foreground sm:text-[13px] md:text-sm">{asset.label}</p>
                                 <p className="truncate text-[8px] text-muted-foreground/55 sm:text-[11px] md:text-xs">{asset.meta}</p>
                                 {asset.highlight ? (
-                                  <p className="mt-0.5 hidden truncate text-[10.5px] text-amber-200/70 sm:block">Yenilemeden önce lisans sayısını kontrol edin</p>
+                                  <p className="mt-0.5 hidden truncate text-[10.5px] text-amber-200/70 sm:block">Bakım öncesi servis geçmişini kontrol edin</p>
                                 ) : null}
                               </div>
                               <span className={`hidden items-center gap-1.5 rounded-full px-2 py-0.5 text-[10.5px] font-medium sm:inline-flex ${tone.pill}`}>
@@ -305,49 +305,44 @@ export function ProductPreviewSection() {
                   </div>
 
                   {/* Screen content */}
-                  <div className="flex flex-col gap-4 px-5 pb-6 pt-8">
+                  <div className="flex flex-col gap-3.5 px-5 pb-6 pt-8">
                     <div className="flex items-center gap-3">
-                      <span aria-hidden className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-400/[0.1] text-amber-200/90 ring-1 ring-amber-400/20">
-                        <Snowflake className="h-5 w-5" strokeWidth={1.7} />
+                      <span aria-hidden className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/[0.12] text-primary/90 ring-1 ring-primary/20">
+                        <LayoutDashboard className="h-5 w-5" strokeWidth={1.7} />
                       </span>
                       <div className="min-w-0">
-                        <p className="text-[9.5px] uppercase tracking-[0.2em] text-muted-foreground/55">SaaS Aracı</p>
-                        <h4 className="truncate text-[17px] font-semibold text-foreground">Tasarım Platformu</h4>
+                        <p className="text-[9.5px] uppercase tracking-[0.2em] text-muted-foreground/55">Bugünkü Özet</p>
+                        <h4 className="truncate text-[17px] font-semibold text-foreground">Assetly</h4>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2 rounded-lg bg-amber-400/[0.1] px-3 py-2">
                       <span className="h-1.5 w-1.5 rounded-full bg-amber-300/80" aria-hidden />
-                      <span className="text-[11.5px] font-medium text-amber-100/90">3 gün içinde yenileme</span>
+                      <span className="text-[11.5px] font-medium text-amber-100/90">3 bakım yaklaşıyor</span>
                     </div>
 
                     <dl className="flex flex-col gap-2.5 text-[12px]">
                       <div className="flex items-center justify-between gap-3">
-                        <dt className="text-muted-foreground/60">Plan</dt>
-                        <dd className="inline-flex items-center gap-1.5 text-amber-200/90">
-                          <span className="h-1.5 w-1.5 rounded-full bg-amber-300/80" aria-hidden />
-                          Professional
-                        </dd>
+                        <dt className="text-muted-foreground/60">Toplam Varlık</dt>
+                        <dd className="font-medium text-foreground/85">24</dd>
                       </div>
                       <div className="flex items-center justify-between gap-3">
-                        <dt className="text-muted-foreground/60">Aylık maliyet</dt>
-                        <dd className="text-foreground/85">$15/kullanıcı</dd>
+                        <dt className="text-muted-foreground/60">Aylık Gider</dt>
+                        <dd className="font-medium text-foreground/85">₺18.420</dd>
                       </div>
-                      <div className="flex items-start justify-between gap-3">
-                        <dt className="text-muted-foreground/60">Editör</dt>
-                        <dd className="max-w-[60%] text-right text-foreground/80">4 aktif kullanıcı</dd>
+                      <div className="flex items-center justify-between gap-3">
+                        <dt className="text-muted-foreground/60">Aktif Bakım</dt>
+                        <dd className="font-medium text-foreground/85">12</dd>
                       </div>
                     </dl>
 
-                    <button
-                      type="button"
-                      className="mt-1 w-full rounded-xl bg-gradient-to-b from-primary to-primary/85 py-2.5 text-[13px] font-semibold text-primary-foreground shadow-[0_10px_25px_-10px_rgba(59,130,246,0.55)]"
-                    >
-                      Yenilemeyi yönet
-                    </button>
+                    <div className="flex items-center gap-2 rounded-lg bg-emerald-400/[0.08] px-3 py-2">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80" aria-hidden />
+                      <span className="text-[11.5px] font-medium text-emerald-200/90">₺1.240 tasarruf fırsatı</span>
+                    </div>
 
                     <p className="text-center text-[10.5px] leading-relaxed text-muted-foreground/55">
-                      Yenilemeden önce gereksiz lisansları iptal edin.
+                      2 kullanılmayan varlık tespit edildi.
                     </p>
                   </div>
 

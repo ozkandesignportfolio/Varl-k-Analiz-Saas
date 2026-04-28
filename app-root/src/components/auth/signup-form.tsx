@@ -44,6 +44,7 @@ import {
   type SignupApiSuccessResponse,
 } from "@/lib/supabase/signup";
 import { Runtime } from "@/lib/env/runtime";
+import { BarChart3, CreditCard, FileText, Layers, Sparkles, Users } from "lucide-react";
 
 // PRODUCTION-SAFE STATE MACHINE
 // Valid states: idle -> verifying_captcha -> creating_user -> sending_email -> success | rollback | error
@@ -326,7 +327,7 @@ const SignupTurnstileSection = memo(function SignupTurnstileSection({
   siteKey,
 }: SignupTurnstileSectionProps) {
   return (
-    <div className="flex w-full justify-center rounded-2xl border border-white/10 bg-white/5 px-2 py-5 sm:px-4">
+    <div className="flex w-full justify-center rounded-2xl border border-white/10 bg-white/5 py-5 sm:px-4">
       <div className="max-w-full">
         <TurnstileWidget
           onStatusChange={onStatusChange}
@@ -848,23 +849,53 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
         <div className="ambient-orb ambient-orb-a" />
       </div>
 
-      <div className="relative mx-auto w-full max-w-md px-4 lg:max-w-4xl lg:px-8">
+      <div className="relative mx-auto w-full max-w-md px-0 sm:px-4 lg:max-w-4xl lg:px-8">
         <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[1fr_1fr]">
-          <section className="premium-panel p-4 sm:p-6">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 rounded-full border border-white/15 px-3 py-1.5 text-xs text-slate-300"
-            >
-              Assetly
-            </Link>
-            <h1 className="mt-5 text-4xl font-semibold leading-[1.1] text-white">Hesap Oluştur</h1>
-            <p className="mt-4 text-sm leading-7 text-slate-300">
-              Deneme planında {trialAssetLimit} varlık, {trialDocumentLimit} belge, {trialSubscriptionLimit} abonelik ve{" "}
-              {trialInvoiceUploadLimit} fatura yükleme ile başlayın. İstediğiniz zaman {PREMIUM_MONTHLY_PRICE_LABEL} premium plana geçin.
+          <section className="premium-panel hidden p-3 sm:p-6 lg:flex lg:flex-col lg:justify-between">
+            <div>
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 rounded-full border border-white/15 px-3 py-1.5 text-xs text-slate-300"
+              >
+                Assetly
+              </Link>
+              <h1 className="mt-5 text-2xl font-semibold leading-[1.15] text-white sm:text-3xl">
+                Yazılım harcamalarınızı
+                <br />
+                daha net yönetin
+              </h1>
+              <p className="mt-3 text-sm leading-relaxed text-slate-300">
+                Deneme planıyla başlayın; varlıkları, belgeleri ve abonelikleri tek yerden takip edin.
+                İhtiyaç duyduğunuzda Premium&apos;a geçerek daha fazla kayıt, analiz ve otomasyon özelliği açın.
+              </p>
+
+              <ul className="mt-5 space-y-3">
+                {([
+                  { icon: Layers, title: "Varlıkları tek yerde takip edin", desc: "Abonelikler, araçlar ve ekip kullanımı düzenli bir görünümde." },
+                  { icon: CreditCard, title: "Maliyetleri daha net görün", desc: "Aylık giderleri, yenilemeleri ve gereksiz harcamaları kolayca izleyin." },
+                  { icon: FileText, title: "Fatura ve belge takibi", desc: "Faturaları, lisans belgelerini ve ödeme kayıtlarını tek alanda saklayın." },
+                  { icon: Users, title: "Ekip kullanımını anlayın", desc: "Hangi aracın kim tarafından kullanıldığını daha net değerlendirin." },
+                  { icon: BarChart3, title: "Raporlar ve analizler", desc: "Harcama trendlerini ve varlık durumlarını görsel olarak inceleyin." },
+                  { icon: Sparkles, title: "Premium'a hazır başlangıç", desc: "Deneme planıyla başlayın, ihtiyaç duyduğunuzda yükseltin." },
+                ] as const).map((item) => (
+                  <li key={item.title} className="flex items-start gap-3 rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2.5">
+                    <item.icon className="mt-0.5 h-4 w-4 shrink-0 text-sky-400" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium leading-snug text-white">{item.title}</p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-slate-400">{item.desc}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <p className="mt-5 text-xs leading-relaxed text-slate-500">
+              Ücretsiz planla başlayın — {trialAssetLimit} varlık, {trialDocumentLimit} belge, {trialSubscriptionLimit} abonelik.
+              Premium&apos;a geçiş tamamen sizin kontrolünüzde.
             </p>
           </section>
 
-          <section className="premium-panel p-4 sm:p-6">
+          <section className="premium-panel p-3 sm:p-6">
           <h2 className="text-xl sm:text-2xl font-semibold text-white">Kayıt Ol</h2>
           <p className="mt-2 text-sm text-slate-300">Ad, soyad, e-posta, şifre ve yasal onaylarla yeni hesabınızı güvenle oluşturun.</p>
 

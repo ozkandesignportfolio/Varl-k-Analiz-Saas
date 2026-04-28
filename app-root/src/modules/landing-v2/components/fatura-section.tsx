@@ -24,7 +24,7 @@ export function FaturaSection() {
       <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
       <div className="pointer-events-none absolute bottom-1/3 right-0 z-0 hidden h-80 w-80 rounded-full bg-accent/5 blur-[120px] sm:block" />
 
-      <div className="mx-auto max-w-7xl px-6">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-16">
           {/* Left - Content */}
           <div className={inView ? "animate-slide-in-left" : "opacity-0"}>
