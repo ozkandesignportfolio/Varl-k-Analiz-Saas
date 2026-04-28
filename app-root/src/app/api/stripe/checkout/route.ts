@@ -230,7 +230,7 @@ export async function POST(request: Request) {
 
     const { data: profile, error: profileError } = await adminClient
       .from("profiles")
-      .select("plan")
+      .select("plan, cancel_at_period_end, stripe_current_period_end")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -312,10 +312,17 @@ export async function POST(request: Request) {
     }
 
     if (profile?.plan === "premium") {
-      return safeErrorJson(
-        409,
-        "profile-check",
-        "Zaten premium üyeliğiniz aktif.",
+      return NextResponse.json(
+        {
+          error: "already_subscribed",
+          message: "Aboneliğiniz devam ediyor.",
+          subscription: {
+            status: "active",
+            cancelAtPeriodEnd: profile.cancel_at_period_end ?? false,
+            currentPeriodEnd: profile.stripe_current_period_end ?? null,
+          },
+        },
+        { status: 409 },
       );
     }
 
@@ -522,6 +529,13 @@ export async function POST(request: Request) {
         userId: user.id,
         premiumPriceTl: String(PREMIUM_MONTHLY_PRICE_KURUS / 100),
       },
+      ...(checkoutMode === "subscription"
+        ? {
+            subscription_data: {
+              metadata: { userId: user.id },
+            },
+          }
+        : {}),
       success_url: successUrl,
       cancel_url: cancelUrl,
     };

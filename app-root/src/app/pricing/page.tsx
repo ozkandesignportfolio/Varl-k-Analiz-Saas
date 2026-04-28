@@ -8,6 +8,7 @@ import { Runtime } from "@/lib/env/runtime";
 import { getPlanConfig } from "@/lib/plans/plan-config";
 import { PREMIUM_MONTHLY_PRICE_LABEL } from "@/lib/plans/pricing";
 import { PricingCard } from "@/modules/landing-v2/components/pricing/PricingCard";
+import { useCheckoutRedirectRecovery } from "@/hooks/useCheckoutRedirectRecovery";
 
 type FeatureRow = {
   feature: string;
@@ -36,6 +37,13 @@ const featureRows: FeatureRow[] = [
 
 export default function PricingPage() {
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
+
+  useCheckoutRedirectRecovery(isStartingCheckout, (reason) => {
+    setIsStartingCheckout(false);
+    if (reason === "timeout") {
+      alert("Stripe yönlendirmesi zaman aşımına uğradı. Lütfen tekrar deneyin.");
+    }
+  });
 
   const redirectToLogin = () => {
     if (!Runtime.isClient()) {

@@ -22,6 +22,7 @@ import { resolveSettingsTab } from "@/features/settings/utils/resolve-settings-t
 import { PAYMENT_TEXT } from "@/constants/ui-text";
 import { PREMIUM_MONTHLY_PRICE_LABEL } from "@/lib/plans/pricing";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useCheckoutRedirectRecovery } from "@/hooks/useCheckoutRedirectRecovery";
 
 const defaultProfile: ProfileFormValues = {
   fullName: "",
@@ -362,6 +363,8 @@ export function SettingsPageContainer() {
   const searchParams = useSearchParams();
   const {
     plan,
+    cancelAtPeriodEnd,
+    currentPeriodEnd,
     assetCount,
     assetLimit,
     documentCount,
@@ -397,6 +400,12 @@ export function SettingsPageContainer() {
   const [isSavingOrganization, setIsSavingOrganization] = useState(false);
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [isConfirmingCheckout, setIsConfirmingCheckout] = useState(false);
+  useCheckoutRedirectRecovery(isStartingCheckout, (reason) => {
+    setIsStartingCheckout(false);
+    if (reason === "timeout") {
+      setFeedback("Stripe yönlendirmesi zaman aşımına uğradı. Lütfen tekrar deneyin.");
+    }
+  });
   const [isCancellingSubscription, setIsCancellingSubscription] = useState(false);
   const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
@@ -693,13 +702,18 @@ export function SettingsPageContainer() {
         return;
       }
 
+      if (res.status === 409) {
+        const payload = (await res.json().catch(() => null)) as { error?: string; message?: string } | null;
+        await refreshPlanState();
+        setFeedback(payload?.error === "already_subscribed" ? "Aboneliğiniz devam ediyor." : (payload?.message ?? "Bu işlem gerçekleştirilemedi."));
+        setIsStartingCheckout(false);
+        return;
+      }
+
       if (!res.ok) {
         const payload = (await res.json().catch(() => null)) as { error?: string } | null;
         const checkoutError = payload?.error || "Stripe checkout başlatılamadı.";
         console.error("Stripe checkout failed:", res.status, checkoutError);
-        if (res.status === 409) {
-          await refreshPlanState();
-        }
         setFeedback(checkoutError);
         setIsStartingCheckout(false);
         return;
@@ -770,7 +784,7 @@ export function SettingsPageContainer() {
 
     try {
       const res = await fetch("/api/stripe/cancel-subscription", { method: "POST" });
-      const payload = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      const payload = (await res.json().catch(() => null)) as { ok?: boolean; error?: string; currentPeriodEnd?: string } | null;
 
       if (!res.ok || !payload?.ok) {
         setFeedback(payload?.error ?? "Abonelik iptal edilemedi.");
@@ -778,13 +792,20 @@ export function SettingsPageContainer() {
         return;
       }
 
-      setFeedback("Aboneliğiniz dönem sonunda iptal edilecek.");
+      const periodEndDate = payload.currentPeriodEnd
+        ? new Date(payload.currentPeriodEnd).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" })
+        : null;
+      const message = periodEndDate
+        ? `Üyeliğiniz ${periodEndDate} tarihinde iptal edilecek. Bu tarihe kadar Premium özellikleri kullanmaya devam edebilirsiniz.`
+        : "Üyeliğiniz dönem sonunda iptal edilecek. Bu tarihe kadar Premium özellikleri kullanmaya devam edebilirsiniz.";
+      setFeedback(message);
+      await refreshPlanState();
       setIsCancellingSubscription(false);
     } catch {
       setFeedback("Abonelik iptal isteği başarısız oldu.");
       setIsCancellingSubscription(false);
     }
-  }, []);
+  }, [refreshPlanState]);
 
   const isDeleteConfirmationValid =
     deleteConfirmationText.trim().toLocaleUpperCase("tr-TR") === ACCOUNT_DELETE_CONFIRM_KEYWORD;
@@ -846,7 +867,7 @@ export function SettingsPageContainer() {
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {plan === "premium" ? (
             <Badge className="border-emerald-400/30 bg-emerald-500/20 text-emerald-100">
-              Premium Aktif
+              {cancelAtPeriodEnd ? "Premium (İptal Planlanmış)" : "Premium Aktif"}
             </Badge>
           ) : (
             <Button
@@ -887,16 +908,31 @@ export function SettingsPageContainer() {
         ) : (
           <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-4">
             <h3 className="text-sm font-semibold text-white">Premium Yönetimi</h3>
-            <p className="mt-1 text-xs text-slate-400">Aboneliğinizi dönem sonunda iptal edebilirsiniz.</p>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={cancelSubscription}
-              disabled={isCancellingSubscription}
-              className="mt-3 border-rose-400/30 bg-rose-500/10 text-rose-100 hover:bg-rose-500/20"
-            >
-              {isCancellingSubscription ? "İptal ediliyor..." : "Aboneliği İptal Et"}
-            </Button>
+            {cancelAtPeriodEnd ? (
+              <>
+                <p className="mt-2 text-sm text-amber-300">
+                  Üyeliğiniz dönem sonunda iptal edilecek. Bu tarihe kadar Premium özellikleri kullanmaya devam edebilirsiniz.
+                </p>
+                {currentPeriodEnd ? (
+                  <p className="mt-1 text-xs text-slate-400">
+                    Bitiş tarihi: {new Date(currentPeriodEnd).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" })}
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <p className="mt-1 text-xs text-slate-400">Aboneliğinizi dönem sonunda iptal edebilirsiniz.</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={cancelSubscription}
+                  disabled={isCancellingSubscription}
+                  className="mt-3 border-rose-400/30 bg-rose-500/10 text-rose-100 hover:bg-rose-500/20"
+                >
+                  {isCancellingSubscription ? "İptal ediliyor..." : "Üyeliği İptal Et"}
+                </Button>
+              </>
+            )}
           </div>
         )}
       </section>

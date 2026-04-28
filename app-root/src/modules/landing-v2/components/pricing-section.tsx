@@ -9,6 +9,7 @@ import { Runtime } from "@/lib/env/runtime";
 import { getPlanConfig } from "@/lib/plans/plan-config";
 import { PREMIUM_MONTHLY_PRICE_TL } from "@/lib/plans/pricing";
 import { useInView } from "@/modules/landing-v2/hooks/use-in-view";
+import { useCheckoutRedirectRecovery } from "@/hooks/useCheckoutRedirectRecovery";
 
 const trialPlan = getPlanConfig("starter");
 const trialAssetLimit = trialPlan.limits.assetsLimit ?? 0;
@@ -57,6 +58,14 @@ const plans = [
 export function PricingSection() {
   const { ref, inView } = useInView();
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
+  const [premiumStatus, setPremiumStatus] = useState<{ active: boolean; cancelAtPeriodEnd?: boolean; message: string } | null>(null);
+
+  useCheckoutRedirectRecovery(isStartingCheckout, (reason) => {
+    setIsStartingCheckout(false);
+    if (reason === "timeout") {
+      alert("Stripe yönlendirmesi zaman aşımına uğradı. Lütfen tekrar deneyin.");
+    }
+  });
 
   const redirectToLogin = () => {
     if (!Runtime.isClient()) {
@@ -81,9 +90,31 @@ export function PricingSection() {
         return;
       }
 
+      if (res.status === 409) {
+        const payload = (await res.json().catch(() => null)) as {
+          error?: string;
+          message?: string;
+          subscription?: { cancelAtPeriodEnd?: boolean };
+        } | null;
+        if (payload?.error === "already_subscribed") {
+          const cancelScheduled = payload.subscription?.cancelAtPeriodEnd === true;
+          setPremiumStatus({
+            active: true,
+            cancelAtPeriodEnd: cancelScheduled,
+            message: cancelScheduled
+              ? "Üyeliğiniz dönem sonunda iptal edilecek. Bu tarihe kadar Premium özellikleri kullanmaya devam edebilirsiniz."
+              : "Aboneliğiniz devam ediyor.",
+          });
+        } else {
+          alert(payload?.message ?? "Bu işlem gerçekleştirilemedi.");
+        }
+        setIsStartingCheckout(false);
+        return;
+      }
+
       if (!res.ok) {
-        const responseText = await res.text();
-        const errorMessage = responseText || "Stripe checkout başlatılamadı.";
+        const payload = (await res.json().catch(() => null)) as { message?: string } | null;
+        const errorMessage = payload?.message || "Stripe checkout başlatılamadı.";
         console.error("Stripe checkout failed:", res.status, errorMessage);
         alert(errorMessage);
         setIsStartingCheckout(false);
@@ -165,16 +196,22 @@ export function PricingSection() {
                 ))}
               </div>
 
-              <Button
-                type="button"
-                onClick={plan.popular ? handleStartPremiumCheckout : undefined}
-                disabled={plan.popular ? isStartingCheckout : false}
-                className={`group w-full py-6 text-base ${plan.popular ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 hover:bg-primary/90" : "border border-border bg-secondary text-secondary-foreground hover:bg-secondary/80"}`}
-              >
-                {plan.popular && isStartingCheckout ? "Yönlendiriliyor..." : plan.cta}
-                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </Button>
-              {plan.popular ? (
+              {plan.popular && premiumStatus?.active ? (
+                <div className="w-full rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-center text-sm text-emerald-200">
+                  {premiumStatus.message}
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={plan.popular ? handleStartPremiumCheckout : undefined}
+                  disabled={plan.popular ? isStartingCheckout : false}
+                  className={`group w-full py-6 text-base ${plan.popular ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 hover:bg-primary/90" : "border border-border bg-secondary text-secondary-foreground hover:bg-secondary/80"}`}
+                >
+                  {plan.popular && isStartingCheckout ? "Yönlendiriliyor..." : plan.cta}
+                  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Button>
+              )}
+              {plan.popular && !premiumStatus?.active ? (
                 <p className="mt-3 text-xs leading-relaxed text-muted-foreground/70">{PAYMENT_TEXT.stripeCollectionNotice}</p>
               ) : null}
             </div>

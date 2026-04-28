@@ -100,12 +100,46 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Checkout henüz tamamlanmadı." }, { status: 400 });
   }
 
-  const { error: profileUpdateError } = await supabase.from("profiles").upsert(
+  let adminClient: ReturnType<typeof getSupabaseAdmin>;
+  try {
+    adminClient = getSupabaseAdmin();
+  } catch (error) {
+    logApiError({
+      route: "/api/stripe/confirm",
+      method: "POST",
+      status: 500,
+      error,
+      message: "Admin client initialization failed during confirm.",
+      userId: user.id,
+    });
+    return NextResponse.json({ error: "Sistem servisi başlatılamadı." }, { status: 500 });
+  }
+
+  const stripeCustomerId = typeof session.customer === "string" ? session.customer : null;
+  const stripeSubscriptionId = typeof session.subscription === "string" ? session.subscription : null;
+
+  let currentPeriodEnd: string | null = null;
+  if (stripeSubscriptionId) {
+    try {
+      const sub = await stripeClient.subscriptions.retrieve(stripeSubscriptionId);
+      const rawPeriodEnd = (sub as unknown as { current_period_end?: number }).current_period_end;
+      currentPeriodEnd = rawPeriodEnd ? new Date(rawPeriodEnd * 1000).toISOString() : null;
+    } catch (subErr) {
+      console.warn("[stripe/confirm] Failed to retrieve subscription for period_end", {
+        stripeSubscriptionId,
+        error: subErr instanceof Error ? subErr.message : String(subErr),
+      });
+    }
+  }
+
+  const { error: profileUpdateError } = await adminClient.from("profiles").upsert(
     {
       id: user.id,
       plan: "premium",
-      stripe_customer_id: typeof session.customer === "string" ? session.customer : null,
-      stripe_subscription_id: typeof session.subscription === "string" ? session.subscription : null,
+      stripe_customer_id: stripeCustomerId,
+      stripe_subscription_id: stripeSubscriptionId,
+      stripe_current_period_end: currentPeriodEnd,
+      cancel_at_period_end: false,
     },
     {
       onConflict: "id",
@@ -122,28 +156,23 @@ export async function POST(request: Request) {
       userId: user.id,
       meta: {
         code: profileUpdateError.code ?? null,
+        stripeCustomerId,
+        stripeSubscriptionId,
       },
     });
     return NextResponse.json({ error: "Profil planı premium olarak güncellenemedi." }, { status: 500 });
   }
 
+  console.log("[stripe/confirm] Profile updated to premium", {
+    userId: user.id,
+    stripeCustomerId,
+    stripeSubscriptionId,
+    currentPeriodEnd,
+  });
+
   const nextUserMetadata = buildPremiumMetadata((user.user_metadata ?? {}) as Record<string, unknown>);
   const nextAppMetadata = buildPremiumMetadata((user.app_metadata ?? {}) as Record<string, unknown>);
 
-  let adminClient: ReturnType<typeof getSupabaseAdmin>;
-  try {
-    adminClient = getSupabaseAdmin();
-  } catch (error) {
-    logApiError({
-      route: "/api/stripe/confirm",
-      method: "POST",
-      status: 500,
-      error,
-      message: "Admin client initialization failed during confirm.",
-      userId: user.id,
-    });
-    return NextResponse.json({ error: "Sistem servisi başlatılamadı." }, { status: 500 });
-  }
   const { error: adminUpdateError } = await adminClient.auth.admin.updateUserById(user.id, {
     app_metadata: nextAppMetadata,
     user_metadata: nextUserMetadata,

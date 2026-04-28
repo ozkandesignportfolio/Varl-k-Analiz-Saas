@@ -82,14 +82,55 @@ const withWebhookIdempotency = async (
   };
 };
 
-const executeWebhookBusinessLogic = async (event: Stripe.Event, supabaseAdmin: SupabaseClient): Promise<void> => {
+const resolveUserIdByCustomer = async (
+  supabaseAdmin: SupabaseClient,
+  stripeCustomerId: string | null,
+): Promise<string | null> => {
+  if (!stripeCustomerId) return null;
+  const { data } = await supabaseAdmin
+    .from("profiles")
+    .select("id")
+    .eq("stripe_customer_id", stripeCustomerId)
+    .maybeSingle();
+  return data?.id ?? null;
+};
+
+const resolveUserIdBySubscription = async (
+  supabaseAdmin: SupabaseClient,
+  stripeSubscriptionId: string | null,
+): Promise<string | null> => {
+  if (!stripeSubscriptionId) return null;
+  const { data } = await supabaseAdmin
+    .from("profiles")
+    .select("id")
+    .eq("stripe_subscription_id", stripeSubscriptionId)
+    .maybeSingle();
+  return data?.id ?? null;
+};
+
+const executeWebhookBusinessLogic = async (
+  event: Stripe.Event,
+  supabaseAdmin: SupabaseClient,
+  stripeClient: Stripe,
+): Promise<void> => {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
-    const userId = session.metadata?.userId;
+    const userId = session.metadata?.userId ?? session.client_reference_id ?? null;
     const stripeCustomerId = toStripeId(session.customer);
     const stripeSubscriptionId = toStripeId(session.subscription);
 
+    console.log("[stripe/webhook] checkout.session.completed:", JSON.stringify({
+      sessionId: session.id,
+      userId,
+      stripeCustomerId,
+      stripeSubscriptionId,
+      paymentStatus: session.payment_status,
+    }));
+
     if (!userId) {
+      console.error("[stripe/webhook] checkout.session.completed: no userId found in metadata or client_reference_id", {
+        sessionId: session.id,
+      });
       return;
     }
 
@@ -105,7 +146,22 @@ const executeWebhookBusinessLogic = async (event: Stripe.Event, supabaseAdmin: S
       }
 
       if (existingProfile?.plan === "premium" && existingProfile.stripe_subscription_id === stripeSubscriptionId) {
+        console.log("[stripe/webhook] checkout.session.completed: profile already premium with same subscription, skipping", { userId, stripeSubscriptionId });
         return;
+      }
+    }
+
+    let currentPeriodEnd: string | null = null;
+    if (stripeSubscriptionId) {
+      try {
+        const sub = await stripeClient.subscriptions.retrieve(stripeSubscriptionId);
+        const rawPeriodEnd = (sub as unknown as { current_period_end?: number }).current_period_end;
+        currentPeriodEnd = rawPeriodEnd ? new Date(rawPeriodEnd * 1000).toISOString() : null;
+      } catch (subErr) {
+        console.warn("[stripe/webhook] checkout.session.completed: failed to retrieve subscription for period_end", {
+          stripeSubscriptionId,
+          error: subErr instanceof Error ? subErr.message : String(subErr),
+        });
       }
     }
 
@@ -115,6 +171,8 @@ const executeWebhookBusinessLogic = async (event: Stripe.Event, supabaseAdmin: S
         plan: "premium",
         stripe_customer_id: stripeCustomerId,
         stripe_subscription_id: stripeSubscriptionId,
+        stripe_current_period_end: currentPeriodEnd,
+        cancel_at_period_end: false,
       })
       .eq("id", userId);
 
@@ -125,8 +183,93 @@ const executeWebhookBusinessLogic = async (event: Stripe.Event, supabaseAdmin: S
         status: 500,
         error,
         message: "Failed to update profile from Stripe webhook.",
+        meta: { sessionId: session.id, userId, stripeCustomerId, stripeSubscriptionId },
+      });
+    } else {
+      console.log("[stripe/webhook] checkout.session.completed: profile updated to premium", { userId, stripeSubscriptionId, currentPeriodEnd });
+    }
+    return;
+  }
+
+  if (event.type === "customer.subscription.updated") {
+    const subscription = event.data.object as Stripe.Subscription;
+    const stripeSubscriptionId = subscription.id;
+    const stripeCustomerId = toStripeId(subscription.customer);
+    const userId =
+      subscription.metadata?.userId ??
+      (await resolveUserIdBySubscription(supabaseAdmin, stripeSubscriptionId)) ??
+      (await resolveUserIdByCustomer(supabaseAdmin, stripeCustomerId));
+
+    if (!userId) {
+      console.warn("[stripe/webhook] subscription.updated: could not resolve userId", { stripeSubscriptionId });
+      return;
+    }
+
+    const rawPeriodEnd = (subscription as unknown as { current_period_end?: number }).current_period_end;
+    const currentPeriodEnd = rawPeriodEnd
+      ? new Date(rawPeriodEnd * 1000).toISOString()
+      : null;
+
+    const isActive = subscription.status === "active" || subscription.status === "trialing";
+
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .update({
+        plan: isActive ? "premium" : "free",
+        cancel_at_period_end: subscription.cancel_at_period_end ?? false,
+        stripe_current_period_end: currentPeriodEnd,
+        stripe_subscription_id: stripeSubscriptionId,
+      })
+      .eq("id", userId);
+
+    if (error) {
+      logApiError({
+        route: "/api/stripe/webhook",
+        method: "POST",
+        status: 500,
+        error,
+        message: "Failed to update profile from subscription.updated webhook.",
+        meta: { stripeSubscriptionId, userId },
       });
     }
+    return;
+  }
+
+  if (event.type === "customer.subscription.deleted") {
+    const subscription = event.data.object as Stripe.Subscription;
+    const stripeSubscriptionId = subscription.id;
+    const stripeCustomerId = toStripeId(subscription.customer);
+    const userId =
+      subscription.metadata?.userId ??
+      (await resolveUserIdBySubscription(supabaseAdmin, stripeSubscriptionId)) ??
+      (await resolveUserIdByCustomer(supabaseAdmin, stripeCustomerId));
+
+    if (!userId) {
+      console.warn("[stripe/webhook] subscription.deleted: could not resolve userId", { stripeSubscriptionId });
+      return;
+    }
+
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .update({
+        plan: "free",
+        cancel_at_period_end: false,
+        stripe_subscription_id: null,
+        stripe_current_period_end: null,
+      })
+      .eq("id", userId);
+
+    if (error) {
+      logApiError({
+        route: "/api/stripe/webhook",
+        method: "POST",
+        status: 500,
+        error,
+        message: "Failed to downgrade profile from subscription.deleted webhook.",
+        meta: { stripeSubscriptionId, userId },
+      });
+    }
+    return;
   }
 };
 
@@ -214,6 +357,6 @@ export async function POST(request: Request) {
   }
 
   return withRetrySafeExecution(async () => {
-    await executeWebhookBusinessLogic(event, supabaseAdmin);
+    await executeWebhookBusinessLogic(event, supabaseAdmin, stripeClient);
   });
 }

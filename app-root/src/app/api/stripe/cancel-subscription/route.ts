@@ -74,11 +74,24 @@ export async function POST(request: Request) {
   }
 
   try {
-    await stripeClient.subscriptions.update(subscriptionId, {
+    const updatedSubscription = await stripeClient.subscriptions.update(subscriptionId, {
       cancel_at_period_end: true,
     });
 
-    return NextResponse.json({ ok: true }, { status: 200 });
+    const rawPeriodEnd = (updatedSubscription as unknown as { current_period_end?: number }).current_period_end;
+    const currentPeriodEnd = rawPeriodEnd
+      ? new Date(rawPeriodEnd * 1000).toISOString()
+      : null;
+
+    await adminClient
+      .from("profiles")
+      .update({
+        cancel_at_period_end: true,
+        stripe_current_period_end: currentPeriodEnd,
+      })
+      .eq("id", user.id);
+
+    return NextResponse.json({ ok: true, currentPeriodEnd }, { status: 200 });
   } catch (error) {
     logApiError({
       route: "/api/stripe/cancel-subscription",

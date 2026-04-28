@@ -15,7 +15,7 @@ import { countByUser as countBillingInvoicesByUser } from "@/lib/repos/billing-i
 import { countByUser as countBillingSubscriptionsByUser } from "@/lib/repos/billing-subscriptions-repo";
 import { countByUser as countDocumentsByUser } from "@/lib/repos/documents-repo";
 import { getPlanConfig } from "@/lib/plans/plan-config";
-import { ensureProfile, getProfilePlanFromUserMetadata } from "@/lib/plans/profile-plan";
+import { ensureProfile, getProfilePlanFromUserMetadata, getProfileSubscriptionStatus } from "@/lib/plans/profile-plan";
 import type { DbClient } from "@/lib/repos/_shared";
 import { isSupabaseUserEmailConfirmed } from "@/lib/supabase/auth-errors";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -27,6 +27,8 @@ export type UserPlan = "free" | "premium";
 export type PlanContextValue = {
   userId: string | null;
   plan: UserPlan;
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd: string | null;
   isLoading: boolean;
   assetCount: number;
   assetLimit: number | null;
@@ -72,9 +74,14 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   const [canUseAdvancedAnalytics, setCanUseAdvancedAnalytics] = useState(false);
   const [canUseAutomation, setCanUseAutomation] = useState(false);
 
+  const [cancelAtPeriodEnd, setCancelAtPeriodEnd] = useState(false);
+  const [currentPeriodEnd, setCurrentPeriodEnd] = useState<string | null>(null);
+
   const resetToFreePlan = useCallback(() => {
     setUserId(null);
     setPlan("free");
+    setCancelAtPeriodEnd(false);
+    setCurrentPeriodEnd(null);
     setAssetLimit(STARTER_PLAN.limits.assetsLimit);
     setDocumentLimit(STARTER_PLAN.limits.documentsLimit);
     setSubscriptionLimit(STARTER_PLAN.limits.subscriptionsLimit);
@@ -148,6 +155,10 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       setCanUseAdvancedAnalytics(resolvedPlanConfig.features.canUseAdvancedAnalytics);
       setCanUseAutomation(resolvedPlanConfig.features.canUseAutomation);
 
+      const subStatus = await getProfileSubscriptionStatus(supabase as unknown as DbClient, user.id);
+      setCancelAtPeriodEnd(subStatus.cancelAtPeriodEnd);
+      setCurrentPeriodEnd(subStatus.currentPeriodEnd);
+
       const [assetCountRes, documentCountRes, subscriptionCountRes, invoiceCountRes] = await Promise.all([
         countAssetsByUser(supabase, { userId: user.id }),
         countDocumentsByUser(supabase, { userId: user.id }),
@@ -201,6 +212,8 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     () => ({
       userId,
       plan,
+      cancelAtPeriodEnd,
+      currentPeriodEnd,
       isLoading,
       assetCount,
       assetLimit,
@@ -219,6 +232,8 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     [
       userId,
       plan,
+      cancelAtPeriodEnd,
+      currentPeriodEnd,
       isLoading,
       assetCount,
       assetLimit,

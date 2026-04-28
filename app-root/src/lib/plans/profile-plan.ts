@@ -233,6 +233,34 @@ export async function ensureProfile(
   return { plan: profile.plan, error: null };
 }
 
+export type ProfileSubscriptionStatus = {
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd: string | null;
+};
+
+export async function getProfileSubscriptionStatus(
+  client: DbClient,
+  userId: string,
+): Promise<ProfileSubscriptionStatus> {
+  const { data, error } = await (client
+    .from("profiles")
+    .select("cancel_at_period_end, stripe_current_period_end")
+    .eq("id", userId)
+    .maybeSingle() as unknown as Promise<{
+    data: { cancel_at_period_end: boolean | null; stripe_current_period_end: string | null } | null;
+    error: { message: string } | null;
+  }>);
+
+  if (error || !data) {
+    return { cancelAtPeriodEnd: false, currentPeriodEnd: null };
+  }
+
+  return {
+    cancelAtPeriodEnd: data.cancel_at_period_end ?? false,
+    currentPeriodEnd: data.stripe_current_period_end ?? null,
+  };
+}
+
 export const applyProfilePlanToUserMetadata = (
   user: Pick<User, "app_metadata" | "user_metadata">,
   plan: ProfilePlan,
