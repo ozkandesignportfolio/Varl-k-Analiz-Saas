@@ -61,31 +61,31 @@ export function ScoreAnalysisSection() {
       <div className="relative mx-auto max-w-7xl px-6">
         <div className="mb-10 inline-flex items-center gap-2 rounded-full border border-chart-3/20 bg-chart-3/5 px-4 py-1.5">
           <BarChart3 className="h-3.5 w-3.5 text-chart-3" />
-          <span className="text-xs tracking-widest text-chart-3">Skor Analizi</span>
+          <span className="text-xs tracking-widest text-chart-3">Score Analysis</span>
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className={`min-w-0 w-full ${inView ? "animate-slide-up" : "opacity-0"}`}>
             <div className="glass-card min-w-0 w-full rounded-3xl border border-border/60 bg-background/70 p-5 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)] sm:p-8">
-              <h2 className="text-2xl font-bold text-foreground sm:text-3xl md:text-4xl">Skor nasıl hesaplanır?</h2>
-              <p className="mt-2 text-base font-medium text-chart-3">3 adımda net bir puan</p>
+              <h2 className="text-2xl font-bold text-foreground sm:text-3xl md:text-4xl">SaaS Health Score</h2>
+              <p className="mt-2 text-base font-medium text-chart-3">A clear score in 3 steps</p>
               <p className="mt-5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                Varlığınızın sağlık durumunu tek puanda topluyoruz. Karmaşık oranlar yerine, günlük kullanımda karar vermeyi
-                hızlandıran net bir özet sunuyoruz.
+                We combine the health status of every SaaS tool into a single score. Usage rate, cost efficiency and contract status
+                are evaluated together to give you a clear summary.
               </p>
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                Puan yükseldikçe risk azalır, bakım ve belge süreci daha öngörülebilir hale gelir.
+                As the score rises, unnecessary cost risk decreases and subscription management becomes more predictable.
               </p>
 
               <ol className="mt-6 space-y-3 text-sm text-foreground">
                 <li className="rounded-xl border border-border/50 bg-secondary/30 px-4 py-3">
-                  1) Garanti: Aktifse +, bitiyorsa uyarı, bittiyse eksi
+                  1) License: Active usage gets +, unused gets minus
                 </li>
                 <li className="rounded-xl border border-border/50 bg-secondary/30 px-4 py-3">
-                  2) Bakım: Zamanında yapılan bakım +, geciken bakım eksi
+                  2) Usage: Regularly used tools get +, idle ones get minus
                 </li>
                 <li className="rounded-xl border border-border/50 bg-secondary/30 px-4 py-3">
-                  3) Belgeler ve Ödemeler: Eksiksiz belge ve ödeme +, eksikler eksi
+                  3) Contracts & Payments: Complete docs and on-time payments get +, gaps get minus
                 </li>
               </ol>
 
@@ -94,22 +94,22 @@ export function ScoreAnalysisSection() {
                 className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-chart-3 transition-colors hover:text-chart-2"
                 onClick={toggleFormula}
               >
-                Detaylı hesaplama
+                Detailed calculation
                 {showFormula ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </button>
 
               {showFormula ? (
                 <div className="mt-3 rounded-xl border border-chart-3/25 bg-chart-3/5 p-4 text-xs leading-relaxed text-muted-foreground">
                   <p className="font-medium text-foreground">
-                    Skor = (Garanti + Bakım + Belge + Ödeme) ortalaması + maliyet verimliliği bonusu
+                    Score = (License + Usage + Contracts + Payments) average + cost efficiency bonus
                   </p>
-                  <p className="mt-2">Maliyet verimliliği bonusu: Varlık Değeri / (Toplam Bakım+Servis Maliyeti)</p>
+                  <p className="mt-2">Cost efficiency bonus: Subscription Value / (Total SaaS Spend)</p>
                 </div>
               ) : null}
 
               <Button asChild size="lg" className="mt-8 w-full sm:w-auto">
                 <Link href="/costs">
-                  Skoru nasıl yükseltirim?
+                  How do I improve my SaaS score?
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -120,47 +120,47 @@ export function ScoreAnalysisSection() {
             <div className="glass-card min-w-0 w-full rounded-3xl border border-border/60 bg-background/70 p-5 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)] sm:p-8">
               <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1">
                 <Sparkles className="h-3.5 w-3.5 text-primary" />
-                <span className="text-[11px] font-semibold tracking-wide text-primary">Gerçekçi Örnek</span>
+                <span className="text-[11px] font-semibold tracking-wide text-primary">Realistic Example</span>
               </div>
 
               <h3 className="mt-4 text-xl font-semibold text-foreground">{exampleAsset.title}</h3>
 
               <div className="mt-5 grid gap-3 text-sm">
                 <div className="flex items-center justify-between rounded-lg bg-secondary/35 px-3 py-2">
-                  <span className="text-muted-foreground">Varlık değeri</span>
+                  <span className="text-muted-foreground">Annual subscription value</span>
                   <span className="font-semibold text-foreground">{tlFormatter.format(exampleAsset.valueTl)} TL</span>
                 </div>
                 <div className="flex items-center justify-between rounded-lg bg-secondary/35 px-3 py-2">
-                  <span className="text-muted-foreground">Son 12 ay bakım/servis</span>
+                  <span className="text-muted-foreground">Last 12 months SaaS spend</span>
                   <span className="font-semibold text-foreground">
                     {tlFormatter.format(exampleAsset.last12MonthServiceCostTl)} TL
                   </span>
                 </div>
                 <div className="flex items-center justify-between rounded-lg bg-secondary/35 px-3 py-2">
-                  <span className="text-muted-foreground">Garanti</span>
-                  <span className="font-semibold text-foreground">{exampleAsset.warrantyRemainingMonths} ay kaldı</span>
+                  <span className="text-muted-foreground">License period</span>
+                  <span className="font-semibold text-foreground">{exampleAsset.warrantyRemainingMonths} months left</span>
                 </div>
                 <div className="flex items-center justify-between rounded-lg bg-secondary/35 px-3 py-2">
-                  <span className="text-muted-foreground">Belgeler</span>
+                  <span className="text-muted-foreground">Contracts</span>
                   <span className="font-semibold text-foreground">
-                    {exampleAsset.documentsCompleted}/{exampleAsset.documentsTotal} tamam
+                    {exampleAsset.documentsCompleted}/{exampleAsset.documentsTotal} complete
                   </span>
                 </div>
                 <div className="flex items-center justify-between rounded-lg bg-secondary/35 px-3 py-2">
-                  <span className="text-muted-foreground">Son bakım</span>
-                  <span className="font-semibold text-foreground">{exampleAsset.lastMaintenanceMonthsAgo} ay önce</span>
+                  <span className="text-muted-foreground">Last review</span>
+                  <span className="font-semibold text-foreground">{exampleAsset.lastMaintenanceMonthsAgo} month ago</span>
                 </div>
               </div>
 
               <div className="mt-6 flex items-center justify-between rounded-xl border border-emerald-300/25 bg-emerald-300/10 px-4 py-3">
-                <span className="text-sm font-medium text-emerald-100">Skor</span>
+                <span className="text-sm font-medium text-emerald-100">Score</span>
                 <span className="text-lg font-semibold text-emerald-100">
                   {exampleAsset.score}/100 ({exampleAsset.scoreLabel})
                 </span>
               </div>
 
               <div className="mt-6">
-                <h4 className="text-sm font-semibold text-foreground">Neyi iyileştirir?</h4>
+                <h4 className="text-sm font-semibold text-foreground">What improves the score?</h4>
                 <ul className="mt-2 space-y-2">
                   {exampleAsset.improvements.map((item) => (
                     <li
@@ -180,7 +180,7 @@ export function ScoreAnalysisSection() {
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1fr_0.75fr]">
           <div className={`min-w-0 w-full ${inView ? "animate-slide-up" : "opacity-0"}`} style={{ animationDelay: "0.2s" }}>
             <div className="glass-card h-full min-w-0 w-full rounded-3xl border border-border/60 bg-background/70 p-6 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)]">
-              <h3 className="text-sm font-semibold text-foreground">Skor Dağılımı</h3>
+              <h3 className="text-sm font-semibold text-foreground">SaaS Score Breakdown</h3>
               <div className="mt-4 space-y-3">
                 {scoreBreakdown.map((item) => (
                   <BreakdownBar key={item.key} label={item.label} score={item.score} toneClass={item.toneClass} />
@@ -195,7 +195,7 @@ export function ScoreAnalysisSection() {
                 <h3 className="text-sm font-semibold text-foreground">Trend</h3>
                 <div className="inline-flex items-center gap-1 text-xs text-primary">
                   <TrendingUp className="h-3.5 w-3.5" />
-                  Son 6 ay
+                  Last 6 months
                 </div>
               </div>
               <div className="mt-3 h-[180px] w-full min-w-0 max-w-full overflow-hidden">
@@ -206,11 +206,11 @@ export function ScoreAnalysisSection() {
 
           <div className={`min-w-0 w-full ${inView ? "animate-slide-up" : "opacity-0"}`} style={{ animationDelay: "0.36s" }}>
             <div className="glass-card h-full min-w-0 w-full rounded-3xl border border-border/60 bg-background/70 p-6 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)]">
-              <h3 className="text-sm font-semibold text-foreground">Maliyet Verimliliği</h3>
+              <h3 className="text-sm font-semibold text-foreground">Cost Efficiency</h3>
               <div className="mt-4 rounded-2xl border border-primary/25 bg-primary/10 p-4">
-                <p className="text-xs text-primary">Değer / Maliyet Oranı</p>
+                <p className="text-xs text-primary">Subscription Value / SaaS Spend</p>
                 <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-1 text-sm font-semibold text-emerald-100">
-                  {costEfficiencyRatio}x (İyi)
+                  {costEfficiencyRatio}x (Good)
                 </p>
                 <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
                   {tlFormatter.format(exampleAsset.valueTl)} / {tlFormatter.format(exampleAsset.last12MonthServiceCostTl)} =

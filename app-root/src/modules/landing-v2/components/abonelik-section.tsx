@@ -4,12 +4,12 @@ import { useInView } from "@/modules/landing-v2/hooks/use-in-view"
 import { CreditCard, RefreshCw, PauseCircle, TrendingUp, ArrowUpRight, ArrowDownRight } from "lucide-react"
 
 const subscriptions = [
-  { name: "Ev İnterneti", plan: "100 Mbps", amount: 899, cycle: "Aylık", status: "active", color: "bg-chart-5/20 text-chart-5" },
-  { name: "Mobil Hat", plan: "20 GB + 1000 DK", amount: 349, cycle: "Aylık", status: "active", color: "bg-primary/20 text-primary" },
-  { name: "Ofis Programı", plan: "Yıllık", amount: 1200, cycle: "Yıllık", status: "active", color: "bg-chart-3/20 text-chart-3" },
-  { name: "Bulut Depolama", plan: "200 GB", amount: 129, cycle: "Aylık", status: "paused", color: "bg-chart-4/20 text-chart-4" },
-  { name: "Alan Adı & Hosting", plan: "Standart Paket", amount: 279, cycle: "Aylık", status: "active", color: "bg-chart-2/20 text-chart-2" },
-  { name: "E-Fatura Hizmeti", plan: "Aylık", amount: 99, cycle: "Aylık", status: "active", color: "bg-chart-1/20 text-chart-1" },
+  { name: "Project Management Tool", plan: "Pro · 12 users", amount: 2880, cycle: "Monthly", status: "active", color: "bg-chart-5/20 text-chart-5" },
+  { name: "Design Platform", plan: "Team Plan · 4 editors", amount: 2400, cycle: "Monthly", status: "active", color: "bg-primary/20 text-primary" },
+  { name: "Cloud Hosting", plan: "Usage-based billing", amount: 3450, cycle: "Monthly", status: "active", color: "bg-chart-3/20 text-chart-3" },
+  { name: "Email Service", plan: "Business · 18 users", amount: 1440, cycle: "Monthly", status: "active", color: "bg-chart-4/20 text-chart-4" },
+  { name: "Analytics Tool", plan: "Pro Plan", amount: 1920, cycle: "Monthly", status: "active", color: "bg-chart-2/20 text-chart-2" },
+  { name: "Database Hosting", plan: "Usage-based billing", amount: 890, cycle: "Monthly", status: "paused", color: "bg-chart-1/20 text-chart-1" },
 ]
 
 export function AbonelikSection() {
@@ -29,19 +29,19 @@ export function AbonelikSection() {
               {/* Summary Cards */}
               <div className="grid grid-cols-3 gap-2 mb-6 sm:gap-3">
                 <div className="rounded-xl bg-secondary/50 p-3 text-center sm:p-4">
-                  <div className="text-xl font-bold text-foreground sm:text-2xl">7</div>
-                  <div className="text-[10px] text-muted-foreground mt-1">Aktif Abonelik</div>
+                  <div className="text-xl font-bold text-foreground sm:text-2xl">14</div>
+                  <div className="text-[10px] text-muted-foreground mt-1">Active Subscriptions</div>
                 </div>
                 <div className="rounded-xl bg-secondary/50 p-3 text-center sm:p-4">
-                  <div className="text-xl font-bold text-primary sm:text-2xl">{"1.855"}<span className="text-xs font-normal text-muted-foreground ml-0.5 sm:text-sm">{"TL"}</span></div>
-                  <div className="text-[10px] text-muted-foreground mt-1">Aylık Toplam</div>
+                  <div className="text-xl font-bold text-primary sm:text-2xl">{"12.980"}<span className="text-xs font-normal text-muted-foreground ml-0.5 sm:text-sm">{"TL"}</span></div>
+                  <div className="text-[10px] text-muted-foreground mt-1">Monthly SaaS Spend</div>
                 </div>
                 <div className="rounded-xl bg-secondary/50 p-3 text-center sm:p-4">
                   <div className="flex items-center justify-center gap-1">
                     <ArrowDownRight className="h-3.5 w-3.5 text-primary sm:h-4 sm:w-4" />
                     <span className="text-xl font-bold text-primary sm:text-2xl">12%</span>
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-1">Geçen Aya Göre</div>
+                  <div className="text-[10px] text-muted-foreground mt-1">Identified Savings</div>
                 </div>
               </div>
 
@@ -65,7 +65,7 @@ export function AbonelikSection() {
                       <div className="text-right">
                         <div className="text-sm font-semibold text-foreground">{currencyFormatter.format(sub.amount)} TL</div>
                         <div className={`text-[10px] ${sub.status === "active" ? "text-primary" : "text-chart-4"}`}>
-                          {sub.status === "active" ? "Aktif" : "Duraklatıldı"}
+                          {sub.status === "active" ? "Active" : "Paused"}
                         </div>
                       </div>
                       {sub.status === "active" ? (
@@ -84,21 +84,21 @@ export function AbonelikSection() {
           <div className={`order-1 lg:order-2 ${inView ? "animate-slide-in-left" : "opacity-0"}`} style={{ animationDelay: "0.2s" }}>
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 mb-6">
               <CreditCard className="h-3.5 w-3.5 text-primary" />
-              <span className="text-xs tracking-widest text-primary">Abonelik Takibi</span>
+              <span className="text-xs tracking-widest text-primary">Subscription Tracking</span>
             </div>
             <h2 className="text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl text-balance">
-              Tüm abonelikleriniz{" "}
-              <span className="text-gradient">kontrol altında</span>
+              All your SaaS spending{" "}
+              <span className="text-gradient">in one view</span>
             </h2>
             <p className="mt-6 text-lg leading-relaxed text-muted-foreground">
-              Ev interneti, mobil hat, ofis programı, bulut depolama ve e-fatura gibi hizmetleri tek panelden yönetin, gereksiz harcamaları tespit edin.
+              Track all your SaaS subscriptions in one dashboard. Identify unused tools, spot duplicate spending and cut unnecessary costs.
             </p>
 
             <div className="mt-10 flex flex-col gap-4">
               {[
-                { icon: CreditCard, label: "Otomatik Takip", desc: "Aylık ve yıllık abonelikler otomatik hesaplanır" },
-                { icon: TrendingUp, label: "Harcama Analizi", desc: "Abonelik bazlı maliyet trendlerini görün" },
-                { icon: ArrowUpRight, label: "Tasarruf Önerileri", desc: "Gereksiz abonelikleri tespit edip iptal edin" },
+                { icon: CreditCard, label: "Auto Tracking", desc: "Renewal dates and user counts tracked automatically" },
+                { icon: TrendingUp, label: "Spend Analysis", desc: "See cost trends per tool in real time" },
+                { icon: ArrowUpRight, label: "Savings Detection", desc: "Find unused licenses and see monthly savings" },
               ].map((item, i) => (
                 <div key={i} className="flex items-start gap-4 rounded-xl border border-border/50 bg-secondary/30 p-4 transition-all hover:border-primary/20 hover:bg-secondary/50">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">

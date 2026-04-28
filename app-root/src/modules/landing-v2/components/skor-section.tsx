@@ -240,8 +240,8 @@ export function SkorSection() {
   }, []);
 
   const ratioLabel = health.hasNoCost
-    ? "Toplam maliyet 0 olduğu için skor 100 kabul edildi."
-    : `Oran: ${health.ratio.toFixed(2)} (varlık fiyatı / toplam maliyet)`;
+    ? "Total cost is 0, score defaults to 100."
+    : `Ratio: ${health.ratio.toFixed(2)} (asset value / total cost)`;
 
   const scoreCategories: ScoreCategory[] = useMemo(() => {
     const hasPlannedMaintenance = health.maintenance.planned > 0;
@@ -270,53 +270,53 @@ export function SkorSection() {
     const overdueRate = hasPayments ? (health.payments.overdue / health.payments.total) * 100 : 0;
 
     const warrantySubItems: ScoreSubItem[] = [
-      { label: "Aktif garanti", score: health.warranty.active, color: "bg-emerald-400" },
-      { label: "Yakında bitecek", score: health.warranty.expiring, color: "bg-amber-400" },
-      { label: "Süresi dolan", score: health.warranty.expired, color: "bg-rose-400" },
+      { label: "Active license", score: health.warranty.active, color: "bg-emerald-400" },
+      { label: "Expiring soon", score: health.warranty.expiring, color: "bg-amber-400" },
+      { label: "Expired", score: health.warranty.expired, color: "bg-rose-400" },
     ];
 
     if (health.warranty.unknown > 0) {
-      warrantySubItems.push({ label: "Tarihi girilmemiş", score: health.warranty.unknown, color: "bg-slate-400" });
+      warrantySubItems.push({ label: "Date not entered", score: health.warranty.unknown, color: "bg-slate-400" });
     }
 
     return [
       {
         icon: Shield,
-        label: "Garanti Durumu",
+        label: "License Status",
         score: health.warranty.score,
         color: "bg-primary",
         subItems: warrantySubItems,
       },
       {
         icon: Wrench,
-        label: "Bakım Uyumu",
+        label: "Usage Compliance",
         score: health.maintenance.score,
         color: "bg-accent",
         subItems: [
-          { label: "Gerçekleşen bakım", score: maintenanceCompletedRate, color: "bg-emerald-400" },
-          { label: "Plan takvimi uyumu", score: maintenanceOnTrackRate, color: "bg-cyan-400" },
-          { label: "Geciken bakım", score: maintenanceOverdueRate, color: "bg-rose-400" },
+          { label: "Completed reviews", score: maintenanceCompletedRate, color: "bg-emerald-400" },
+          { label: "On schedule", score: maintenanceOnTrackRate, color: "bg-cyan-400" },
+          { label: "Overdue reviews", score: maintenanceOverdueRate, color: "bg-rose-400" },
         ],
       },
       {
         icon: FileText,
-        label: "Belge Tamlığı",
+        label: "Document Completeness",
         score: health.documents.score,
         color: "bg-chart-3",
         subItems: [
-          { label: "Yüklenen belge", score: uploadedDocumentsRate, color: "bg-emerald-400" },
-          { label: "Eksik belge", score: missingDocumentsRate, color: "bg-rose-400" },
+          { label: "Uploaded documents", score: uploadedDocumentsRate, color: "bg-emerald-400" },
+          { label: "Missing documents", score: missingDocumentsRate, color: "bg-rose-400" },
         ],
       },
       {
         icon: CreditCard,
-        label: "Ödeme Durumu",
+        label: "Payment Status",
         score: health.payments.score,
         color: "bg-chart-4",
         subItems: [
-          { label: "Ödenen", score: paidRate, color: "bg-emerald-400" },
-          { label: "Bekleyen", score: pendingRate, color: "bg-amber-400" },
-          { label: "Geciken", score: overdueRate, color: "bg-rose-400" },
+          { label: "Paid", score: paidRate, color: "bg-emerald-400" },
+          { label: "Pending", score: pendingRate, color: "bg-amber-400" },
+          { label: "Overdue", score: overdueRate, color: "bg-rose-400" },
         ],
       },
     ];
@@ -333,9 +333,9 @@ export function SkorSection() {
             <div className="glass-card rounded-3xl p-5 sm:p-8">
               <div className="mb-8 flex items-center justify-between">
                 <div>
-                  <div className="text-sm font-semibold text-foreground">Varlık Sağlık Skoru</div>
+                  <div className="text-sm font-semibold text-foreground">SaaS Health Score</div>
                   <div className="mt-1 flex items-center gap-1">
-                    <span className="text-xs text-primary">{isLoading ? "Veri yükleniyor..." : ratioLabel}</span>
+                    <span className="text-xs text-primary">{isLoading ? "Loading data..." : ratioLabel}</span>
                   </div>
                 </div>
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
@@ -378,30 +378,30 @@ export function SkorSection() {
           >
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-chart-3/20 bg-chart-3/5 px-4 py-1.5">
               <BarChart3 className="h-3.5 w-3.5 text-chart-3" />
-              <span className="text-xs tracking-widest text-chart-3">Skor Analizi</span>
+              <span className="text-xs tracking-widest text-chart-3">Score Analysis</span>
             </div>
             <h2 className="text-balance text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl">
-              Varlık sağlığınızı <span className="text-gradient">ölçümleyin</span>
+              Measure your SaaS <span className="text-gradient">health</span>
             </h2>
             <p className="mt-6 text-lg leading-relaxed text-muted-foreground">
-              Her varlığınızın garanti, bakım, belge ve ödeme durumunu birleşik skorla ölçün. Zayıf noktaları hızla
-              tespit edin ve aksiyon alın.
+              Measure the license, usage, document and payment status of every tool with a unified score. Quickly
+              identify weak points and take action.
             </p>
 
             <div className="mt-8 rounded-2xl border border-chart-3/20 bg-chart-3/5 p-4">
-              <h3 className="text-sm font-semibold text-foreground">Skor Analizi nasıl hesaplanır?</h3>
+              <h3 className="text-sm font-semibold text-foreground">How is the Score calculated?</h3>
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                Skor, oran bazlı ve normalize bir modelle hesaplanır:
-                <span className="font-semibold text-foreground"> ratio = varlık fiyatı / toplam maliyet</span>
-                (toplam maliyet = bakım + harcama). Toplam maliyet 0 ise skor doğrudan 100 kabul edilir.
+                The score is calculated using a ratio-based normalized model:
+                <span className="font-semibold text-foreground"> ratio = asset value / total cost</span>
+                (total cost = maintenance + expenses). If total cost is 0, the score defaults to 100.
               </p>
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                Eşikler:
+                Thresholds:
                 <span className="font-semibold text-foreground"> ratio &lt; 1 = 20</span>,
                 <span className="font-semibold text-foreground"> 1-2 = 40</span>,
                 <span className="font-semibold text-foreground"> 2-4 = 60</span>,
                 <span className="font-semibold text-foreground"> 4-8 = 80</span>,
-                <span className="font-semibold text-foreground"> 8 üzeri = 95</span>.
+                <span className="font-semibold text-foreground"> above 8 = 95</span>.
               </p>
             </div>
 
@@ -413,9 +413,9 @@ export function SkorSection() {
 
             <div className="mt-10 flex flex-col gap-4">
               {[
-                { icon: BarChart3, label: "Birleşik Skor", desc: "Oran bazlı normalize edilmiş genel sağlık puanı" },
-                { icon: TrendingUp, label: "Trend Takibi", desc: "Aylık skor değişimlerini grafikle izleyin" },
-                { icon: Target, label: "Aksiyon Önerileri", desc: "Skoru artırmak için otomatik tavsiyeler" },
+                { icon: BarChart3, label: "Unified Score", desc: "Ratio-based normalized overall health score" },
+                { icon: TrendingUp, label: "Trend Tracking", desc: "Monitor monthly score changes with charts" },
+                { icon: Target, label: "Action Recommendations", desc: "Automatic suggestions to improve your score" },
               ].map((item) => (
                 <div
                   key={item.label}

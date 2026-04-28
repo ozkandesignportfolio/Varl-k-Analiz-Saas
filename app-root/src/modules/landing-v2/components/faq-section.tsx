@@ -11,217 +11,137 @@ interface FaqItem {
 
 const faqItems: FaqItem[] = [
   {
-    question: "Assetly tam olarak hangi problemi çözer?",
+    question: "How does Assetly help reduce SaaS costs?",
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Fiziksel ve dijital varlıklarınızın bakım, garanti, maliyet ve belge yönetimini tek merkezde birleştirir; &quot;bir sonraki adım neydi?&quot; sorusunu ortadan kaldırır.
+          Assetly shows all your subscriptions in one place, helping you identify unused tools and eliminate unnecessary spending.
         </p>
         <p>
-          Çoğu işletme ve birey, ekipman bakım tarihlerini kaçırır, garanti sürelerini fark edemez, abonelik ödemelerini kontrol edemez. Sonuç: kaçırılan garanti başvuruları, gereksiz harcamalar, beklenmedik arızalar ve kaybolan belgeler. Assetly bu kaçışları önler — ne zaman aksiyon almanız gerektiğini gösterir, siz hatırlamak zorunda kalmazsınız.
+          Most teams pay for dozens of subscriptions spread across different cards and emails. Tools nobody uses keep billing for months. Assetly makes these invisible costs visible — alerts you before renewals, shows usage data and recommends cancellations.
         </p>
       </>
     ),
   },
   {
-    question: "Assetly kimler için tasarlandı?",
+    question: "Can I track all my team\u2019s tools?",
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Bireysel kullanıcılardan, onlarca ekipmanı sahada tutan işletmelere kadar herkes için.
-        </p>
-        <p>Tipik kullanıcı profillerimiz:</p>
-        <ul className="list-disc space-y-1 pl-5">
-          <li>Ev ve ofis ekipmanlarını düzenli tutmak isteyen bireyler.</li>
-          <li>Araç filoları, makine parkurları ve saha cihazlarını takip eden KOBİ&apos;ler.</li>
-          <li>Abonelik ve lisans maliyetlerini kontrol altında tutan freelancer&apos;lar ve startup&apos;lar.</li>
-        </ul>
-        <p>Ortak nokta: &quot;Elimdeki şeylerin durumunu, maliyetini ve bir sonraki adımını bilmek istiyorum.&quot;</p>
-      </>
-    ),
-  },
-  {
-    question: "Neden Excel tablosu veya Notion yerine Assetly kullanmalıyım?",
-    answer: (
-      <>
-        <p className="font-medium text-foreground/90">
-          Çünkü tablolar veri depolar; ama sizi uyarmaz, öncelik belirlemez ve aksiyon aldırmaz.
+          Yes. You can see which tools your team uses and who is assigned to each subscription.
         </p>
         <p>
-          Excel&apos;de bir bakım tarihi yazabilirsiniz — ama o tarih geldiğinde size kim hatırlatacak? Notion&apos;da bir garanti belgesi saklayabilirsiniz — ama süre dolmadan önce kim uyaracak?
-        </p>
-        <p>
-          Assetly yalnızca kayıt tutmaz: bakım zamanı geldiğinde bildirim gönderir, garanti bitişini izler ve hangi varlığınızın acil dikkat gerektirdiğini skorlayarak gösterir. Tablo bir araçtır; Assetly bir işletme sistemidir.
+          Track the plan, user count, monthly cost and renewal date for every tool. Even if different departments use different tools, you get a real-time view of your total SaaS spend.
         </p>
       </>
     ),
   },
   {
-    question: "Varlık takibi pratikte nasıl çalışır?",
+    question: "What if I don\u2019t know all the subscriptions we have?",
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Varlığınızı ekleyin, kritik detayları girin, gerisini Assetly yönetsin.
+          That\u2019s exactly why Assetly exists. Uncovering hidden subscriptions is the first step.
         </p>
         <p>
-          Bir varlık kaydettiğinizde satın alma tarihi, garanti süresi, bakım periyodu ve maliyeti tanımlarsınız. Assetly bu verilerden otomatik bakım takvimi oluşturur, garanti bitiş uyarıları planlar ve varlığın genel sağlık skorunu hesaplar.
-        </p>
-        <p>
-          Her servis kaydı, belge yüklemesi veya durum değişikliği varlığın yaşam döngüsüne eklenir. Örnek akış: klima cihazınızı eklediniz, 6 aylık bakım periyodu belirlediniz. Sistem her bakım zamanı geldiğinde sizi uyarır; siz servis kaydını girerek geçmişi güncel tutarsınız. Skor otomatik olarak yeniden hesaplanır.
+          You can manually add tools and gradually build full visibility over your software stack. The system tracks renewal dates, detects unused tools and alerts you. Within the first week you\u2019ll find at least one tool you didn\u2019t know you were paying for.
         </p>
       </>
     ),
   },
   {
-    question: "Hangi tür varlıkları takip edebilirim?",
+    question: "Is this useful for small teams?",
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Fiziksel veya dijital — değer taşıyan ve takip gerektiren her şey.
+          Yes. Assetly is designed specifically for small teams and startups that need control over SaaS spending.
         </p>
         <p>
-          Beyaz eşya, elektronik cihazlar, araçlar, ofis ve endüstriyel ekipmanlar. Yazılım lisansları, SaaS abonelikleri, sigorta poliçeleri, kira sözleşmeleri. Assetly&apos;nin esnek kategori yapısı sayesinde her tür varlığı özel alanlarla tanımlayabilirsiniz.
+          In small teams, SaaS decisions are usually made by one person with no centralized tracking. Everyone buys their own tools and nobody knows the total cost. Assetly eliminates that chaos and delivers big savings on small budgets.
         </p>
       </>
     ),
   },
   {
-    question: "Verilerim güvende mi?",
+    question: "How quickly can I see value?",
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Verileriniz şifreli iletişim ve veritabanı düzeyinde izolasyonla korunur; yalnızca size aittir.
+          Most teams start identifying unnecessary costs within the first few days of use.
         </p>
         <p>
-          Tüm veri iletişimi TLS 1.3 ile şifrelenir. Her kullanıcının verileri veritabanında birbirinden izole edilmiştir. Belgeleriniz özel depolama alanında tutulur ve yalnızca sizin hesabınız üzerinden erişilebilir.
-        </p>
-        <p>
-          Üçüncü taraflarla izniniz olmadan veri paylaşımı yapılmaz. Güvenlik mimerinin merkezinde yer alır; bu alanda hiçbir zaman gevşeme olmaz.
+          After adding your subscriptions, Assetly generates an instant cost summary. Tools approaching renewal, those with no active users and overpriced subscriptions become visible immediately. Most teams find 10–20% of their monthly SaaS spend is unnecessary.
         </p>
       </>
     ),
   },
   {
-    question: "Hatırlatmalar ve otomasyonlar nasıl çalışır?",
+    question: "Why use Assetly instead of a spreadsheet?",
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Assetly kritik tarihleri ve eşikleri sürekli izler; harekete geçmeniz gerektiğinde proaktif olarak uyarır.
+          Spreadsheets store data but they don\u2019t alert you, suggest savings or catch missed renewals.
         </p>
         <p>
-          Bakım periyotları, garanti bitişleri, abonelik yenilemeleri ve belge son kullanma tarihleri otomatik takip edilir.
+          You can keep a subscription list in Notion — but who will remind you on renewal day? You can build a cost table in Excel — but who will detect the unused tool?
         </p>
         <p>
-          Örnek: bir varlığa 6 aylık bakım periyodu tanımladıysanız, her döngü sonunda bildirim alırsınız. Garanti bitmeden önce uyarılırsınız. Abonelik yenilenmeden önce haberdar edilirsiniz. Amaç, kritik tarihlerin arkanızdan kaymasını önlemek ve kaçırılan fırsatların maliyetini ortadan kaldırmaktır.
+          Assetly provides automatic renewal alerts, usage detection and cost analysis. A spreadsheet is a ledger; Assetly is a cost control system.
         </p>
       </>
     ),
   },
   {
-    question: "Varlık skor sistemi nedir ve neden önemli?",
+    question: "Is my data secure?",
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Her varlığınıza bir sağlık skoru atanır — böylece &quot;şimdi hangisine bakmalıyım?&quot; sorusuna saniyeler içinde cevap alırsınız.
+          Your data is protected with encrypted communication and database-level isolation — it belongs only to you.
         </p>
         <p>
-          Skor; bakım düzeni, garanti durumu, yaş, servis geçmişi ve kullanıcı girdileri dikkate alınarak hesaplanır. Düzenli bakımlı, garantisi devam eden varlık yüksek skor alır. Bakımı gecikmiş veya garantisi bitmiş varlık düşük skor alır.
-        </p>
-        <p>
-          3 varlıkla sezgisel karar verebilirsiniz. Ancak 30 veya 300 varlık olduğunda insan hafızası ve hisleri yanıltır. Skor sistemi, karar verme sürecinizi bir veri motoruna dönüştürür; önceliği belirsizlikten çıkarır, aksiyona çevirir.
+          All communication is encrypted with TLS. Each team\u2019s data is fully isolated. No sharing with third parties without your permission. Security is at the core of our infrastructure.
         </p>
       </>
     ),
   },
   {
-    question: "Abonelik ve faturaları varlıklarla birlikte yönetebilir miyim?",
+    question: "Why should I upgrade to Premium?",
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Evet. Fiziksel varlıklar kadar dijital abonelikleri ve tekrarlayan giderleri de tek panelde izleyebilirsiniz.
+          The free plan is for discovery. Premium pays for itself in the first month by identifying unnecessary spending.
         </p>
         <p>
-          Yazılım lisansları, SaaS abonelikleri, sigorta poliçeleri ve periyodik bakım sözleşmeleri gibi tekrarlayan maliyetleri varlık olarak tanımlayabilirsiniz.
+          Unlimited SaaS tool tracking, advanced cost analysis, renewal automation, PDF cost reports and priority support are Premium-only features.
         </p>
         <p>
-          Maliyetleri izler, yenileme tarihlerini otomatik takip edersiniz. Fatura ve belgeleri ilgili varlığa ekleyerek &quot;bu varlığa toplam ne harcadım?&quot; sorusuna tek tıkla ulaşırsınız.
+          If your team uses more than 10 SaaS tools, a single unnecessary subscription you catch with Premium will save more than the annual fee.
         </p>
       </>
     ),
   },
   {
-    question: "Bir şeyi güncellemeyi unutursam ne olur?",
+    question: "Is there any setup required?",
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Assetly eksikliği tespit eder ve sizi uyarır — unutmak, sistemin çözmeyi hedeflediği temel sorunlardan biridir.
+          No. Create an account, add your first SaaS tool — you\u2019re up and running in 2 minutes.
         </p>
         <p>
-          Bakım kaydını girmediyseniz, planlanan tarih geçtiğinde sistem sizi bilgilendirir ve ilgili varlığın skoru otomatik olarak düşer.
-        </p>
-        <p>
-          Garanti belgesini yüklemediyseniz eksik belge uyarısı alırsınız. Assetly pasif bir kayıt defteri değildir. Veri eksikliğini ve gecikmeyi tespit ederek dikkatinizi çeker. Hatırlamak zorunda kalmadan kontrolü elinizde tutmanızı sağlar.
+          Assetly is fully cloud-based. No installation, integration or technical knowledge required. After signing up, start adding your subscriptions and the platform guides you step by step.
         </p>
       </>
     ),
   },
   {
-    question: "Premium plana neden geçmeliyim?",
+    question: "Can I use it on mobile?",
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Ücretsiz plan, Assetly&apos;yi tanımak içindir. Premium, maliyetli kaçırılan fırsatları ve gereksiz harcamaları önleyerek kendini amorti eder.
+          Yes. Web, iOS and Android — fully functional on all devices.
         </p>
         <p>
-          Ücretsiz planda temel varlık takibi yapabilirsiniz. Ancak sınırsız varlık, gelişmiş bildirimler, detaylı raporlama, belge kasası, skor analizi ve öncelikli destek Premium&apos;a özeldir.
-        </p>
-        <p>
-          3&apos;ten fazla varlığınız varsa, bakım takvimlerini otomatik yönetmek istiyorsanız veya belgelerinizi merkezi ve güvenli bir kasada tutmak istiyorsanız Premium, idare etme maliyetinden çok daha düşük bir yatırımdır. Kaçırılan bir bakım veya fark edilmeyen bir garanti bitişi, genellikle yıllık ücretin çok üzerinde maliyete yol açar.
-        </p>
-      </>
-    ),
-  },
-  {
-    question: "Kurulum gerekiyor mu? Ne kadar sürede başlarım?",
-    answer: (
-      <>
-        <p className="font-medium text-foreground/90">
-          Kurulum gerekmez. Hesap oluşturun, ilk varlığınızı ekleyin; iki dakika içinde aktif durumdasınız.
-        </p>
-        <p>
-          Assetly tamamen bulut tabanlıdır. Yazılım indirmenize, sunucu kurmanıza veya teknik yapılandırma yapmanıza gerek yoktur. Kayıt olduktan sonra ilk varlığınızı hemen ekleyebilir, bakım periyodu tanımlayabilir ve belge yükleyebilirsiniz. Platform sizi adım adım yönlendirir.
-        </p>
-      </>
-    ),
-  },
-  {
-    question: "Buna gerçekten ihtiyacım var mı?",
-    answer: (
-      <>
-        <p className="font-medium text-foreground/90">
-          Eğer sahip olduğunuz herhangi bir şeyin bakım tarihini, garanti süresini veya maliyetini kafanızda tutmaya çalışıyorsanız — muhtemelen evet.
-        </p>
-        <p>
-          &quot;Şimdilik idare ediyorum&quot; demek, genellikle sorun büyüyene kadar işe yarar.
-        </p>
-        <p>
-          Klima garantisi fark edilmeden biter. Araç bakımı 3 ay gecikir, aşınma artar. Unutulan bir abonelik aylarca para çekmeye devam eder. Bir garanti belgesi kaybolur ve değiştirme maliyeti sizden çıkar.
-        </p>
-        <p>
-          Assetly, bu gizli stresi ve potansiyel kayıpları ortadan kaldırır. Tek bir varlığınız bile olsa, onun durumunu ve maliyetini net görmek, &quot;her şey yolunda&quot; hissini somut veriye dönüştürür.
-        </p>
-      </>
-    ),
-  },
-  {
-    question: "Mobil cihazdan kullanabilir miyim?",
-    answer: (
-      <>
-        <p className="font-medium text-foreground/90">
-          Evet. Assetly, telefon ve tablet dahil tüm cihazlarda tam işlevsel olarak tasarlanmıştır.
-        </p>
-        <p>
-          Sahada ekipman bakım kaydı girmek, garanti belgesini fotoğraflamak veya anlık durum kontrolü yapmak için mobil tarayıcınızdan tüm işlemleri gerçekleştirebilirsiniz. Arayüz, küçük ekranlarda hızlı ve konforlu kullanım için optimize edilmiştir.
+          Quick cost checks in a meeting, adding a subscription on the go or tracking real-time notifications — access all features from your mobile browser.
         </p>
       </>
     ),
@@ -318,13 +238,13 @@ export function FaqSection() {
         <div className={`mb-12 text-center sm:mb-16 ${inView ? "animate-slide-up" : "opacity-0"}`}>
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5">
             <HelpCircle className="h-3.5 w-3.5 text-primary" />
-            <span className="text-xs tracking-widest text-primary">SSS</span>
+            <span className="text-xs tracking-widest text-primary">FAQ</span>
           </div>
           <h2 className="text-balance text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl">
-            Merak <span className="text-gradient">Ettikleriniz</span>
+            Frequently Asked <span className="text-gradient">Questions</span>
           </h2>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
-            Karar vermeden önce bilmeniz gereken her şey — açık, net ve doğrudan.
+            Everything you need to know before getting started — clear, direct and honest.
           </p>
         </div>
 

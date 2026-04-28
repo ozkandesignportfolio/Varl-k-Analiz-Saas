@@ -14,62 +14,62 @@ const features: Array<{
 }> = [
   {
     icon: Shield,
-    title: "Varlık Yönetimi",
-    description: "Tüm ev ve kişisel varlıklarınızı tek panelde takip edin. Kategorize edin, detaylandırın.",
+    title: "Get a clear picture of your SaaS landscape",
+    description: "Track every SaaS tool your team uses — Slack, Notion, Figma, AWS — all in a single, organized view.",
     tone: "primary-accent",
   },
   {
     icon: Wrench,
-    title: "Bakım Motoru",
-    description: "Otomatik bakım periyotları, akıllı hatırlatmalar ve gecikme uyarıları ile riskleri önleyin.",
+    title: "Identify unused and duplicate tools",
+    description: "Instantly spot tools nobody uses and subscriptions that overlap. Stop paying for what you don’t need.",
     tone: "accent-chart3",
   },
   {
     icon: FileText,
-    title: "Belge Kasası",
-    description: "Garanti belgeleri, faturalar ve servis formlarını güvenli şekilde saklayın.",
+    title: "Know who's using what",
+    description: "Know exactly which team members are assigned to every subscription. No more guessing.",
     tone: "chart3-chart4",
   },
   {
     icon: BarChart3,
-    title: "Maliyet Analizi",
-    description: "Servis harcamalarınızı grafiklerle takip edin, kategori bazlı dağılımı görün.",
+    title: "Understand your software spending",
+    description: "See your total monthly SaaS costs at a glance. Know where every dollar goes with clear charts and breakdowns.",
     tone: "chart4-primary",
   },
   {
     icon: Bell,
-    title: "Akıllı Bildirimler",
-    description: "Garanti bitişi, bakım zamanı ve fatura vadesi yaklaştığında anında haberdar olun.",
+    title: "Stay on top of invoices and payments",
+    description: "Track every invoice, expense and renewal date. Get alerts before charges hit so nothing slips through.",
     tone: "primary-accent",
   },
   {
     icon: Clock,
-    title: "Zaman Akışı",
-    description: "Tüm olayları kronolojik sırada görün. Servisler, yüklemeler ve değişiklikler tek yerde.",
+    title: "Track equipment costs and warranties",
+    description: "Monitor hardware like laptops and routers alongside SaaS. Track warranties, service history and assigned users.",
     tone: "accent-chart3",
   },
   {
     icon: QrCode,
-    title: "QR Kod Erişimi",
-    description: "QR/Barkod tarayarak varlık detaylarına anında ulaşın. Hızlı ve pratik.",
+    title: "Find any subscription in seconds",
+    description: "Filter by tool name, category or team member. Locate any subscription instantly with powerful search.",
     tone: "chart3-chart4",
   },
   {
     icon: Zap,
-    title: "Otomasyon",
-    description: "Tetikleyici olaylara bağlı otomatik işlemler: email, bildirim, PDF rapor.",
+    title: "Automate alerts and cost reports",
+    description: "Get renewal reminders, unused tool alerts and monthly PDF cost reports — all on autopilot.",
     tone: "chart4-primary",
   },
   {
     icon: Lock,
-    title: "Güvenlik",
-    description: "RLS ile veri izolasyonu, private storage ve HTTPS ile tam güvenlik.",
+    title: "Enterprise-grade security",
+    description: "Team data is fully isolated. Encrypted communication and private storage keep your information safe.",
     tone: "primary-accent",
   },
   {
     icon: Smartphone,
-    title: "Mobil Uyumlu",
-    description: "Her cihazda mükemmel deneyim. PWA desteği ile masaüstüne kurun.",
+    title: "Access from any device",
+    description: "In a meeting, on the road or at your desk — the same powerful experience on every device.",
     tone: "accent-chart3",
   },
 ]
@@ -84,13 +84,13 @@ export function FeaturesSection() {
       <div className="mx-auto max-w-7xl px-6">
         <div className="mb-12 text-center sm:mb-20">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5">
-            <span className="text-xs tracking-widest text-primary">Özellikler</span>
+            <span className="text-xs tracking-widest text-primary">WHAT YOU CAN DO</span>
           </div>
           <h2 className="text-balance text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl">
-            İhtiyacınız olan her şey, <span className="text-gradient">tek platformda</span>
+            One platform to <span className="text-gradient">control your SaaS costs</span>
           </h2>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
-            Assetly ile varlık yönetiminin tüm boyutlarını kontrol altına alın
+            From subscription tracking to cost analysis — reduce SaaS waste and make smarter software decisions
           </p>
         </div>
 

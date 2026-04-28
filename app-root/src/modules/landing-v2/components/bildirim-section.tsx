@@ -8,36 +8,36 @@ const notifications = [
     icon: AlertTriangle,
     iconColor: "text-chart-4",
     iconBg: "bg-chart-4/10",
-    title: "Garanti Süresi Doluyor",
-    desc: "Samsung Buzdolabı - 15 gün kaldı",
-    time: "2 dakika önce",
+    title: "Unused Tool Detected",
+    desc: "Analytics Tool — 0 active users in the last 30 days",
+    time: "2 minutes ago",
     unread: true,
   },
   {
     icon: Calendar,
     iconColor: "text-accent",
     iconBg: "bg-accent/10",
-    title: "Bakım Zamanı Yaklaştı",
-    desc: "Klima filtre değişimi - 3 gün kaldı",
-    time: "1 saat önce",
+    title: "Subscription Renewing",
+    desc: "Design Platform Professional — Renews in 3 days",
+    time: "1 hour ago",
     unread: true,
   },
   {
     icon: Mail,
     iconColor: "text-chart-3",
     iconBg: "bg-chart-3/10",
-    title: "Fatura Hatırlatma",
-    desc: "Vodafone - Aylık ödeme yarın",
-    time: "3 saat önce",
+    title: "Invoice Reminder",
+    desc: "Cloud Hosting — Monthly invoice due tomorrow",
+    time: "3 hours ago",
     unread: false,
   },
   {
     icon: CheckCircle,
     iconColor: "text-primary",
     iconBg: "bg-primary/10",
-    title: "Servis Tamamlandı",
-    desc: "Kombi yıllık bakım başarıyla kaydedildi",
-    time: "Dün",
+    title: "License Cancellation Recorded",
+    desc: "Video Tool — 2 user licenses successfully cancelled",
+    time: "Yesterday",
     unread: false,
   },
 ]
@@ -56,22 +56,22 @@ export function BildirimSection() {
           <div className={inView ? "animate-slide-in-left" : "opacity-0"}>
             <div className="inline-flex items-center gap-2 rounded-full border border-chart-4/20 bg-chart-4/5 px-4 py-1.5 mb-6">
               <Bell className="h-3.5 w-3.5 text-chart-4" />
-              <span className="text-xs tracking-widest text-chart-4">Bildirimler</span>
+              <span className="text-xs tracking-widest text-chart-4">Notifications</span>
             </div>
             <h2 className="text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl text-balance">
-              Hiçbir şeyi{" "}
-              <span className="text-gradient">kaçırmayın</span>
+              Stop surprise{" "}
+              <span className="text-gradient">charges</span>
             </h2>
             <p className="mt-6 text-lg leading-relaxed text-muted-foreground">
-              Garanti bitişi, bakım zamanı ve fatura vadesi yaklaştığında email, push bildirim ve uygulama içi uyarılarla anında haberdar olun.
+              Get notified before subscription renewals, when unused tools are detected and before invoices are charged — via email, push notifications and in-app alerts.
             </p>
 
             <div className="mt-10 grid gap-4 sm:grid-cols-2">
               {[
-                { icon: BellRing, label: "Push Bildirimler", desc: "Anında mobil uyarı" },
-                { icon: Mail, label: "Email Uyarıları", desc: "Detaylı özet raporları" },
-                { icon: Smartphone, label: "Uygulama İçi", desc: "Canlı bildirim akışı" },
-                { icon: Calendar, label: "Zamanlanmış", desc: "7 ve 30 gün önceden" },
+                { icon: BellRing, label: "Renewal Alert", desc: "Get notified before subscriptions renew" },
+                { icon: Mail, label: "Usage Report", desc: "Weekly SaaS usage summary" },
+                { icon: Smartphone, label: "In-App Alerts", desc: "Instant cost change notifications" },
+                { icon: Calendar, label: "Scheduled", desc: "7 and 30 days in advance" },
               ].map((item, i) => (
                 <div key={i} className="flex items-start gap-3 rounded-xl border border-border/50 bg-secondary/30 p-4 transition-all hover:border-primary/20 hover:bg-secondary/50">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
@@ -95,8 +95,8 @@ export function BildirimSection() {
                     <BellRing className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-foreground">Bildirim Merkezi</div>
-                    <div className="text-xs text-muted-foreground">4 yeni bildirim</div>
+                    <div className="text-sm font-semibold text-foreground">Notification Center</div>
+                    <div className="text-xs text-muted-foreground">4 new notifications</div>
                   </div>
                 </div>
                 <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">

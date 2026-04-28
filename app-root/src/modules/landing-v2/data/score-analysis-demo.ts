@@ -7,7 +7,7 @@ export type ScoreExampleAsset = {
   documentsTotal: number;
   lastMaintenanceMonthsAgo: number;
   score: number;
-  scoreLabel: "İyi";
+  scoreLabel: "Good";
   improvements: Array<{
     action: string;
     scoreGain: number;
@@ -27,35 +27,35 @@ export type ScoreTrendPoint = {
 };
 
 export const exampleAsset: ScoreExampleAsset = {
-  title: "Örnek: No-Frost Buzdolabı (Ev)",
-  valueTl: 28000,
-  last12MonthServiceCostTl: 1450,
-  warrantyRemainingMonths: 8,
+  title: "Example: Design Platform (Design Team)",
+  valueTl: 28800,
+  last12MonthServiceCostTl: 2400,
+  warrantyRemainingMonths: 9,
   documentsCompleted: 4,
   documentsTotal: 5,
-  lastMaintenanceMonthsAgo: 2,
+  lastMaintenanceMonthsAgo: 1,
   score: 82,
-  scoreLabel: "İyi",
+  scoreLabel: "Good",
   improvements: [
-    { action: "Eksik belgeyi tamamlayın", scoreGain: 6 },
-    { action: "Yaklaşan bakım için hatırlatma kurun", scoreGain: 4 },
+    { action: "Upload missing contract", scoreGain: 6 },
+    { action: "Cancel unused licenses", scoreGain: 4 },
   ],
 };
 
 export const scoreBreakdown: ScoreBreakdownItem[] = [
-  { key: "warranty", label: "Garanti", score: 90, toneClass: "bg-emerald-400/85" },
-  { key: "maintenance", label: "Bakım", score: 75, toneClass: "bg-cyan-400/85" },
-  { key: "documents", label: "Belgeler", score: 70, toneClass: "bg-blue-400/85" },
-  { key: "payments", label: "Ödemeler", score: 95, toneClass: "bg-indigo-400/85" },
+  { key: "warranty", label: "License", score: 90, toneClass: "bg-emerald-400/85" },
+  { key: "maintenance", label: "Usage", score: 75, toneClass: "bg-cyan-400/85" },
+  { key: "documents", label: "Contracts", score: 70, toneClass: "bg-blue-400/85" },
+  { key: "payments", label: "Payments", score: 95, toneClass: "bg-indigo-400/85" },
 ];
 
 export const scoreTrend: ScoreTrendPoint[] = [
-  { month: "Eyl", score: 74 },
-  { month: "Eki", score: 76 },
-  { month: "Kas", score: 78 },
-  { month: "Ara", score: 80 },
-  { month: "Oca", score: 79 },
-  { month: "Şub", score: 82 },
+  { month: "Sep", score: 74 },
+  { month: "Oct", score: 76 },
+  { month: "Nov", score: 78 },
+  { month: "Dec", score: 80 },
+  { month: "Jan", score: 79 },
+  { month: "Feb", score: 82 },
 ];
 
 export const costEfficiencyRatio = Number((exampleAsset.valueTl / exampleAsset.last12MonthServiceCostTl).toFixed(1));

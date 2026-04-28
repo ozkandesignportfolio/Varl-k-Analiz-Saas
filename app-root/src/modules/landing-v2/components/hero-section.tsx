@@ -93,21 +93,21 @@ const platformCards: PlatformCard[] = [
   {
     icon: WebIcon,
     label: "Web",
-    sub: "Tüm tarayıcılarla uyumlu",
+    sub: "Instant access, no setup",
     iconBg: "bg-sky-500/15 ring-sky-400/20",
     shadow: "shadow-[0_6px_20px_-6px_rgba(56,189,248,0.4)]",
   },
   {
     icon: AppleIcon,
     label: "iOS",
-    sub: "iPhone ve iPad ile uyumlu",
+    sub: "Quick checks on the go",
     iconBg: "bg-white/10 ring-white/15",
     shadow: "shadow-[0_6px_20px_-6px_rgba(200,200,200,0.25)]",
   },
   {
     icon: AndroidIcon,
     label: "Android",
-    sub: "Tüm Android cihazlarla uyumlu",
+    sub: "Full access on every device",
     iconBg: "bg-emerald-500/15 ring-emerald-400/20",
     shadow: "shadow-[0_6px_20px_-6px_rgba(61,220,132,0.4)]",
   },
@@ -140,7 +140,7 @@ export function HeroSection() {
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/70 opacity-75" />
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
           </span>
-          Yeni: Skor Analizi ve Fatura Takip
+          Stop wasting money on SaaS you don’t use
         </div>
 
         {/* Headline */}
@@ -148,9 +148,9 @@ export function HeroSection() {
           className="max-w-3xl text-balance text-3xl font-bold leading-[1.1] tracking-tight md:text-5xl"
           style={heroEntrance(80)}
         >
-          <span className="text-white">Tüm varlıklarını </span>
-          <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">tek panelde</span>
-          <span className="text-white"> yönet</span>
+          <span className="text-white">Stop wasting money on </span>
+          <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">unused SaaS</span>
+          <span className="text-white"> subscriptions</span>
         </h1>
 
         {/* Description */}
@@ -158,10 +158,10 @@ export function HeroSection() {
           className="max-w-2xl text-gray-400 leading-relaxed md:text-lg"
           style={heroEntrance(160)}
         >
-          Cihazlarını, aboneliklerini ve bakım süreçlerini tek merkezde topla<br />
-          Maliyetlerini{" "}
-          <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">anlık takip</span>
-          {" "}et, hatırlatmalarla hiçbir detayı kaçırma
+          Assetly gives your team full visibility over software spending —<br />
+          so you can{" "}
+          <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">track, analyze</span>
+          {" "}and reduce unnecessary costs
         </p>
 
         {/* Trust line */}
@@ -169,7 +169,7 @@ export function HeroSection() {
           className="text-sm text-muted-foreground/70"
           style={heroEntrance(240)}
         >
-          Kurulum gerektirmez · Dakikalar içinde hazır · Ücretsiz plan mevcut
+          No setup required · Start in 2 minutes · Built for 5–30 person teams
         </p>
 
         {/* CTA buttons */}
@@ -183,7 +183,7 @@ export function HeroSection() {
             className="group h-12 w-full bg-primary px-8 text-[15px] font-semibold text-primary-foreground shadow-[0_12px_32px_-8px_rgba(16,239,181,0.4)] hover:bg-primary/90 sm:w-auto"
           >
             <Link href="/register">
-              Ücretsiz Kayıt Ol
+              Start tracking your SaaS costs
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
           </Button>
@@ -193,7 +193,7 @@ export function HeroSection() {
             variant="outline"
             className="h-12 w-full border-white/15 bg-white/[0.03] px-8 text-[15px] font-medium text-foreground backdrop-blur-sm hover:border-white/25 hover:bg-white/[0.06] sm:w-auto"
           >
-            <Link href="#ozellikler">Özellikleri Keşfet</Link>
+            <Link href="#ozellikler">See where your money goes</Link>
           </Button>
         </div>
 
