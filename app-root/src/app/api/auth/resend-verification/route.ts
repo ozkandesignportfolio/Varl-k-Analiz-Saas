@@ -61,6 +61,7 @@ const buildCodeEmailHtml = (firstName: string, code: string) =>
     <tr><td align="center" style="padding:40px 20px;">
       <table role="presentation" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
         <tr><td style="padding:40px 32px 24px;background:#0f172a;text-align:center;">
+          <img src="https://www.assetly.network/icons/icon-192-v2.png" alt="Assetly" style="height:56px;width:56px;display:block;margin:0 auto 12px;border-radius:12px;" />
           <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:600;">Assetly</h1>
         </td></tr>
         <tr><td style="padding:32px;">
