@@ -18,18 +18,18 @@ export function CTASection() {
         <div className="glass-card rounded-3xl p-8 sm:p-12 md:p-16 animate-pulse-glow">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 mb-8">
             <Sparkles className="h-3.5 w-3.5 text-primary" />
-            <span className="text-xs tracking-widest text-primary">HEMEN BAŞLAYIN</span>
+            <span className="text-xs tracking-widest text-primary">BAŞLANGIÇ</span>
           </div>
 
           <h2 className="text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl text-balance">
-            SaaS maliyetlerinizi kontrol
+            Yazılım varlıklarınızı
             <br />
-            <span className="text-gradient">altına almaya hazır mısınız?</span>
+            <span className="text-gradient">düzene koyun</span>
           </h2>
 
           <p className="mx-auto mt-6 max-w-xl text-lg text-muted-foreground">
-            Ücretsiz planla hemen başlayın. Kredi kartı gerekmez.
-            Premium özelliklere istediğiniz zaman geçin.
+            Ücretsiz plan ile başlayın. Kredi kartı gerekmez.
+            İhtiyacınız büyüdükçe yükseltebilirsiniz.
           </p>
 
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
@@ -37,7 +37,7 @@ export function CTASection() {
               size="lg"
               className="group bg-primary text-primary-foreground hover:bg-primary/90 shadow-xl shadow-primary/25 px-10 py-6 text-base"
             >
-              Ücretsiz Hesap Oluştur
+              Hesap Oluştur — Ücretsiz
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Button>
             <Button
@@ -45,13 +45,13 @@ export function CTASection() {
               variant="outline"
               className="border-border text-foreground hover:bg-secondary/50 px-8 py-6 text-base"
             >
-              Demo Talep Et
+              Ürünü İnceleyin
             </Button>
           </div>
 
           <p className="mt-8 text-sm text-muted-foreground">
-            {trialAssetLimit} SaaS aracı, {trialDocumentLimit} belge, {trialSubscriptionLimit} abonelik,{" "}
-            {trialInvoiceUploadLimit} fatura yükleme ile başlayın
+            Ücretsiz planda {trialAssetLimit} varlık, {trialDocumentLimit} belge, {trialSubscriptionLimit} abonelik ve{" "}
+            {trialInvoiceUploadLimit} fatura kaydı
           </p>
         </div>
       </div>

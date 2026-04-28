@@ -93,21 +93,21 @@ const platformCards: PlatformCard[] = [
   {
     icon: WebIcon,
     label: "Web",
-    sub: "Anında erişim, kurulum yok",
+    sub: "Tarayıcıdan doğrudan erişim",
     iconBg: "bg-sky-500/15 ring-sky-400/20",
     shadow: "shadow-[0_6px_20px_-6px_rgba(56,189,248,0.4)]",
   },
   {
     icon: AppleIcon,
     label: "iOS",
-    sub: "Hareket halinde hızlı kontrol",
+    sub: "Mobilde hızlı kontrol",
     iconBg: "bg-white/10 ring-white/15",
     shadow: "shadow-[0_6px_20px_-6px_rgba(200,200,200,0.25)]",
   },
   {
     icon: AndroidIcon,
     label: "Android",
-    sub: "Her cihazda tam erişim",
+    sub: "Tüm cihazlarınızda erişim",
     iconBg: "bg-emerald-500/15 ring-emerald-400/20",
     shadow: "shadow-[0_6px_20px_-6px_rgba(61,220,132,0.4)]",
   },
@@ -140,7 +140,7 @@ export function HeroSection() {
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/70 opacity-75" />
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
           </span>
-          Kullanmadığınız SaaS'lara para ödemeyi durdurun
+          Yazılım ve abonelik yönetim sistemi
         </div>
 
         {/* Headline */}
@@ -148,9 +148,9 @@ export function HeroSection() {
           className="max-w-3xl text-balance text-3xl font-bold leading-[1.1] tracking-tight md:text-5xl"
           style={heroEntrance(80)}
         >
-          <span className="text-white">Kullanılmayan SaaS </span>
-          <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">aboneliklerine</span>
-          <span className="text-white"> para ödemeyi durdurun</span>
+          <span className="text-white">Yazılım varlıklarınız ve </span>
+          <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">abonelikleriniz</span>
+          <span className="text-white"> tek bir merkezde</span>
         </h1>
 
         {/* Description */}
@@ -158,10 +158,10 @@ export function HeroSection() {
           className="max-w-2xl text-gray-400 leading-relaxed md:text-lg"
           style={heroEntrance(160)}
         >
-          Assetly ekibinize yazılım harcamaları üzerinde tam görünürlük sağlar —<br />
-          böylece{" "}
-          <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">takip edebilir, analiz edebilir</span>
-          {" "}ve gereksiz maliyetleri azaltabilirsiniz
+          Ekibinizin kullandığı araçları, abonelikleri ve maliyetleri tek bir yerden görün.<br />
+          Ne ödediğinizi, kimin kullandığını ve{" "}
+          <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">nelerin gereksiz olduğunu</span>
+          {" "}bilin
         </p>
 
         {/* Trust line */}
@@ -169,7 +169,7 @@ export function HeroSection() {
           className="text-sm text-muted-foreground/70"
           style={heroEntrance(240)}
         >
-          Kurulum gerektirmez · 2 dakikada başlayın · 5–30 kişilik ekipler için
+          Kurulum gerektirmez · 2 dakikada hazır · Ekipler için tasarlandı
         </p>
 
         {/* CTA buttons */}
@@ -183,7 +183,7 @@ export function HeroSection() {
             className="group h-12 w-full bg-primary px-8 text-[15px] font-semibold text-primary-foreground shadow-[0_12px_32px_-8px_rgba(16,239,181,0.4)] hover:bg-primary/90 sm:w-auto"
           >
             <Link href="/register">
-              SaaS maliyetlerinizi takip etmeye başlayın
+              Ücretsiz hesap oluştur
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
           </Button>
@@ -193,7 +193,7 @@ export function HeroSection() {
             variant="outline"
             className="h-12 w-full border-white/15 bg-white/[0.03] px-8 text-[15px] font-medium text-foreground backdrop-blur-sm hover:border-white/25 hover:bg-white/[0.06] sm:w-auto"
           >
-            <Link href="#ozellikler">Paranız nereye gidiyor görün</Link>
+            <Link href="#ozellikler">Nasıl çalışır?</Link>
           </Button>
         </div>
 

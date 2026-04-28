@@ -14,62 +14,62 @@ const features: Array<{
 }> = [
   {
     icon: Shield,
-    title: "SaaS envanterinizin net resmini görün",
-    description: "Ekibinizin kullandığı her SaaS aracını takip edin — Slack, Notion, Figma, AWS — hepsi tek, düzenli bir görünümde.",
+    title: "Merkezi yazılım envanteri",
+    description: "Ekibinizin kullandığı tüm araçları tek bir listede toplayın. Kategori, sahiplik ve durum bilgisiyle düzenli tutun.",
     tone: "primary-accent",
   },
   {
     icon: Wrench,
-    title: "Kullanılmayan ve mükerrer araçları tespit edin",
-    description: "Kimsenin kullanmadığı araçları ve çakışan abonelikleri anında bulun. İhtiyacınız olmayana para ödemeyi bırakın.",
+    title: "Kullanılmayan araç tespiti",
+    description: "Aktif kullanılmayan veya birbirine benzer araçları belirleyin. Gereksiz harcamayı somut veriye dayalı olarak azaltın.",
     tone: "accent-chart3",
   },
   {
     icon: FileText,
-    title: "Kimin neyi kullandığını bilin",
-    description: "Her aboneliğe hangi ekip üyelerinin atandığını tam olarak bilin. Artık tahmin yok.",
+    title: "Kullanıcı-araç eşleştirmesi",
+    description: "Hangi ekip üyesinin hangi araca atandığını görün. Lisans dağılımını net şekilde takip edin.",
     tone: "chart3-chart4",
   },
   {
     icon: BarChart3,
-    title: "Yazılım harcamalarınızı anlayın",
-    description: "Toplam aylık SaaS maliyetlerinizi bir bakışta görün. Her kuruşun nereye gittiğini net grafikler ve dökümlerle bilin.",
+    title: "Maliyet analizi ve dökümü",
+    description: "Aylık ve yıllık yazılım harcamalarınızı grafiklerle görün. Kategori ve araç bazında maliyet dağılımını inceleyin.",
     tone: "chart4-primary",
   },
   {
     icon: Bell,
-    title: "Fatura ve ödemelerin üstünde kalın",
-    description: "Her faturayı, gideri ve yenileme tarihini takip edin. Ücretler kesilmeden önce uyarı alın, hiçbir şey gözden kaçmasın.",
+    title: "Yenileme ve fatura takibi",
+    description: "Abonelik yenileme tarihlerini ve fatura döngülerini izleyin. Yaklaşan ödemeler için otomatik hatırlatma alın.",
     tone: "primary-accent",
   },
   {
     icon: Clock,
-    title: "Ekipman maliyetlerini ve garantileri takip edin",
-    description: "Dizüstü bilgisayar ve yönlendirici gibi donanımları SaaS ile birlikte izleyin. Garantileri, servis geçmişini ve atanan kullanıcıları takip edin.",
+    title: "Donanım ve garanti kaydı",
+    description: "Fiziksel varlıkları da sisteme ekleyin. Garanti süresi, servis geçmişi ve atanan kullanıcıları kayıt altında tutun.",
     tone: "accent-chart3",
   },
   {
     icon: QrCode,
-    title: "Herhangi bir aboneliği saniyeler içinde bulun",
-    description: "Araç adı, kategori veya ekip üyesine göre filtreleyin. Güçlü arama ile herhangi bir aboneliği anında bulun.",
+    title: "Hızlı arama ve filtreleme",
+    description: "Araç adı, kategori veya ekip üyesine göre filtreleyin. Aradığınız kaydı saniyeler içinde bulun.",
     tone: "chart3-chart4",
   },
   {
     icon: Zap,
-    title: "Uyarıları ve maliyet raporlarını otomatikleştirin",
-    description: "Yenileme hatırlatmaları, kullanılmayan araç uyarıları ve aylık PDF maliyet raporları — hepsi otomatik.",
+    title: "Otomatik raporlar ve uyarılar",
+    description: "Aylık maliyet raporlarını PDF olarak oluşturun. Belirlediğiniz eşiklerde otomatik bildirim alın.",
     tone: "chart4-primary",
   },
   {
     icon: Lock,
-    title: "Kurumsal düzeyde güvenlik",
-    description: "Ekip verileri tamamen izole edilmiştir. Şifreli iletişim ve özel depolama bilgilerinizi güvende tutar.",
+    title: "Veri izolasyonu ve güvenlik",
+    description: "Her ekibin verileri birbirinden tamamen ayrıdır. Şifreli bağlantı ve özel depolama alanı standart olarak sağlanır.",
     tone: "primary-accent",
   },
   {
     icon: Smartphone,
-    title: "Her cihazdan erişin",
-    description: "Toplantıda, yolda veya masanızda — her cihazda aynı güçlü deneyim.",
+    title: "Web ve mobil erişim",
+    description: "Masaüstü, tablet veya telefon — tüm cihazlarınızdan aynı deneyimle çalışın.",
     tone: "accent-chart3",
   },
 ]
@@ -84,13 +84,13 @@ export function FeaturesSection() {
       <div className="mx-auto max-w-7xl px-6">
         <div className="mb-12 text-center sm:mb-20">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5">
-            <span className="text-xs tracking-widest text-primary">NELER YAPABİLİRSİNİZ</span>
+            <span className="text-xs tracking-widest text-primary">TEMEL ÖZELLİKLER</span>
           </div>
           <h2 className="text-balance text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl">
-            SaaS maliyetlerinizi <span className="text-gradient">kontrol altına alan</span> tek platform
+            Tüm yazılım varlıklarınız, <span className="text-gradient">tek bir kontrol noktası</span>
           </h2>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
-            Abonelik takibinden maliyet analizine — SaaS israfını azaltın ve daha akıllı yazılım kararları verin
+            Envanter, abonelik takibi, maliyet analizi ve ekip yönetimi — tek bir yerden
           </p>
         </div>
 
