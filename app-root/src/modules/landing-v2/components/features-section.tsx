@@ -86,15 +86,15 @@ export function FeaturesSection() {
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5">
             <span className="text-xs tracking-widest text-primary">TEMEL ÖZELLİKLER</span>
           </div>
-          <h2 className="text-balance text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl">
+          <h2 className="text-balance text-2xl font-bold text-foreground sm:text-3xl lg:text-5xl">
             Tüm yazılım varlıklarınız, <span className="text-gradient">tek bir kontrol noktası</span>
           </h2>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
+          <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground sm:mt-6 sm:text-lg">
             Envanter, abonelik takibi, maliyet analizi ve ekip yönetimi — tek bir yerden
           </p>
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 xl:grid-cols-5">
           {features.map((feature, i) => (
             <div
               key={i}

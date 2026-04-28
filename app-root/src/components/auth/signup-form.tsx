@@ -84,7 +84,6 @@ type SignupFormProps = {
 };
 
 type SignupFormValidationInput = {
-  acceptedKvkk: boolean;
   acceptedLegalDocuments: boolean;
   confirmPassword: string;
   email: string;
@@ -278,11 +277,7 @@ const getSignupValidationMessage = (input: SignupFormValidationInput) => {
   }
 
   if (!input.acceptedLegalDocuments) {
-    return "Kullanım Şartları ve Gizlilik Politikası'nı kabul etmelisiniz.";
-  }
-
-  if (!input.acceptedKvkk) {
-    return "KVKK açık rıza metnini kabul etmelisiniz.";
+    return "Lütfen devam etmek için kullanım koşullarını kabul edin.";
   }
 
   return getTurnstileValidationMessage(input);
@@ -331,14 +326,16 @@ const SignupTurnstileSection = memo(function SignupTurnstileSection({
   siteKey,
 }: SignupTurnstileSectionProps) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
-      <TurnstileWidget
-        onStatusChange={onStatusChange}
-        onTokenChange={onTokenChange}
-        onWarningChange={onWarningChange}
-        resetTrigger={resetTrigger}
-        siteKey={siteKey}
-      />
+    <div className="flex w-full justify-center rounded-2xl border border-white/10 bg-white/5 px-2 py-5 sm:px-4">
+      <div className="max-w-full">
+        <TurnstileWidget
+          onStatusChange={onStatusChange}
+          onTokenChange={onTokenChange}
+          onWarningChange={onWarningChange}
+          resetTrigger={resetTrigger}
+          siteKey={siteKey}
+        />
+      </div>
     </div>
   );
 });
@@ -357,7 +354,6 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [acceptedLegalDocuments, setAcceptedLegalDocuments] = useState(false);
-  const [acceptedKvkk, setAcceptedKvkk] = useState(false);
   const [deviceFingerprint, setDeviceFingerprint] = useState(UNKNOWN_DEVICE_FINGERPRINT);
   const [fingerprintStatus, setFingerprintStatus] = useState<FingerprintStatus>("loading");
   const [cooldownRemainingSeconds, setCooldownRemainingSeconds] = useState(0);
@@ -482,7 +478,6 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
   const isCooldownActive = cooldownRemainingSeconds > 0;
   const currentToken = getCurrentToken();
   const validationMessage = getSignupValidationMessage({
-    acceptedKvkk,
     acceptedLegalDocuments,
     confirmPassword,
     email,
@@ -727,7 +722,7 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
         // UNIFIED SCHEMA: Only accepted_terms is stored in database
         // Both checkboxes must be checked for acceptedTerms to be true
         body: JSON.stringify({
-          acceptedTerms: acceptedLegalDocuments && acceptedKvkk,
+          acceptedTerms: acceptedLegalDocuments,
           confirmPassword,
           deviceFingerprint,
           email,
@@ -751,19 +746,16 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
           startSignupCooldown();
         }
 
-        // Check if we need to reset turnstile
-        const shouldResetTurnstile =
-          errorResult?.error === TURNSTILE_FAILED_ERROR ||
-          errorResult?.details?.shouldResetTurnstile === true;
+        // ALWAYS reset Turnstile after a failed submit — tokens are single-use.
+        // Even if the error is duplicate email, the token was already consumed server-side.
+        const shouldResetTurnstile = true;
 
-        if (shouldResetTurnstile) {
-          if (!Runtime.isBuild()) {
-            console.debug("[signup] Backend requested Turnstile reset.", {
-              error: errorResult?.error,
-            });
-          }
-          triggerReset();
+        if (!Runtime.isBuild()) {
+          console.debug("[signup] Resetting Turnstile after failed signup.", {
+            error: errorResult?.error,
+          });
         }
+        triggerReset();
 
         // Show real backend error message - PRIORITIZE backend message
         const userMessage = errorResult?.message || getSignupErrorMessage(errorResult?.error, undefined, errorResult?.turnstile) || "Kayıt işlemi tamamlanamadı. Lütfen tekrar deneyin.";
@@ -921,7 +913,15 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
                 data-testid="register-email-input"
                 name="email"
                 onChange={(event) => {
-                  clearErrorState();
+                  // If we're in an error state (e.g. duplicate email),
+                  // also reset Turnstile so user gets a fresh token.
+                  setSignupState((current) => {
+                    if (current.type === "error") {
+                      triggerReset();
+                      return { type: "idle" };
+                    }
+                    return current;
+                  });
                   setEmail(event.target.value);
                 }}
                 placeholder="örnek@mail.com"
@@ -968,51 +968,52 @@ export default function SignupForm({ emailRedirectTo, pageWarning = null }: Sign
               />
             </label>
 
-            <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
-              <input
-                checked={acceptedLegalDocuments}
-                className={consentInputClassName}
-                data-testid="register-accepted-legal-documents-input"
-                name="acceptedLegalDocuments"
-                onChange={(event) => {
-                  clearErrorState();
-                  setAcceptedLegalDocuments(event.target.checked);
-                }}
-                required
-                type="checkbox"
-              />
-              <span>
-                <Link href="/legal/terms" className="font-semibold text-sky-200">
-                  Kullanım Şartları
-                </Link>{" "}
-                {" "}ve{" "}
-                <Link href="/legal/privacy" className="font-semibold text-sky-200">
-                  Gizlilik Politikası
-                </Link>{" "}
-                kabul ediyorum.
-              </span>
-            </label>
-
-            <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
-              <input
-                checked={acceptedKvkk}
-                className={consentInputClassName}
-                data-testid="register-accepted-kvkk-input"
-                name="acceptedKvkk"
-                onChange={(event) => {
-                  clearErrorState();
-                  setAcceptedKvkk(event.target.checked);
-                }}
-                required
-                type="checkbox"
-              />
-              <span>
-                <Link href="/legal/kvkk" className="font-semibold text-sky-200">
-                  KVKK Aydınlatma Metni
-                </Link>{" "}
-                için açık rıza verdiğimi onaylıyorum.
-              </span>
-            </label>
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+              <label
+                htmlFor="acceptedTerms"
+                className="flex items-start gap-3 cursor-pointer text-sm leading-relaxed text-slate-200"
+              >
+                <input
+                  id="acceptedTerms"
+                  aria-invalid={signupState.type === "error" && !acceptedLegalDocuments ? true : undefined}
+                  checked={acceptedLegalDocuments}
+                  className={consentInputClassName}
+                  data-testid="register-accepted-legal-documents-input"
+                  name="acceptedLegalDocuments"
+                  onChange={(event) => {
+                    clearErrorState();
+                    setAcceptedLegalDocuments(event.target.checked);
+                  }}
+                  required
+                  type="checkbox"
+                />
+                <span>
+                  <Link
+                    href="/legal/terms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold text-sky-400 underline-offset-2 transition hover:underline hover:opacity-80"
+                  >
+                    Kullanım Koşulları
+                  </Link>
+                  {" "}ve{" "}
+                  <Link
+                    href="/legal/privacy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold text-sky-400 underline-offset-2 transition hover:underline hover:opacity-80"
+                  >
+                    Gizlilik Politikası
+                  </Link>
+                  &apos;nı okudum ve kabul ediyorum.
+                </span>
+              </label>
+              {signupState.type === "error" && !acceptedLegalDocuments && (
+                <p className="mt-1.5 pl-7 text-xs text-red-400">
+                  Lütfen devam etmek için kullanım koşullarını kabul edin.
+                </p>
+              )}
+            </div>
 
             <SignupTurnstileSection
               onStatusChange={handleTurnstileStatusChange}

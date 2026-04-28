@@ -67,7 +67,7 @@ export function ScoreAnalysisSection() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className={`min-w-0 w-full ${inView ? "animate-slide-up" : "opacity-0"}`}>
             <div className="glass-card min-w-0 w-full rounded-3xl border border-border/60 bg-background/70 p-5 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)] sm:p-8">
-              <h2 className="text-2xl font-bold text-foreground sm:text-3xl md:text-4xl">SaaS Sağlık Skoru</h2>
+              <h2 className="text-xl font-bold text-foreground sm:text-2xl md:text-4xl">SaaS Sağlık Skoru</h2>
               <p className="mt-2 text-base font-medium text-chart-3">3 adımda net bir puan</p>
               <p className="mt-5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
                 Her SaaS aracınızın sağlık durumunu tek puanda topluyoruz. Kullanım oranı, maliyet verimliliği ve sözleşme durumu
@@ -177,7 +177,7 @@ export function ScoreAnalysisSection() {
           </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1fr_0.75fr]">
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-[1fr_1fr_0.75fr]">
           <div className={`min-w-0 w-full ${inView ? "animate-slide-up" : "opacity-0"}`} style={{ animationDelay: "0.2s" }}>
             <div className="glass-card h-full min-w-0 w-full rounded-3xl border border-border/60 bg-background/70 p-6 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)]">
               <h3 className="text-sm font-semibold text-foreground">SaaS Skor Dağılımı</h3>

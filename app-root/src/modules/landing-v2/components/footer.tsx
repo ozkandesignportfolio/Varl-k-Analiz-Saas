@@ -45,8 +45,8 @@ export function Footer() {
     <footer className="relative border-t border-border/30">
       <div className="pointer-events-none absolute left-0 right-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
 
-      <div className="mx-auto max-w-7xl px-6 py-16">
-        <div className="grid gap-12 lg:grid-cols-[1.2fr_repeat(3,minmax(0,1fr))]">
+      <div className="mx-auto max-w-7xl px-6 py-10 sm:py-16">
+        <div className="grid gap-8 sm:grid-cols-2 sm:gap-10 lg:grid-cols-[1.2fr_repeat(3,minmax(0,1fr))] lg:gap-12">
           <div>
             <div className="mb-4 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">

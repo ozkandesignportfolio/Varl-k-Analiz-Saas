@@ -115,7 +115,7 @@ const platformCards: PlatformCard[] = [
 
 export function HeroSection() {
   return (
-    <section className="relative isolate overflow-x-clip pb-24 pt-28 sm:pb-28 sm:pt-32 lg:pb-32 lg:pt-40">
+    <section className="relative isolate overflow-x-clip px-0 pb-16 pt-24 sm:pb-28 sm:pt-32 lg:pb-32 lg:pt-40">
       {/* Subtle top glow — blends with page bg (#050a18) + AnimatedBackground */}
       <div
         aria-hidden
@@ -145,7 +145,7 @@ export function HeroSection() {
 
         {/* Headline */}
         <h1
-          className="max-w-3xl text-balance text-3xl font-bold leading-[1.1] tracking-tight md:text-5xl"
+          className="max-w-3xl text-balance text-[1.625rem] font-bold leading-[1.12] tracking-tight sm:text-3xl md:text-5xl"
           style={heroEntrance(80)}
         >
           <span className="text-white">Yazılım varlıklarınız ve </span>
@@ -155,7 +155,7 @@ export function HeroSection() {
 
         {/* Description */}
         <p
-          className="max-w-2xl text-gray-400 leading-relaxed md:text-lg"
+          className="max-w-2xl text-sm text-gray-400 leading-relaxed sm:text-base md:text-lg"
           style={heroEntrance(160)}
         >
           Ekibinizin kullandığı araçları, abonelikleri ve maliyetleri tek bir yerden görün.<br />
@@ -199,7 +199,7 @@ export function HeroSection() {
 
         {/* Platform icon row */}
         <div
-          className="mt-6 grid w-full max-w-md grid-cols-3 gap-3 sm:mt-8 sm:flex sm:max-w-none sm:flex-wrap sm:justify-center sm:gap-6"
+          className="mt-6 grid w-full max-w-xs grid-cols-3 gap-2 sm:mt-8 sm:flex sm:max-w-none sm:flex-wrap sm:justify-center sm:gap-6"
           style={heroEntrance(380)}
         >
           {platformCards.map((card) => {
@@ -207,7 +207,7 @@ export function HeroSection() {
             return (
               <div
                 key={card.label}
-                className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-3 py-5 backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-white/[0.15] hover:bg-white/[0.06] sm:h-44 sm:w-44 sm:gap-2.5 sm:px-0 sm:py-0"
+                className="flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-2 py-4 backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-white/[0.15] hover:bg-white/[0.06] sm:h-44 sm:w-44 sm:gap-2.5 sm:px-0 sm:py-0"
               >
                 <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ring-1 sm:mb-1 sm:h-14 sm:w-14 ${card.iconBg} ${card.shadow}`}>
                   <Icon />

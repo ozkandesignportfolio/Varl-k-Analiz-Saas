@@ -32,7 +32,7 @@ export function FaturaSection() {
               <Receipt className="h-3.5 w-3.5 text-accent" />
               <span className="text-xs tracking-widest text-accent">SaaS Faturaları</span>
             </div>
-            <h2 className="text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl text-balance">
+            <h2 className="text-2xl font-bold text-foreground sm:text-3xl lg:text-5xl text-balance">
               SaaS faturalarınız{" "}
               <span className="text-gradient">tek ekranda</span>
             </h2>

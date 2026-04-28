@@ -58,15 +58,15 @@ export function BildirimSection() {
               <Bell className="h-3.5 w-3.5 text-chart-4" />
               <span className="text-xs tracking-widest text-chart-4">Bildirimler</span>
             </div>
-            <h2 className="text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl text-balance">
+            <h2 className="text-2xl font-bold text-foreground sm:text-3xl lg:text-5xl text-balance">
               Sürpriz faturaları{" "}
               <span className="text-gradient">durdurun</span>
             </h2>
-            <p className="mt-6 text-lg leading-relaxed text-muted-foreground">
+            <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg">
               Abonelik yenileme öncesi, kullanılmayan araç tespitinde ve fatura kesilmeden önce e-posta, push bildirim ve uygulama içi uyarılarla anında haberdar olun.
             </p>
 
-            <div className="mt-10 grid gap-4 sm:grid-cols-2">
+            <div className="mt-6 grid gap-3 sm:mt-10 sm:grid-cols-2 sm:gap-4">
               {[
                 { icon: BellRing, label: "Yenileme Uyarısı", desc: "Abonelik yenilenmeden önce haberdar olun" },
                 { icon: Mail, label: "Kullanım Raporu", desc: "Haftalık SaaS kullanım özeti" },

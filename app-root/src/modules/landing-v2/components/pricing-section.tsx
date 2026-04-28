@@ -149,10 +149,10 @@ export function PricingSection() {
             <Sparkles className="h-3.5 w-3.5 text-primary" />
             <span className="text-xs tracking-widest text-primary">FİYATLANDIRMA</span>
           </div>
-          <h2 className="text-balance text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl">
+          <h2 className="text-balance text-2xl font-bold text-foreground sm:text-3xl lg:text-5xl">
             Basit ve <span className="text-gradient">şeffaf fiyatlandırma</span>
           </h2>
-          <p className="mx-auto mt-6 max-w-xl text-lg text-muted-foreground">
+          <p className="mx-auto mt-4 max-w-xl text-base text-muted-foreground sm:mt-6 sm:text-lg">
             Deneme planı: {trialAssetLimit} SaaS aracı, {trialDocumentLimit} belge, {trialSubscriptionLimit} abonelik,{" "}
             {trialInvoiceUploadLimit} fatura takibi
           </p>
@@ -162,7 +162,7 @@ export function PricingSection() {
           {plans.map((plan, i) => (
             <div
               key={i}
-              className={`relative rounded-3xl p-8 transition-all duration-500 ${inView ? "animate-slide-up" : "opacity-0"} ${plan.popular ? "glass-card border-primary/30 animate-pulse-glow" : "glass-card"}`}
+              className={`relative rounded-3xl p-6 transition-all duration-500 sm:p-8 ${inView ? "animate-slide-up" : "opacity-0"} ${plan.popular ? "glass-card border-primary/30 animate-pulse-glow" : "glass-card"}`}
               style={{ animationDelay: `${i * 0.15}s` }}
             >
               {plan.popular ? (
@@ -178,7 +178,7 @@ export function PricingSection() {
               </div>
 
               <div className="mb-8 flex items-baseline gap-1">
-                <span className="text-5xl font-bold text-foreground">{plan.price}</span>
+                <span className="text-4xl font-bold text-foreground sm:text-5xl">{plan.price}</span>
                 <span className="text-lg text-muted-foreground">{plan.price === "0" ? "" : " TL"}</span>
                 <span className="text-sm text-muted-foreground">{plan.period}</span>
               </div>

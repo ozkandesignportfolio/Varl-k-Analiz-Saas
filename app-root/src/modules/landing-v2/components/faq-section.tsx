@@ -240,10 +240,10 @@ export function FaqSection() {
             <HelpCircle className="h-3.5 w-3.5 text-primary" />
             <span className="text-xs tracking-widest text-primary">SSS</span>
           </div>
-          <h2 className="text-balance text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl">
+          <h2 className="text-balance text-2xl font-bold text-foreground sm:text-3xl lg:text-5xl">
             Sıkça Sorulan <span className="text-gradient">Sorular</span>
           </h2>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
+          <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground sm:mt-6 sm:text-lg">
             Başlamadan önce bilmeniz gereken her şey — açık, net ve doğrudan.
           </p>
         </div>

@@ -29,17 +29,17 @@ export function AbonelikSection() {
               {/* Summary Cards */}
               <div className="grid grid-cols-3 gap-2 mb-6 sm:gap-3">
                 <div className="rounded-xl bg-secondary/50 p-3 text-center sm:p-4">
-                  <div className="text-xl font-bold text-foreground sm:text-2xl">14</div>
+                  <div className="text-lg font-bold text-foreground sm:text-2xl">14</div>
                   <div className="text-[10px] text-muted-foreground mt-1">Aktif Abonelik</div>
                 </div>
                 <div className="rounded-xl bg-secondary/50 p-3 text-center sm:p-4">
-                  <div className="text-xl font-bold text-primary sm:text-2xl">{"12.980"}<span className="text-xs font-normal text-muted-foreground ml-0.5 sm:text-sm">{"TL"}</span></div>
+                  <div className="text-lg font-bold text-primary sm:text-2xl">{"12.980"}<span className="text-xs font-normal text-muted-foreground ml-0.5 sm:text-sm">{"TL"}</span></div>
                   <div className="text-[10px] text-muted-foreground mt-1">Aylık SaaS Gideri</div>
                 </div>
                 <div className="rounded-xl bg-secondary/50 p-3 text-center sm:p-4">
                   <div className="flex items-center justify-center gap-1">
                     <ArrowDownRight className="h-3.5 w-3.5 text-primary sm:h-4 sm:w-4" />
-                    <span className="text-xl font-bold text-primary sm:text-2xl">12%</span>
+                    <span className="text-lg font-bold text-primary sm:text-2xl">12%</span>
                   </div>
                   <div className="text-[10px] text-muted-foreground mt-1">Tespit Edilen Tasarruf</div>
                 </div>
@@ -86,11 +86,11 @@ export function AbonelikSection() {
               <CreditCard className="h-3.5 w-3.5 text-primary" />
               <span className="text-xs tracking-widest text-primary">Abonelik Takibi</span>
             </div>
-            <h2 className="text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl text-balance">
+            <h2 className="text-2xl font-bold text-foreground sm:text-3xl lg:text-5xl text-balance">
               SaaS harcamalarınız{" "}
               <span className="text-gradient">tek ekranda</span>
             </h2>
-            <p className="mt-6 text-lg leading-relaxed text-muted-foreground">
+            <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg">
               Tüm SaaS aboneliklerinizi tek panelde takip edin. Kullanılmayan araçları tespit edin, mükerrer harcamaları bulun ve gereksiz maliyetleri kesin.
             </p>
 
