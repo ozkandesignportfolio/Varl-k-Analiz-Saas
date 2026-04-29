@@ -101,6 +101,8 @@ export function FeaturesSection() {
               key={i}
               data-tone={feature.tone}
               className={`landing-v2-feature-card glass-card group min-w-0 cursor-default rounded-2xl p-5 transition-all duration-500 sm:p-6 ${
+                i === features.length - 1 && features.length % 3 === 1 ? "lg:col-start-2" : ""
+              } ${
                 inView ? "animate-slide-up" : "opacity-0"
               }`}
               style={{ animationDelay: `${i * 0.08}s` }}

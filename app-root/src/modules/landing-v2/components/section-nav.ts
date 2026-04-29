@@ -42,7 +42,7 @@ export const LANDING_NAV_SECTIONS = [
   { label: "SaaS Paneli", href: "#panel" },
   { label: "Bildirimler", href: "#bildirimler" },
   { label: "Abonelik Takibi", href: "#abonelik" },
-  { label: "SaaS Faturaları", href: "#fatura" },
+  { label: "Fatura Takibi", href: "#fatura" },
   { label: "Skor Analizi", href: "#skor-analizi" },
   { label: "Fiyatlandırma", href: "#fiyatlandirma" },
 ] as const;
