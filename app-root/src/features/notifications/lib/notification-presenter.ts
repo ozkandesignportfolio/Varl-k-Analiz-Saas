@@ -4,6 +4,7 @@ import type {
   NotificationType,
 } from "@/features/notifications/data/mock-notifications";
 import { AppEventType } from "@/lib/events/app-event";
+import { normalizeTurkishDisplayText } from "@/lib/text/normalize-turkish-display-text";
 
 /**
  * DB kolonundan gelen event kimliğini enum'a normalize eder. YALNIZCA
@@ -349,9 +350,9 @@ export function mapAutomationEventToNotification(
       appEventType,
     );
 
-    // Ensure safe defaults
-    const safeTitle = text.title || "Bildirim";
-    const safeDescription = text.description || "Yeni bir bildirim var.";
+    // Ensure safe defaults + normalize any broken Turkish from DB payloads
+    const safeTitle = normalizeTurkishDisplayText(text.title || "Bildirim");
+    const safeDescription = normalizeTurkishDisplayText(text.description || "Yeni bir bildirim var.");
     const safeCreatedAt = input.createdAt || new Date().toISOString();
 
     return {
@@ -359,7 +360,7 @@ export function mapAutomationEventToNotification(
       type,
       title: safeTitle,
       description: safeDescription,
-      detail: text.detail,
+      detail: text.detail ? normalizeTurkishDisplayText(text.detail) : undefined,
       createdAt: safeCreatedAt,
       status: resolveReadStatusFromEvent(input.status) as NotificationStatus,
       source: "automation",

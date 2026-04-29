@@ -4,6 +4,8 @@
  * from both server components and client components.
  */
 
+import { normalizeTurkishDisplayText } from "@/lib/text/normalize-turkish-display-text";
+
 export type DashboardDateRangeDays = 7 | 30 | 90;
 
 export const DASHBOARD_RANGE_OPTIONS: DashboardDateRangeDays[] = [7, 30, 90];
@@ -227,8 +229,8 @@ const parseStatus = (value: unknown): DashboardSystemStatus => {
 
   return {
     tone,
-    headline: toStringOr(record?.headline, "Stabil"),
-    detail: toStringOr(record?.detail, "Sistem durumu veri geldikçe otomatik güncellenecek."),
+    headline: normalizeTurkishDisplayText(toStringOr(record?.headline, "Stabil")),
+    detail: normalizeTurkishDisplayText(toStringOr(record?.detail, "Sistem durumu veri geldikçe otomatik güncellenecek.")),
     riskCount: toInteger(record?.risk_count as number | string | null | undefined),
     risk: {
       type: riskType,
@@ -247,8 +249,8 @@ const parseMaintenanceRiskItems = (value: unknown): DashboardMaintenanceRiskItem
       return {
         id: toStringOr(row.id),
         assetId: toStringOr(row.asset_id),
-        assetName: toStringOr(row.asset_name, "Bilinmeyen Varlık"),
-        ruleTitle: toStringOr(row.rule_title),
+        assetName: normalizeTurkishDisplayText(toStringOr(row.asset_name, "Bilinmeyen Varlık")),
+        ruleTitle: normalizeTurkishDisplayText(toStringOr(row.rule_title)),
         dueDate: toStringOr(row.due_date),
         dayCount: toInteger(row.day_count as number | string | null | undefined),
       } satisfies DashboardMaintenanceRiskItem;
@@ -265,7 +267,7 @@ const parseWarrantyRiskItems = (value: unknown): DashboardWarrantyRiskItem[] =>
       return {
         id: toStringOr(row.id),
         assetId: toStringOr(row.asset_id),
-        assetName: toStringOr(row.asset_name, "Bilinmeyen Varlık"),
+        assetName: normalizeTurkishDisplayText(toStringOr(row.asset_name, "Bilinmeyen Varlık")),
         warrantyEndDate: toStringOr(row.warranty_end_date),
         daysRemaining: toInteger(row.days_remaining as number | string | null | undefined),
       } satisfies DashboardWarrantyRiskItem;
@@ -284,7 +286,7 @@ const parsePaymentRiskItems = (value: unknown): DashboardPaymentRiskItem[] =>
       return {
         id: toStringOr(row.id),
         invoiceNo: typeof row.invoice_no === "string" ? row.invoice_no : null,
-        subscriptionName: toStringOr(row.subscription_name, "Abonelik"),
+        subscriptionName: normalizeTurkishDisplayText(toStringOr(row.subscription_name, "Abonelik")),
         dueDate: toStringOr(row.due_date),
         totalAmount: toNumber(row.total_amount as number | string | null | undefined),
         status,
@@ -303,7 +305,7 @@ const parseMissingDocumentRiskItems = (value: unknown): DashboardMissingDocument
       return {
         id: toStringOr(row.id),
         assetId: toStringOr(row.asset_id),
-        assetName: toStringOr(row.asset_name, "Bilinmeyen Varlık"),
+        assetName: normalizeTurkishDisplayText(toStringOr(row.asset_name, "Bilinmeyen Varlık")),
         createdAt: toStringOr(row.created_at),
         daysWithoutDocument: toInteger(row.days_without_document as number | string | null | undefined),
       } satisfies DashboardMissingDocumentRiskItem;
@@ -325,8 +327,8 @@ const parseRecentActivity = (value: unknown): DashboardActivityItem[] =>
       return {
         id: toStringOr(row.id),
         type: typeCandidate as DashboardActivityType,
-        title: toStringOr(row.title),
-        description: toStringOr(row.description),
+        title: normalizeTurkishDisplayText(toStringOr(row.title)),
+        description: normalizeTurkishDisplayText(toStringOr(row.description)),
         date: toStringOr(row.date),
         href: toStringOr(row.href, "/timeline"),
       } satisfies DashboardActivityItem;

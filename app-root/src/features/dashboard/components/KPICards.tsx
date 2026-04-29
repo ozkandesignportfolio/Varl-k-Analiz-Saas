@@ -63,8 +63,8 @@ const buildCountInsight = (
   if (points.length < 2 && trend.direction === "flat") {
     return { tone: "neutral", label: "Aktivite yok" };
   }
-  if (trend.direction === "up") return { tone: "positive", label: "İyi seviyede" };
-  if (trend.direction === "down") return { tone: "negative", label: "Dikkat" };
+  if (trend.direction === "up") return { tone: "positive", label: "Artış eğiliminde" };
+  if (trend.direction === "down") return { tone: "negative", label: "Azalma eğiliminde — kontrol edin" };
   return { tone: "neutral", label: "Aktivite yok" };
 };
 
@@ -72,9 +72,9 @@ const buildCountInsight = (
 const buildCostInsight = (
   trend: DashboardSnapshot["trends"]["totalServiceCost"],
 ): KpiInsight | null => {
-  if (trend.direction === "down") return { tone: "positive", label: "İyi seviyede" };
-  if (trend.direction === "up") return { tone: "negative", label: "Dikkat" };
-  return { tone: "neutral", label: "Değişim yok" };
+  if (trend.direction === "down") return { tone: "positive", label: "Maliyetler düşüyor" };
+  if (trend.direction === "up") return { tone: "negative", label: "Maliyetler artıyor — bütçeyi gözden geçirin" };
+  return { tone: "neutral", label: "Maliyet değişimi yok" };
 };
 
 export function KPICards({ metrics, trends, selectedRange }: KPICardsProps) {

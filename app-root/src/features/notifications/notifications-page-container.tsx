@@ -22,6 +22,7 @@ import { NotificationsList } from "@/features/notifications/components/Notificat
 import { type NotificationRecord } from "@/features/notifications/data/mock-notifications";
 import { useNotifications, type Notification } from "@/hooks/useNotifications";
 import { createClient as getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { normalizeTurkishDisplayText } from "@/lib/text/normalize-turkish-display-text";
 
 type CreateTestNotificationsResponse = {
   count?: number;
@@ -35,8 +36,8 @@ const mapNotificationToRecord = (notification: Notification): NotificationRecord
   return {
     id: notification?.id ?? "",
     type: notification?.type ?? "Sistem",
-    title: notification?.title ?? "Bildirim",
-    description: notification?.message ?? "",
+    title: normalizeTurkishDisplayText(notification?.title ?? "Bildirim"),
+    description: normalizeTurkishDisplayText(notification?.message ?? ""),
     createdAt: notification?.created_at ?? new Date().toISOString(),
     status: notification?.is_read ? "Okundu" : "Okunmadı",
     source: "automation",
