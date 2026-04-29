@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { memo, useCallback } from "react";
-import { ChevronDown, Clock3, Plus, Wrench, X } from "lucide-react";
-import { FadeInUp } from "@/features/dashboard/components/DashboardAnimations";
+import { memo, useCallback, useMemo } from "react";
+import { AlertTriangle, ChevronDown, Clock3, Plus, ShieldAlert, ShieldCheck, Wrench, X } from "lucide-react";
 import { DateRangeSelector } from "@/features/dashboard/components/DateRangeSelector";
 import {
   DropdownMenu,
@@ -95,7 +94,6 @@ export const ControlCenterHeader = memo(function ControlCenterHeader({
   }, [markRiskFix, router, status.risk.type]);
 
   return (
-    <FadeInUp>
     <section className="rounded-3xl border border-[#24344F] bg-[linear-gradient(145deg,rgba(8,20,45,0.92),rgba(9,17,33,0.84))] p-5 shadow-[0_20px_45px_rgba(3,8,20,0.42)] sm:p-6">
       <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
         <div className="space-y-3">
@@ -139,9 +137,38 @@ export const ControlCenterHeader = memo(function ControlCenterHeader({
         <StatusAlertCard style={style} status={status} onDismiss={dismissRisk} onSnooze={snoozeRisk} onFix={handleFix} />
       ) : null}
     </section>
-    </FadeInUp>
   );
 });
+
+const TONE_SEVERITY_LABEL: Record<DashboardSystemStatus["tone"], string> = {
+  critical: "Kritik",
+  warning: "Uyarı",
+  stable: "Stabil",
+  healthy: "Sağlıklı",
+};
+
+const TONE_SEVERITY_ICON: Record<DashboardSystemStatus["tone"], typeof ShieldAlert> = {
+  critical: ShieldAlert,
+  warning: AlertTriangle,
+  stable: ShieldCheck,
+  healthy: ShieldCheck,
+};
+
+const RISK_IMPACT: Record<DashboardSystemRiskType, string> = {
+  maintenance_due: "Geciken veya planlanan bakımlar arıza riskini artırır ve onarım maliyetlerini yükseltebilir.",
+  rule_missing: "Bakım kuralı olmadan varlıklardaki sorunlar fark edilemez ve maliyetli arızalara yol açabilir.",
+  document_missing: "Eksik belgeler garanti, sigorta veya denetim süreçlerinde sorun yaratabilir.",
+  invoice_due: "Geciken ödemeler ek ücret veya hizmet kesintisine neden olabilir.",
+  notification_prefs: "Bildirim tercihlerinizi ayarlayarak önemli uyarıları kaçırmayın.",
+};
+
+const RISK_ACTION_LABEL: Record<DashboardSystemRiskType, string> = {
+  maintenance_due: "Bakım Planla",
+  rule_missing: "Kural Oluştur",
+  document_missing: "Belge Yükle",
+  invoice_due: "Ödeme Durumunu Kontrol Et",
+  notification_prefs: "Tercihleri Düzenle",
+};
 
 const StatusAlertCard = memo(function StatusAlertCard({
   style,
@@ -161,20 +188,38 @@ const StatusAlertCard = memo(function StatusAlertCard({
   onSnooze: (durationMs: number) => void;
   onFix: () => void;
 }) {
+  const SeverityIcon = useMemo(() => TONE_SEVERITY_ICON[status.tone], [status.tone]);
+  const severityLabel = TONE_SEVERITY_LABEL[status.tone];
+  const impact = RISK_IMPACT[status.risk.type];
+  const fixLabel = RISK_ACTION_LABEL[status.risk.type];
+
   return (
     <div className={`mt-5 rounded-2xl border p-4 ${style.wrapper}`}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-3">
-          <span className={`mt-1 inline-flex h-2.5 w-2.5 shrink-0 rounded-full ${style.dot}`} />
-          <div>
-            <p className="text-xs uppercase tracking-[0.16em] text-[#90A6C4]">Sistem Durumu</p>
+        <div className="flex items-start gap-3 min-w-0 flex-1">
+          <span className="mt-1 inline-flex shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 p-1.5">
+            <SeverityIcon className="size-4 text-[#F8FAFC]" aria-hidden />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs uppercase tracking-[0.16em] text-[#90A6C4]">Sistem Durumu</p>
+              <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${style.badge}`}>
+                {severityLabel}
+              </span>
+            </div>
             <h2 className="mt-1 text-lg font-semibold text-[#F8FAFC]">{status.headline}</h2>
             <p className="mt-1 text-sm text-[#CBD5E1]">{status.detail}</p>
+            {impact ? (
+              <p className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-amber-200/80">
+                <AlertTriangle className="mt-0.5 size-3 shrink-0 text-amber-400/70" aria-hidden />
+                {impact}
+              </p>
+            ) : null}
           </div>
         </div>
 
         <TooltipProvider>
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             <span className={`inline-flex h-fit rounded-full border px-3 py-1 text-xs font-semibold ${style.badge}`}>
               {status.riskCount} aktif kayıt
             </span>
@@ -228,19 +273,14 @@ const StatusAlertCard = memo(function StatusAlertCard({
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={onFix}
-                  className={`inline-flex size-7 items-center justify-center rounded-md border transition ${style.iconButton}`}
-                  aria-label="Düzelt"
-                >
-                  <Wrench className="size-3.5" aria-hidden />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Düzelt</TooltipContent>
-            </Tooltip>
+            <button
+              type="button"
+              onClick={onFix}
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${style.iconButton}`}
+            >
+              <Wrench className="size-3.5" aria-hidden />
+              {fixLabel}
+            </button>
           </div>
         </TooltipProvider>
       </div>

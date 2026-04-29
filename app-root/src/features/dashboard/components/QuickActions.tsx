@@ -40,7 +40,7 @@ const ACTIONS: ActionItem[] = [
 
 export function QuickActions() {
   return (
-    <FadeInUp delay={0.15}>
+    <FadeInUp delay={0.05}>
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-[#F8FAFC]">Hızlı Aksiyonlar</h2>
         <StaggerContainer className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4" staggerDelay={0.05}>

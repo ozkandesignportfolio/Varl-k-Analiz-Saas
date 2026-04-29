@@ -13,12 +13,12 @@ type FadeInUpProps = {
 export const FadeInUp = memo(function FadeInUp({
   children,
   delay = 0,
-  duration = 0.4,
+  duration = 0.25,
   className,
 }: FadeInUpProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration, delay, ease: [0.25, 0.46, 0.45, 0.94] }}
       className={className}
@@ -37,7 +37,7 @@ type StaggerContainerProps = {
 export const StaggerContainer = memo(function StaggerContainer({
   children,
   className,
-  staggerDelay = 0.06,
+  staggerDelay = 0.03,
 }: StaggerContainerProps) {
   return (
     <motion.div
@@ -63,8 +63,8 @@ export const StaggerItem = memo(function StaggerItem({ children, className }: St
   return (
     <motion.div
       variants={{
-        hidden: { opacity: 0, y: 10 },
-        visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] } },
+        hidden: { opacity: 0, y: 4 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] } },
       }}
       className={className}
     >

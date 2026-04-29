@@ -428,7 +428,7 @@ export function RisksAndUpcoming({ userId, riskPanel }: RisksAndUpcomingProps) {
   }, []);
 
   return (
-    <FadeInUp delay={0.2}>
+    <FadeInUp delay={0.08}>
     <section className="space-y-3">
       <div className="flex items-center justify-end">
         <button

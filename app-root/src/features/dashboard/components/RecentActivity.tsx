@@ -27,7 +27,7 @@ export function RecentActivity({ activities }: RecentActivityProps) {
   const items = activities.slice(0, 10);
 
   return (
-    <FadeInUp delay={0.3}>
+    <FadeInUp delay={0.1}>
       <section className="rounded-2xl border border-[#2B3F5D] bg-[linear-gradient(145deg,rgba(10,22,44,0.92),rgba(11,18,35,0.84))] p-5 shadow-[0_16px_34px_rgba(2,8,20,0.34)]">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
