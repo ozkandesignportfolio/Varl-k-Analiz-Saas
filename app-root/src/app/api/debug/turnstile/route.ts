@@ -33,7 +33,7 @@ export async function GET(request: Request) {
       summary:
         env.missing.length > 0
           ? `Turnstile env/config issue detected: ${env.missing.join(", ")}`
-          : "Turnstile env gorunuyor; domain teyidi icin /api/test-turnstile cagrisi yapin.",
+          : "Turnstile env görünüyor; domain teyidi için /api/test-turnstile çağrısı yapın.",
     },
     headers: requestContext.headers,
     nodeEnv: env.nodeEnv,

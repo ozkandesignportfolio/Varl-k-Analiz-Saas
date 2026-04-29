@@ -186,7 +186,7 @@ export async function GET(request: Request) {
 
     if (!rateLimit.allowed) {
       return respond(
-        { error: "Dashboard metrik istegi limiti asildi. Lutfen kisa bir sure sonra tekrar deneyin." },
+        { error: "Dashboard metrik isteği limiti aşıldı. Lütfen kısa bir süre sonra tekrar deneyin." },
         {
           status: 429,
           headers: {

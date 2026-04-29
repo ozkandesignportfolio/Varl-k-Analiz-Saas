@@ -64,9 +64,9 @@ const TURNSTILE_SCRIPT_ID = "cloudflare-turnstile-script";
 const TURNSTILE_SCRIPT_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
 const TURNSTILE_SCRIPT_LOAD_TIMEOUT_MS = 10_000;
 const STRICT_MODE_PRESERVE_MS = 250;
-const ADBLOCK_MESSAGE = "Tarayici eklentisi engelliyor olabilir";
+const ADBLOCK_MESSAGE = "Tarayıcı eklentisi engelliyor olabilir";
 const DOMAIN_MISMATCH_MESSAGE = TURNSTILE_DOMAIN_INACTIVE_MESSAGE;
-const RUNTIME_RESET_MESSAGE = "Dogrulama yenileniyor. Lutfen tekrar tamamlayin.";
+const RUNTIME_RESET_MESSAGE = "Doğrulama yenileniyor. Lütfen tekrar tamamlayın.";
 const isDevelopment = process.env.NODE_ENV !== "production";
 
 let turnstileScriptPromise: Promise<void> | null = null;

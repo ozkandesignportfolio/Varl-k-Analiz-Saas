@@ -2,7 +2,7 @@ import { isProductionNodeEnv } from "@/lib/env/build-env";
 import { PublicEnv } from "@/lib/env/public-env";
 
 export const TURNSTILE_SITE_KEY_MISSING_MESSAGE =
-  "Guvenlik dogrulamasi yuklenemedi";
+  "Güvenlik doğrulaması yüklenemedi";
 export const TURNSTILE_LOCALHOST_TEST_SITE_KEY = "1x00000000000000000000AA";
 export const TURNSTILE_DOMAIN_INACTIVE_MESSAGE =
   "G\u00fcvenlik do\u011frulamas\u0131 bu domain i\u00e7in aktif de\u011fil. L\u00fctfen site y\u00f6neticisine bildirin.";

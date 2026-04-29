@@ -15,30 +15,30 @@ export const dynamic = "force-dynamic";
 
 const buildSummary = (verification: Awaited<ReturnType<typeof verifyTurnstileToken>>) => {
   if (verification.hostnameMismatch || verification.issue === "domain") {
-    return "Domain mismatch tespit edildi. Cloudflare hostname ile request hostname ayni degil.";
+    return "Domain mismatch tespit edildi. Cloudflare hostname ile request hostname aynı değil.";
   }
 
   if (verification.errorCodes.includes("invalid-input-secret") || verification.issue === "key") {
-    return "Turnstile secret key gecersiz veya yanlis ortam anahtari kullaniyor.";
+    return "Turnstile secret key geçersiz veya yanlış ortam anahtarı kullanıyor.";
   }
 
   if (verification.errorCodes.includes("invalid-input-response") || verification.issue === "token") {
-    return "Secret key ulasiliyor; sabit test token bu key ile dogrulanmadi.";
+    return "Secret key ulaşılıyor; sabit test token bu key ile doğrulanmadı.";
   }
 
   if (verification.issue === "env") {
-    return "Turnstile env eksik veya gecersiz.";
+    return "Turnstile env eksik veya geçersiz.";
   }
 
   if (verification.issue === "network") {
-    return "Cloudflare verify istegi tamamlanamadi.";
+    return "Cloudflare verify isteği tamamlanamadı.";
   }
 
   if (verification.ok) {
-    return "Turnstile verify cagrisi basarili.";
+    return "Turnstile verify çağrısı başarılı.";
   }
 
-  return "Turnstile verify sonucu belirsiz; loglari kontrol edin.";
+  return "Turnstile verify sonucu belirsiz; logları kontrol edin.";
 };
 
 const handleRequest = async (request: Request) => {

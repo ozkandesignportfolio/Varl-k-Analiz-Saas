@@ -66,7 +66,7 @@ const asJsonObject = (value: unknown): Record<string, unknown> | null => {
 async function invokeCurrentWorker(body: Awaited<ReturnType<typeof readBody>>) {
   const worker = getWorkerInvocation();
   if (!worker) {
-    return NextResponse.json({ error: "Service worker baglantisi kurulamadi." }, { status: 503 });
+    return NextResponse.json({ error: "Service worker bağlantısı kurulamadı." }, { status: 503 });
   }
 
   const response = await fetch(worker.url, {
@@ -111,17 +111,17 @@ async function invokeCurrentWorker(body: Awaited<ReturnType<typeof readBody>>) {
 export async function POST(request: Request) {
   const jobSecret = ServerEnv.SERVICE_MEDIA_JOB_SECRET;
   if (!jobSecret) {
-    return NextResponse.json({ error: "SERVICE_MEDIA_JOB_SECRET tanimli degil." }, { status: 503 });
+    return NextResponse.json({ error: "SERVICE_MEDIA_JOB_SECRET tanımlı değil." }, { status: 503 });
   }
 
   const providedSecret = request.headers.get("x-job-secret")?.trim();
   if (!providedSecret || providedSecret !== jobSecret) {
-    return NextResponse.json({ error: "Yetkisiz job istegi." }, { status: 401 });
+    return NextResponse.json({ error: "Yetkisiz job isteği." }, { status: 401 });
   }
 
   const serviceRoleClient = getServiceRoleClient();
   if (!serviceRoleClient) {
-    return NextResponse.json({ error: "Service role baglantisi kurulamadi." }, { status: 503 });
+    return NextResponse.json({ error: "Service role bağlantısı kurulamadı." }, { status: 503 });
   }
 
   const rateLimit = await enforceServiceRateLimit({
@@ -135,7 +135,7 @@ export async function POST(request: Request) {
 
   if (!rateLimit.allowed) {
     return NextResponse.json(
-      { error: "Cok fazla job tetiklendi. Lutfen tekrar deneyin." },
+      { error: "Çok fazla job tetiklendi. Lütfen tekrar deneyin." },
       {
         status: 429,
         headers: {

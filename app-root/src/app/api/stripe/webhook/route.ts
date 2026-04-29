@@ -321,7 +321,7 @@ export async function POST(request: Request) {
   try {
     event = stripeClient.webhooks.constructEvent(rawBody, sig, webhookSecret);
   } catch {
-    return NextResponse.json({ error: "Gecersiz Stripe imzasi." }, { status: 400 });
+    return NextResponse.json({ error: "Geçersiz Stripe imzası." }, { status: 400 });
   }
 
   // --- Structured event log for observability ---

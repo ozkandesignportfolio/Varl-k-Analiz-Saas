@@ -53,7 +53,7 @@ export async function POST(request: Request) {
 
   if (!rateLimit.allowed) {
     return NextResponse.json(
-      { error: "Cok fazla odeme dogrulama istegi gonderildi. Lutfen tekrar deneyin." },
+      { error: "Çok fazla ödeme doğrulama isteği gönderildi. Lütfen tekrar deneyin." },
       {
         status: 429,
         headers: {

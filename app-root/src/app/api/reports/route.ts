@@ -91,10 +91,10 @@ export async function GET(request: Request) {
     const to = normalizeDateOnly(toRaw);
 
     if (fromRaw && !from) {
-      return NextResponse.json({ error: "Baslangic tarihi gecersiz." }, { status: 400 });
+      return NextResponse.json({ error: "Başlangıç tarihi geçersiz." }, { status: 400 });
     }
     if (toRaw && !to) {
-      return NextResponse.json({ error: "Bitis tarihi gecersiz." }, { status: 400 });
+      return NextResponse.json({ error: "Bitiş tarihi geçersiz." }, { status: 400 });
     }
 
     const pageSize = normalizePageSize(params.get("pageSize"), 100, 200);
@@ -172,6 +172,6 @@ export async function GET(request: Request) {
       error,
       message: "Reports list request failed unexpectedly",
     });
-    return NextResponse.json({ error: "Rapor satirlari yuklenemedi." }, { status: 500 });
+    return NextResponse.json({ error: "Rapor satırları yüklenemedi." }, { status: 500 });
   }
 }

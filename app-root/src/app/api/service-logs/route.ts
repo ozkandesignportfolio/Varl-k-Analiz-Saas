@@ -99,16 +99,16 @@ export async function GET(request: Request) {
 
     const assetId = assetIdRaw ? parseUuid(assetIdRaw) : null;
     if (assetIdRaw && !assetId) {
-      return NextResponse.json({ error: "Varlik filtresi gecersiz." }, { status: 400 });
+      return NextResponse.json({ error: "Varlık filtresi geçersiz." }, { status: 400 });
     }
 
     const parsedDateRange = parseLogsDateRange(startDateRaw, endDateRaw);
     if (parsedDateRange.invalidStart) {
-      return NextResponse.json({ error: "Baslangic tarihi gecersiz." }, { status: 400 });
+      return NextResponse.json({ error: "Başlangıç tarihi geçersiz." }, { status: 400 });
     }
 
     if (parsedDateRange.invalidEnd) {
-      return NextResponse.json({ error: "Bitis tarihi gecersiz." }, { status: 400 });
+      return NextResponse.json({ error: "Bitiş tarihi geçersiz." }, { status: 400 });
     }
 
     const { data, error } = await listServices(auth.supabase, {
@@ -132,7 +132,7 @@ export async function GET(request: Request) {
         message: "Service logs list query failed",
       });
       return NextResponse.json(
-        toPublicErrorBody("SERVICE_LOGS_LIST_FAILED", "Servis kayitlari listelenemedi."),
+        toPublicErrorBody("SERVICE_LOGS_LIST_FAILED", "Servis kayıtları listelenemedi."),
         { status: 400 },
       );
     }
@@ -146,7 +146,7 @@ export async function GET(request: Request) {
       error,
       message: "Service logs list request failed unexpectedly",
     });
-    return NextResponse.json({ error: "Servis kayitlari listelenemedi." }, { status: 500 });
+    return NextResponse.json({ error: "Servis kayıtları listelenemedi." }, { status: 500 });
   }
 }
 
@@ -267,7 +267,7 @@ const syncRuleSchedulesFromLatestLogs = async (params: {
         message: "Service log rule sync failed while updating rule schedule",
         meta: { ruleId: result.ruleId },
       });
-      syncErrors.push(`Kural ${result.ruleId}: guncellenemedi.`);
+      syncErrors.push(`Kural ${result.ruleId}: güncellenemedi.`);
     }
   }
 

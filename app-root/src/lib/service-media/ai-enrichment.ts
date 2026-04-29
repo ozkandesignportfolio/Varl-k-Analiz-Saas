@@ -228,8 +228,8 @@ async function parsePhotoMetadata(params: {
           {
             type: "input_text",
             text: [
-              "Asagidaki servis fotografini teknik metadata ve servis baglami olarak JSON formatinda ozetle.",
-              "Sadece JSON don.",
+              "Aşağıdaki servis fotoğrafını teknik metadata ve servis bağlamı olarak JSON formatında özetle.",
+              "Sadece JSON dön.",
               'Beklenen alanlar: {"scene":"string","detected_items":"string[]","condition_signals":"string[]","possible_issue":"string|null","confidence":"low|medium|high"}',
             ].join("\n"),
           },
@@ -256,11 +256,11 @@ async function parseVideoMetadata(videoUpload: ServiceMediaUploadPayload, apiKey
           {
             type: "input_text",
             text: [
-              "Asagidaki video dosya metadata bilgisini servis baglaminda parse et.",
-              "Sadece JSON don.",
+              "Aşağıdaki video dosya metadata bilgisini servis bağlamında parse et.",
+              "Sadece JSON dön.",
               'Beklenen alanlar: {"container":"string|null","capture_type":"string|null","service_tags":"string[]","manual_review_needed":boolean}',
               `Dosya metadata: ${JSON.stringify(videoUpload.metadata)}`,
-              `Dosya adi: ${videoUpload.fileName}`,
+              `Dosya adı: ${videoUpload.fileName}`,
             ].join("\n"),
           },
         ],
@@ -283,8 +283,8 @@ async function suggestDescription(params: {
 }) {
   if (!params.apiKey) {
     const parts = [
-      `${params.serviceDate} tarihinde ${params.serviceType} islemi kaydedildi.`,
-      params.provider ? `Saglayici: ${params.provider}.` : null,
+      `${params.serviceDate} tarihinde ${params.serviceType} işlemi kaydedildi.`,
+      params.provider ? `Sağlayıcı: ${params.provider}.` : null,
       params.userNotes ? `Not: ${params.userNotes}.` : null,
     ].filter(Boolean);
     return parts.join(" ");
@@ -369,7 +369,7 @@ export async function enrichServiceMediaNotes(
   }));
 
   if (!params.apiKey) {
-    warnings.push("OPENAI_API_KEY tanimli olmadigi icin AI fallback metni kullanildi.");
+    warnings.push("OPENAI_API_KEY tanımlı olmadığı için AI fallback metni kullanıldı.");
   }
 
   const audioUpload = params.uploads.find((upload) => upload.kind === "audio") ?? null;
@@ -380,7 +380,7 @@ export async function enrichServiceMediaNotes(
   if (audioUpload) {
     const audioBlob = await params.downloadFile(audioUpload.storagePath);
     if (!audioBlob) {
-      warnings.push("Ses dosyasi indirilemedi.");
+      warnings.push("Ses dosyası indirilemedi.");
     } else {
       transcription = await transcribeAudio({
         audioBlob,
@@ -388,7 +388,7 @@ export async function enrichServiceMediaNotes(
         apiKey: params.apiKey,
       });
       if (!transcription) {
-        warnings.push("Ses dosyasi transkribe edilemedi.");
+        warnings.push("Ses dosyası transkribe edilemedi.");
       }
     }
   }
@@ -397,7 +397,7 @@ export async function enrichServiceMediaNotes(
   if (photoUpload) {
     const photoBlob = await params.downloadFile(photoUpload.storagePath);
     if (!photoBlob) {
-      warnings.push("Fotograf dosyasi indirilemedi.");
+      warnings.push("Fotoğraf dosyası indirilemedi.");
     } else {
       photoMetadata = await parsePhotoMetadata({
         photoBlob,
@@ -405,14 +405,14 @@ export async function enrichServiceMediaNotes(
         apiKey: params.apiKey,
       });
       if (!photoMetadata) {
-        warnings.push("Fotograf metadata analizi tamamlanamadi.");
+        warnings.push("Fotoğraf metadata analizi tamamlanamadı.");
       }
     }
   }
 
   const videoMetadata = videoUpload ? await parseVideoMetadata(videoUpload, params.apiKey) : null;
   if (videoUpload && !videoMetadata) {
-    warnings.push("Video metadata analizi tamamlanamadi.");
+    warnings.push("Video metadata analizi tamamlanamadı.");
   }
 
   for (const upload of uploadsWithAiMetadata) {

@@ -441,7 +441,7 @@ const buildPredictions = async (
 
   if (!rateLimit.allowed) {
     return NextResponse.json(
-      { error: "Cok fazla tahmin istegi gonderildi. Lutfen kisa bir sure sonra tekrar deneyin." },
+      { error: "Çok fazla tahmin isteği gönderildi. Lütfen kısa bir süre sonra tekrar deneyin." },
       {
         status: 429,
         headers: {

@@ -216,7 +216,7 @@ export async function POST(request: Request) {
       .upload(storagePath, file, { contentType: fileValidation.mimeType, upsert: false });
 
     if (uploadError) {
-      return NextResponse.json({ error: "Dosya yuklenemedi." }, { status: 500 });
+      return NextResponse.json({ error: "Dosya yüklenemedi." }, { status: 500 });
     }
 
     const { data: insertedDocument, error: insertError } = await supabase
@@ -372,6 +372,6 @@ export async function DELETE(request: Request) {
       error,
       message: "Document delete request failed unexpectedly",
     });
-    return NextResponse.json({ error: "Belge silme istegi islenemedi." }, { status: 500 });
+    return NextResponse.json({ error: "Belge silme isteği işlenemedi." }, { status: 500 });
   }
 }

@@ -275,7 +275,7 @@ async function uploadSingleMedia(params: {
   if (uploadError) {
     return {
       ok: false,
-      error: `${params.entry.kind} dosyasi yuklenemedi.`,
+      error: `${params.entry.kind} dosyası yüklenemedi.`,
     };
   }
 
@@ -371,7 +371,7 @@ export async function POST(request: Request) {
 
     if (!rateLimit.allowed) {
       return respond(
-        { error: "Cok fazla medya istegi gonderildi. Lutfen biraz bekleyip tekrar deneyin." },
+        { error: "Çok fazla medya isteği gönderildi. Lütfen biraz bekleyip tekrar deneyin." },
         {
           status: 429,
           headers: {
@@ -383,7 +383,7 @@ export async function POST(request: Request) {
 
     const formData = await request.formData().catch(() => null);
     if (!formData) {
-      return respond({ error: "Gecersiz form verisi." }, { status: 400 });
+      return respond({ error: "Geçersiz form verisi." }, { status: 400 });
     }
 
     const assetIdField = readFormText(formData, "assetId", { required: true });
@@ -559,7 +559,7 @@ export async function POST(request: Request) {
             .filter((value): value is string => Boolean(value)),
         }),
       );
-      return respond({ error: failedAttempts[0]?.error ?? "Medya yukleme basarisiz." }, { status: 500 });
+      return respond({ error: failedAttempts[0]?.error ?? "Medya yükleme başarısız." }, { status: 500 });
     }
 
     const uploads = successfulAttempts.map((item) => item.upload);
@@ -609,7 +609,7 @@ export async function POST(request: Request) {
       openAiTimeMs: null,
       message: "Service media request failed unexpectedly",
     });
-    return respond({ error: "Medya istegi islenemedi." }, { status: 500 });
+    return respond({ error: "Medya isteği işlenemedi." }, { status: 500 });
   } finally {
     logApiRequest({
       route: "/api/service-media",

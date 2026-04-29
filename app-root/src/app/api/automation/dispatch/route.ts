@@ -130,7 +130,7 @@ async function invokeCurrentWorker(body: Record<string, unknown>) {
   if (!("url" in worker)) {
     return NextResponse.json(
       {
-        error: "Automation worker baglantisi kurulamadi.",
+        error: "Automation worker bağlantısı kurulamadı.",
         missing_env: worker.missingEnv,
       },
       { status: 503 },
@@ -187,7 +187,7 @@ async function handleDispatch(request: Request, body: Record<string, unknown>) {
   if (!cronSecret) {
     return NextResponse.json(
       {
-        error: "AUTOMATION_CRON_SECRET tanimli degil.",
+        error: "AUTOMATION_CRON_SECRET tanımlı değil.",
         missing_env: missingEnv,
       },
       { status: 503 },
@@ -196,7 +196,7 @@ async function handleDispatch(request: Request, body: Record<string, unknown>) {
 
   const providedSecret = readProvidedSecret(request);
   if (!providedSecret || providedSecret !== cronSecret) {
-    return NextResponse.json({ error: "Yetkisiz job istegi." }, { status: 401 });
+    return NextResponse.json({ error: "Yetkisiz job isteği." }, { status: 401 });
   }
 
   const serviceRoleClient = getServiceRoleClient();
@@ -214,7 +214,7 @@ async function handleDispatch(request: Request, body: Record<string, unknown>) {
     });
     return NextResponse.json(
       {
-        error: "Service role baglantisi kurulamadi.",
+        error: "Service role bağlantısı kurulamadı.",
         missing_env: missingEnv,
       },
       { status: 503 },
@@ -232,7 +232,7 @@ async function handleDispatch(request: Request, body: Record<string, unknown>) {
 
   if (!rateLimit.allowed) {
     return NextResponse.json(
-      { error: "Cok fazla automation dispatch tetiklendi. Lutfen tekrar deneyin." },
+      { error: "Çok fazla automation dispatch tetiklendi. Lütfen tekrar deneyin." },
       {
         status: 429,
         headers: {
@@ -252,7 +252,7 @@ async function handleDispatch(request: Request, body: Record<string, unknown>) {
       error,
       message: "Automation dispatch route failed unexpectedly",
     });
-    return NextResponse.json({ error: "Automation dispatch istegi islenemedi." }, { status: 500 });
+    return NextResponse.json({ error: "Automation dispatch isteği işlenemedi." }, { status: 500 });
   }
 }
 

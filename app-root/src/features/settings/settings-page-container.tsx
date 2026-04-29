@@ -588,7 +588,7 @@ export function SettingsPageContainer() {
       const requestId = notificationReminderSaveRequestIdRef.current + 1;
       notificationReminderSaveRequestIdRef.current = requestId;
       setIsSavingNotificationReminderDays(true);
-      setFeedback("Bildirim hatirlatma gunleri kaydediliyor...");
+      setFeedback("Bildirim hatırlatma günleri kaydediliyor...");
 
       const normalizedReminderDays = normalizeNotificationReminderDays(nextReminderDays);
       const {
@@ -620,13 +620,13 @@ export function SettingsPageContainer() {
       }
 
       if (error) {
-        setFeedback("Bildirim hatirlatma gunleri kaydedilemedi. Lütfen tekrar deneyin.");
+        setFeedback("Bildirim hatırlatma günleri kaydedilemedi. Lütfen tekrar deneyin.");
         setIsSavingNotificationReminderDays(false);
         return;
       }
 
       setNotificationReminderDays(normalizedReminderDays);
-      setFeedback("Bildirim hatirlatma gunleri güncellendi.");
+      setFeedback("Bildirim hatırlatma günleri güncellendi.");
       setIsSavingNotificationReminderDays(false);
     },
     [router, supabase],

@@ -3,7 +3,7 @@ import { getAuthRedirectUrl } from "@/lib/supabase/auth-redirect";
 import RegisterPageClient from "./register-page-client";
 
 function RegisterPageFallback() {
-  return <div>Yukleniyor...</div>;
+  return <div>Yükleniyor...</div>;
 }
 
 export default function RegisterPage() {

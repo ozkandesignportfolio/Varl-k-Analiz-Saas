@@ -392,7 +392,7 @@ export async function createBillingSubscription(
     const mappedError = mapRepoError({
       error,
       fallbackTables: ["billing_subscriptions"],
-      publicMessage: "Abonelik olusturulamadi.",
+      publicMessage: "Abonelik oluşturulamadı.",
       publicCode: "BILLING_SUBSCRIPTION_CREATE_FAILED",
       route: "/api/billing/subscriptions",
       method: "POST",
@@ -402,7 +402,7 @@ export async function createBillingSubscription(
     return (
       mappedError ?? {
         status: 400,
-        body: toPublicErrorBody("BILLING_SUBSCRIPTION_CREATE_FAILED", "Abonelik olusturulamadi."),
+        body: toPublicErrorBody("BILLING_SUBSCRIPTION_CREATE_FAILED", "Abonelik oluşturulamadı."),
       }
     );
   }
@@ -557,7 +557,7 @@ export async function createBillingInvoice(
     const mappedError = mapRepoError({
       error,
       fallbackTables: ["billing_invoices"],
-      publicMessage: "Fatura olusturulamadi.",
+      publicMessage: "Fatura oluşturulamadı.",
       publicCode: "BILLING_INVOICE_CREATE_FAILED",
       route: "/api/billing/invoices",
       method: "POST",
@@ -568,7 +568,7 @@ export async function createBillingInvoice(
     return (
       mappedError ?? {
         status: 400,
-        body: toPublicErrorBody("BILLING_INVOICE_CREATE_FAILED", "Fatura olusturulamadi."),
+        body: toPublicErrorBody("BILLING_INVOICE_CREATE_FAILED", "Fatura oluşturulamadı."),
       }
     );
   }
@@ -616,7 +616,7 @@ export async function createBillingInvoice(
           body: {
             ok: true,
             id: data.id,
-            warning: "Yenileme tarihi guncellenemedi.",
+            warning: "Yenileme tarihi güncellenemedi.",
           },
         };
       }
