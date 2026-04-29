@@ -10,7 +10,6 @@ import {
   Wrench,
   type LucideIcon,
 } from "lucide-react";
-import { StaggerContainer, StaggerItem } from "@/features/dashboard/components/DashboardAnimations";
 import type { DashboardDateRangeDays, DashboardSnapshot } from "@/features/dashboard/api/dashboard-shared";
 
 const NUMBER_FORMATTER = new Intl.NumberFormat("tr-TR");
@@ -137,13 +136,11 @@ export function KPICards({ metrics, trends, selectedRange }: KPICardsProps) {
         <p className="text-xs text-[#8DA6C8]">{rangeLabel}</p>
       </div>
 
-      <StaggerContainer className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => (
-          <StaggerItem key={card.id}>
-            <KpiCard card={card} />
-          </StaggerItem>
+          <KpiCard key={card.id} card={card} />
         ))}
-      </StaggerContainer>
+      </div>
     </section>
   );
 }

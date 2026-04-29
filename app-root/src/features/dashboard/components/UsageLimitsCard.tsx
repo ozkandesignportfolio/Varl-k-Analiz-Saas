@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { Crown } from "lucide-react";
-import { FadeInUp } from "@/features/dashboard/components/DashboardAnimations";
 
 export type UsageLimitItem = {
   id: string;
@@ -25,7 +24,6 @@ const calculatePercent = (used: number, limit: number | null) => {
 
 export function UsageLimitsCard({ planLabel, isPremium, items }: UsageLimitsCardProps) {
   return (
-    <FadeInUp delay={0.08}>
     <aside
       className="rounded-2xl border border-[#2B3F5D] bg-[linear-gradient(165deg,rgba(10,22,44,0.95),rgba(11,18,35,0.88))] p-5 shadow-[0_16px_34px_rgba(2,8,20,0.36)]"
       data-testid="dashboard-plan-usage-card"
@@ -96,6 +94,5 @@ export function UsageLimitsCard({ planLabel, isPremium, items }: UsageLimitsCard
         </Link>
       )}
     </aside>
-    </FadeInUp>
   );
 }

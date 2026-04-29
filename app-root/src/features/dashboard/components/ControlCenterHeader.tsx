@@ -140,34 +140,99 @@ export const ControlCenterHeader = memo(function ControlCenterHeader({
   );
 });
 
-const TONE_SEVERITY_LABEL: Record<DashboardSystemStatus["tone"], string> = {
-  critical: "Kritik",
-  warning: "Uyarı",
-  stable: "Stabil",
-  healthy: "Sağlıklı",
+type AlertContent = {
+  severityLabel: string;
+  title: string;
+  description: string;
+  impact: string;
+  action: string;
+  ctaLabel: string;
+  SeverityIcon: typeof ShieldAlert;
 };
 
-const TONE_SEVERITY_ICON: Record<DashboardSystemStatus["tone"], typeof ShieldAlert> = {
-  critical: ShieldAlert,
-  warning: AlertTriangle,
-  stable: ShieldCheck,
-  healthy: ShieldCheck,
-};
+const buildAlertContent = (status: DashboardSystemStatus): AlertContent => {
+  const count = status.riskCount;
 
-const RISK_IMPACT: Record<DashboardSystemRiskType, string> = {
-  maintenance_due: "Geciken veya planlanan bakımlar arıza riskini artırır ve onarım maliyetlerini yükseltebilir.",
-  rule_missing: "Bakım kuralı olmadan varlıklardaki sorunlar fark edilemez ve maliyetli arızalara yol açabilir.",
-  document_missing: "Eksik belgeler garanti, sigorta veya denetim süreçlerinde sorun yaratabilir.",
-  invoice_due: "Geciken ödemeler ek ücret veya hizmet kesintisine neden olabilir.",
-  notification_prefs: "Bildirim tercihlerinizi ayarlayarak önemli uyarıları kaçırmayın.",
-};
+  switch (status.risk.type) {
+    case "maintenance_due":
+      return {
+        severityLabel: status.tone === "critical" ? "Kritik" : "Uyarı",
+        title: `${count} Bakım Zamanında Yapılmadı`,
+        description:
+          count === 1
+            ? "Planlanan bakım tarihi geçmiş durumda. Gecikmiş bakım işlemini en kısa sürede planlayın."
+            : `${count} varlık için planlanan bakım tarihleri geçmiş durumda. Gecikmiş işlemleri kontrol edin.`,
+        impact: "Bakım gecikmesi arıza riskini artırır, performansı düşürür ve uzun vadede onarım maliyetlerini yükseltir.",
+        action: "Bakım planını açarak gecikmiş işlemleri zamanlayın.",
+        ctaLabel: "Bakımları Planla",
+        SeverityIcon: ShieldAlert,
+      };
 
-const RISK_ACTION_LABEL: Record<DashboardSystemRiskType, string> = {
-  maintenance_due: "Bakım Planla",
-  rule_missing: "Kural Oluştur",
-  document_missing: "Belge Yükle",
-  invoice_due: "Ödeme Durumunu Kontrol Et",
-  notification_prefs: "Tercihleri Düzenle",
+    case "rule_missing":
+      return {
+        severityLabel: "Uyarı",
+        title: "Bakım Kuralı Tanımlanmamış",
+        description: "Varlıklarınız için henüz periyodik bakım kuralı oluşturulmamış.",
+        impact: "Bakım kuralı olmadan olası arızalar önceden tespit edilemez ve plansız duruşlar yaşanabilir.",
+        action: "En az bir periyodik bakım kuralı oluşturarak varlıklarınızı koruma altına alın.",
+        ctaLabel: "Kural Oluştur",
+        SeverityIcon: AlertTriangle,
+      };
+
+    case "document_missing":
+      return {
+        severityLabel: "Bilgi",
+        title: `${count} Varlıkta Belge Eksik`,
+        description:
+          count === 1
+            ? "Bir varlığa henüz hiç belge eklenmemiş."
+            : `${count} varlığa henüz hiç belge eklenmemiş.`,
+        impact: "Eksik belgeler garanti başvurusu, sigorta talebi veya denetim süreçlerinde ciddi sorun yaratabilir.",
+        action: "İlgili varlıklara garanti belgesi, fatura veya servis raporlarını yükleyin.",
+        ctaLabel: "Belge Yükle",
+        SeverityIcon: AlertTriangle,
+      };
+
+    case "invoice_due":
+      return {
+        severityLabel: status.tone === "critical" ? "Kritik" : "Uyarı",
+        title:
+          status.tone === "critical"
+            ? `${count} Ödeme Vadesi Geçti`
+            : `${count} Ödeme Yaklaşıyor`,
+        description:
+          status.tone === "critical"
+            ? `${count} faturanın ödeme tarihi geçmiş durumda. Gecikmiş ödemeleri hemen kontrol edin.`
+            : `${count} faturanın ödeme tarihi yaklaşıyor. Zamanında ödeme yaparak gecikme riskinden kaçının.`,
+        impact: "Geciken ödemeler ek ücret, faiz veya hizmet kesintisine neden olabilir.",
+        action: "Fatura detaylarını kontrol edin ve ödeme planınızı güncelleyin.",
+        ctaLabel: "Ödemeleri Kontrol Et",
+        SeverityIcon: ShieldAlert,
+      };
+
+    case "notification_prefs":
+    default:
+      if (status.tone === "healthy") {
+        return {
+          severityLabel: "Sağlıklı",
+          title: "Her Şey Yolunda",
+          description: "Kritik veya yaklaşan risk kaydı bulunmuyor. Sisteminiz sağlıklı çalışıyor.",
+          impact: "",
+          action: "",
+          ctaLabel: "Tercihleri Düzenle",
+          SeverityIcon: ShieldCheck,
+        };
+      }
+      return {
+        severityLabel: "Bilgi",
+        title: "Bildirim Tercihleri",
+        description: "Bildirim ayarlarınızı düzenleyerek önemli uyarıları zamanında alın.",
+        impact: "Doğru yapılandırılmamış bildirimler kritik uyarıların gözden kaçmasına yol açabilir.",
+        action: "Bildirim tercihlerinizi kontrol edin ve güncelleyin.",
+        ctaLabel: "Tercihleri Düzenle",
+        SeverityIcon: ShieldCheck,
+      };
+  }
 };
 
 const StatusAlertCard = memo(function StatusAlertCard({
@@ -188,71 +253,81 @@ const StatusAlertCard = memo(function StatusAlertCard({
   onSnooze: (durationMs: number) => void;
   onFix: () => void;
 }) {
-  const SeverityIcon = useMemo(() => TONE_SEVERITY_ICON[status.tone], [status.tone]);
-  const severityLabel = TONE_SEVERITY_LABEL[status.tone];
-  const impact = RISK_IMPACT[status.risk.type];
-  const fixLabel = RISK_ACTION_LABEL[status.risk.type];
+  const alert = useMemo(() => buildAlertContent(status), [status]);
 
   return (
     <div className={`mt-5 rounded-2xl border p-4 ${style.wrapper}`}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3 min-w-0 flex-1">
           <span className="mt-1 inline-flex shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 p-1.5">
-            <SeverityIcon className="size-4 text-[#F8FAFC]" aria-hidden />
+            <alert.SeverityIcon className="size-4 text-[#F8FAFC]" aria-hidden />
           </span>
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-xs uppercase tracking-[0.16em] text-[#90A6C4]">Sistem Durumu</p>
               <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${style.badge}`}>
-                {severityLabel}
+                {alert.severityLabel}
+              </span>
+              <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${style.badge}`}>
+                {status.riskCount} aktif kayıt
               </span>
             </div>
-            <h2 className="mt-1 text-lg font-semibold text-[#F8FAFC]">{status.headline}</h2>
-            <p className="mt-1 text-sm text-[#CBD5E1]">{status.detail}</p>
-            {impact ? (
-              <p className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-amber-200/80">
-                <AlertTriangle className="mt-0.5 size-3 shrink-0 text-amber-400/70" aria-hidden />
-                {impact}
+
+            <h2 className="text-lg font-semibold leading-snug text-[#F8FAFC]">{alert.title}</h2>
+            <p className="text-sm leading-relaxed text-[#CBD5E1]">{alert.description}</p>
+
+            {alert.impact ? (
+              <div className="flex items-start gap-1.5 rounded-lg border border-amber-400/15 bg-amber-400/5 px-3 py-2">
+                <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-amber-400/80" aria-hidden />
+                <p className="text-xs leading-relaxed text-amber-200/90">{alert.impact}</p>
+              </div>
+            ) : null}
+
+            {alert.action ? (
+              <p className="text-xs leading-relaxed text-[#9FB2CE]">
+                <span className="font-semibold text-[#BFD5F5]">Önerilen adım:</span>{" "}
+                {alert.action}
               </p>
             ) : null}
           </div>
         </div>
 
-        <TooltipProvider>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className={`inline-flex h-fit rounded-full border px-3 py-1 text-xs font-semibold ${style.badge}`}>
-              {status.riskCount} aktif kayıt
-            </span>
+        <div className="flex flex-col items-end gap-2">
+          <button
+            type="button"
+            onClick={onFix}
+            className={`inline-flex w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border px-4 py-2 text-xs font-semibold transition sm:w-auto ${style.iconButton}`}
+          >
+            <Wrench className="size-3.5" aria-hidden />
+            {alert.ctaLabel}
+          </button>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={onDismiss}
-                  className={`inline-flex size-7 items-center justify-center rounded-md border transition ${style.iconButton}`}
-                  aria-label="Görmezden gel"
-                >
-                  <X className="size-3.5" aria-hidden />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Görmezden gel</TooltipContent>
-            </Tooltip>
-
-            <DropdownMenu>
+          <div className="flex items-center gap-1.5">
+            <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      className={`inline-flex size-7 items-center justify-center rounded-md border transition ${style.iconButton}`}
-                      aria-label="Sonra hatırlat"
-                    >
-                      <Clock3 className="size-3.5" aria-hidden />
-                    </button>
-                  </DropdownMenuTrigger>
+                  <button
+                    type="button"
+                    onClick={onDismiss}
+                    className={`inline-flex size-7 items-center justify-center rounded-md border transition ${style.iconButton}`}
+                    aria-label="Görmezden gel"
+                  >
+                    <X className="size-3.5" aria-hidden />
+                  </button>
                 </TooltipTrigger>
-                <TooltipContent>Sonra hatırlat</TooltipContent>
+                <TooltipContent>Görmezden gel</TooltipContent>
               </Tooltip>
+            </TooltipProvider>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className={`inline-flex size-7 items-center justify-center rounded-md border transition ${style.iconButton}`}
+                  aria-label="Sonra hatırlat"
+                >
+                  <Clock3 className="size-3.5" aria-hidden />
+                </button>
+              </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
                 className="w-40 border-[#2F4569] bg-[#0D1F39]/95 text-[#E5EEFC] shadow-[0_14px_30px_rgba(2,8,20,0.5)]"
@@ -272,17 +347,8 @@ const StatusAlertCard = memo(function StatusAlertCard({
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-
-            <button
-              type="button"
-              onClick={onFix}
-              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${style.iconButton}`}
-            >
-              <Wrench className="size-3.5" aria-hidden />
-              {fixLabel}
-            </button>
           </div>
-        </TooltipProvider>
+        </div>
       </div>
     </div>
   );
