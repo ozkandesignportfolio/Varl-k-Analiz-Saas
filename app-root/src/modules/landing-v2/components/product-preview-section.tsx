@@ -274,7 +274,7 @@ export function ProductPreviewSection() {
 
             {/* ══ PHONE ══ */}
             <div
-              className="group flex w-[240px] max-h-[480px] shrink-0 items-center justify-center self-center overflow-hidden aspect-[9/19.5] transform-gpu transition-transform duration-500 ease-out hover:scale-[1.05] sm:w-[280px] sm:max-h-[560px] sm:aspect-auto md:max-h-none md:w-[220px] md:aspect-auto md:absolute md:-right-4 md:top-12 md:z-20 md:[transform:rotateZ(8deg)_translateY(1.5rem)]"
+              className="group w-[180px] shrink-0 self-center transform-gpu transition-transform duration-500 ease-out hover:scale-[1.05] sm:w-[220px] md:absolute md:-right-4 md:top-12 md:z-20 md:[transform:rotateZ(8deg)_translateY(1.5rem)]"
             >
               {/* Ground shadow */}
               <div aria-hidden className="pointer-events-none absolute inset-x-4 -bottom-8 h-12 rounded-[50%] bg-black/50 blur-2xl" />
@@ -295,7 +295,7 @@ export function ProductPreviewSection() {
                   </div>
 
                   {/* Status bar */}
-                  <div className="flex items-center justify-between px-4 pt-3 text-[10px] text-muted-foreground/70 sm:px-6">
+                  <div className="flex items-center justify-between px-6 pt-3 text-[10px] text-muted-foreground/70">
                     <span className="font-semibold">09:41</span>
                     <div className="flex items-center gap-1 opacity-70">
                       <span className="h-1 w-1 rounded-full bg-muted-foreground" aria-hidden />
@@ -305,7 +305,7 @@ export function ProductPreviewSection() {
                   </div>
 
                   {/* Screen content */}
-                  <div className="flex flex-col gap-2.5 px-3.5 pb-4 pt-6 sm:gap-3.5 sm:px-5 sm:pb-6 sm:pt-8">
+                  <div className="flex flex-col gap-3.5 px-5 pb-6 pt-8">
                     <div className="flex items-center gap-3">
                       <span aria-hidden className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/[0.12] text-primary/90 ring-1 ring-primary/20">
                         <LayoutDashboard className="h-5 w-5" strokeWidth={1.7} />
@@ -341,7 +341,7 @@ export function ProductPreviewSection() {
                       <span className="text-[11.5px] font-medium text-emerald-200/90">₺1.240 tasarruf fırsatı</span>
                     </div>
 
-                    <p className="hidden text-center text-[10.5px] leading-relaxed text-muted-foreground/55 sm:block">
+                    <p className="text-center text-[10.5px] leading-relaxed text-muted-foreground/55">
                       2 kullanılmayan varlık tespit edildi.
                     </p>
                   </div>
