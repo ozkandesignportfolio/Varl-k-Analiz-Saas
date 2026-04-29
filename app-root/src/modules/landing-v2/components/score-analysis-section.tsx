@@ -177,7 +177,7 @@ export function ScoreAnalysisSection() {
           </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-[1fr_1fr_0.75fr]">
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-[1fr_1fr_0.75fr]">
           <div className={`min-w-0 w-full ${inView ? "animate-slide-up" : "opacity-0"}`} style={{ animationDelay: "0.2s" }}>
             <div className="glass-card h-full min-w-0 w-full rounded-3xl border border-border/60 bg-background/70 p-6 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)]">
               <h3 className="text-sm font-semibold text-foreground">SaaS Skor Dağılımı</h3>
