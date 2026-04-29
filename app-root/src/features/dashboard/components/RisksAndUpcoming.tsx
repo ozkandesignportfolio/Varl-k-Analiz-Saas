@@ -5,6 +5,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   CalendarClock,
+  ChevronDown,
   FileWarning,
   Settings,
   ShieldAlert,
@@ -16,6 +17,14 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { DashboardSnapshot } from "@/features/dashboard/api/dashboard-shared";
+import {
+  buildRiskAlerts,
+  buildUpcomingAlerts,
+  buildGroupedAlerts,
+  type AlertDecision,
+  type AlertGroup,
+  type AlertGroupKey,
+} from "@/features/dashboard/lib/alert-engine";
 import { createClient } from "@/lib/supabase/client";
 import { Runtime } from "@/lib/env/runtime";
 
@@ -63,6 +72,7 @@ type ListRow = {
   actionLabel: string;
   alertKey: string;
   tone: "critical" | "warning" | "info";
+  groupKey: AlertGroupKey;
 };
 
 const TONE_LABEL: Record<ListRow["tone"], string> = {
@@ -81,21 +91,7 @@ type UndoState = {
   alertKey: string;
 };
 
-const DATE_FORMATTER = new Intl.DateTimeFormat("tr-TR", {
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-});
-
 const DISMISSED_ALERTS_STORAGE_KEY = "dismissed_alerts";
-
-const formatDate = (value: string) => DATE_FORMATTER.format(new Date(value.includes("T") ? value : `${value}T00:00:00`));
-
-const formatCurrency = (value: number) =>
-  `${new Intl.NumberFormat("tr-TR", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(value)} TL`;
 
 const toneClass: Record<ListRow["tone"], string> = {
   critical: "border-rose-300/35 bg-rose-300/10 text-rose-100",
@@ -110,8 +106,6 @@ const isMissingDismissedAlertsTableError = (message: string | undefined) => {
     (normalized.includes("does not exist") || normalized.includes("schema cache"))
   );
 };
-
-const toAlertKey = (type: string, entityId: string, dueDate: string) => `${type}:${entityId}:${dueDate}`;
 
 const readDismissedAlertKeys = (): Set<string> => {
   if (!Runtime.isClient()) {
@@ -153,137 +147,30 @@ export function RisksAndUpcoming({ userId, riskPanel }: RisksAndUpcomingProps) {
   const [undoState, setUndoState] = useState<UndoState | null>(null);
   const [canUseSupabaseDismiss, setCanUseSupabaseDismiss] = useState(true);
 
+  const ICON_MAP: Record<string, LucideIcon> = useMemo(() => ({
+    overdue: Wrench,
+    warranty: ShieldAlert,
+    payment: WalletCards,
+    docs: FileWarning,
+    "upcoming-maintenance": Timer,
+    "upcoming-warranty": ShieldAlert,
+    "upcoming-payment": WalletCards,
+  }), []);
+
+  const injectIcon = useCallback((row: AlertDecision): ListRow => {
+    const prefix = row.id.split("-")[0];
+    const secondPrefix = row.id.split("-").slice(0, 2).join("-");
+    return { ...row, icon: ICON_MAP[secondPrefix] ?? ICON_MAP[prefix] ?? AlertTriangle };
+  }, [ICON_MAP]);
+
   const riskRows = useMemo<ListRow[]>(
-    () =>
-      [
-        ...riskPanel.overdueMaintenance.map((item) => ({
-          id: `overdue-${item.id}`,
-          icon: Wrench,
-          title: `"${item.assetName}" Bakımı ${item.dayCount} Gün Gecikti`,
-          description: `"${item.assetName}" için planlanan "${item.ruleTitle}" bakımı ${formatDate(item.dueDate)} tarihinde yapılmalıydı ancak henüz tamamlanmadı.`,
-          impact: item.dayCount > 14
-            ? "Uzun süreli gecikme arıza riskini ciddi şekilde artırır ve onarım maliyetleri yükselebilir."
-            : "Bakım geciktikçe performans düşer ve uzun vadede onarım maliyetleri artar.",
-          dateLabel: `${item.dayCount} gün gecikti · ${formatDate(item.dueDate)}`,
-          sortDate: item.dueDate,
-          actionHref: `/services?asset=${item.assetId}&rule=${item.id}`,
-          actionLabel: "Bakımı Planla",
-          alertKey: toAlertKey("overdue-maintenance", item.id, item.dueDate),
-          tone: "critical" as const,
-        })),
-        ...riskPanel.upcomingWarranty.map((item) => ({
-          id: `warranty-${item.id}`,
-          icon: ShieldAlert,
-          title: item.daysRemaining <= 0
-            ? `"${item.assetName}" Garanti Süresi Doldu`
-            : `"${item.assetName}" Garantisi ${item.daysRemaining} Gün İçinde Bitiyor`,
-          description: item.daysRemaining <= 0
-            ? `"${item.assetName}" garanti süresi ${formatDate(item.warrantyEndDate)} tarihinde sona erdi.`
-            : `"${item.assetName}" garanti bitiş tarihi ${formatDate(item.warrantyEndDate)}. Kalan süre: ${item.daysRemaining} gün.`,
-          impact: item.daysRemaining <= 0
-            ? "Garanti sona erdiğinden olası arızalarda tüm masraflar size ait olacaktır."
-            : "Garanti bitmeden mevcut sorunları bildirmezseniz ücretsiz onarım hakkını kaybedersiniz.",
-          dateLabel: item.daysRemaining <= 0
-            ? `Süresi doldu · ${formatDate(item.warrantyEndDate)}`
-            : `${item.daysRemaining} gün kaldı · ${formatDate(item.warrantyEndDate)}`,
-          sortDate: item.warrantyEndDate,
-          actionHref: `/assets/${item.assetId}`,
-          actionLabel: "Detayları Gör",
-          alertKey: toAlertKey("warranty", item.id, item.warrantyEndDate),
-          tone: item.daysRemaining <= 0 ? ("critical" as const) : ("warning" as const),
-        })),
-        ...riskPanel.upcomingPayments.map((item) => {
-          const isOverdue = item.daysRemaining < 0;
-          const absDays = Math.abs(item.daysRemaining);
-          return {
-            id: `payment-${item.id}`,
-            icon: WalletCards,
-            title: isOverdue
-              ? `"${item.subscriptionName}" Ödemesi ${absDays} Gün Gecikti`
-              : `"${item.subscriptionName}" Ödemesi ${item.daysRemaining} Gün İçinde`,
-            description: isOverdue
-              ? `"${item.subscriptionName}" için ${formatCurrency(item.totalAmount)} tutarındaki ödeme ${formatDate(item.dueDate)} tarihinde yapılmalıydı ancak henüz ödenmedi.`
-              : `"${item.subscriptionName}" için ${formatCurrency(item.totalAmount)} tutarındaki ödeme ${formatDate(item.dueDate)} tarihinde yapılmalı.`,
-            impact: isOverdue
-              ? "Geciken ödemeler ek ücret, faiz veya hizmet kesintisine neden olabilir."
-              : "Ödemeyi zamanında yaparak gecikme cezası ve hizmet kesintisi riskinden kaçının.",
-            dateLabel: `${isOverdue ? `${absDays} gün gecikti` : `${item.daysRemaining} gün kaldı`} · ${formatCurrency(item.totalAmount)} · ${formatDate(item.dueDate)}`,
-            sortDate: item.dueDate,
-            actionHref: "/invoices",
-            actionLabel: isOverdue ? "Ödemeyi Yap" : "Fatura Detayı",
-            alertKey: toAlertKey("payment", item.id, item.dueDate),
-            tone: isOverdue ? ("critical" as const) : ("warning" as const),
-          };
-        }),
-        ...riskPanel.missingDocuments.map((item) => ({
-          id: `docs-${item.id}`,
-          icon: FileWarning,
-          title: `"${item.assetName}" İçin ${item.daysWithoutDocument} Gündür Belge Yok`,
-          description: `"${item.assetName}" varlığına kayıt tarihinden (${formatDate(item.createdAt)}) bu yana hiç belge eklenmemiş.`,
-          impact: "Eksik belgeler garanti başvurusu, sigorta talebi veya denetim süreçlerinde ciddi sorun yaratabilir.",
-          dateLabel: `${item.daysWithoutDocument} gündür belge yok · ${formatDate(item.createdAt)}`,
-          sortDate: item.createdAt,
-          actionHref: `/documents?asset=${item.assetId}`,
-          actionLabel: "Belge Yükle",
-          alertKey: toAlertKey("missing-document", item.id, item.createdAt),
-          tone: "info" as const,
-        })),
-      ].slice(0, 10),
-    [riskPanel],
+    () => buildRiskAlerts(riskPanel).map(injectIcon),
+    [riskPanel, injectIcon],
   );
 
   const upcomingRows = useMemo<ListRow[]>(
-    () =>
-      [
-        ...riskPanel.upcomingMaintenance.map((item) => ({
-          id: `upcoming-maintenance-${item.id}`,
-          icon: Timer,
-          title: `"${item.assetName}" Bakımı ${item.dayCount} Gün İçinde Planlanmalı`,
-          description: `"${item.assetName}" için "${item.ruleTitle}" bakımı ${formatDate(item.dueDate)} tarihinde yapılmalı.`,
-          impact: item.dayCount <= 3
-            ? "Bakım tarihi çok yakın — hazırlıkları şimdiden tamamlayın, aksi halde gecikme riski oluşur."
-            : "Bakımı zamanında yaparak arıza riskini önleyin ve varlık performansını koruyun.",
-          dateLabel: `${item.dayCount} gün sonra · ${formatDate(item.dueDate)}`,
-          sortDate: item.dueDate,
-          actionHref: `/services?asset=${item.assetId}&rule=${item.id}`,
-          actionLabel: "Bakımı Planla",
-          alertKey: toAlertKey("upcoming-maintenance", item.id, item.dueDate),
-          tone: "warning" as const,
-        })),
-        ...riskPanel.upcomingWarranty
-          .filter((item) => item.daysRemaining <= 7)
-          .map((item) => ({
-            id: `upcoming-warranty-${item.id}`,
-            icon: ShieldAlert,
-            title: `"${item.assetName}" Garantisi ${item.daysRemaining} Gün İçinde Sona Eriyor`,
-            description: `"${item.assetName}" garanti bitiş tarihi ${formatDate(item.warrantyEndDate)}. Mevcut sorunlar varsa garanti kapsamında bildirmeniz gerekiyor.`,
-            impact: "Garanti bitmeden sorunları bildirmezseniz ücretsiz onarım hakkını kaybedersiniz.",
-            dateLabel: `${item.daysRemaining} gün kaldı · ${formatDate(item.warrantyEndDate)}`,
-            sortDate: item.warrantyEndDate,
-            actionHref: `/assets/${item.assetId}`,
-            actionLabel: "Detayları Gör",
-            alertKey: toAlertKey("warranty", item.id, item.warrantyEndDate),
-            tone: "warning" as const,
-          })),
-        ...riskPanel.upcomingPayments
-          .filter((item) => item.daysRemaining >= 0 && item.daysRemaining <= 7)
-          .map((item) => ({
-            id: `upcoming-payment-${item.id}`,
-            icon: WalletCards,
-            title: `"${item.subscriptionName}" Ödemesi ${item.daysRemaining} Gün İçinde`,
-            description: `"${item.subscriptionName}" için ${formatCurrency(item.totalAmount)} tutarındaki ödeme ${formatDate(item.dueDate)} tarihinde yapılmalı.`,
-            impact: "Zamanında ödeme yaparak gecikme cezası ve olası hizmet kesintisi riskinden kaçının.",
-            dateLabel: `${item.daysRemaining} gün kaldı · ${formatCurrency(item.totalAmount)} · ${formatDate(item.dueDate)}`,
-            sortDate: item.dueDate,
-            actionHref: "/invoices",
-            actionLabel: "Fatura Detayı",
-            alertKey: toAlertKey("payment", item.id, item.dueDate),
-            tone: "info" as const,
-          })),
-      ]
-        .sort((a, b) => new Date(a.sortDate).getTime() - new Date(b.sortDate).getTime())
-        .slice(0, 10),
-    [riskPanel],
+    () => buildUpcomingAlerts(riskPanel).map(injectIcon),
+    [riskPanel, injectIcon],
   );
 
   const shownRiskRows = useMemo(
@@ -294,6 +181,16 @@ export function RisksAndUpcoming({ userId, riskPanel }: RisksAndUpcomingProps) {
   const shownUpcomingRows = useMemo(
     () => (showDismissed ? upcomingRows : upcomingRows.filter((row) => !dismissedKeys.has(row.alertKey))),
     [dismissedKeys, upcomingRows, showDismissed],
+  );
+
+  const riskGroups = useMemo(
+    () => buildGroupedAlerts(shownRiskRows as AlertDecision[]),
+    [shownRiskRows],
+  );
+
+  const upcomingGroups = useMemo(
+    () => buildGroupedAlerts(shownUpcomingRows as AlertDecision[]),
+    [shownUpcomingRows],
   );
 
   useEffect(() => {
@@ -442,9 +339,10 @@ export function RisksAndUpcoming({ userId, riskPanel }: RisksAndUpcomingProps) {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <RiskRowsPanel
+        <GroupedRiskPanel
           title="Öncelikli Riskler"
-          rows={shownRiskRows}
+          groups={riskGroups}
+          allRows={shownRiskRows}
           dismissedKeys={dismissedKeys}
           onDismiss={onDismiss}
           settingsAction={{
@@ -461,9 +359,10 @@ export function RisksAndUpcoming({ userId, riskPanel }: RisksAndUpcomingProps) {
           }}
         />
 
-        <RiskRowsPanel
+        <GroupedRiskPanel
           title="Yaklaşanlar (7 gün)"
-          rows={shownUpcomingRows}
+          groups={upcomingGroups}
+          allRows={shownUpcomingRows}
           dismissedKeys={dismissedKeys}
           onDismiss={onDismiss}
           emptyState={{
@@ -491,16 +390,25 @@ export function RisksAndUpcoming({ userId, riskPanel }: RisksAndUpcomingProps) {
   );
 }
 
-const RiskRowsPanel = memo(function RiskRowsPanel({
+const GROUP_ICON: Record<AlertGroupKey, LucideIcon> = {
+  maintenance: Wrench,
+  warranty: ShieldAlert,
+  payment: WalletCards,
+  document: FileWarning,
+};
+
+const GroupedRiskPanel = memo(function GroupedRiskPanel({
   title,
-  rows,
+  groups,
+  allRows,
   dismissedKeys,
   onDismiss,
   emptyState,
   settingsAction,
 }: {
   title: string;
-  rows: ListRow[];
+  groups: AlertGroup[];
+  allRows: ListRow[];
   dismissedKeys: Set<string>;
   onDismiss: (alertKey: string) => void;
   emptyState: {
@@ -517,6 +425,19 @@ const RiskRowsPanel = memo(function RiskRowsPanel({
   };
 }) {
   const SettingsIcon = settingsAction?.icon;
+  const [expandedGroups, setExpandedGroups] = useState<Set<AlertGroupKey>>(new Set());
+
+  const toggleGroup = useCallback((key: AlertGroupKey) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }, []);
 
   return (
     <article className="rounded-2xl border border-[#2B3F5D] bg-[linear-gradient(150deg,rgba(10,22,44,0.92),rgba(11,18,35,0.84))] p-5 shadow-[0_16px_34px_rgba(2,8,20,0.34)]">
@@ -524,7 +445,7 @@ const RiskRowsPanel = memo(function RiskRowsPanel({
         <h2 className="text-lg font-semibold text-[#F8FAFC]">{title}</h2>
         <div className="flex items-center gap-2">
           <span className="rounded-full border border-[#345073] bg-[#102643] px-2.5 py-1 text-xs font-semibold text-[#C3D7F4]">
-            {rows.length} kayıt
+            {allRows.length} kayıt
           </span>
           {settingsAction ? (
             <Link
@@ -538,7 +459,7 @@ const RiskRowsPanel = memo(function RiskRowsPanel({
         </div>
       </div>
 
-      {rows.length === 0 ? (
+      {allRows.length === 0 ? (
         <EmptyState
           icon={emptyState.icon}
           title={emptyState.title}
@@ -547,15 +468,65 @@ const RiskRowsPanel = memo(function RiskRowsPanel({
           ctaLabel={emptyState.ctaLabel}
         />
       ) : (
-        <div className="space-y-2.5">
-          {rows.map((row) => (
-            <RiskRow
-              key={row.id}
-              row={row}
-              isDismissed={dismissedKeys.has(row.alertKey)}
-              onDismiss={() => onDismiss(row.alertKey)}
-            />
-          ))}
+        <div className="space-y-4">
+          {groups.map((group) => {
+            const GroupIcon = GROUP_ICON[group.key];
+            const isExpanded = expandedGroups.has(group.key);
+            const visibleRows = group.visible as unknown as ListRow[];
+            const collapsedRows = group.collapsed as unknown as ListRow[];
+            const shownRows = isExpanded ? [...visibleRows, ...collapsedRows] : visibleRows;
+
+            return (
+              <div key={group.key} className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex rounded-lg border p-1.5 ${toneClass[group.tone]}`}>
+                      <GroupIcon className="size-3.5" aria-hidden />
+                    </span>
+                    <span className="text-sm font-semibold text-[#E4EEFF]">{group.label}</span>
+                    <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${toneBadgeClass[group.tone]}`}>
+                      {group.totalCount}
+                    </span>
+                    {group.criticalCount > 0 ? (
+                      <span className="text-[10px] font-semibold text-rose-300/80">
+                        {group.criticalCount} kritik
+                      </span>
+                    ) : null}
+                  </div>
+                  <Link
+                    href={group.groupActionHref}
+                    className="inline-flex items-center rounded-lg border border-[#3C587C] bg-[#143258] px-2.5 py-1 text-[11px] font-semibold text-[#E4EEFF] transition hover:bg-[#1A3E6D]"
+                  >
+                    {group.groupActionLabel}
+                  </Link>
+                </div>
+
+                <div className="space-y-2">
+                  {shownRows.map((row) => (
+                    <RiskRow
+                      key={row.id}
+                      row={row}
+                      isDismissed={dismissedKeys.has(row.alertKey)}
+                      onDismiss={() => onDismiss(row.alertKey)}
+                    />
+                  ))}
+                </div>
+
+                {collapsedRows.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(group.key)}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-[#2B3F5D]/60 bg-[#0A1628]/40 px-3 py-2 text-xs font-semibold text-[#9FB2CE] transition hover:bg-[#0E1E37] hover:text-[#CFE0FA]"
+                  >
+                    <ChevronDown className={`size-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} aria-hidden />
+                    {isExpanded
+                      ? "Daralt"
+                      : `${collapsedRows.length} diğer uyarıyı görüntüle`}
+                  </button>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       )}
     </article>

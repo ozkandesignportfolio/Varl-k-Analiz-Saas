@@ -75,7 +75,7 @@ export const DashboardContent = memo(function DashboardContent({
         </p>
       ) : null}
 
-      <ControlCenterHeader userId={userId} selectedRange={selectedRange} status={snapshot.data.status} />
+      <ControlCenterHeader userId={userId} selectedRange={selectedRange} status={snapshot.data.status} riskPanel={snapshot.data.riskPanel} />
 
       <div className={isSwitching ? "pointer-events-none opacity-70 transition-opacity duration-150" : "transition-opacity duration-150"}>
         <KPICards metrics={snapshot.data.metrics} trends={snapshot.data.trends} selectedRange={selectedRange} />

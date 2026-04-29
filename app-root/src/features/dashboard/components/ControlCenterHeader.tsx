@@ -16,15 +16,18 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   type DashboardDateRangeDays,
+  type DashboardSnapshot,
   type DashboardSystemRiskType,
   type DashboardSystemStatus,
 } from "@/features/dashboard/api/dashboard-shared";
+import { buildHeaderAlert } from "@/features/dashboard/lib/alert-engine";
 import { useRiskActions } from "@/features/dashboard/hooks/useRiskActions";
 
 type ControlCenterHeaderProps = {
   userId: string;
   selectedRange: DashboardDateRangeDays;
   status: DashboardSystemStatus;
+  riskPanel: DashboardSnapshot["riskPanel"];
 };
 
 const SNOOZE_OPTIONS: { label: string; durationMs: number }[] = [
@@ -80,6 +83,7 @@ export const ControlCenterHeader = memo(function ControlCenterHeader({
   userId,
   selectedRange,
   status,
+  riskPanel,
 }: ControlCenterHeaderProps) {
   const router = useRouter();
   const style = STATUS_STYLES[status.tone];
@@ -134,110 +138,23 @@ export const ControlCenterHeader = memo(function ControlCenterHeader({
       </div>
 
       {isStatusCardVisible ? (
-        <StatusAlertCard style={style} status={status} onDismiss={dismissRisk} onSnooze={snoozeRisk} onFix={handleFix} />
+        <StatusAlertCard style={style} status={status} riskPanel={riskPanel} onDismiss={dismissRisk} onSnooze={snoozeRisk} onFix={handleFix} />
       ) : null}
     </section>
   );
 });
 
-type AlertContent = {
-  severityLabel: string;
-  title: string;
-  description: string;
-  impact: string;
-  action: string;
-  ctaLabel: string;
-  SeverityIcon: typeof ShieldAlert;
-};
-
-const buildAlertContent = (status: DashboardSystemStatus): AlertContent => {
-  const count = status.riskCount;
-
-  switch (status.risk.type) {
-    case "maintenance_due":
-      return {
-        severityLabel: status.tone === "critical" ? "Kritik" : "Uyarı",
-        title: `${count} Bakım Zamanında Yapılmadı`,
-        description:
-          count === 1
-            ? "Planlanan bakım tarihi geçmiş durumda. Gecikmiş bakım işlemini en kısa sürede planlayın."
-            : `${count} varlık için planlanan bakım tarihleri geçmiş durumda. Gecikmiş işlemleri kontrol edin.`,
-        impact: "Bakım gecikmesi arıza riskini artırır, performansı düşürür ve uzun vadede onarım maliyetlerini yükseltir.",
-        action: "Bakım planını açarak gecikmiş işlemleri zamanlayın.",
-        ctaLabel: "Bakımları Planla",
-        SeverityIcon: ShieldAlert,
-      };
-
-    case "rule_missing":
-      return {
-        severityLabel: "Uyarı",
-        title: "Bakım Kuralı Tanımlanmamış",
-        description: "Varlıklarınız için henüz periyodik bakım kuralı oluşturulmamış.",
-        impact: "Bakım kuralı olmadan olası arızalar önceden tespit edilemez ve plansız duruşlar yaşanabilir.",
-        action: "En az bir periyodik bakım kuralı oluşturarak varlıklarınızı koruma altına alın.",
-        ctaLabel: "Kural Oluştur",
-        SeverityIcon: AlertTriangle,
-      };
-
-    case "document_missing":
-      return {
-        severityLabel: "Bilgi",
-        title: `${count} Varlıkta Belge Eksik`,
-        description:
-          count === 1
-            ? "Bir varlığa henüz hiç belge eklenmemiş."
-            : `${count} varlığa henüz hiç belge eklenmemiş.`,
-        impact: "Eksik belgeler garanti başvurusu, sigorta talebi veya denetim süreçlerinde ciddi sorun yaratabilir.",
-        action: "İlgili varlıklara garanti belgesi, fatura veya servis raporlarını yükleyin.",
-        ctaLabel: "Belge Yükle",
-        SeverityIcon: AlertTriangle,
-      };
-
-    case "invoice_due":
-      return {
-        severityLabel: status.tone === "critical" ? "Kritik" : "Uyarı",
-        title:
-          status.tone === "critical"
-            ? `${count} Ödeme Vadesi Geçti`
-            : `${count} Ödeme Yaklaşıyor`,
-        description:
-          status.tone === "critical"
-            ? `${count} faturanın ödeme tarihi geçmiş durumda. Gecikmiş ödemeleri hemen kontrol edin.`
-            : `${count} faturanın ödeme tarihi yaklaşıyor. Zamanında ödeme yaparak gecikme riskinden kaçının.`,
-        impact: "Geciken ödemeler ek ücret, faiz veya hizmet kesintisine neden olabilir.",
-        action: "Fatura detaylarını kontrol edin ve ödeme planınızı güncelleyin.",
-        ctaLabel: "Ödemeleri Kontrol Et",
-        SeverityIcon: ShieldAlert,
-      };
-
-    case "notification_prefs":
-    default:
-      if (status.tone === "healthy") {
-        return {
-          severityLabel: "Sağlıklı",
-          title: "Her Şey Yolunda",
-          description: "Kritik veya yaklaşan risk kaydı bulunmuyor. Sisteminiz sağlıklı çalışıyor.",
-          impact: "",
-          action: "",
-          ctaLabel: "Tercihleri Düzenle",
-          SeverityIcon: ShieldCheck,
-        };
-      }
-      return {
-        severityLabel: "Bilgi",
-        title: "Bildirim Tercihleri",
-        description: "Bildirim ayarlarınızı düzenleyerek önemli uyarıları zamanında alın.",
-        impact: "Doğru yapılandırılmamış bildirimler kritik uyarıların gözden kaçmasına yol açabilir.",
-        action: "Bildirim tercihlerinizi kontrol edin ve güncelleyin.",
-        ctaLabel: "Tercihleri Düzenle",
-        SeverityIcon: ShieldCheck,
-      };
-  }
+const TONE_SEVERITY_ICON: Record<DashboardSystemStatus["tone"], typeof ShieldAlert> = {
+  critical: ShieldAlert,
+  warning: AlertTriangle,
+  stable: ShieldCheck,
+  healthy: ShieldCheck,
 };
 
 const StatusAlertCard = memo(function StatusAlertCard({
   style,
   status,
+  riskPanel,
   onDismiss,
   onSnooze,
   onFix,
@@ -249,27 +166,48 @@ const StatusAlertCard = memo(function StatusAlertCard({
     iconButton: string;
   };
   status: DashboardSystemStatus;
+  riskPanel: DashboardSnapshot["riskPanel"];
   onDismiss: () => void;
   onSnooze: (durationMs: number) => void;
   onFix: () => void;
 }) {
-  const alert = useMemo(() => buildAlertContent(status), [status]);
+  const alert = useMemo(() => buildHeaderAlert(status, riskPanel), [status, riskPanel]);
+  const SeverityIcon = TONE_SEVERITY_ICON[status.tone];
 
   return (
     <div className={`mt-5 rounded-2xl border p-4 ${style.wrapper}`}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3 min-w-0 flex-1">
           <span className="mt-1 inline-flex shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 p-1.5">
-            <alert.SeverityIcon className="size-4 text-[#F8FAFC]" aria-hidden />
+            <SeverityIcon className="size-4 text-[#F8FAFC]" aria-hidden />
           </span>
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${style.badge}`}>
                 {alert.severityLabel}
               </span>
-              <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${style.badge}`}>
-                {status.riskCount} aktif kayıt
-              </span>
+              {alert.breakdown.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {alert.breakdown.map((b) => (
+                    <span
+                      key={b.label}
+                      className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                        b.tone === "critical"
+                          ? "border-rose-300/30 bg-rose-400/10 text-rose-200"
+                          : b.tone === "warning"
+                            ? "border-amber-300/30 bg-amber-400/10 text-amber-200"
+                            : "border-sky-300/30 bg-sky-400/10 text-sky-200"
+                      }`}
+                    >
+                      {b.label}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${style.badge}`}>
+                  {status.riskCount} aktif kayıt
+                </span>
+              )}
             </div>
 
             <h2 className="text-lg font-semibold leading-snug text-[#F8FAFC]">{alert.title}</h2>
