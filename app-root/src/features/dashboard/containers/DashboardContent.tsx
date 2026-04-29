@@ -75,10 +75,6 @@ export const DashboardContent = memo(function DashboardContent({
         </p>
       ) : null}
 
-      <div className="rounded-lg border border-sky-300/30 bg-sky-300/10 px-3 py-1 text-xs font-bold text-sky-200">
-        Dashboard UI v2 — grouped alerts active
-      </div>
-
       <ControlCenterHeader userId={userId} selectedRange={selectedRange} status={snapshot.data.status} riskPanel={snapshot.data.riskPanel} />
 
       <div className={isSwitching ? "pointer-events-none opacity-70 transition-opacity duration-150" : "transition-opacity duration-150"}>
