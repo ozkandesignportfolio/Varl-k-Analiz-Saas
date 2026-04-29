@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { memo } from "react";
 import {
@@ -8,6 +10,7 @@ import {
   Wrench,
   type LucideIcon,
 } from "lucide-react";
+import { StaggerContainer, StaggerItem } from "@/features/dashboard/components/DashboardAnimations";
 import type { DashboardDateRangeDays, DashboardSnapshot } from "@/features/dashboard/api/dashboard-queries";
 
 const NUMBER_FORMATTER = new Intl.NumberFormat("tr-TR");
@@ -134,11 +137,13 @@ export function KPICards({ metrics, trends, selectedRange }: KPICardsProps) {
         <p className="text-xs text-[#8DA6C8]">{rangeLabel}</p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <StaggerContainer className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => (
-          <KpiCard key={card.id} card={card} />
+          <StaggerItem key={card.id}>
+            <KpiCard card={card} />
+          </StaggerItem>
         ))}
-      </div>
+      </StaggerContainer>
     </section>
   );
 }
@@ -149,12 +154,14 @@ const KpiCard = memo(function KpiCard({ card }: { card: KpiCardItem }) {
   return (
     <Link
       href={card.href}
-      className="group relative flex flex-col rounded-xl border border-white/5 bg-white/[0.02] p-5 transition-colors hover:bg-white/[0.04] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#38BDF8]/40"
+      className="group relative flex h-full flex-col rounded-xl border border-white/[0.07] bg-[linear-gradient(145deg,rgba(15,25,50,0.85),rgba(10,18,35,0.75))] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:border-white/[0.12] hover:bg-[linear-gradient(145deg,rgba(18,30,58,0.9),rgba(12,22,42,0.82))] hover:shadow-[0_8px_32px_rgba(0,0,0,0.28)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#38BDF8]/40"
       data-testid={`dashboard-kpi-${card.id}-card`}
     >
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-medium text-[#8DA6C8]">{card.title}</p>
-        <Icon className="size-4 text-[#8DA6C8]/70" aria-hidden />
+        <span className="inline-flex items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.03] p-1.5">
+          <Icon className="size-4 text-[#8DA6C8]/70" aria-hidden />
+        </span>
       </div>
 
       <p

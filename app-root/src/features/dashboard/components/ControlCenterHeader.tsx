@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { memo, useCallback } from "react";
-import { CalendarDays, ChevronDown, Clock3, Plus, Wrench, X } from "lucide-react";
+import { ChevronDown, Clock3, Plus, Wrench, X } from "lucide-react";
+import { FadeInUp } from "@/features/dashboard/components/DashboardAnimations";
+import { DateRangeSelector } from "@/features/dashboard/components/DateRangeSelector";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,8 +27,6 @@ type ControlCenterHeaderProps = {
   selectedRange: DashboardDateRangeDays;
   status: DashboardSystemStatus;
 };
-
-const DASHBOARD_RANGE_OPTIONS: DashboardDateRangeDays[] = [7, 30, 90];
 
 const SNOOZE_OPTIONS: { label: string; durationMs: number }[] = [
   { label: "1 saat", durationMs: 60 * 60 * 1000 },
@@ -95,6 +95,7 @@ export const ControlCenterHeader = memo(function ControlCenterHeader({
   }, [markRiskFix, router, status.risk.type]);
 
   return (
+    <FadeInUp>
     <section className="rounded-3xl border border-[#24344F] bg-[linear-gradient(145deg,rgba(8,20,45,0.92),rgba(9,17,33,0.84))] p-5 shadow-[0_20px_45px_rgba(3,8,20,0.42)] sm:p-6">
       <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
         <div className="space-y-3">
@@ -116,26 +117,7 @@ export const ControlCenterHeader = memo(function ControlCenterHeader({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex items-center gap-1 rounded-xl border border-[#2A3E5F] bg-[#0D1B33]/70 p-1.5">
-            <CalendarDays className="mx-1 size-4 text-[#86A3C8]" aria-hidden />
-            {DASHBOARD_RANGE_OPTIONS.map((range) => {
-              const isActive = selectedRange === range;
-
-              return (
-                <Link
-                  key={range}
-                  href={`/dashboard?range=${range}`}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                    isActive
-                      ? "border border-[#42608A] bg-[#173155] text-[#EAF2FF]"
-                      : "text-[#9CB0CE] hover:bg-[#132A4A] hover:text-[#F1F5F9]"
-                  }`}
-                >
-                  Son {range} gün
-                </Link>
-              );
-            })}
-          </div>
+          <DateRangeSelector selectedRange={selectedRange} />
 
           <details className="group relative">
             <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl border border-[#2F4569] bg-[#10243F] px-4 py-2 text-sm font-semibold text-[#E2E8F0] transition hover:bg-[#143158]">
@@ -157,6 +139,7 @@ export const ControlCenterHeader = memo(function ControlCenterHeader({
         <StatusAlertCard style={style} status={status} onDismiss={dismissRisk} onSnooze={snoozeRisk} onFix={handleFix} />
       ) : null}
     </section>
+    </FadeInUp>
   );
 });
 

@@ -14,6 +14,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
+import { FadeInUp, StaggerContainer, StaggerItem } from "@/features/dashboard/components/DashboardAnimations";
 import type { DashboardSnapshot } from "@/features/dashboard/api/dashboard-queries";
 import { createClient } from "@/lib/supabase/client";
 import { Runtime } from "@/lib/env/runtime";
@@ -372,6 +373,7 @@ export function RisksAndUpcoming({ userId, riskPanel }: RisksAndUpcomingProps) {
   }, []);
 
   return (
+    <FadeInUp delay={0.2}>
     <section className="space-y-3">
       <div className="flex items-center justify-end">
         <button
@@ -430,6 +432,7 @@ export function RisksAndUpcoming({ userId, riskPanel }: RisksAndUpcomingProps) {
         </div>
       ) : null}
     </section>
+    </FadeInUp>
   );
 }
 
@@ -489,16 +492,17 @@ const RiskRowsPanel = memo(function RiskRowsPanel({
           ctaLabel={emptyState.ctaLabel}
         />
       ) : (
-        <ul className="space-y-2.5">
+        <StaggerContainer className="space-y-2.5" staggerDelay={0.04}>
           {rows.map((row) => (
-            <RiskRow
-              key={row.id}
-              row={row}
-              isDismissed={dismissedKeys.has(row.alertKey)}
-              onDismiss={() => onDismiss(row.alertKey)}
-            />
+            <StaggerItem key={row.id}>
+              <RiskRow
+                row={row}
+                isDismissed={dismissedKeys.has(row.alertKey)}
+                onDismiss={() => onDismiss(row.alertKey)}
+              />
+            </StaggerItem>
           ))}
-        </ul>
+        </StaggerContainer>
       )}
     </article>
   );
