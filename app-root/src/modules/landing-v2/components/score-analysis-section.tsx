@@ -67,22 +67,22 @@ export function ScoreAnalysisSection() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className={`min-w-0 w-full ${inView ? "animate-slide-up" : "opacity-0"}`}>
             <div className="glass-card min-w-0 w-full rounded-3xl border border-border/60 bg-background/70 p-5 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)] sm:p-8">
-              <h2 className="text-xl font-bold text-foreground sm:text-2xl md:text-4xl">SaaS Sağlık Skoru</h2>
+              <h2 className="text-xl font-bold text-foreground sm:text-2xl md:text-4xl">Varlık Sağlık Skoru</h2>
               <p className="mt-2 text-base font-medium text-chart-3">3 adımda net bir puan</p>
               <p className="mt-5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                Her SaaS aracınızın sağlık durumunu tek puanda topluyoruz. Kullanım oranı, maliyet verimliliği ve sözleşme durumu
+                Varlık, gider ve kullanım verilerinden net bir skor oluşturun. Kullanım oranı, maliyet verimliliği ve sözleşme durumu
                 birlikte değerlendirilerek size net bir özet sunuyoruz.
               </p>
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                Puan yükseldikçe gereksiz maliyet riski azalır, abonelik yönetimi daha öngörülebilir hale gelir.
+                Bakım durumu, belge eksikleri, yaklaşan ödemeler ve kullanım bilgileriyle daha sağlıklı kararlar alın.
               </p>
 
               <ol className="mt-6 space-y-3 text-sm text-foreground">
                 <li className="rounded-xl border border-border/50 bg-secondary/30 px-4 py-3">
-                  1) Lisans: Aktif kullanım varsa +, kullanılmıyorsa eksi
+                  1) Kullanım: Aktif kullanım varsa +, atıl kalan eksi
                 </li>
                 <li className="rounded-xl border border-border/50 bg-secondary/30 px-4 py-3">
-                  2) Kullanım: Düzenli kullanılan araç +, atıl kalan eksi
+                  2) Bakım ve Belgeler: Eksiksiz belge ve zamanında bakım +, eksikler eksi
                 </li>
                 <li className="rounded-xl border border-border/50 bg-secondary/30 px-4 py-3">
                   3) Sözleşme ve Ödemeler: Eksiksiz belge ve zamanında ödeme +, eksikler eksi
@@ -103,13 +103,13 @@ export function ScoreAnalysisSection() {
                   <p className="font-medium text-foreground">
                     Skor = (Lisans + Kullanım + Sözleşme + Ödeme) ortalaması + maliyet verimliliği bonusu
                   </p>
-                  <p className="mt-2">Maliyet verimliliği bonusu: Abonelik Değeri / (Toplam SaaS Harcaması)</p>
+                  <p className="mt-2">Maliyet verimliliği bonusu: Varlık Değeri / (Toplam Gider)</p>
                 </div>
               ) : null}
 
               <Button asChild size="lg" className="mt-8 w-full sm:w-auto">
                 <Link href="/costs">
-                  SaaS skorumu nasıl yükseltirm?
+                  Skorumu nasıl yükseltirim?
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -131,7 +131,7 @@ export function ScoreAnalysisSection() {
                   <span className="font-semibold text-foreground">{tlFormatter.format(exampleAsset.valueTl)} TL</span>
                 </div>
                 <div className="flex items-center justify-between rounded-lg bg-secondary/35 px-3 py-2">
-                  <span className="text-muted-foreground">Son 12 ay SaaS gideri</span>
+                  <span className="text-muted-foreground">Son 12 ay toplam gider</span>
                   <span className="font-semibold text-foreground">
                     {tlFormatter.format(exampleAsset.last12MonthServiceCostTl)} TL
                   </span>
@@ -180,7 +180,7 @@ export function ScoreAnalysisSection() {
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-[1fr_1fr_0.75fr]">
           <div className={`min-w-0 w-full ${inView ? "animate-slide-up" : "opacity-0"}`} style={{ animationDelay: "0.2s" }}>
             <div className="glass-card h-full min-w-0 w-full rounded-3xl border border-border/60 bg-background/70 p-6 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)]">
-              <h3 className="text-sm font-semibold text-foreground">SaaS Skor Dağılımı</h3>
+              <h3 className="text-sm font-semibold text-foreground">Skor Dağılımı</h3>
               <div className="mt-4 space-y-3">
                 {scoreBreakdown.map((item) => (
                   <BreakdownBar key={item.key} label={item.label} score={item.score} toneClass={item.toneClass} />
@@ -208,7 +208,7 @@ export function ScoreAnalysisSection() {
             <div className="glass-card h-full min-w-0 w-full rounded-3xl border border-border/60 bg-background/70 p-6 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.85)]">
               <h3 className="text-sm font-semibold text-foreground">Maliyet Verimliliği</h3>
               <div className="mt-4 rounded-2xl border border-primary/25 bg-primary/10 p-4">
-                <p className="text-xs text-primary">Abonelik Değeri / SaaS Gideri</p>
+                <p className="text-xs text-primary">Varlık Değeri / Toplam Gider</p>
                 <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-1 text-sm font-semibold text-emerald-100">
                   {costEfficiencyRatio}x (İyi)
                 </p>

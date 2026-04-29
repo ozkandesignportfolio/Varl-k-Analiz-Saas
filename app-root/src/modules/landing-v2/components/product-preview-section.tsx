@@ -114,8 +114,8 @@ export function ProductPreviewSection() {
             <span className="text-gradient">kusursuz deneyim</span>
           </h2>
           <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Ekibinizin SaaS aboneliklerini web, mobil ve tablet üzerinden
-            gerçek zamanlı takip edin. Her cihazda aynı güçlü deneyim.
+            Varlıklarınızı, aboneliklerinizi ve giderlerinizi web, mobil ve tablet
+            üzerinden takip edin. Her cihazda aynı düzenli deneyim.
           </p>
         </div>
 
@@ -274,7 +274,7 @@ export function ProductPreviewSection() {
 
             {/* ══ PHONE ══ */}
             <div
-              className="group w-[180px] shrink-0 self-center transform-gpu transition-transform duration-500 ease-out hover:scale-[1.05] sm:w-[220px] md:absolute md:-right-4 md:top-12 md:z-20 md:[transform:rotateZ(8deg)_translateY(1.5rem)]"
+              className="group w-[180px] max-h-[420px] shrink-0 self-center overflow-hidden transform-gpu transition-transform duration-500 ease-out hover:scale-[1.05] sm:w-[220px] sm:max-h-[560px] md:max-h-none md:absolute md:-right-4 md:top-12 md:z-20 md:[transform:rotateZ(8deg)_translateY(1.5rem)]"
             >
               {/* Ground shadow */}
               <div aria-hidden className="pointer-events-none absolute inset-x-4 -bottom-8 h-12 rounded-[50%] bg-black/50 blur-2xl" />

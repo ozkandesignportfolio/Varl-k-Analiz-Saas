@@ -63,14 +63,14 @@ export function BildirimSection() {
               <span className="text-gradient">durdurun</span>
             </h2>
             <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg">
-              Abonelik yenileme öncesi, kullanılmayan araç tespitinde ve fatura kesilmeden önce e-posta, push bildirim ve uygulama içi uyarılarla anında haberdar olun.
+              Abonelik yenileme, bakım tarihi, garanti bitişi ve fatura öncesinde e-posta, push bildirim ve uygulama içi uyarılarla zamanında haberdar olun.
             </p>
 
             <div className="mt-6 grid gap-3 sm:mt-10 sm:grid-cols-2 sm:gap-4">
               {[
                 { icon: BellRing, label: "Yenileme Uyarısı", desc: "Abonelik yenilenmeden önce haberdar olun" },
-                { icon: Mail, label: "Kullanım Raporu", desc: "Haftalık SaaS kullanım özeti" },
-                { icon: Smartphone, label: "Uygulama İçi", desc: "Anlık maliyet değişikliği uyarısı" },
+                { icon: Mail, label: "Kullanım Raporu", desc: "Haftalık varlık ve gider özeti" },
+                { icon: Smartphone, label: "Uygulama İçi", desc: "Anlık durum değişikliği uyarısı" },
                 { icon: Calendar, label: "Zamanlanmış", desc: "7 ve 30 gün önceden" },
               ].map((item, i) => (
                 <div key={i} className="flex items-start gap-3 rounded-xl border border-border/50 bg-secondary/30 p-4 transition-all hover:border-primary/20 hover:bg-secondary/50">
@@ -88,7 +88,7 @@ export function BildirimSection() {
 
           {/* Right - Notification Demo */}
           <div className={`${inView ? "animate-slide-up" : "opacity-0"}`} style={{ animationDelay: "0.2s" }}>
-            <div className="glass-card rounded-3xl p-6 animate-pulse-glow">
+            <div className="glass-card rounded-3xl p-4 sm:p-6 animate-pulse-glow">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
@@ -108,7 +108,7 @@ export function BildirimSection() {
                 {notifications.map((notif, i) => (
                   <div
                     key={i}
-                    className={`group flex items-start gap-3 rounded-xl p-4 transition-all duration-300 hover:scale-[1.02] ${
+                    className={`group flex items-start gap-3 rounded-xl p-3 sm:p-4 transition-all duration-300 hover:scale-[1.02] ${
                       notif.unread ? "bg-secondary/60 border border-primary/10" : "bg-secondary/30 border border-transparent"
                     }`}
                     style={{ animationDelay: `${i * 0.1 + 0.4}s` }}

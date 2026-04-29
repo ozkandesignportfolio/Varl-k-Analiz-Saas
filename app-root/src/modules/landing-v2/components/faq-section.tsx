@@ -11,40 +11,40 @@ interface FaqItem {
 
 const faqItems: FaqItem[] = [
   {
-    question: "Assetly SaaS maliyetlerimi nasıl azaltır?",
+    question: "Assetly nasıl fayda sağlar?",
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Assetly tüm aboneliklerinizi tek yerde gösterir, kullanılmayan araçları tespit eder ve gereksiz harcamaları ortadan kaldırmanıza yardımcı olur.
+          Assetly varlıklarınızı, aboneliklerinizi ve giderlerinizi tek yerden gösterir, kullanılmayan kalemleri tespit eder ve gereksiz harcamaları önlemenize yardımcı olur.
         </p>
         <p>
-          Çoğu ekip, farklı kartlara ve e-postalara dağılmış onlarca abonelik için ödeme yapar. Kimsenin kullanmadığı araçlar aylarca fatura kesmeye devam eder. Assetly bu görünmez maliyetleri görünür kılar — yenilemeden önce uyarır, kullanım verisini gösterir ve iptal önerir.
+          Farklı kaynaklara dağılmış abonelikler, belgelenmemiş varlıklar ve takip edilmeyen bakım süreçleri görünmez maliyetler oluşturur. Assetly bunları görünür kılar — yenilemeden önce uyarır, kullanım verisini gösterir ve önceliklendirmenize yardımcı olur.
         </p>
       </>
     ),
   },
   {
-    question: "Ekibimin tüm araçlarını takip edebilir miyim?",
+    question: "Ekibimin tüm varlıklarını ve aboneliklerini takip edebilir miyim?",
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Evet. Ekibinizin hangi araçları kullandığını ve her aboneliğe kimin atandığını görebilirsiniz.
+          Evet. Ekibinizin hangi varlıkları, abonelikleri ve araçları kullandığını görebilirsiniz.
         </p>
         <p>
-          Her aracın planını, kullanıcı sayısını, aylık maliyetini ve yenileme tarihini takip edin. Farklı departmanlar farklı araçlar kullansa bile toplam SaaS harcamanızı gerçek zamanlı olarak görürsünüz.
+          Her kalemin planını, sorumlularını, aylık maliyetini ve yenileme tarihini takip edin. Farklı departmanlar farklı araçlar kullansa bile toplam giderinizi gerçek zamanlı olarak görürsünüz.
         </p>
       </>
     ),
   },
   {
-    question: "Hangi aboneliklerimiz olduğunu bilmiyorsam?",
+    question: "Varlıklarımızın tam listesi elimizde yoksa?",
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Assetly tam da bunun için var. Gizli abonelikleri ortaya çıkarmak ilk adımdır.
+          Assetly tam da bunun için var. Envanterin görünür kılınması ilk adımdır.
         </p>
         <p>
-          Araçları manuel olarak ekleyebilir ve yazılım envanteriniz üzerinde adım adım tam görünürlük oluşturabilirsiniz. Sistem yenileme tarihlerini takip eder, kullanılmayan araçları tespit eder ve sizi uyarır. İlk haftada en az bir araç bulacaksınız.
+          Varlıkları, abonelikleri ve belgeleri adım adım ekleyerek envanteriniz üzerinde tam görünürlük oluşturabilirsiniz. Sistem yenileme tarihlerini takip eder, bakım gereken kalemleri tespit eder ve sizi uyarır.
         </p>
       </>
     ),
@@ -54,10 +54,10 @@ const faqItems: FaqItem[] = [
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Evet. Assetly özellikle SaaS harcamalarını kontrol altına almak isteyen küçük ekipler ve startup’lar için tasarlanmıştır.
+          Evet. Assetly özellikle varlık ve gider takibini düzene sokmak isteyen küçük ekipler ve startup’lar için tasarlanmıştır.
         </p>
         <p>
-          Küçük ekiplerde SaaS kararları genellikle merkezi bir takip olmadan tek kişi tarafından verilir. Herkes kendi aracını satın alır ve toplam maliyeti kimse bilmez. Assetly bu kaosu ortadan kaldırır ve küçük bütçelerde büyük tasarruf sağlar.
+          Küçük ekiplerde satın alma kararları genellikle merkezi bir takip olmadan verilir. Toplam maliyeti ve varlık durumunu kimse net olarak bilmez. Assetly bu dağınıklığı ortadan kaldırır ve sınırlı bütçelerde daha iyi kontrol sağlar.
         </p>
       </>
     ),
@@ -70,7 +70,7 @@ const faqItems: FaqItem[] = [
           Çoğu ekip, kullanımın ilk birkaç günü içinde gereksiz maliyetleri tespit etmeye başlar.
         </p>
         <p>
-          Aboneliklerinizi ekledikten sonra Assetly anlık bir maliyet özeti oluşturur. Yenilemeye yaklaşan araçlar, aktif kullanıcısı olmayanlar ve pahalı abonelikler hemen görünür olur. Çoğu ekip, aylık SaaS harcamasının %10–20’sinin gereksiz olduğunu keşfeder.
+          Varlıklarınızı ve aboneliklerinizi ekledikten sonra Assetly anlık bir özet oluşturur. Yenilemeye yaklaşan kalemler, bakım gereken varlıklar ve kullanılmayan abonelikler hemen görünür olur.
         </p>
       </>
     ),
@@ -112,10 +112,10 @@ const faqItems: FaqItem[] = [
           Ücretsiz plan keşif içindir. Premium, gereksiz harcamaları tespit ederek ilk ay kendini amorti eder.
         </p>
         <p>
-          Sınırsız SaaS aracı takibi, gelişmiş maliyet analizi, yenileme otomasyonu, PDF maliyet raporları ve öncelikli destek yalnızca Premium’a özeldir.
+          Sınırsız varlık takibi, gelişmiş maliyet analizi, yenileme ve bakım otomasyonu, PDF raporları ve öncelikli destek yalnızca Premium’a özeldir.
         </p>
         <p>
-          Ekibiniz 10’dan fazla SaaS aracı kullanıyorsa, Premium ile yakaladığınız tek bir gereksiz abonelik yıllık ücretin üzerinde tasarruf sağlar.
+          Takip ettiğiniz varlık ve abonelik sayısı arttıkça Premium’ın sağladığı görünürlük ve kontrol daha da değerli hale gelir.
         </p>
       </>
     ),
@@ -125,10 +125,10 @@ const faqItems: FaqItem[] = [
     answer: (
       <>
         <p className="font-medium text-foreground/90">
-          Hayır. Hesap oluşturun, ilk SaaS aracınızı ekleyin — 2 dakikada hazırsınız.
+          Hayır. Hesap oluşturun, ilk varlığınızı veya aboneliğinizi ekleyin — 2 dakikada hazırsınız.
         </p>
         <p>
-          Assetly tamamen bulut tabanlıdır. Kurulum, entegrasyon veya teknik bilgi gerektirmez. Kayıt olduktan sonra aboneliklerinizi eklemeye başlayın, platform sizi adım adım yönlendirir.
+          Assetly tamamen bulut tabanlıdır. Kurulum, entegrasyon veya teknik bilgi gerektirmez. Kayıt olduktan sonra varlıklarınızı ve aboneliklerinizi eklemeye başlayın, platform sizi adım adım yönlendirir.
         </p>
       </>
     ),

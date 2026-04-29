@@ -54,11 +54,11 @@ export function Footer() {
               </div>
               <div>
                 <div className="text-sm font-bold tracking-tight text-foreground">ASSETLY</div>
-                <div className="text-[9px] tracking-widest text-muted-foreground">SaaS Maliyet Kontrolü</div>
+                <div className="text-[9px] tracking-widest text-muted-foreground">Varlık ve Gider Yönetimi</div>
               </div>
             </div>
             <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
-              Ekibinizin SaaS aboneliklerini takip edin, kullanılmayan araçları tespit edin ve yazılım maliyetlerini kontrol altına alın.
+              Varlıklarınızı, aboneliklerinizi, belgelerinizi ve giderlerinizi tek bir düzende takip edin. Bakım süreçleri, yenileme tarihleri ve ekip kullanımı üzerinde net görünürlük sağlayın.
             </p>
           </div>
 

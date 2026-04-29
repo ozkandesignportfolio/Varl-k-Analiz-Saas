@@ -22,14 +22,14 @@ const plans = [
     name: "Deneme",
     price: "0",
     period: "sonsuza dek",
-    description: "SaaS harcamalarınızı keşfedin",
+    description: "Varlık ve gider takibini keşfedin",
     features: [
-      `${trialAssetLimit} SaaS aracı takibi`,
+      `${trialAssetLimit} varlık takibi`,
       `${trialDocumentLimit} sözleşme yükleme`,
       `${trialSubscriptionLimit} abonelik takibi`,
       `${trialInvoiceUploadLimit} fatura yükleme`,
       "Hızlı arama ve filtreleme",
-      "Temel maliyet paneli ve bildirim",
+      "Temel gösterge paneli ve bildirim",
     ],
     cta: "Ücretsiz Başla",
     popular: false,
@@ -38,15 +38,15 @@ const plans = [
     name: "Premium",
     price: String(PREMIUM_MONTHLY_PRICE_TL),
     period: "/ay",
-    description: "Ekibinizin SaaS maliyetlerini tam kontrol altına alın",
+    description: "Varlık, belge, abonelik ve gider takibinde tam kontrol",
     features: [
-      "Sınırsız SaaS aracı takibi",
+      "Sınırsız varlık takibi",
       "Sınırsız sözleşme ve belge",
       "Sınırsız abonelik ve fatura",
       "Kullanım ve tasarruf analizi",
-      "Yenileme ve maliyet uyarıları",
+      "Yenileme, bakım ve maliyet uyarıları",
       "Aylık PDF maliyet raporu",
-      "Kullanılmayan araç tespiti",
+      "Kullanılmayan varlık tespiti",
       "Otomasyon motoru",
       "Öncelikli destek",
     ],
@@ -153,8 +153,7 @@ export function PricingSection() {
             Basit ve <span className="text-gradient">şeffaf fiyatlandırma</span>
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-base text-muted-foreground sm:mt-6 sm:text-lg">
-            Deneme planı: {trialAssetLimit} SaaS aracı, {trialDocumentLimit} belge, {trialSubscriptionLimit} abonelik,{" "}
-            {trialInvoiceUploadLimit} fatura takibi
+            Varlık, belge, abonelik ve gider takibi için uygun planı seçin.
           </p>
         </div>
 

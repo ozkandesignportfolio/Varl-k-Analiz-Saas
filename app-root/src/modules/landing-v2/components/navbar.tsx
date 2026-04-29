@@ -214,7 +214,7 @@ export function Navbar() {
           </div>
           <div className="flex flex-col">
             <span className="text-lg font-bold tracking-tight text-foreground">ASSETLY</span>
-            <span className="text-[10px] tracking-[0.2em] text-muted-foreground">SaaS Maliyet Kontrolü</span>
+            <span className="text-[10px] tracking-[0.2em] text-muted-foreground">Varlık ve Gider Yönetimi</span>
           </div>
         </Link>
 

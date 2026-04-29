@@ -30,22 +30,22 @@ export function FaturaSection() {
           <div className={inView ? "animate-slide-in-left" : "opacity-0"}>
             <div className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/5 px-4 py-1.5 mb-6">
               <Receipt className="h-3.5 w-3.5 text-accent" />
-              <span className="text-xs tracking-widest text-accent">SaaS Faturaları</span>
+              <span className="text-xs tracking-widest text-accent">Fatura Takibi</span>
             </div>
             <h2 className="text-2xl font-bold text-foreground sm:text-3xl lg:text-5xl text-balance">
-              SaaS faturalarınız{" "}
+              Fatura ve belgeler{" "}
               <span className="text-gradient">tek ekranda</span>
             </h2>
             <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg">
-              Tüm SaaS faturalarınızı tek ekranda görün. Vade tarihleri, ödeme durumları ve aylık toplam gideri anlık takip edin.
+              Faturaları, sözleşmeleri, garanti belgelerini ve servis dokümanlarını ilgili varlık veya aboneliklerle ilişkilendirin. Vade tarihleri ve ödeme durumlarını anlık takip edin.
             </p>
 
             <div className="mt-6 grid gap-3 sm:mt-10 sm:grid-cols-2 sm:gap-4">
               {[
-                { icon: Receipt, label: "Fatura Kaydı", desc: "Tutar, vergi, vade ve SaaS aracı bazında" },
+                { icon: Receipt, label: "Fatura Kaydı", desc: "Tutar, vergi, vade ve varlık bazında" },
                 { icon: FileCheck, label: "Belge Saklama", desc: "Fatura ve sözleşmeleri güvenle saklayın" },
                 { icon: Clock, label: "Vade Takibi", desc: "Ödeme günü geldiğinde otomatik uyarı" },
-                { icon: Download, label: "PDF Maliyet Raporu", desc: "Aylık SaaS gider özetini indirin" },
+                { icon: Download, label: "PDF Maliyet Raporu", desc: "Aylık gider özetini indirin" },
               ].map((item, i) => (
                 <div key={i} className="flex items-start gap-3 rounded-xl border border-border/50 bg-secondary/30 p-4 transition-all hover:border-accent/20 hover:bg-secondary/50">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10">
@@ -65,7 +65,7 @@ export function FaturaSection() {
             <div className="glass-card rounded-3xl p-4 sm:p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <div className="text-sm font-semibold text-foreground">SaaS Fatura Geçmişi</div>
+                  <div className="text-sm font-semibold text-foreground">Fatura Geçmişi</div>
                   <div className="text-xs text-muted-foreground">Şubat 2026</div>
                 </div>
                 <div className="flex items-center gap-2">
