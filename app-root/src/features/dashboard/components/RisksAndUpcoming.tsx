@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AlertTriangle,
   CalendarClock,
+  ChevronDown,
   FileWarning,
   Settings,
   ShieldAlert,
@@ -15,7 +17,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { FadeInUp, StaggerContainer, StaggerItem } from "@/features/dashboard/components/DashboardAnimations";
-import type { DashboardSnapshot } from "@/features/dashboard/api/dashboard-queries";
+import type { DashboardSnapshot } from "@/features/dashboard/api/dashboard-shared";
 import { createClient } from "@/lib/supabase/client";
 import { Runtime } from "@/lib/env/runtime";
 
@@ -55,12 +57,26 @@ type ListRow = {
   id: string;
   icon: LucideIcon;
   title: string;
+  description: string;
+  impact: string;
   dateLabel: string;
   sortDate: string;
   actionHref: string;
-  actionLabel?: string;
+  actionLabel: string;
   alertKey: string;
   tone: "critical" | "warning" | "info";
+};
+
+const TONE_LABEL: Record<ListRow["tone"], string> = {
+  critical: "Kritik",
+  warning: "Uyarı",
+  info: "Bilgi",
+};
+
+const toneBadgeClass: Record<ListRow["tone"], string> = {
+  critical: "border-rose-400/40 bg-rose-500/15 text-rose-200",
+  warning: "border-amber-400/40 bg-amber-500/15 text-amber-200",
+  info: "border-sky-400/40 bg-sky-500/15 text-sky-200",
 };
 
 type UndoState = {
@@ -145,40 +161,68 @@ export function RisksAndUpcoming({ userId, riskPanel }: RisksAndUpcomingProps) {
         ...riskPanel.overdueMaintenance.map((item) => ({
           id: `overdue-${item.id}`,
           icon: Wrench,
-          title: `${item.assetName} - ${item.ruleTitle}`,
+          title: `Bakım ${item.dayCount} Gün Gecikti`,
+          description: `"${item.assetName}" için planlanan "${item.ruleTitle}" bakımı ${formatDate(item.dueDate)} tarihinde yapılmalıydı.`,
+          impact: item.dayCount > 14
+            ? "Uzun süreli gecikme arıza riskini ciddi şekilde artırır ve onarım maliyetleri yükselebilir."
+            : "Bakım geciktikçe performans düşebilir ve uzun vadede maliyet artabilir.",
           dateLabel: `${item.dayCount} gün gecikti · ${formatDate(item.dueDate)}`,
           sortDate: item.dueDate,
           actionHref: `/services?asset=${item.assetId}&rule=${item.id}`,
+          actionLabel: "Bakım planla",
           alertKey: toAlertKey("overdue-maintenance", item.id, item.dueDate),
           tone: "critical" as const,
         })),
         ...riskPanel.upcomingWarranty.map((item) => ({
           id: `warranty-${item.id}`,
           icon: ShieldAlert,
-          title: `Garanti bitiyor · ${item.assetName}`,
-          dateLabel: `${item.daysRemaining} gün kaldı · ${formatDate(item.warrantyEndDate)}`,
+          title: item.daysRemaining <= 0
+            ? `Garanti Süresi Doldu`
+            : `Garanti ${item.daysRemaining} Gün İçinde Bitiyor`,
+          description: `"${item.assetName}" garanti bitiş tarihi: ${formatDate(item.warrantyEndDate)}.`,
+          impact: item.daysRemaining <= 0
+            ? "Garanti sona erdi; olası arızalarda tüm masraflar size ait olacaktır."
+            : "Garanti bitmeden önce mevcut sorunları bildirmezseniz ücretsiz onarım hakkını kaybedebilirsiniz.",
+          dateLabel: item.daysRemaining <= 0
+            ? `Süresi doldu · ${formatDate(item.warrantyEndDate)}`
+            : `${item.daysRemaining} gün kaldı · ${formatDate(item.warrantyEndDate)}`,
           sortDate: item.warrantyEndDate,
           actionHref: `/assets/${item.assetId}`,
+          actionLabel: "Detayları görüntüle",
           alertKey: toAlertKey("warranty", item.id, item.warrantyEndDate),
-          tone: "warning" as const,
+          tone: item.daysRemaining <= 0 ? ("critical" as const) : ("warning" as const),
         })),
-        ...riskPanel.upcomingPayments.map((item) => ({
-          id: `payment-${item.id}`,
-          icon: WalletCards,
-          title: `Ödeme takibi · ${item.subscriptionName}`,
-          dateLabel: `${item.daysRemaining < 0 ? `${Math.abs(item.daysRemaining)} gün gecikti` : `${item.daysRemaining} gün kaldı`} · ${formatCurrency(item.totalAmount)} · ${formatDate(item.dueDate)}`,
-          sortDate: item.dueDate,
-          actionHref: "/invoices",
-          alertKey: toAlertKey("payment", item.id, item.dueDate),
-          tone: item.daysRemaining < 0 ? ("critical" as const) : ("warning" as const),
-        })),
+        ...riskPanel.upcomingPayments.map((item) => {
+          const isOverdue = item.daysRemaining < 0;
+          const absDays = Math.abs(item.daysRemaining);
+          return {
+            id: `payment-${item.id}`,
+            icon: WalletCards,
+            title: isOverdue
+              ? `Ödeme ${absDays} Gün Gecikti`
+              : `Ödeme ${item.daysRemaining} Gün İçinde`,
+            description: `"${item.subscriptionName}" için ${formatCurrency(item.totalAmount)} tutarındaki ödeme ${formatDate(item.dueDate)} tarihinde ${isOverdue ? "yapılmalıydı" : "yapılmalı"}.`,
+            impact: isOverdue
+              ? "Geciken ödemeler ek ücret veya hizmet kesintisine neden olabilir."
+              : "Ödemeyi zamanında yaparak olası gecikme cezalarından kaçının.",
+            dateLabel: `${isOverdue ? `${absDays} gün gecikti` : `${item.daysRemaining} gün kaldı`} · ${formatCurrency(item.totalAmount)} · ${formatDate(item.dueDate)}`,
+            sortDate: item.dueDate,
+            actionHref: "/invoices",
+            actionLabel: isOverdue ? "Ödemeyi yap" : "Fatura detayı",
+            alertKey: toAlertKey("payment", item.id, item.dueDate),
+            tone: isOverdue ? ("critical" as const) : ("warning" as const),
+          };
+        }),
         ...riskPanel.missingDocuments.map((item) => ({
           id: `docs-${item.id}`,
           icon: FileWarning,
-          title: `Belge eksiği · ${item.assetName}`,
+          title: `Belge Eksik · ${item.assetName}`,
+          description: `"${item.assetName}" varlığına ${item.daysWithoutDocument} gündür hiç belge eklenmemiş (kayıt: ${formatDate(item.createdAt)}).`,
+          impact: "Eksik belgeler garanti, sigorta veya denetim süreçlerinde sorun yaratabilir.",
           dateLabel: `${item.daysWithoutDocument} gündür belge yok · ${formatDate(item.createdAt)}`,
           sortDate: item.createdAt,
           actionHref: `/documents?asset=${item.assetId}`,
+          actionLabel: "Belge yükle",
           alertKey: toAlertKey("missing-document", item.id, item.createdAt),
           tone: "info" as const,
         })),
@@ -192,10 +236,15 @@ export function RisksAndUpcoming({ userId, riskPanel }: RisksAndUpcomingProps) {
         ...riskPanel.upcomingMaintenance.map((item) => ({
           id: `upcoming-maintenance-${item.id}`,
           icon: Timer,
-          title: `${item.assetName} - ${item.ruleTitle}`,
+          title: `Bakım ${item.dayCount} Gün Sonra`,
+          description: `"${item.assetName}" için "${item.ruleTitle}" bakımı ${formatDate(item.dueDate)} tarihinde yapılmalı.`,
+          impact: item.dayCount <= 3
+            ? "Bakım tarihi çok yakın; hazırlıkları şimdiden tamamlayın."
+            : "Bakımı zamanında yaparak varlığınızın performansını koruyun.",
           dateLabel: `${item.dayCount} gün sonra · ${formatDate(item.dueDate)}`,
           sortDate: item.dueDate,
           actionHref: `/services?asset=${item.assetId}&rule=${item.id}`,
+          actionLabel: "Bakım planla",
           alertKey: toAlertKey("upcoming-maintenance", item.id, item.dueDate),
           tone: "warning" as const,
         })),
@@ -204,10 +253,13 @@ export function RisksAndUpcoming({ userId, riskPanel }: RisksAndUpcomingProps) {
           .map((item) => ({
             id: `upcoming-warranty-${item.id}`,
             icon: ShieldAlert,
-            title: `${item.assetName} garantisi bitiyor`,
-            dateLabel: `${item.daysRemaining} gün sonra · ${formatDate(item.warrantyEndDate)}`,
+            title: `Garanti ${item.daysRemaining} Gün İçinde Bitiyor`,
+            description: `"${item.assetName}" garanti bitiş tarihi: ${formatDate(item.warrantyEndDate)}.`,
+            impact: "Garanti bitmeden önce mevcut sorunları bildirmezseniz ücretsiz onarım hakkını kaybedebilirsiniz.",
+            dateLabel: `${item.daysRemaining} gün kaldı · ${formatDate(item.warrantyEndDate)}`,
             sortDate: item.warrantyEndDate,
             actionHref: `/assets/${item.assetId}`,
+            actionLabel: "Detayları görüntüle",
             alertKey: toAlertKey("warranty", item.id, item.warrantyEndDate),
             tone: "warning" as const,
           })),
@@ -216,10 +268,13 @@ export function RisksAndUpcoming({ userId, riskPanel }: RisksAndUpcomingProps) {
           .map((item) => ({
             id: `upcoming-payment-${item.id}`,
             icon: WalletCards,
-            title: `${item.subscriptionName} Ödeme vadesi`,
-            dateLabel: `${item.daysRemaining} gün sonra · ${formatDate(item.dueDate)}`,
+            title: `Ödeme ${item.daysRemaining} Gün İçinde`,
+            description: `"${item.subscriptionName}" için ${formatCurrency(item.totalAmount)} tutarındaki ödeme ${formatDate(item.dueDate)} tarihinde yapılmalı.`,
+            impact: "Ödemeyi zamanında yaparak olası gecikme cezalarından kaçının.",
+            dateLabel: `${item.daysRemaining} gün kaldı · ${formatCurrency(item.totalAmount)} · ${formatDate(item.dueDate)}`,
             sortDate: item.dueDate,
             actionHref: "/invoices",
+            actionLabel: "Fatura detayı",
             alertKey: toAlertKey("payment", item.id, item.dueDate),
             tone: "info" as const,
           })),
@@ -398,8 +453,8 @@ export function RisksAndUpcoming({ userId, riskPanel }: RisksAndUpcomingProps) {
           }}
           emptyState={{
             icon: ShieldCheck,
-            title: "Bugün için risk yok",
-            description: "Sistem şu an dengede. Proaktif kalmak için bakım planı oluşturabilirsiniz.",
+            title: "Şu anda dikkat gerektiren bir durum yok",
+            description: "Tüm varlıklarınız stabil görünüyor. Varlık ekledikçe burada önemli uyarılar görünecek.",
             href: "/maintenance",
             ctaLabel: "Bakım kuralı oluştur",
           }}
@@ -412,8 +467,8 @@ export function RisksAndUpcoming({ userId, riskPanel }: RisksAndUpcomingProps) {
           onDismiss={onDismiss}
           emptyState={{
             icon: CalendarClock,
-            title: "7 gün içinde yaklaşan iş yok",
-            description: "Takvimde acil bir olay görünmüyor. Dilerseniz yeni servis kaydı ekleyebilirsiniz.",
+            title: "Önümüzdeki 7 gün için planlı bir iş yok",
+            description: "Takvimde yaklaşan bakım, garanti veya ödeme bulunmuyor. Yeni servis kaydı ekleyerek takibi başlatabilirsiniz.",
             href: "/services",
             ctaLabel: "Servis kaydı ekle",
           }}
@@ -517,28 +572,53 @@ const RiskRow = memo(function RiskRow({
   isDismissed: boolean;
   onDismiss: () => void;
 }) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const Icon = row.icon;
 
   return (
-    <li className="rounded-xl border border-[#314866] bg-[#0E1E37]/75 p-3">
+    <li className={`rounded-xl border p-3 transition-colors ${toneClass[row.tone]}`}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-3">
-          <span className={`inline-flex rounded-lg border p-2 ${toneClass[row.tone]}`}>
+        <div className="flex items-start gap-3 min-w-0 flex-1">
+          <span className={`inline-flex shrink-0 rounded-lg border p-2 ${toneClass[row.tone]}`}>
             <Icon className="size-4" aria-hidden />
           </span>
-          <div>
-            <p className="text-sm font-semibold text-[#EAF2FF]">{row.title}</p>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold text-[#EAF2FF]">{row.title}</p>
+              <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${toneBadgeClass[row.tone]}`}>
+                {TONE_LABEL[row.tone]}
+              </span>
+            </div>
             <p className="mt-1 text-xs text-[#9FB2CE]">{row.dateLabel}</p>
             {isDismissed ? <p className="mt-1 text-xs text-[#7FA4D3]">Görmezden gelindi</p> : null}
+
+            <button
+              type="button"
+              onClick={() => setIsExpanded((prev) => !prev)}
+              className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-[#7FA4D3] transition hover:text-[#A8C8F0]"
+            >
+              {isExpanded ? "Gizle" : "Detay"}
+              <ChevronDown className={`size-3 transition-transform ${isExpanded ? "rotate-180" : ""}`} aria-hidden />
+            </button>
+
+            {isExpanded ? (
+              <div className="mt-2 space-y-1.5 rounded-lg border border-[#2B3F5D]/60 bg-[#0A1628]/60 px-3 py-2.5">
+                <p className="text-xs leading-relaxed text-[#BFD5F5]">{row.description}</p>
+                <div className="flex items-start gap-1.5">
+                  <AlertTriangle className="mt-0.5 size-3 shrink-0 text-amber-400/70" aria-hidden />
+                  <p className="text-[11px] leading-relaxed text-amber-200/80">{row.impact}</p>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <Link
             href={row.actionHref}
             className="inline-flex h-fit items-center rounded-lg border border-[#3C587C] bg-[#143258] px-3 py-1.5 text-xs font-semibold text-[#E4EEFF] transition hover:bg-[#1A3E6D]"
           >
-            {row.actionLabel ?? "Aksiyon al"}
+            {row.actionLabel}
           </Link>
 
           <button

@@ -1,10 +1,10 @@
 "use client";
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { CalendarDays, ChevronDown, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { DashboardDateRangeDays } from "@/features/dashboard/api/dashboard-queries";
+import { useDashboardRange } from "@/features/dashboard/context/DashboardRangeContext";
+import type { DashboardDateRangeDays } from "@/features/dashboard/api/dashboard-shared";
 
 type DateRangeSelectorProps = {
   selectedRange: DashboardDateRangeDays;
@@ -20,8 +20,6 @@ const PRESETS: PresetOption[] = [
   { label: "Son 30 gün", days: 30 },
   { label: "Son 90 gün", days: 90 },
 ];
-
-const RANGE_STORAGE_KEY = "assetly:dashboard-range";
 
 const formatDateForInput = (date: Date) => {
   const year = date.getFullYear();
@@ -45,7 +43,7 @@ const formatDateDisplay = (dateStr: string) => {
 export const DateRangeSelector = memo(function DateRangeSelector({
   selectedRange,
 }: DateRangeSelectorProps) {
-  const router = useRouter();
+  const { setRange } = useDashboardRange();
   const [isCustomOpen, setIsCustomOpen] = useState(false);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
@@ -54,28 +52,13 @@ export const DateRangeSelector = memo(function DateRangeSelector({
 
   const today = useMemo(() => formatDateForInput(new Date()), []);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedRange = window.localStorage.getItem(RANGE_STORAGE_KEY);
-      if (savedRange) {
-        const parsed = Number(savedRange);
-        if ((parsed === 7 || parsed === 30 || parsed === 90) && parsed !== selectedRange) {
-          // Sync URL with stored preference on first load
-        }
-      }
-    }
-  }, [selectedRange]);
-
   const handlePresetClick = useCallback(
     (days: DashboardDateRangeDays) => {
       setIsCustomActive(false);
       setIsCustomOpen(false);
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(RANGE_STORAGE_KEY, String(days));
-      }
-      router.push(`/dashboard?range=${days}`);
+      setRange(days);
     },
-    [router],
+    [setRange],
   );
 
   const handleCustomApply = useCallback(() => {
@@ -94,11 +77,8 @@ export const DateRangeSelector = memo(function DateRangeSelector({
 
     setIsCustomActive(true);
     setIsCustomOpen(false);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(RANGE_STORAGE_KEY, String(closest));
-    }
-    router.push(`/dashboard?range=${closest}`);
-  }, [customFrom, customTo, router]);
+    setRange(closest);
+  }, [customFrom, customTo, setRange]);
 
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {

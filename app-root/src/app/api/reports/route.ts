@@ -148,7 +148,7 @@ export async function GET(request: Request) {
         message: "Reports repository query failed",
       });
       return NextResponse.json(
-        toPublicErrorBody("REPORTS_LIST_FAILED", "Rapor satirlari su anda alinamadi."),
+        toPublicErrorBody("REPORTS_LIST_FAILED", "Rapor satırları şu anda alınamadı."),
         { status: 400 },
       );
     }

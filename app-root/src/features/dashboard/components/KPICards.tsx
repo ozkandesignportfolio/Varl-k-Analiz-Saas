@@ -11,7 +11,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { StaggerContainer, StaggerItem } from "@/features/dashboard/components/DashboardAnimations";
-import type { DashboardDateRangeDays, DashboardSnapshot } from "@/features/dashboard/api/dashboard-queries";
+import type { DashboardDateRangeDays, DashboardSnapshot } from "@/features/dashboard/api/dashboard-shared";
 
 const NUMBER_FORMATTER = new Intl.NumberFormat("tr-TR");
 const CURRENCY_FORMATTER = new Intl.NumberFormat("tr-TR", {

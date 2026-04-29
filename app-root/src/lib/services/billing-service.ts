@@ -337,7 +337,7 @@ export async function createBillingSubscription(
       const mappedError = mapRepoError({
         error: ruleError,
         fallbackTables: ["billing_subscriptions"],
-        publicMessage: "Bakim kurali erisimi su anda dogrulanamadi.",
+        publicMessage: "Bakım kuralı erişimi şu anda doğrulanamadı.",
         publicCode: "BILLING_SUBSCRIPTION_RULE_LOOKUP_FAILED",
         route: "/api/billing/subscriptions",
         method: "POST",
@@ -350,7 +350,7 @@ export async function createBillingSubscription(
           status: 400,
           body: toPublicErrorBody(
             "BILLING_SUBSCRIPTION_RULE_LOOKUP_FAILED",
-            "Bakim kurali erisimi su anda dogrulanamadi.",
+            "Bakım kuralı erişimi şu anda doğrulanamadı.",
           ),
         }
       );
@@ -512,7 +512,7 @@ export async function createBillingInvoice(
     const mappedError = mapRepoError({
       error: subscriptionError,
       fallbackTables: ["billing_subscriptions"],
-      publicMessage: "Abonelik bilgisi su anda alinamadi.",
+      publicMessage: "Abonelik bilgisi şu anda alınamadı.",
       publicCode: "BILLING_INVOICE_SUBSCRIPTION_LOOKUP_FAILED",
       route: "/api/billing/invoices",
       method: "POST",
@@ -525,7 +525,7 @@ export async function createBillingInvoice(
         status: 400,
         body: toPublicErrorBody(
           "BILLING_INVOICE_SUBSCRIPTION_LOOKUP_FAILED",
-          "Abonelik bilgisi su anda alinamadi.",
+          "Abonelik bilgisi şu anda alınamadı.",
         ),
       }
     );

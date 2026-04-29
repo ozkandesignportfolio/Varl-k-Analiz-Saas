@@ -19,7 +19,7 @@ import {
   type DashboardDateRangeDays,
   type DashboardSystemRiskType,
   type DashboardSystemStatus,
-} from "@/features/dashboard/api/dashboard-queries";
+} from "@/features/dashboard/api/dashboard-shared";
 import { useRiskActions } from "@/features/dashboard/hooks/useRiskActions";
 
 type ControlCenterHeaderProps = {

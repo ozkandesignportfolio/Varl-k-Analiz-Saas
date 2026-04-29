@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowRight, FileText, Receipt, Sparkles, TimerReset, Wrench } from "lucide-react";
 import { FadeInUp, StaggerContainer, StaggerItem } from "@/features/dashboard/components/DashboardAnimations";
-import type { DashboardActivityItem } from "@/features/dashboard/api/dashboard-queries";
+import type { DashboardActivityItem } from "@/features/dashboard/api/dashboard-shared";
 
 type RecentActivityProps = {
   activities: DashboardActivityItem[];

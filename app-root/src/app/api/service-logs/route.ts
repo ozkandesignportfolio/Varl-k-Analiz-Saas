@@ -68,7 +68,7 @@ const parseServiceLogsPagination = paginationSchema(
   { fallback: 50, max: 100 },
 );
 const parseLogsDateRange = dateRange();
-const SERVICE_LOG_SYNC_WARNING = "Bakim kurali tarihleri senkronize edilemedi.";
+const SERVICE_LOG_SYNC_WARNING = "Bakım kuralı tarihleri senkronize edilemedi.";
 
 export async function GET(request: Request) {
   let userId: string | null = null;
@@ -182,7 +182,7 @@ const syncRuleSchedulesFromLatestLogs = async (params: {
       message: "Service log rule sync failed while loading rules",
       meta: { ruleIds: targetRuleIds },
     });
-    return ["Bakim kurali bilgileri alinamadi."];
+    return ["Bakım kuralı bilgileri alınamadı."];
   }
 
   if (latestLogsRes.error) {
@@ -236,7 +236,7 @@ const syncRuleSchedulesFromLatestLogs = async (params: {
         message: "Service log rule sync failed while calculating next due date",
         meta: { ruleId: rule.id },
       });
-      syncErrors.push("Bakim kurali sonraki tarih hesabi yapilamadi.");
+      syncErrors.push("Bakım kuralı sonraki tarih hesabı yapılamadı.");
       continue;
     }
 
@@ -375,7 +375,7 @@ export async function POST(request: Request) {
         meta: { assetId },
       });
       return NextResponse.json(
-        toPublicErrorBody("SERVICE_LOG_ASSET_LOOKUP_FAILED", "Varlik erisimi su anda dogrulanamadi."),
+        toPublicErrorBody("SERVICE_LOG_ASSET_LOOKUP_FAILED", "Varlık erişimi şu anda doğrulanamadı."),
         { status: 400 },
       );
     }
@@ -401,7 +401,7 @@ export async function POST(request: Request) {
           meta: { ruleId, assetId },
         });
         return NextResponse.json(
-          toPublicErrorBody("SERVICE_LOG_RULE_LOOKUP_FAILED", "Bakim kurali erisimi su anda dogrulanamadi."),
+          toPublicErrorBody("SERVICE_LOG_RULE_LOOKUP_FAILED", "Bakım kuralı erişimi şu anda doğrulanamadı."),
           { status: 400 },
         );
       }
@@ -559,7 +559,7 @@ export async function PATCH(request: Request) {
           meta: { assetId: nextAssetId, serviceLogId },
         });
         return NextResponse.json(
-          toPublicErrorBody("SERVICE_LOG_ASSET_LOOKUP_FAILED", "Varlik erisimi su anda dogrulanamadi."),
+          toPublicErrorBody("SERVICE_LOG_ASSET_LOOKUP_FAILED", "Varlık erişimi şu anda doğrulanamadı."),
           { status: 400 },
         );
       }
@@ -657,7 +657,7 @@ export async function PATCH(request: Request) {
           meta: { ruleId: targetRuleId, serviceLogId },
         });
         return NextResponse.json(
-          toPublicErrorBody("SERVICE_LOG_RULE_LOOKUP_FAILED", "Bakim kurali erisimi su anda dogrulanamadi."),
+          toPublicErrorBody("SERVICE_LOG_RULE_LOOKUP_FAILED", "Bakım kuralı erişimi şu anda doğrulanamadı."),
           { status: 400 },
         );
       }

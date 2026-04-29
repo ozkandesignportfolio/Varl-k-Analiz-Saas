@@ -300,8 +300,8 @@ async function suggestDescription(params: {
           {
             type: "input_text",
             text: [
-              "Bakim/servis gunlugu icin 1-2 cumlelik kisa, net bir otomatik aciklama onerisi yaz.",
-              "Yanit Turkce ve sade olsun. Sadece aciklama metni don.",
+              "Bakım/servis günlüğü için 1-2 cümlelik kısa, net bir otomatik açıklama önerisi yaz.",
+              "Yanıt Türkçe ve sade olsun. Sadece açıklama metni dön.",
               `service_type: ${params.serviceType}`,
               `service_date: ${params.serviceDate}`,
               `provider: ${params.provider ?? "-"}`,

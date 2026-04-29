@@ -151,7 +151,7 @@ export async function POST(request: Request) {
 
     const formData = await request.formData().catch(() => null);
     if (!formData) {
-      return NextResponse.json({ error: "Gecersiz form verisi." }, { status: 400 });
+      return NextResponse.json({ error: "Geçersiz form verisi." }, { status: 400 });
     }
 
     const rawAssetId = String(formData.get("assetId") ?? "").trim();
@@ -160,17 +160,17 @@ export async function POST(request: Request) {
 
     const assetId = parseUuid(rawAssetId);
     if (!assetId) {
-      return NextResponse.json({ error: "Varlik kimligi gecersiz." }, { status: 400 });
+      return NextResponse.json({ error: "Varlık kimliği geçersiz." }, { status: 400 });
     }
 
     if (!ALLOWED_DOCUMENT_TYPES.includes(rawDocumentType as (typeof ALLOWED_DOCUMENT_TYPES)[number])) {
-      return NextResponse.json({ error: "Belge tipi gecersiz." }, { status: 400 });
+      return NextResponse.json({ error: "Belge tipi geçersiz." }, { status: 400 });
     }
 
     const documentType = rawDocumentType as (typeof ALLOWED_DOCUMENT_TYPES)[number];
 
     if (!file) {
-      return NextResponse.json({ error: "Yuklenecek dosya bulunamadi." }, { status: 400 });
+      return NextResponse.json({ error: "Yüklenecek dosya bulunamadı." }, { status: 400 });
     }
 
     const fileValidation = validateUploadFile(file, {

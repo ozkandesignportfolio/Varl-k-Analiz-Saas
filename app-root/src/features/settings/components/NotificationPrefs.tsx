@@ -79,7 +79,7 @@ const REMINDER_FIELDS: Array<{
 }> = [
   {
     key: "maintenanceDaysBefore",
-    label: "Bakim",
+    label: "Bakım",
     description: "Planlı bakım için kaç gün önce hatırlatma gönderilsin.",
   },
   {
@@ -94,7 +94,7 @@ const REMINDER_FIELDS: Array<{
   },
   {
     key: "billingDaysBefore",
-    label: "Odeme",
+    label: "Ödeme",
     description: "Tahsilat veya yenileme tarihi için kaç gün önce hatırlatma gönderilsin.",
   },
 ];

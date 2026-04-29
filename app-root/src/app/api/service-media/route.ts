@@ -520,7 +520,7 @@ export async function POST(request: Request) {
     }
 
     if (mediaEntries.length === 0) {
-      return respond({ ok: true, uploadedCount: 0, warnings: ["Yuklenecek medya bulunamadi."] }, { status: 200 });
+      return respond({ ok: true, uploadedCount: 0, warnings: ["Yüklenecek medya bulunamadı."] }, { status: 200 });
     }
 
     await timeDb(() =>

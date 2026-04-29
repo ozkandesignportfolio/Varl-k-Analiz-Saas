@@ -91,7 +91,7 @@ export async function GET(request: Request) {
   if (error) {
     if (isMissingAuditLogsTableError(error)) {
       return NextResponse.json(
-        { logs: [], warning: "audit_logs tablosu bulunamadi, panel bos donduruldu." },
+        { logs: [], warning: "audit_logs tablosu bulunamadı, panel boş döndürüldü." },
         { status: 200 },
       );
     }
@@ -109,7 +109,7 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json(
-      toPublicErrorBody("AUDIT_LOGS_QUERY_FAILED", "Denetim kayitlari su anda alinamadi."),
+      toPublicErrorBody("AUDIT_LOGS_QUERY_FAILED", "Denetim kayıtları şu anda alınamadı."),
       { status: 400 },
     );
   }

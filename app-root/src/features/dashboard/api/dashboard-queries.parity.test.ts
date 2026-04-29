@@ -94,7 +94,7 @@ const toSystemStatus = (args: {
     return {
       tone: "stable",
       headline: "Stabil",
-      detail: "Sistem durumu veri geldikce otomatik guncellenecek.",
+      detail: "Sistem durumu veri geldikçe otomatik güncellenecek.",
       riskCount: 0,
       risk: { type: "notification_prefs", entityId: null, riskKey: "notification_prefs:global" },
     };
@@ -103,8 +103,8 @@ const toSystemStatus = (args: {
   if (args.overdueMaintenanceCount > 0) {
     return {
       tone: "critical",
-      headline: `${args.overdueMaintenanceCount} gecikmis bakim`,
-      detail: "Bakim takvimi plani gerisinde. Hemen aksiyon alin.",
+      headline: `${args.overdueMaintenanceCount} gecikmiş bakım`,
+      detail: "Bakım takvimi planı gerisinde. Hemen aksiyon alın.",
       riskCount: args.overdueMaintenanceCount + args.overduePaymentCount + args.warningCount,
       risk: { type: "maintenance_due", entityId: null, riskKey: "maintenance_due:global" },
     };
@@ -113,8 +113,8 @@ const toSystemStatus = (args: {
   if (args.overduePaymentCount > 0) {
     return {
       tone: "critical",
-      headline: `${args.overduePaymentCount} gecikmis odeme`,
-      detail: "Finans kayitlari gecikmede. Vade durumunu kontrol edin.",
+      headline: `${args.overduePaymentCount} gecikmiş ödeme`,
+      detail: "Finans kayıtları gecikmede. Vade durumunu kontrol edin.",
       riskCount: args.overduePaymentCount + args.warningCount,
       risk: { type: "invoice_due", entityId: null, riskKey: "invoice_due:global" },
     };
@@ -123,8 +123,8 @@ const toSystemStatus = (args: {
   if (args.assetCount > 0 && args.activeRuleCount === 0) {
     return {
       tone: "warning",
-      headline: "Bakim kurali eksik",
-      detail: "Varliklar icin en az bir bakim kurali tanimlayarak riski azaltin.",
+      headline: "Bakım kuralı eksik",
+      detail: "Varlıklar için en az bir bakım kuralı tanımlayarak riski azaltın.",
       riskCount: Math.max(1, args.warningCount),
       risk: { type: "rule_missing", entityId: null, riskKey: "rule_missing:global" },
     };
